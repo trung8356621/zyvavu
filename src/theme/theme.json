@@ -5,7 +5,12 @@
     "background": "#f5f6f4",
     "surface": "#ffffff",
     "text": "#17201f",
-    "border": "#dfe5e2"
+    "border": "#dfe5e2",
+    "ui": {
+      "defaultSize": "md",
+      "defaultRadius": "md",
+      "density": "comfortable"
+    }
   },
   "public": {
     "primary": "#0e6b66",
