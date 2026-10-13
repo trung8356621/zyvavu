@@ -5,6 +5,7 @@ import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import { publishedRead, siteStaffAccess } from '@/access/roles'
 import { publicPathField } from '@/fields/publicPath'
 import { slugField } from '@/fields/slug'
+import { capturePublishWrite, preservePublishedPartialUpdate } from '@/lib/publish/write-contract'
 import { removeResourceRoutes, syncResourceRoute } from '@/lib/url/registry'
 
 export const Posts: CollectionConfig = {
@@ -23,6 +24,8 @@ export const Posts: CollectionConfig = {
     delete: siteStaffAccess,
   },
   hooks: {
+    beforeOperation: [capturePublishWrite],
+    beforeChange: [preservePublishedPartialUpdate],
     afterChange: [
       async ({ doc, req }) => {
         await syncResourceRoute(req, 'post', doc)

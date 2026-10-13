@@ -4,6 +4,7 @@ import { publicOrStaffRead, siteStaffAccess } from '@/access/roles'
 import { contentBlocks } from '@/blocks/contentBlocks'
 import { publicPathField } from '@/fields/publicPath'
 import { slugField } from '@/fields/slug'
+import { capturePublishWrite, preservePublishedPartialUpdate } from '@/lib/publish/write-contract'
 import { removeResourceRoutes, syncResourceRoute } from '@/lib/url/registry'
 
 export const Pages: CollectionConfig = {
@@ -22,6 +23,8 @@ export const Pages: CollectionConfig = {
     delete: siteStaffAccess,
   },
   hooks: {
+    beforeOperation: [capturePublishWrite],
+    beforeChange: [preservePublishedPartialUpdate],
     afterChange: [
       async ({ doc, req }) => {
         await syncResourceRoute(req, 'page', doc)
