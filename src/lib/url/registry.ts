@@ -86,18 +86,70 @@ export async function removeResourceRoutes(
   })
 }
 
+async function liveDocument(
+  req: PayloadRequest,
+  resourceType: ResourceType,
+  doc: ResourceDoc,
+): Promise<ResourceDoc | null> {
+  if (isPublic(resourceType, doc)) return doc
+  const loaded = await req.payload.findByID({
+    collection: resourceType === 'page' ? 'pages' : 'posts',
+    id: doc.id,
+    depth: 0,
+    draft: false,
+    overrideAccess: true,
+    disableErrors: true,
+    req,
+  })
+  const live = loaded as ResourceDoc | null
+  if (!live || !isPublic(resourceType, live)) return null
+  return live
+}
+
+async function pointRedirectsAt(
+  req: PayloadRequest,
+  owned: RouteDoc[],
+  nextPath: string,
+  skipIds: number[],
+): Promise<void> {
+  for (const route of owned) {
+    if (skipIds.includes(route.id) || route.recordRole !== 'redirect' || route.targetPath === nextPath) continue
+    await req.payload.update({
+      collection: 'url-registry',
+      id: route.id,
+      overrideAccess: true,
+      req,
+      data: { targetPath: nextPath },
+    })
+  }
+}
+
 export async function syncResourceRoute(
   req: PayloadRequest,
   resourceType: ResourceType,
   doc: ResourceDoc,
 ): Promise<void> {
   const id = doc.id
-  if (!isPublic(resourceType, doc)) {
-    await removeResourceRoutes(req, resourceType, id)
+  const live = await liveDocument(req, resourceType, doc)
+  if (!live) {
+    const owned = await findRoutes(
+      req.payload,
+      req,
+      resourceType === 'page' ? { page: { equals: id } } : { post: { equals: id } },
+    )
+    const canonical = owned.find((route) => route.recordRole === 'canonical')
+    if (canonical) {
+      await req.payload.delete({
+        collection: 'url-registry',
+        id: canonical.id,
+        overrideAccess: true,
+        req,
+      })
+    }
     return
   }
 
-  const nextPath = canonicalPathFor(resourceType, doc.slug as string, doc.publicPath)
+  const nextPath = canonicalPathFor(resourceType, live.slug as string, live.publicPath)
   if (isReservedPath(nextPath) || (resourceType === 'page' && nextPath.startsWith('/posts/'))) {
     throw new APIError('That public URL is reserved.', 409)
   }
@@ -105,14 +157,15 @@ export async function syncResourceRoute(
   const payload = req.payload
   const owned = await findRoutes(payload, req, resourceType === 'page' ? { page: { equals: id } } : { post: { equals: id } })
   const canonical = owned.find((route) => route.recordRole === 'canonical')
-  if (canonical?.path === nextPath) return
-
-  const occupant = (
-    await findRoutes(payload, req, { path: { equals: nextPath } })
-  ).find((route) => route.id !== canonical?.id)
+  const occupant = (await findRoutes(payload, req, { path: { equals: nextPath } })).find((route) => route.id !== canonical?.id)
 
   if (occupant && !owned.some((route) => route.id === occupant.id)) {
     throw new APIError('That public URL is already in use.', 409)
+  }
+
+  if (canonical?.path === nextPath && !occupant) {
+    await pointRedirectsAt(req, owned, nextPath, [])
+    return
   }
 
   if (occupant && owned.some((route) => route.id === occupant.id)) {
@@ -125,12 +178,17 @@ export async function syncResourceRoute(
   }
 
   const redirects = await findRoutes(payload, req, { recordRole: { equals: 'redirect' } })
-  const edges = new Map(redirects.filter((route) => route.targetPath && route.id !== occupant?.id).map((route) => [route.path, route.targetPath as string]))
+  const edges = new Map(
+    redirects
+      .filter((route) => route.targetPath && route.id !== occupant?.id)
+      .map((route) => [route.path, route.targetPath as string]),
+  )
   if (canonical && detectRedirectLoop(canonical.path, nextPath, edges)) {
     throw new APIError('That URL change would create a redirect loop.', 409)
   }
 
   const relation = resourceType === 'page' ? { page: id, post: null } : { page: null, post: id }
+  const skipIds = occupant ? [occupant.id] : []
 
   try {
     if (canonical) {
@@ -141,6 +199,7 @@ export async function syncResourceRoute(
         req,
         data: { path: nextPath },
       })
+      await pointRedirectsAt(req, owned, nextPath, [canonical.id, ...skipIds])
       await payload.create({
         collection: 'url-registry',
         overrideAccess: true,
@@ -174,6 +233,7 @@ export async function syncResourceRoute(
         ...relation,
       },
     })
+    await pointRedirectsAt(req, owned, nextPath, skipIds)
   } catch (error) {
     if (isUniqueViolation(error)) throw new APIError('That public URL is already in use.', 409)
     throw error

@@ -4,8 +4,8 @@ import { getPayload, type Payload } from 'payload'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { buildOfflineManifest } from '@/lib/offline/manifest'
-import { detectRedirectLoop } from '@/lib/url/registry'
-import { resolvePublicPath } from '@/lib/url/registry'
+import { isReservedPath, normalizePath } from '@/lib/url/normalize'
+import { detectRedirectLoop, resolvePublicPath } from '@/lib/url/registry'
 import config from '@/payload.config'
 
 let payload: Payload
@@ -309,5 +309,227 @@ describe('url registry foundation', () => {
       resourceType: 'post',
       id: post.id,
     })
+  })
+
+  it('normalizes case, trailing slash and encoding without fuzzy matching', () => {
+    expect(normalizePath('/Gioi-Thieu/')).toBe('/gioi-thieu')
+    expect(normalizePath('/Hello%2DWorld/')).toBe('/hello-world')
+    expect(normalizePath('/ADMIN')).toBe('/admin')
+    expect(isReservedPath(normalizePath('/ADMIN'))).toBe(true)
+    expect(normalizePath('/gioi-thieu-x')).not.toBe('/gioi-thieu')
+  })
+
+  it('keeps a WordPress-style path canonical across equivalent requests', async () => {
+    const page = await payload.create({
+      collection: 'pages',
+      overrideAccess: true,
+      data: {
+        title: 'Legacy',
+        slug: `legacy-slug-${suffix}`,
+        publicPath: `/Legacy%2D${suffix}/`,
+        visibility: 'public',
+        presentation: 'shared',
+        _status: 'published',
+      },
+    })
+    createdPages.push(page.id)
+    const canonical = `/legacy-${suffix}`
+    expect(await resolvePublicPath(payload, canonical)).toMatchObject({ kind: 'canonical', id: page.id })
+    expect(await resolvePublicPath(payload, `/LEGACY-${suffix}/`)).toMatchObject({ kind: 'canonical', id: page.id })
+    expect(await resolvePublicPath(payload, `/Legacy%2D${suffix}`)).toMatchObject({ kind: 'canonical', id: page.id })
+    expect(await resolvePublicPath(payload, `${canonical}-other`)).toBeNull()
+  })
+
+  it('points every historical URL directly at the latest path and can reclaim an old slug', async () => {
+    const page = await payload.create({
+      collection: 'pages',
+      overrideAccess: true,
+      data: {
+        title: 'History',
+        slug: `hist-${suffix}-0`,
+        visibility: 'public',
+        presentation: 'shared',
+        _status: 'published',
+      },
+    })
+    createdPages.push(page.id)
+
+    for (let step = 1; step <= 10; step += 1) {
+      await payload.update({
+        collection: 'pages',
+        id: page.id,
+        overrideAccess: true,
+        data: { slug: `hist-${suffix}-${step}` },
+      })
+    }
+
+    const latest = `/hist-${suffix}-10`
+    const routes = await payload.find({
+      collection: 'url-registry',
+      where: { page: { equals: page.id } },
+      depth: 0,
+      limit: 20,
+      overrideAccess: true,
+      pagination: false,
+    })
+    const redirects = routes.docs.filter((route) => route.recordRole === 'redirect')
+    expect(redirects).toHaveLength(10)
+    expect(redirects.every((route) => route.targetPath === latest)).toBe(true)
+    for (let step = 0; step < 10; step += 1) {
+      expect(await resolvePublicPath(payload, `/hist-${suffix}-${step}`)).toEqual({
+        kind: 'redirect',
+        target: latest,
+      })
+    }
+
+    await payload.update({
+      collection: 'pages',
+      id: page.id,
+      overrideAccess: true,
+      data: { slug: `hist-${suffix}-0` },
+    })
+    expect(await resolvePublicPath(payload, `/hist-${suffix}-0`)).toMatchObject({
+      kind: 'canonical',
+      id: page.id,
+    })
+    const reclaimed = await payload.find({
+      collection: 'url-registry',
+      where: { page: { equals: page.id } },
+      depth: 0,
+      limit: 20,
+      overrideAccess: true,
+      pagination: false,
+    })
+    expect(reclaimed.docs.filter((route) => route.recordRole === 'redirect').every((route) => route.targetPath === `/hist-${suffix}-0`)).toBe(true)
+    expect(await resolvePublicPath(payload, latest)).toEqual({
+      kind: 'redirect',
+      target: `/hist-${suffix}-0`,
+    })
+  })
+
+  it('keeps the live route while a draft is edited, and rolls a URL collision back', async () => {
+    const page = await payload.create({
+      collection: 'pages',
+      overrideAccess: true,
+      data: {
+        title: 'Lifecycle',
+        slug: `life-${suffix}`,
+        visibility: 'public',
+        presentation: 'shared',
+        _status: 'published',
+      },
+    })
+    createdPages.push(page.id)
+    const other = await payload.create({
+      collection: 'pages',
+      overrideAccess: true,
+      data: {
+        title: 'Other',
+        slug: `other-${suffix}`,
+        visibility: 'public',
+        presentation: 'shared',
+        _status: 'published',
+      },
+    })
+    createdPages.push(other.id)
+
+    await payload.update({
+      collection: 'pages',
+      id: page.id,
+      draft: true,
+      overrideAccess: true,
+      data: { title: 'Draft title', slug: `life-draft-${suffix}` },
+    })
+    const whileDraft = await payload.findByID({
+      collection: 'pages',
+      id: page.id,
+      draft: false,
+      overrideAccess: true,
+    })
+    expect(whileDraft.slug).toBe(`life-${suffix}`)
+    expect(whileDraft._status).toBe('published')
+    expect(await resolvePublicPath(payload, `/life-${suffix}`)).toMatchObject({ kind: 'canonical', id: page.id })
+    expect(await resolvePublicPath(payload, `/life-draft-${suffix}`)).toBeNull()
+
+    await payload.update({
+      collection: 'pages',
+      id: page.id,
+      overrideAccess: true,
+      data: { slug: `life-next-${suffix}`, _status: 'published' },
+    })
+    expect(await resolvePublicPath(payload, `/life-${suffix}`)).toEqual({
+      kind: 'redirect',
+      target: `/life-next-${suffix}`,
+    })
+
+    await expect(
+      payload.update({
+        collection: 'pages',
+        id: page.id,
+        overrideAccess: true,
+        data: { publicPath: `/other-${suffix}`, _status: 'published' },
+      }),
+    ).rejects.toThrow(/already in use/i)
+    const afterCollision = await payload.findByID({
+      collection: 'pages',
+      id: page.id,
+      draft: false,
+      overrideAccess: true,
+    })
+    expect(afterCollision.slug).toBe(`life-next-${suffix}`)
+    expect(afterCollision.publicPath ?? null).toBeNull()
+    expect(await resolvePublicPath(payload, `/other-${suffix}`)).toMatchObject({ kind: 'canonical', id: other.id })
+    expect(await resolvePublicPath(payload, `/life-next-${suffix}`)).toMatchObject({ kind: 'canonical', id: page.id })
+
+    await payload.update({
+      collection: 'pages',
+      id: page.id,
+      overrideAccess: true,
+      data: { visibility: 'private' },
+    })
+    expect(await resolvePublicPath(payload, `/life-next-${suffix}`)).toBeNull()
+    expect(await resolvePublicPath(payload, `/life-${suffix}`)).toBeNull()
+
+    await payload.update({
+      collection: 'pages',
+      id: page.id,
+      overrideAccess: true,
+      data: { visibility: 'public' },
+    })
+    expect(await resolvePublicPath(payload, `/life-${suffix}`)).toEqual({
+      kind: 'redirect',
+      target: `/life-next-${suffix}`,
+    })
+
+    await payload.update({
+      collection: 'pages',
+      id: page.id,
+      overrideAccess: true,
+      data: { _status: 'draft' },
+    })
+    expect(await resolvePublicPath(payload, `/life-next-${suffix}`)).toBeNull()
+    const hiddenHistory = await payload.find({
+      collection: 'url-registry',
+      where: { and: [{ page: { equals: page.id } }, { recordRole: { equals: 'redirect' } }] },
+      depth: 0,
+      overrideAccess: true,
+    })
+    expect(hiddenHistory.docs.length).toBeGreaterThan(0)
+
+    await payload.update({
+      collection: 'pages',
+      id: page.id,
+      overrideAccess: true,
+      data: { _status: 'published' },
+    })
+    expect(await resolvePublicPath(payload, `/life-${suffix}`)).toEqual({
+      kind: 'redirect',
+      target: `/life-next-${suffix}`,
+    })
+
+    await payload.delete({ collection: 'pages', id: page.id, overrideAccess: true })
+    createdPages.splice(createdPages.indexOf(page.id), 1)
+    expect(await resolvePublicPath(payload, `/life-next-${suffix}`)).toBeNull()
+    expect(await resolvePublicPath(payload, `/life-${suffix}`)).toBeNull()
   })
 })
