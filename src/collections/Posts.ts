@@ -14,6 +14,13 @@ export const Posts: CollectionConfig = {
     group: 'Content',
     useAsTitle: 'title',
     defaultColumns: ['title', 'categories', '_status', 'updatedAt'],
+    components: {
+      views: {
+        list: {
+          Component: '@/components/admin/posts/PostsListView#PostsListView',
+        },
+      },
+    },
   },
   versions: {
     drafts: true,
@@ -40,7 +47,16 @@ export const Posts: CollectionConfig = {
     ],
   },
   fields: [
-    { name: 'title', type: 'text', required: true },
+    {
+      name: 'title',
+      type: 'text',
+      required: true,
+      admin: {
+        components: {
+          Cell: '@/components/admin/posts/PostsTitleCell#PostsTitleCell',
+        },
+      },
+    },
     slugField,
     publicPathField,
     { name: 'excerpt', type: 'textarea' },
