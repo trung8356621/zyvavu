@@ -1,12 +1,6 @@
-import type { CollectionAfterChangeHook, CollectionConfig } from 'payload'
+import type { CollectionConfig } from 'payload'
 
 import { siteStaffAccess } from '@/access/roles'
-import { syncMenuRegistry } from '@/lib/menu-registry'
-
-const refreshRegistry: CollectionAfterChangeHook = async ({ doc, req }) => {
-  await syncMenuRegistry(req.payload, doc, req)
-  return doc
-}
 
 export const Menus: CollectionConfig = {
   slug: 'menus',
@@ -16,19 +10,6 @@ export const Menus: CollectionConfig = {
     read: () => true,
     update: siteStaffAccess,
     delete: siteStaffAccess,
-  },
-  hooks: {
-    afterChange: [refreshRegistry],
-    beforeDelete: [
-      async ({ id, req }) => {
-        await req.payload.delete({
-          collection: 'url-registry',
-          where: { menu: { equals: id } },
-          overrideAccess: true,
-          req,
-        })
-      },
-    ],
   },
   fields: [
     { name: 'name', type: 'text', required: true },

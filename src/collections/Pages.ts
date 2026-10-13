@@ -2,7 +2,9 @@ import type { CollectionConfig } from 'payload'
 
 import { publicOrStaffRead, siteStaffAccess } from '@/access/roles'
 import { contentBlocks } from '@/blocks/contentBlocks'
+import { publicPathField } from '@/fields/publicPath'
 import { slugField } from '@/fields/slug'
+import { removeResourceRoutes, syncResourceRoute } from '@/lib/url/registry'
 
 export const Pages: CollectionConfig = {
   slug: 'pages',
@@ -19,9 +21,23 @@ export const Pages: CollectionConfig = {
     update: siteStaffAccess,
     delete: siteStaffAccess,
   },
+  hooks: {
+    afterChange: [
+      async ({ doc, req }) => {
+        await syncResourceRoute(req, 'page', doc)
+        return doc
+      },
+    ],
+    beforeDelete: [
+      async ({ id, req }) => {
+        if (typeof id === 'number') await removeResourceRoutes(req, 'page', id)
+      },
+    ],
+  },
   fields: [
     { name: 'title', type: 'text', required: true },
     slugField,
+    publicPathField,
     { name: 'excerpt', type: 'textarea' },
     {
       name: 'visibility',

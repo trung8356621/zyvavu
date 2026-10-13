@@ -3,6 +3,7 @@ import { getPayload } from 'payload'
 
 import { RegisterServiceWorker } from '@/components/frontend/RegisterServiceWorker'
 import { SiteHeader } from '@/components/frontend/SiteHeader'
+import { linksForMenu } from '@/lib/url/menu-links'
 import config from '@/payload.config'
 
 import './styles.css'
@@ -25,12 +26,13 @@ export default async function RootLayout(props: { children: React.ReactNode }) {
       overrideAccess: true,
     })
     .catch(() => null)
+  const items = await linksForMenu(payload, menus?.docs?.[0]?.items || [])
 
   return (
     <html lang={settings?.language || 'vi'}>
       <body>
         <RegisterServiceWorker />
-        <SiteHeader siteName={settings?.siteName || 'zyvavu'} items={menus?.docs?.[0]?.items || []} />
+        <SiteHeader siteName={settings?.siteName || 'zyvavu'} items={items} />
         <main>{props.children}</main>
       </body>
     </html>

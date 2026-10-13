@@ -15,17 +15,37 @@ export const UrlRegistry: CollectionConfig = {
     update: () => false,
   },
   fields: [
-    { name: 'path', type: 'text', required: true, index: true },
+    { name: 'path', type: 'text', required: true, unique: true, index: true },
     {
-      name: 'kind',
+      name: 'recordRole',
       type: 'select',
       required: true,
-      options: ['page', 'post', 'custom'],
+      options: [
+        { label: 'Canonical', value: 'canonical' },
+        { label: 'Redirect', value: 'redirect' },
+      ],
+    },
+    {
+      name: 'resourceType',
+      type: 'select',
+      required: true,
+      options: [
+        { label: 'Page', value: 'page' },
+        { label: 'Post', value: 'post' },
+      ],
     },
     { name: 'page', type: 'relationship', relationTo: 'pages' },
     { name: 'post', type: 'relationship', relationTo: 'posts' },
-    { name: 'menu', type: 'relationship', relationTo: 'menus', required: true },
-    { name: 'menuItemId', type: 'text' },
-    { name: 'label', type: 'text' },
+    { name: 'targetPath', type: 'text' },
+    {
+      name: 'locale',
+      type: 'text',
+      admin: { description: 'Reserved. Locale uniqueness is not decided.' },
+    },
+    {
+      name: 'siteKey',
+      type: 'text',
+      admin: { description: 'Reserved. Multi-tenant routing is not decided.' },
+    },
   ],
 }

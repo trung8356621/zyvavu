@@ -189,6 +189,10 @@ export interface Page {
   id: number;
   title: string;
   slug: string;
+  /**
+   * Optional public path. Leave empty to use the slug. Set this to keep an existing WordPress URL.
+   */
+  publicPath?: string | null;
   excerpt?: string | null;
   visibility: 'public' | 'private';
   /**
@@ -267,6 +271,10 @@ export interface Post {
   id: number;
   title: string;
   slug: string;
+  /**
+   * Optional public path. Leave empty to use the slug. Set this to keep an existing WordPress URL.
+   */
+  publicPath?: string | null;
   excerpt?: string | null;
   content?: {
     root: {
@@ -342,12 +350,19 @@ export interface Menu {
 export interface UrlRegistry {
   id: number;
   path: string;
-  kind: 'page' | 'post' | 'custom';
+  recordRole: 'canonical' | 'redirect';
+  resourceType: 'page' | 'post';
   page?: (number | null) | Page;
   post?: (number | null) | Post;
-  menu: number | Menu;
-  menuItemId?: string | null;
-  label?: string | null;
+  targetPath?: string | null;
+  /**
+   * Reserved. Locale uniqueness is not decided.
+   */
+  locale?: string | null;
+  /**
+   * Reserved. Multi-tenant routing is not decided.
+   */
+  siteKey?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -498,6 +513,7 @@ export interface MediaSelect<T extends boolean = true> {
 export interface PagesSelect<T extends boolean = true> {
   title?: T;
   slug?: T;
+  publicPath?: T;
   excerpt?: T;
   visibility?: T;
   presentation?: T;
@@ -562,6 +578,7 @@ export interface PagesSelect<T extends boolean = true> {
 export interface PostsSelect<T extends boolean = true> {
   title?: T;
   slug?: T;
+  publicPath?: T;
   excerpt?: T;
   content?: T;
   categories?: T;
@@ -621,12 +638,13 @@ export interface MenusSelect<T extends boolean = true> {
  */
 export interface UrlRegistrySelect<T extends boolean = true> {
   path?: T;
-  kind?: T;
+  recordRole?: T;
+  resourceType?: T;
   page?: T;
   post?: T;
-  menu?: T;
-  menuItemId?: T;
-  label?: T;
+  targetPath?: T;
+  locale?: T;
+  siteKey?: T;
   updatedAt?: T;
   createdAt?: T;
 }

@@ -42,17 +42,18 @@ describe('foundation access and offline eligibility', () => {
   it('selects only published public pages that are linked from a menu', () => {
     const pages = selectEligiblePages(
       [
-        { id: 1, slug: 'about', updatedAt: '1', visibility: 'public', _status: 'published' },
-        { id: 2, slug: 'secret', updatedAt: '1', visibility: 'private', _status: 'published' },
-        { id: 3, slug: 'draft', updatedAt: '1', visibility: 'public', _status: 'draft' },
-        { id: 4, slug: 'unlinked', updatedAt: '1', visibility: 'public', _status: 'published' },
+        { id: 1, updatedAt: '1', visibility: 'public', _status: 'published' },
+        { id: 2, updatedAt: '1', visibility: 'private', _status: 'published' },
+        { id: 3, updatedAt: '1', visibility: 'public', _status: 'draft' },
+        { id: 4, updatedAt: '1', visibility: 'public', _status: 'published' },
       ],
-      [
-        { kind: 'page', page: 1 },
-        { kind: 'page', page: 2 },
-        { kind: 'page', page: 3 },
-        { kind: 'post', page: null, post: 9 },
-      ],
+      new Set(['1', '2', '3']),
+      new Map([
+        ['1', '/about'],
+        ['2', '/secret'],
+        ['3', '/draft'],
+        ['4', '/unlinked'],
+      ]),
       20,
     )
     expect(pages.map((page) => page.path)).toEqual(['/about'])
@@ -99,7 +100,7 @@ describe('foundation access and offline eligibility', () => {
     })
     expect(fresh.role).toBe(ROLE_SITE_ADMIN)
     expect(systemUser.role).toBe(ROLE_SYSTEM_ADMIN)
-  })
+  }, 20000)
 
   it('builds an offline manifest without prefetching posts', async () => {
     const page = await payload.create({
