@@ -35,6 +35,7 @@ export default buildConfig({
       baseDir: path.resolve(dirname),
     },
     components: {
+      beforeDashboard: ['@/components/admin/DashboardWelcome#DashboardWelcome'],
       graphics: {
         Logo: '@/components/admin/Logo#Logo',
         Icon: '@/components/admin/Logo#Icon',
