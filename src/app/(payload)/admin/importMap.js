@@ -23,9 +23,9 @@ import { UnderlineFeatureClient as UnderlineFeatureClient_e70f5e05f09f93e00b997e
 import { BoldFeatureClient as BoldFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { ItalicFeatureClient as ItalicFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { PostsListView as PostsListView_a8ffc995a16183020e5f1470211d9639 } from '@/components/admin/posts/PostsListView'
+import { ZyvavuNav as ZyvavuNav_2bb94d3f839a4d5b2cf329bc3c58226a } from '@/components/admin/navigation/ZyvavuNav'
 import { Icon as Icon_a44df17d0fc3dcd873dae43dc3bf66bd } from '@/components/admin/Logo'
 import { Logo as Logo_a44df17d0fc3dcd873dae43dc3bf66bd } from '@/components/admin/Logo'
-import { SystemNavLink as SystemNavLink_1ae55de6aedb52478629eb9d877944cc } from '@/components/admin/SystemNavLink'
 import { DashboardWelcome as DashboardWelcome_b81acdec2f847f3a2418fa446f7762ad } from '@/components/admin/DashboardWelcome'
 import { ThemeProvider as ThemeProvider_a1a3c4a847480f0a30c7903f2efa894d } from '@/components/admin/ThemeProvider'
 import { SystemView as SystemView_cdc5b7cf3ea627dfc2b22dc6609fc35d } from '@/components/admin/SystemView'
@@ -58,9 +58,9 @@ export const importMap = {
   "@payloadcms/richtext-lexical/client#BoldFeatureClient": BoldFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@payloadcms/richtext-lexical/client#ItalicFeatureClient": ItalicFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@/components/admin/posts/PostsListView#PostsListView": PostsListView_a8ffc995a16183020e5f1470211d9639,
+  "@/components/admin/navigation/ZyvavuNav#ZyvavuNav": ZyvavuNav_2bb94d3f839a4d5b2cf329bc3c58226a,
   "@/components/admin/Logo#Icon": Icon_a44df17d0fc3dcd873dae43dc3bf66bd,
   "@/components/admin/Logo#Logo": Logo_a44df17d0fc3dcd873dae43dc3bf66bd,
-  "@/components/admin/SystemNavLink#SystemNavLink": SystemNavLink_1ae55de6aedb52478629eb9d877944cc,
   "@/components/admin/DashboardWelcome#DashboardWelcome": DashboardWelcome_b81acdec2f847f3a2418fa446f7762ad,
   "@/components/admin/ThemeProvider#ThemeProvider": ThemeProvider_a1a3c4a847480f0a30c7903f2efa894d,
   "@/components/admin/SystemView#SystemView": SystemView_cdc5b7cf3ea627dfc2b22dc6609fc35d,

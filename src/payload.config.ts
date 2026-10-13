@@ -37,11 +37,11 @@ export default buildConfig({
     components: {
       providers: ['@/components/admin/ThemeProvider#ThemeProvider'],
       beforeDashboard: ['@/components/admin/DashboardWelcome#DashboardWelcome'],
+      Nav: '@/components/admin/navigation/ZyvavuNav#ZyvavuNav',
       graphics: {
         Logo: '@/components/admin/Logo#Logo',
         Icon: '@/components/admin/Logo#Icon',
       },
-      afterNavLinks: ['@/components/admin/SystemNavLink#SystemNavLink'],
       views: {
         system: {
           Component: '@/components/admin/SystemView#SystemView',
