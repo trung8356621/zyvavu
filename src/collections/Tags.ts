@@ -5,7 +5,7 @@ import { slugField } from '@/fields/slug'
 
 export const Tags: CollectionConfig = {
   slug: 'tags',
-  admin: { useAsTitle: 'title' },
+  admin: { group: 'Content', useAsTitle: 'title' },
   access: {
     create: siteStaffAccess,
     read: () => true,

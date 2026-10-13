@@ -4,6 +4,9 @@ import { siteStaffAccess } from '@/access/roles'
 
 export const Media: CollectionConfig = {
   slug: 'media',
+  admin: {
+    group: 'Content',
+  },
   access: {
     create: siteStaffAccess,
     read: () => true,

@@ -35,6 +35,7 @@ const publicOrigin = canonicalPublicOrigin(process.env.NEXT_PUBLIC_SERVER_URL)
 export const Users: CollectionConfig = {
   slug: 'users',
   admin: {
+    group: 'System',
     useAsTitle: 'email',
     defaultColumns: ['email', 'role'],
   },

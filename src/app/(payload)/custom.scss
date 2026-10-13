@@ -1,0 +1,211 @@
+:root {
+  --base-px: 16;
+  --nav-width: 232px;
+  --style-radius-s: 4px;
+  --style-radius-m: 6px;
+  --style-radius-l: 8px;
+  --theme-bg: #f3f2ee;
+  --font-body: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  --theme-success-400: #1a8f88;
+  --theme-success-500: #0e6b66;
+  --theme-success-600: #0b5753;
+}
+
+html {
+  background: var(--theme-bg);
+}
+
+.template-default {
+  background: var(--theme-bg);
+}
+
+.template-default__wrap {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.collections__wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.collections__group:nth-child(1) {
+  order: 1;
+}
+
+.collections__group:nth-child(2) {
+  order: 2;
+}
+
+.collections__group:nth-child(3) {
+  order: 4;
+}
+
+.collections__group:nth-child(4) {
+  order: 3;
+}
+
+.template-default h1,
+.list-header__title {
+  font-size: 1.45rem;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+}
+
+.nav {
+  --theme-bg: #161b1f;
+  --theme-text: #e7eeec;
+  --theme-input-bg: #1e252a;
+  --theme-border-color: #2a3338;
+  --theme-elevation-0: #161b1f;
+  --theme-elevation-50: #1c2328;
+  --theme-elevation-100: #243036;
+  --theme-elevation-150: #314046;
+  --theme-elevation-200: #3d4d54;
+  --theme-elevation-250: #4d6168;
+  --theme-elevation-300: #627880;
+  --theme-elevation-400: #8aa099;
+  --theme-elevation-500: #a9bdb6;
+  --theme-elevation-600: #c5d5cf;
+  --theme-elevation-700: #d7e4df;
+  --theme-elevation-800: #e7eeec;
+  --theme-elevation-900: #f4f8f6;
+  --theme-elevation-1000: #ffffff;
+  background: var(--theme-bg);
+  color: var(--theme-text);
+  border-right-color: #0d1114;
+}
+
+.nav__wrap {
+  min-height: 100%;
+}
+
+.nav-group.Content {
+  order: 1;
+}
+
+.nav-group.Appearance {
+  order: 2;
+}
+
+.nav-group.Settings {
+  order: 3;
+}
+
+.nav-group.System {
+  order: 4;
+}
+
+.zyvavu-system-link {
+  order: 5;
+  width: 100%;
+  margin-top: -4px;
+}
+
+.nav__controls {
+  order: 10;
+}
+
+.nav__link-indicator {
+  background: #7dcec7;
+}
+
+.nav a:focus-visible,
+.nav button:focus-visible {
+  outline: 2px solid #7dcec7;
+  outline-offset: 2px;
+}
+
+.app-header {
+  background: #fffcf8;
+  border-bottom: 1px solid var(--theme-elevation-100);
+}
+
+.btn {
+  border-radius: var(--style-radius-m);
+}
+
+.btn--style-primary {
+  --bg-color: #16312f;
+  --hover-bg: #0e6b66;
+  --hover-color: #ffffff;
+}
+
+.btn:focus-visible,
+.tabs-field__tab-button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid #0e6b66;
+  outline-offset: 2px;
+}
+
+.tabs-field__tab-button--active {
+  box-shadow: inset 0 -2px 0 #0e6b66;
+}
+
+.document-fields--has-sidebar {
+  --main-width: 74%;
+}
+
+.table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.table th,
+.table td {
+  padding-top: 0.45rem;
+  padding-bottom: 0.45rem;
+}
+
+.field-error {
+  color: var(--theme-error-500);
+}
+
+.popup,
+.modal {
+  max-width: calc(100vw - 2rem);
+}
+
+.zyvavu-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: #16312f;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+  font-size: 1.35rem;
+}
+
+.zyvavu-logo__mark {
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 2px;
+  background: #0e6b66;
+  box-shadow: inset 0 0 0 2px #d7efed;
+}
+
+.zyvavu-system-view {
+  max-width: 42rem;
+}
+
+.zyvavu-system-view h1 {
+  margin-top: 0;
+}
+
+@media (max-width: 1024px) {
+  .document-fields--has-sidebar {
+    --main-width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .template-default__wrap,
+  .collection-list,
+  .collection-edit,
+  .table-wrap {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+}

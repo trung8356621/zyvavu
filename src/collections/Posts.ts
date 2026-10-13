@@ -11,6 +11,7 @@ import { removeResourceRoutes, syncResourceRoute } from '@/lib/url/registry'
 export const Posts: CollectionConfig = {
   slug: 'posts',
   admin: {
+    group: 'Content',
     useAsTitle: 'title',
     defaultColumns: ['title', 'slug', '_status', 'updatedAt'],
   },

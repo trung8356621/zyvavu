@@ -6,7 +6,7 @@ export const SystemSettings: GlobalConfig = {
   slug: 'system-settings',
   label: 'System settings',
   admin: {
-    group: 'Settings',
+    group: 'System',
     hidden: ({ user }) => user?.role !== 'system-admin',
   },
   access: {

@@ -26,7 +26,7 @@ export async function SystemView(props: SystemViewProps) {
   })
 
   return (
-    <section>
+    <section className="zyvavu-system-view">
       <h1>System</h1>
       <p>Maintenance note: {settings.maintenanceNote || '—'}</p>
     </section>

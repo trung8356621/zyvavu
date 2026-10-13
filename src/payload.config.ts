@@ -27,14 +27,19 @@ const allowedOrigins = Array.from(new Set([LOCAL_HTTP_ORIGIN, LOCAL_HTTPS_ORIGIN
 export default buildConfig({
   admin: {
     user: Users.slug,
+    theme: 'light',
     meta: {
-      titleSuffix: '— zyvavu',
+      titleSuffix: '— Zyvavu',
     },
     importMap: {
       baseDir: path.resolve(dirname),
     },
     components: {
-      beforeNavLinks: ['@/components/admin/SystemNavLink#SystemNavLink'],
+      graphics: {
+        Logo: '@/components/admin/Logo#Logo',
+        Icon: '@/components/admin/Logo#Icon',
+      },
+      afterNavLinks: ['@/components/admin/SystemNavLink#SystemNavLink'],
       views: {
         system: {
           Component: '@/components/admin/SystemView#SystemView',
@@ -45,7 +50,7 @@ export default buildConfig({
       },
     },
   },
-  collections: [Users, Media, Pages, Posts, Categories, Tags, Menus, UrlRegistry],
+  collections: [Posts, Pages, Media, Categories, Tags, Menus, Users, UrlRegistry],
   globals: [Settings, SystemSettings],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',

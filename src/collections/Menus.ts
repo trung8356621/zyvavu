@@ -4,7 +4,7 @@ import { siteStaffAccess } from '@/access/roles'
 
 export const Menus: CollectionConfig = {
   slug: 'menus',
-  admin: { useAsTitle: 'name' },
+  admin: { group: 'Appearance', useAsTitle: 'name' },
   access: {
     create: siteStaffAccess,
     read: () => true,
