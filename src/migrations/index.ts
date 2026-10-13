@@ -1,5 +1,6 @@
 import * as migration_20261013_053306_initial from './20261013_053306_initial';
 import * as migration_20261013_140500_url_registry_foundation from './20261013_140500_url_registry_foundation';
+import * as migration_20261013_150600_settings_foundation from './20261013_150600_settings_foundation';
 
 export const migrations = [
   {
@@ -11,5 +12,10 @@ export const migrations = [
     up: migration_20261013_140500_url_registry_foundation.up,
     down: migration_20261013_140500_url_registry_foundation.down,
     name: '20261013_140500_url_registry_foundation'
+  },
+  {
+    up: migration_20261013_150600_settings_foundation.up,
+    down: migration_20261013_150600_settings_foundation.down,
+    name: '20261013_150600_settings_foundation'
   },
 ];

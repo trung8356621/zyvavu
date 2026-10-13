@@ -9,6 +9,7 @@ import {
   ROLE_SYSTEM_ADMIN,
   systemAdminFieldAccess,
 } from '@/access/roles'
+import { canonicalPublicOrigin } from '@/lib/site/origin'
 
 const guardRole: CollectionBeforeChangeHook = async ({ data, req, operation, originalDoc }) => {
   const next = { ...data }
@@ -29,7 +30,7 @@ const guardRole: CollectionBeforeChangeHook = async ({ data, req, operation, ori
   return next
 }
 
-const publicOrigin = process.env.NEXT_PUBLIC_SERVER_URL || 'http://zyvavu.test'
+const publicOrigin = canonicalPublicOrigin(process.env.NEXT_PUBLIC_SERVER_URL)
 
 export const Users: CollectionConfig = {
   slug: 'users',

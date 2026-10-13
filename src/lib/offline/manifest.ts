@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 
 import type { Payload } from 'payload'
 
+import { loadPublicSiteSettings } from '@/lib/site/settings'
 import { linkedPageIds } from '@/lib/url/menu-membership'
 
 export type OfflinePage = {
@@ -48,9 +49,9 @@ export function selectEligiblePages(
 }
 
 export async function buildOfflineManifest(payload: Payload): Promise<OfflineManifest> {
-  const settings = await payload.findGlobal({ slug: 'settings', overrideAccess: true })
-  const limit = Number(settings.offlinePageLimit || 20)
-  const enabled = settings.pwaEnabled !== false
+  const settings = await loadPublicSiteSettings(payload)
+  const limit = settings.offlinePageLimit
+  const enabled = settings.pwaEnabled
 
   if (!enabled) {
     return { version: 'disabled', limit, enabled: false, pages: [] }

@@ -178,8 +178,15 @@ svg {
   flex-wrap: wrap;
 }
 
-.site-header a {
+.site-header a,
+.site-brand p {
   color: #fff;
+}
+
+.site-brand p {
+  margin: 0.15rem 0 0;
+  color: #c5cdd6;
+  font-size: 0.85rem;
 }
 
 .site-section {

@@ -16,14 +16,13 @@ import { Users } from './collections/Users'
 import { Settings } from './globals/Settings'
 import { SystemSettings } from './globals/SystemSettings'
 import { buildOfflineManifest } from './lib/offline/manifest'
+import { LOCAL_HTTP_ORIGIN, LOCAL_HTTPS_ORIGIN, canonicalPublicOrigin } from './lib/site/origin'
 import { migrations } from './migrations'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
-const httpOrigin = 'http://zyvavu.test'
-const httpsOrigin = 'https://zyvavu.test'
-const publicOrigin = process.env.NEXT_PUBLIC_SERVER_URL || httpOrigin
-const allowedOrigins = [httpOrigin, httpsOrigin]
+const publicOrigin = canonicalPublicOrigin(process.env.NEXT_PUBLIC_SERVER_URL)
+const allowedOrigins = Array.from(new Set([LOCAL_HTTP_ORIGIN, LOCAL_HTTPS_ORIGIN, publicOrigin]))
 
 export default buildConfig({
   admin: {

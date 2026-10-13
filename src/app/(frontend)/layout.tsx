@@ -3,20 +3,26 @@ import { getPayload } from 'payload'
 
 import { RegisterServiceWorker } from '@/components/frontend/RegisterServiceWorker'
 import { SiteHeader } from '@/components/frontend/SiteHeader'
+import { loadPublicSiteSettings } from '@/lib/site/settings'
 import { linksForMenu } from '@/lib/url/menu-links'
 import config from '@/payload.config'
 
 import './styles.css'
 
-export const metadata = {
-  description: 'zyvavu CMS',
-  title: 'zyvavu',
-  manifest: '/manifest.webmanifest',
+export async function generateMetadata() {
+  const payload = await getPayload({ config })
+  const settings = await loadPublicSiteSettings(payload)
+  return {
+    description: settings.tagline || settings.siteName,
+    title: settings.siteName,
+    metadataBase: new URL(settings.siteUrl),
+    manifest: settings.pwaEnabled ? '/manifest.webmanifest' : undefined,
+  }
 }
 
 export default async function RootLayout(props: { children: React.ReactNode }) {
   const payload = await getPayload({ config })
-  const settings = await payload.findGlobal({ slug: 'settings', overrideAccess: true }).catch(() => null)
+  const settings = await loadPublicSiteSettings(payload)
   const menus = await payload
     .find({
       collection: 'menus',
@@ -29,10 +35,10 @@ export default async function RootLayout(props: { children: React.ReactNode }) {
   const items = await linksForMenu(payload, menus?.docs?.[0]?.items || [])
 
   return (
-    <html lang={settings?.language || 'vi'}>
+    <html lang={settings.language}>
       <body>
-        <RegisterServiceWorker />
-        <SiteHeader siteName={settings?.siteName || 'zyvavu'} items={items} />
+        <RegisterServiceWorker enabled={settings.pwaEnabled} />
+        <SiteHeader siteName={settings.siteName} tagline={settings.tagline} items={items} />
         <main>{props.children}</main>
       </body>
     </html>

@@ -696,17 +696,30 @@ export interface Setting {
   id: number;
   siteName: string;
   tagline?: string | null;
+  /**
+   * Public origin. The local site stays on https://zyvavu.test.
+   */
   siteUrl: string;
+  /**
+   * BCP 47 language used by the public site, such as vi.
+   */
   language: string;
+  /**
+   * Saved for a future posts listing. It does not change the site yet.
+   */
   postsPerPage: number;
   /**
-   * Core offline cache for eligible pages.
+   * Registers the service worker and offline cache for eligible pages.
    */
   pwaEnabled?: boolean | null;
   /**
    * Maximum number of eligible pages kept in the offline cache.
    */
   offlinePageLimit: number;
+  /**
+   * Reserved for the initial setup wizard. The wizard is not available yet.
+   */
+  setupComplete?: boolean | null;
   updatedAt?: string | null;
   createdAt?: string | null;
 }
@@ -717,7 +730,7 @@ export interface Setting {
 export interface SystemSetting {
   id: number;
   /**
-   * Visible only to system-admin.
+   * Visible only to system-admin. Do not store hosting or storage credentials.
    */
   maintenanceNote?: string | null;
   updatedAt?: string | null;
@@ -735,6 +748,7 @@ export interface SettingsSelect<T extends boolean = true> {
   postsPerPage?: T;
   pwaEnabled?: T;
   offlinePageLimit?: T;
+  setupComplete?: T;
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;

@@ -1,10 +1,16 @@
 import type { MetadataRoute } from 'next'
+import { getPayload } from 'payload'
 
-export default function manifest(): MetadataRoute.Manifest {
+import { loadPublicSiteSettings } from '@/lib/site/settings'
+import config from '@/payload.config'
+
+export default async function manifest(): Promise<MetadataRoute.Manifest> {
+  const payload = await getPayload({ config })
+  const settings = await loadPublicSiteSettings(payload)
   return {
-    name: 'zyvavu',
-    short_name: 'zyvavu',
-    description: 'zyvavu CMS',
+    name: settings.siteName,
+    short_name: settings.siteName,
+    description: settings.tagline || settings.siteName,
     start_url: '/',
     scope: '/',
     display: 'standalone',
