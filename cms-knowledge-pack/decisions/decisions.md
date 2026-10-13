@@ -21,7 +21,7 @@ DEC-BACKUP-001 | CONFIRMED | Portable application-level backup/restore kiểu SE
 DEC-HOST-001 | CONFIRMED | Origin first, không phụ thuộc Cloudflare Proxy ở VN. Host/provider cụ thể cần benchmark. | CMS §08.
 DEC-HOST-002 | OPEN | Site-per-instance hay multitenant? Ưu tiên site isolation để thử, chưa khóa. | CMS §11 + §16.
 DEC-ANIM-001 | CONFIRMED | CSS-first/WAAPI, Canvas/WebGL chỉ khi cần, reduced motion, benchmark. | Roadmap §06.
-DEC-UI-001 | PROPOSED | shadcn/ui/Embla ứng viên ưu tiên, không phải stack bắt buộc trước test. | Roadmap Bổ sung.
+DEC-UI-001 | CONFIRMED (Admin) / PROPOSED (Public) | Mantine là UI library chuẩn cho custom Admin controls; Lucide là icon set; src/theme/theme.json là cấu hình trực quan Admin trung tâm (no custom atom factory). Public frontend UI (shadcn/ui/Embla) giữ nguyên trạng thái PROPOSED, độc lập với Admin. | Skill cms-admin-design V2; Roadmap Bổ sung.
 DEC-PRODUCT-001 | OPEN | Product Catalog MVP hỗ trợ quote/variants/checkout đến đâu. | CMS §16.
 DEC-SCHEMA-001 | CONFIRMED | SEO backend học tốt từ WP Core, Yoast, Rank Math; schema watch thay đổi, không tự xây keyword score. | SEO Backend §02–08.
 DEC-SYSTEM-001 | CONFIRMED | Không tạo CMS UI để khách thao tác hosting/storage credentials. | CMS Phụ lục A/D.
