@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import React from 'react'
 import { getPayload } from 'payload'
 
@@ -6,6 +7,7 @@ import { SiteHeader } from '@/components/frontend/SiteHeader'
 import { loadPublicSiteSettings } from '@/lib/site/settings'
 import { linksForMenu } from '@/lib/url/menu-links'
 import config from '@/payload.config'
+import { themeVariables } from '@/theme/cssVariables'
 
 import './styles.css'
 
@@ -36,7 +38,7 @@ export default async function RootLayout(props: { children: React.ReactNode }) {
 
   return (
     <html lang={settings.language}>
-      <body>
+      <body style={themeVariables('public') as CSSProperties}>
         <RegisterServiceWorker enabled={settings.pwaEnabled} />
         <SiteHeader siteName={settings.siteName} tagline={settings.tagline} items={items} />
         <main>{props.children}</main>

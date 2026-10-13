@@ -10,7 +10,7 @@ html {
   font-size: 18px;
   line-height: 32px;
 
-  background: rgb(0, 0, 0);
+  background: var(--zyvavu-background);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -26,7 +26,7 @@ body {
   line-height: 32px;
 
   margin: 0;
-  color: rgb(1000, 1000, 1000);
+  color: var(--zyvavu-text);
 
   @media (max-width: 1024px) {
     font-size: 15px;
@@ -169,7 +169,8 @@ svg {
   gap: 1rem;
   align-items: center;
   padding: 1rem 1.5rem;
-  background: #111;
+  background: var(--zyvavu-surface);
+  border-bottom: 1px solid var(--zyvavu-border);
 }
 
 .site-header nav {
@@ -180,12 +181,12 @@ svg {
 
 .site-header a,
 .site-brand p {
-  color: #fff;
+  color: var(--zyvavu-text);
 }
 
 .site-brand p {
   margin: 0.15rem 0 0;
-  color: #c5cdd6;
+  color: color-mix(in srgb, var(--zyvavu-text) 72%, transparent);
   font-size: 0.85rem;
 }
 

@@ -1,0 +1,17 @@
+{
+  "admin": {
+    "primary": "#0e6b66",
+    "sidebar": "#161b1f",
+    "background": "#f5f6f4",
+    "surface": "#ffffff",
+    "text": "#17201f",
+    "border": "#dfe5e2"
+  },
+  "public": {
+    "primary": "#0e6b66",
+    "background": "#000000",
+    "surface": "#111111",
+    "text": "#ffffff",
+    "border": "#333333"
+  }
+}

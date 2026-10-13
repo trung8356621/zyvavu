@@ -1,67 +1,83 @@
-# Payload Blank Template
+# Zyvavu CMS
 
-This template comes configured with the bare minimum to get started on anything you need.
+Zyvavu is a Next.js 16.3.3 and Payload CMS 3.90.2 application backed by PostgreSQL. The same application serves the public website and the Payload Admin editorial workspace.
 
-## Quick start
+## Architecture
 
-This template can be deployed directly from our Cloud hosting and it will setup MongoDB and cloud S3 object storage for media.
+- Next.js `16.3.3`, React `19.2.6`, Payload `3.90.2`, PostgreSQL adapter `3.90.2`.
+- `src/collections`: content models, media, users and URL Registry.
+- `src/globals`: customer-facing Site Settings and protected System Settings.
+- `src/lib/url`: flat URL Registry and menu URL resolution.
+- `src/lib/publish`: publish-write contracts and lifecycle safeguards.
+- `src/components/admin`: scoped Payload Admin extensions.
+- `src/app/(payload)` and `src/app/(frontend)`: Admin and public routes/styles.
+- `cms-knowledge-pack`: local exported decisions, skills and MCP source.
 
-## Quick Start - local setup
+`src/theme/theme.json` is the static color source for Admin and Public UI. The two independent objects support only `primary`, `background`, `surface`, `text` and `border`; Admin also supports `sidebar`. `src/theme/cssVariables.ts` maps them to `--zyvavu-*` variables. Edit the relevant object and restart/rebuild normally. Changing Public colors cannot change Admin colors. This is not a database-backed theme engine or theme editor.
 
-To spin up this template locally, follow these steps:
+## Local development
 
-### Clone
+The canonical workspace is `D:\zyvavu`. Requirements are Node.js `>=20.18.1`, pnpm `9`, `10` or `11`, PostgreSQL, Laragon Nginx and a trusted Laragon development certificate.
 
-After you click the `Deploy` button above, you'll want to have standalone copy of this repo on your machine. If you've already cloned this repo, skip to [Development](#development).
+- Next.js: `127.0.0.1:3107`, configured in `config/dev-server.json`.
+- Site: `http://zyvavu.test` and `https://zyvavu.test` through Nginx.
+- Nginx config: `infra/nginx/zyvavu.test.conf`.
+- PostgreSQL: local port `5432`; `DATABASE_URL` provides connection details and stays private.
 
-### Development
+Copy `.env.example` to `.env` and replace placeholders. Never commit `.env` or credentials.
 
-1. First [clone the repo](#clone) if you have not done so already
-2. `cd my-project && cp .env.example .env` to copy the example environment variables. You'll need to add the `MONGODB_URL` from your Cloud project to your `.env` if you want to use S3 storage and the MongoDB database that was created for you.
+```powershell
+pnpm dev
+pnpm lint
+pnpm test:int
+pnpm test:e2e
+pnpm build
+```
 
-3. `pnpm install && pnpm dev` to install dependencies and start the dev server
-4. open `http://localhost:3000` to open the app in your browser
+Before starting another server:
 
-That's it! Changes made in `./src` will be reflected in your app. Follow the on-screen instructions to login and create your first admin user. Then check out [Production](#production) once you're ready to build and serve your app, and [Deployment](#deployment) when you're ready to go live.
+```powershell
+Get-NetTCPConnection -LocalPort 3107 -State Listen
+Get-CimInstance Win32_Process | Where-Object CommandLine -Match 'next.*3107'
+```
 
-#### Docker (Optional)
+Stop the development server with `Ctrl+C` in its terminal. Do not kill unrelated Node processes.
 
-If you prefer to use Docker for local development instead of a local MongoDB instance, the provided docker-compose.yml file can be used.
+### Diagnosing 502 Bad Gateway
 
-To do so, follow these steps:
+1. Confirm Next.js is listening on `3107`.
+2. Confirm `config/dev-server.json` and Nginx `proxy_pass` use the same port.
+3. Check the `pnpm dev` terminal for compilation or environment errors.
+4. Confirm Laragon Nginx loaded `infra/nginx/zyvavu.test.conf`.
+5. Confirm PostgreSQL listens on `5432` and `DATABASE_URL` is valid without printing it.
 
-- Modify the `MONGODB_URL` in your `.env` file to `mongodb://127.0.0.1/<dbname>`
-- Modify the `docker-compose.yml` file's `MONGODB_URL` to match the above `<dbname>`
-- Run `docker-compose up` to start the database, optionally pass `-d` to run in the background.
+HTTPS terminates at Laragon Nginx and is forwarded to Next.js. Authentication cookies and CSRF/CORS origins depend on the configured public origin; test login after changing domain or HTTPS settings.
 
-## How it works
+## Database and generated files
 
-The Payload config is tailored specifically to the needs of most websites. It is pre-configured in the following ways:
+Database changes require explicit task scope. Create migrations with Payload tooling, review them, test against disposable data and run integration tests before shared use. Never edit generated Payload files such as the Admin import map or generated route layout manually. Use:
 
-### Collections
+```powershell
+pnpm generate:types
+pnpm generate:importmap
+```
 
-See the [Collections](https://payloadcms.com/docs/configuration/collections) docs for details on how to extend this functionality.
+## Workspace history
 
-- #### Users (Authentication)
+`D:\zyvavu-bootstrap` is not a Git repository or the canonical app. It contains bootstrap tooling, package caches and temporary browser/test artifacts. One diagnostic script still writes `chrome-tools.json` there, so it is not documented as safe to delete. Development belongs in `D:\zyvavu`; do not remove or repurpose the bootstrap folder without a separate audit.
 
-  Users are auth-enabled collections that have access to the admin panel.
+## Knowledge Pack and MCP
 
-  For additional help, see the official [Auth Example](https://github.com/payloadcms/payload/tree/3.x/examples/auth) or the [Authentication](https://payloadcms.com/docs/authentication/overview#authentication-overview) docs.
+`cms-knowledge-pack` is a one-time local UTF-8 snapshot exported from canonical Google Drive documents. It does not synchronize with Drive automatically.
 
-- #### Media
+Cursor configuration is in `.cursor/mcp.json`. The local `cms-knowledge` server reads the snapshot over stdio. Verify it with the syntax and JSON-RPC checks in `cms-knowledge-pack/references/setup-validation.md`. Cursor MCP configuration does not automatically configure Codex or ChatGPT Work; every client requires separate configuration and verification.
 
-  This is the uploads enabled collection. It features pre-configured sizes, focal point and manual resizing to help you manage your pictures.
+Never independently change an `OPEN` decision to `CONFIRMED`.
 
-### Docker
+## Development rules
 
-Alternatively, you can use [Docker](https://www.docker.com) to spin up this template locally. To do so, follow these steps:
-
-1. Follow [steps 1 and 2 from above](#development), the docker-compose file will automatically use the `.env` file in your project root
-1. Next run `docker-compose up`
-1. Follow [steps 4 and 5 from above](#development) to login and create your first admin user
-
-That's it! The Docker instance will help you get up and running quickly while also standardizing the development environment across your teams.
-
-## Questions
-
-If you have any issues or questions, reach out to us on [Discord](https://discord.com/invite/payload) or start a [GitHub discussion](https://github.com/payloadcms/payload/discussions).
+- Preserve authentication, permissions, URL Registry and publish lifecycle contracts.
+- Zyvavu operates independently; SEO-OPS is optional and communicates only through defined boundaries.
+- Run targeted tests and lint. UI changes also require browser verification at relevant desktop/mobile sizes; a build alone is insufficient.
+- Inspect `git status`, keep commits focused and preserve unrelated work.
+- Never commit or push unless explicitly requested.

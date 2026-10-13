@@ -13,7 +13,7 @@ export const Posts: CollectionConfig = {
   admin: {
     group: 'Content',
     useAsTitle: 'title',
-    defaultColumns: ['title', 'slug', '_status', 'updatedAt'],
+    defaultColumns: ['title', 'categories', '_status', 'updatedAt'],
   },
   versions: {
     drafts: true,
@@ -49,7 +49,19 @@ export const Posts: CollectionConfig = {
       type: 'richText',
       editor: lexicalEditor(),
     },
-    { name: 'categories', type: 'relationship', relationTo: 'categories', hasMany: true },
-    { name: 'tags', type: 'relationship', relationTo: 'tags', hasMany: true },
+    {
+      name: 'categories',
+      type: 'relationship',
+      relationTo: 'categories',
+      hasMany: true,
+      admin: { position: 'sidebar' },
+    },
+    {
+      name: 'tags',
+      type: 'relationship',
+      relationTo: 'tags',
+      hasMany: true,
+      admin: { position: 'sidebar' },
+    },
   ],
 }
