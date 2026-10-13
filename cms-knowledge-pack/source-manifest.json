@@ -1,0 +1,84 @@
+{
+  "created_at": "2026-10-13",
+  "source_folder": "https://drive.google.com/drive/folders/11NOWhO4c4FLNvAYWZYtnQuXEW52OHu0s",
+  "files": [
+    {
+      "source_doc": "00 — README & Project Index",
+      "drive_url": "https://docs.google.com/document/d/1zRKZtY4pyQxx3xYmFhXf8fiYPTVXsryNTmNE2jvmGiQ/edit",
+      "output_path": "references/project-index.md",
+      "sha256": "a7991d4e54445fac8c73d90c1dab12560d3fe5f8f95e86610af41467c3ea7434"
+    },
+    {
+      "source_doc": "01 — DECISIONS & Open Questions",
+      "drive_url": "https://docs.google.com/document/d/1ciZq2_xVXA16Uukv7C1fQpHfFSq4qnS-ZNs9AxcCPWE/edit",
+      "output_path": "decisions/decisions.md",
+      "sha256": "a9a17f62c117c28b6f38747447b21bd4a8d82ab1ab3a5255107a4e44920cd667"
+    },
+    {
+      "source_doc": "02 — SKILL cms-architecture (SKILL.md)",
+      "drive_url": "https://docs.google.com/document/d/1YB4kpp4DqjxeK6p_Dd4gJK0OBjYqqcfWiXahb4ixI-k/edit",
+      "output_path": "skills/cms-architecture/SKILL.md",
+      "sha256": "4aaf135d4231f36be598b84bc163ccc692e1137a084955dc2fe4e8c7d73b6d31"
+    },
+    {
+      "source_doc": "03 — SKILL cms-seo-backend (SKILL.md)",
+      "drive_url": "https://docs.google.com/document/d/12W6AHkJPTEUS6-7RdyTP2Kc01VCkXcBt3x4-XhT55xA/edit",
+      "output_path": "skills/cms-seo-backend/SKILL.md",
+      "sha256": "a374318f28bdc8ff7c93c886a19dda8b02de4d19e8bcb3e7216a7f443fd667b1"
+    },
+    {
+      "source_doc": "04 — SKILL cms-url-routing (SKILL.md)",
+      "drive_url": "https://docs.google.com/document/d/1XeHVFlX2Xad4xICe2y6SVF0jIdOVme7DYn5Be2l62V0/edit",
+      "output_path": "skills/cms-url-routing/SKILL.md",
+      "sha256": "54eb30b57fde582a1e113d7c6486b91c865cbb3401082e5d9ef01d8022d63d51"
+    },
+    {
+      "source_doc": "05 — SKILL cms-mega-menu (SKILL.md)",
+      "drive_url": "https://docs.google.com/document/d/1sgHHUDFC8T7IxQw8wDPEQcuco5nqYkKPi_MnJthpFow/edit",
+      "output_path": "skills/cms-mega-menu/SKILL.md",
+      "sha256": "ca69619e6e397fcd74cfa26c946e164ebb3d04a8d4e85130af66d773b231ae7f"
+    },
+    {
+      "source_doc": "06 — SKILL cms-theme-engine (SKILL.md)",
+      "drive_url": "https://docs.google.com/document/d/1SsPMCsR_q4dB55aVxfIhZ3gyEDeLNs9_U0frzzzcP0g/edit",
+      "output_path": "skills/cms-theme-engine/SKILL.md",
+      "sha256": "2d01cbcb157dad18ef43575876bc91825fd569bf89d3e6dba133c90381df0e04"
+    },
+    {
+      "source_doc": "07 — SKILL cms-performance (SKILL.md)",
+      "drive_url": "https://docs.google.com/document/d/1hqkJXNmIaLUhVWSLX1bveGhqoPYpiihJovEr-xkDhic/edit",
+      "output_path": "skills/cms-performance/SKILL.md",
+      "sha256": "462c3ef6c5137f39e9726f8a5c23d1c3b00ad2a857175a8bfdffe2f281064508"
+    },
+    {
+      "source_doc": "08 — SKILL cms-multilingual (SKILL.md)",
+      "drive_url": "https://docs.google.com/document/d/1gZ1lF91sTN_XvQAo6qKLofOepiobuamcBGKarFxobac/edit",
+      "output_path": "skills/cms-multilingual/SKILL.md",
+      "sha256": "f91568c264cf26d0b85afeba9d505f2e921f2cfa058bee0ab8944002786ae034"
+    },
+    {
+      "source_doc": "09 — SKILL cms-deployment (SKILL.md)",
+      "drive_url": "https://docs.google.com/document/d/1rX1GvIhJuJJiSQFVOQvnJ71DgSIS3ZOvNmr-reTTR8g/edit",
+      "output_path": "skills/cms-deployment/SKILL.md",
+      "sha256": "00094c611f4f60e9ad695ed7635bd2eedeeae1382fe8b42ad5997bd2406fb16d"
+    },
+    {
+      "source_doc": "10 — MCP Design & Contracts",
+      "drive_url": "https://docs.google.com/document/d/1d9aCGhElHiFdmNtQsSSndf2hqvFOk6KI4_oaU-ZlIlc/edit",
+      "output_path": "references/mcp-design.md",
+      "sha256": "5b2a820d528330ee7892219f6c89885493983914d66d50d0b7f5d4b1c06e4057"
+    },
+    {
+      "source_doc": "11 — MCP Server Source (server.mjs)",
+      "drive_url": "https://docs.google.com/document/d/1nDy3UIBjBKmeF_q7pZkppbkcX4j8nX93RCd5yFMD3oQ/edit",
+      "output_path": "mcp/server.mjs",
+      "sha256": "89a75fb1241f6c051c8cf2bcfc75b06caa75097f340fef7922724b99af426d86"
+    },
+    {
+      "source_doc": "12 — MCP Setup & Validation",
+      "drive_url": "https://docs.google.com/document/d/1hEDdZ0NzDqEooFqDojg8jZcuIeoSUsLPD_qYF7sjglo/edit",
+      "output_path": "references/setup-validation.md",
+      "sha256": "b9fca3a6d47e71e65d12f4ef9bcea859595656b1cc5b3676b4d7d504d2837db2"
+    }
+  ]
+}

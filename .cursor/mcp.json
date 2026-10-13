@@ -2,7 +2,10 @@
   "mcpServers": {
     "cms-knowledge": {
       "command": "node",
-      "args": ["${workspaceFolder}/cms-knowledge-pack/mcp/server.mjs"]
+      "args": ["D:/zyvavu/cms-knowledge-pack/mcp/server.mjs"],
+      "env": {
+        "CMS_KNOWLEDGE_ROOT": "D:\\zyvavu\\cms-knowledge-pack"
+      }
     },
     "chrome-devtools": {
       "command": "node",
