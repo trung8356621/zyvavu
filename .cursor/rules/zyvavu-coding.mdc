@@ -1,0 +1,14 @@
+---
+description: Mandatory Zyvavu execution safety and compact coding for all source edits
+alwaysApply: true
+---
+
+Before any coding, debugging or testing, apply all three Skills in `.agents/skills/`:
+
+- `zyvavu-execution-guard/SKILL.md`
+- `zyvavu-token-discipline/SKILL.md`
+- `compact-coding/SKILL.md`
+
+For Admin UI, also read `cms-knowledge-pack/skills/cms-admin-design/SKILL.md` and follow the owner's NO PLAYWRIGHT policy.
+
+Do not auto-activate `docs-bulk-update`; it requires a relevant user request.

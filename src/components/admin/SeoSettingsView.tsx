@@ -5,10 +5,11 @@ import { Paper, Stack, Text, Title } from '@mantine/core'
 import type { AdminViewServerProps } from 'payload'
 
 export function SeoSettingsView(props: AdminViewServerProps) {
-  const req = props.initPageResult?.req || props.req
-  const user = req?.user || props.user
-  const payload = req?.payload || props.payload
-  const visibleEntities = props.initPageResult?.visibleEntities || props.visibleEntities || { collections: {}, globals: {} }
+  const anyProps = props as Record<string, any>
+  const req = props.initPageResult?.req || anyProps.req
+  const user = req?.user || anyProps.user
+  const payload = req?.payload || anyProps.payload
+  const visibleEntities = props.initPageResult?.visibleEntities || anyProps.visibleEntities || { collections: {}, globals: {} }
 
   if (!isSiteStaff(user)) {
     return (

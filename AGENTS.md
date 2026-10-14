@@ -30,3 +30,31 @@
 - Report changed files, tests, visual limitations and environment issues.
 - Never commit or push without explicit permission.
 
+## Mandatory execution discipline (ported from SEO-OPS)
+
+For every coding, debugging, testing or editing task, read and apply:
+- `.agents/skills/zyvavu-execution-guard/SKILL.md`
+- `.agents/skills/zyvavu-token-discipline/SKILL.md`
+- `.agents/skills/compact-coding/SKILL.md`
+
+The three Skills complement (do not replace) the existing CMS Knowledge Pack and `cms-admin-design` Skill. `docs-bulk-update` is optional and user-triggered only.
+
+### Hard budgets and stop rules
+- Same objective: at most two materially different failed attempts; then STOP_AND_ASK. Renaming commands/scripts does not reset attempts.
+- One blocker: approximately five minutes without meaningful progress; STOP that investigation, summarize evidence and ask for direction.
+- `git status -sb` at task start and task end; avoid repeated history/diff exploration unless needed for this task.
+- One final focused verification pass after changes. Do not rerun unchanged failing tests or start overlapping background tasks.
+- No Playwright, Puppeteer, automated login, screenshot/selector debugging or browser scripts. User supplies UI screenshots; visual status is NOT VERIFIED until owner confirmation.
+- No automatic database writes, migrations, seeds or test records on the current development database.
+- Do not perform unrelated changes or invent a second UI/URL/feature architecture.
+- Stop after task completion and report concisely; do not continue auditing or create new follow-up work unprompted.
+
+### Environment and artifact hygiene
+- Canonical project: `D:\zyvavu`; reuse existing dev server on port 3107 and proxy `https://zyvavu.test`. Never start competing servers or change credentials to make verification pass.
+- Temp probes/logs/screenshots must stay out of Git. No new permanent `scripts/dump_*`, `scripts/reproduce_*`, login scripts or `test-*.png` unless expressly requested.
+- Owner verifies final UI manually. Before staging for Git, review temporary artifacts and tracked/untracked files; never silently delete existing data.
+
+### UI states and overlays
+- Maintain visible dialog/drawer surface, readable actions, adequate contrast, empty/loading/error states and immediate feedback for async actions.
+- Use native Payload + Mantine. Do not reimplement Payload overlays/forms, and do not layer uncontrolled global CSS overrides.
+

@@ -1,10 +1,21 @@
 :root {
+  --zyvavu-primary: #0e6b66;
+  --zyvavu-sidebar: #161b1f;
+  --zyvavu-background: #f5f6f4;
+  --zyvavu-surface: #ffffff;
+  --zyvavu-text: #17201f;
+  --zyvavu-border: #dfe5e2;
+  --zyvavu-ui-defaultSize: md;
+  --zyvavu-ui-defaultRadius: md;
+  --zyvavu-ui-density: comfortable;
+
   --base-px: 16;
   --nav-width: 248px;
   --style-radius-s: 6px;
   --style-radius-m: 9px;
   --style-radius-l: 12px;
   --theme-bg: var(--zyvavu-background);
+  --theme-input-bg: var(--zyvavu-surface);
   --font-body: Inter, 'Segoe UI Variable', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
   --theme-success-400: #1a8f88;
   --theme-success-500: #0e6b66;
@@ -235,14 +246,35 @@ body {
 }
 
 .btn--style-primary {
-  --bg-color: var(--zyvavu-primary);
-  --hover-bg: color-mix(in srgb, var(--zyvavu-primary) 84%, #000);
+  --bg-color: var(--zyvavu-primary, #0e6b66);
+  --hover-bg: color-mix(in srgb, var(--zyvavu-primary, #0e6b66) 84%, #000);
+  --color: #ffffff;
   --hover-color: #ffffff;
+  color: #ffffff !important;
+  background-color: var(--bg-color);
+  border: 1px solid transparent;
   box-shadow: 0 1px 2px rgb(14 107 102 / 18%);
 }
 
 .btn--style-primary:hover {
   transform: translateY(-1px);
+}
+
+.btn--style-secondary {
+  --bg-color: var(--zyvavu-surface, #ffffff);
+  --hover-bg: #f0f4f3;
+  --color: var(--zyvavu-ink, #17201f);
+  --hover-color: var(--zyvavu-primary, #0e6b66);
+  --btn-border: 1px solid var(--zyvavu-border, #dfe5e2);
+  --hover-btn-border: 1px solid var(--zyvavu-primary, #0e6b66);
+  color: var(--zyvavu-ink, #17201f);
+  background-color: var(--bg-color);
+  border: var(--btn-border);
+}
+
+.btn--style-secondary:hover {
+  background-color: #f0f4f3;
+  color: var(--zyvavu-primary, #0e6b66);
 }
 
 .btn:focus-visible,
@@ -567,6 +599,180 @@ textarea {
   max-width: calc(100vw - 2rem);
   border-radius: var(--style-radius-l);
   box-shadow: 0 24px 70px rgb(17 30 28 / 20%);
+}
+
+/* ==========================================================================
+   Shared Payload Overlay System (Modals, Confirmation Dialogs, Drawers)
+   ========================================================================== */
+
+.payload__modal-container {
+  color: var(--zyvavu-ink, #17201f);
+  font-family: var(--font-body);
+}
+
+// 1. Confirmation & Alert Dialogs (Leave Without Saving, Document Modified / Stale Data, Delete, Lock)
+.confirmation-modal,
+.document-stale-data,
+.document-locked,
+.document-take-over {
+  // Stacking: Ensure critical confirmation/conflict alerts sit above open drawers (drawerZBase: 100)
+  z-index: 150 !important;
+
+  // Backdrop
+  &::before {
+    background: rgba(15, 23, 22, 0.45) !important;
+    opacity: 1 !important;
+  }
+
+  &::after {
+    backdrop-filter: blur(6px) !important;
+  }
+
+  // Dialog Card Surface
+  &__wrapper {
+    background: var(--zyvavu-surface, #ffffff) !important;
+    color: var(--zyvavu-ink, #17201f) !important;
+    border: 1px solid var(--zyvavu-border, #dfe5e2) !important;
+    border-radius: var(--style-radius-l, 12px) !important;
+    box-shadow: 0 20px 48px -12px rgba(15, 23, 22, 0.25), 0 0 0 1px rgba(15, 23, 22, 0.06) !important;
+    padding: clamp(1.5rem, 3vw, 2.25rem) !important;
+    max-width: min(520px, calc(100vw - 2rem)) !important;
+    width: 100% !important;
+    margin: auto !important;
+    box-sizing: border-box !important;
+  }
+
+  &__content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+
+    h1,
+    h2,
+    h3 {
+      color: var(--zyvavu-ink, #17201f) !important;
+      font-size: 1.3rem !important;
+      font-weight: 700 !important;
+      letter-spacing: -0.025em !important;
+      line-height: 1.3 !important;
+      margin: 0 !important;
+    }
+
+    p {
+      color: var(--zyvavu-muted, #53615e) !important;
+      font-size: 0.9375rem !important;
+      line-height: 1.55 !important;
+      margin: 0 !important;
+    }
+  }
+
+  &__controls {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+
+    .btn {
+      margin: 0;
+      min-height: 38px;
+      padding-inline: 1.15rem;
+      font-size: 0.875rem;
+    }
+  }
+}
+
+// 2. Drawers (Create Media, ListDrawer, DocumentDrawer)
+.drawer {
+  // Stacking order: base 100 handles drawer nesting cleanly
+  &__blur-bg {
+    background: rgba(15, 23, 22, 0.4) !important;
+    opacity: 1 !important;
+    backdrop-filter: blur(4px) !important;
+  }
+
+  &__content {
+    background-color: var(--zyvavu-background, #f5f6f4) !important;
+    color: var(--zyvavu-ink, #17201f) !important;
+    box-shadow: -10px 0 36px rgba(15, 23, 22, 0.14) !important;
+    border-left: 1px solid var(--zyvavu-border, #dfe5e2);
+  }
+
+  &__content-children {
+    padding-inline: clamp(1rem, 2.5vw, 2rem);
+  }
+
+  // Usable header and close button
+  &__header {
+    border-bottom: 1px solid var(--zyvavu-border, #dfe5e2);
+    padding-block: 1rem 1.25rem;
+    margin-top: 0.5rem;
+    margin-bottom: 1.5rem;
+
+    &__title {
+      color: var(--zyvavu-ink, #17201f);
+      font-size: 1.25rem;
+      font-weight: 680;
+      letter-spacing: -0.02em;
+    }
+
+    &__close {
+      color: var(--zyvavu-muted, #65716e);
+      border-radius: var(--style-radius-s, 6px);
+      padding: 0.4rem;
+      transition: color 120ms ease, background-color 120ms ease;
+
+      &:hover {
+        color: var(--zyvavu-ink, #17201f);
+        background-color: var(--zyvavu-accent-soft, #e6f3f1);
+      }
+
+      &:focus-visible {
+        outline: 2px solid var(--zyvavu-primary, #0e6b66);
+        outline-offset: 2px;
+      }
+    }
+  }
+
+  // Drawer action header (sticky top actions)
+  .drawer-action-header {
+    background: var(--zyvavu-surface, #ffffff);
+    border-bottom: 1px solid var(--zyvavu-border, #dfe5e2);
+
+    &__title {
+      color: var(--zyvavu-ink, #17201f);
+      font-weight: 680;
+    }
+  }
+
+  // Form controls & cards inside Drawer
+  .form-fields,
+  .field-type {
+    .field-label {
+      color: var(--zyvavu-ink, #17201f);
+    }
+  }
+
+  input,
+  textarea,
+  select,
+  .react-select__control {
+    background: var(--zyvavu-surface, #ffffff);
+    border: 1px solid var(--zyvavu-border, #ccd6d2);
+    color: var(--zyvavu-ink, #17201f);
+
+    &:focus-visible,
+    &:focus {
+      border-color: var(--zyvavu-primary, #0e6b66);
+      outline: 2px solid var(--zyvavu-primary, #0e6b66);
+      outline-offset: 1px;
+    }
+  }
+
+  // Drawer backdrop close button
+  &__close {
+    background: rgba(15, 23, 22, 0.4);
+  }
 }
 
 .zyvavu-logo {

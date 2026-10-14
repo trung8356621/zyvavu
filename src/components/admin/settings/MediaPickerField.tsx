@@ -72,55 +72,66 @@ export function MediaPickerField({
 
   // Fetch asset details when ID is present but doc is not loaded yet
   useEffect(() => {
-    if (mediaId && (!mediaDoc || mediaDoc.id !== mediaId)) {
-      let isMounted = true
-      setLoading(true)
-      fetch(`/api/media/${mediaId}`)
-        .then((res) => (res.ok ? res.json() : null))
-        .then((doc) => {
-          if (isMounted && doc && doc.id) {
-            setMediaDoc(doc)
-          }
-        })
-        .catch(() => {
-          // ignore error
-        })
-        .finally(() => {
-          if (isMounted) setLoading(false)
-        })
-      return () => {
-        isMounted = false
-      }
-    } else if (!mediaId && mediaDoc) {
+    if (value && typeof value === 'object' && 'id' in value && typeof value.id === 'number' && 'url' in value) {
+      setMediaDoc(value as MediaDoc)
+      return
+    }
+    if (!mediaId) {
       setMediaDoc(null)
+      return
     }
-  }, [mediaId, mediaDoc])
+    if (mediaDoc && mediaDoc.id === mediaId) {
+      return
+    }
+    let isMounted = true
+    setLoading(true)
+    fetch(`/api/media/${mediaId}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((doc) => {
+        if (isMounted && doc && doc.id) {
+          setMediaDoc(doc)
+        }
+      })
+      .catch(() => {
+        // ignore error
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false)
+      })
+    return () => {
+      isMounted = false
+    }
+  }, [mediaId, value, mediaDoc?.id])
 
-  // Filter options to disallow PDFs/videos
+  // Filter options to disallow PDFs/videos - keyed by collection slug ('media')
   const filterOptions = useMemo(() => {
-    if (isFavicon) {
-      return {
-        mimeType: {
-          in: [
-            'image/png',
-            'image/svg+xml',
-            'image/x-icon',
-            'image/vnd.microsoft.icon',
-            'image/webp',
-            'image/jpeg',
-          ],
-        },
-      }
-    }
+    const where = isFavicon
+      ? {
+          mimeType: {
+            in: [
+              'image/png',
+              'image/svg+xml',
+              'image/x-icon',
+              'image/vnd.microsoft.icon',
+              'image/webp',
+              'image/jpeg',
+            ],
+          },
+        }
+      : {
+          mimeType: {
+            contains: 'image',
+          },
+        }
+
     return {
-      mimeType: {
-        contains: 'image',
-      },
+      media: where,
     }
   }, [isFavicon])
 
   const [ListDrawer, , { openDrawer: openListDrawer, closeDrawer: closeListDrawer }] = useListDrawer({
     collectionSlugs: ['media'],
+    selectedCollection: 'media',
     uploads: true,
     filterOptions,
   })
@@ -129,9 +140,28 @@ export function MediaPickerField({
     collectionSlug: 'media',
   })
 
+  const isValidMime = (mime?: string) => {
+    if (!mime) return false
+    if (isFavicon) {
+      const allowed = [
+        'image/png',
+        'image/svg+xml',
+        'image/x-icon',
+        'image/vnd.microsoft.icon',
+        'image/webp',
+        'image/jpeg',
+      ]
+      return allowed.includes(mime)
+    }
+    return mime.startsWith('image/')
+  }
+
   const handleSelect = ({ doc }: { doc: unknown }) => {
     const selected = doc as MediaDoc
     if (selected && typeof selected.id === 'number') {
+      if (!isValidMime(selected.mimeType)) {
+        return
+      }
       setMediaDoc(selected)
       setValue(selected.id)
       closeListDrawer()
@@ -141,6 +171,9 @@ export function MediaPickerField({
   const handleSaveDoc = ({ doc }: { doc: unknown }) => {
     const created = doc as MediaDoc
     if (created && typeof created.id === 'number') {
+      if (!isValidMime(created.mimeType)) {
+        return
+      }
       setMediaDoc(created)
       setValue(created.id)
       closeDocDrawer()

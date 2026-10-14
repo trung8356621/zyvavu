@@ -100,3 +100,21 @@ For any Mantine adoption or cross-screen UI refactor, first deliver a written **
 ## Decision status
 
 User has explicitly chosen **Mantine for custom Admin UI** and **Lucide icons**, with `theme.json` as the centralized Zyvavu config. Update `DEC-UI-001` accordingly as a decision covering **Admin**, not automatically Public. If older documents mention shadcn/Embla as proposed for Public themes, preserve that separate Public question; do not silently supersede it.
+
+## UI state quality — adapted from SEO-OPS SaaS design Skill
+
+These presentation rules reinforce the current Payload/Mantine contract; they do not create another design system.
+
+- A screen should have one page title, clear primary action and quieter secondary actions. Do not duplicate titles inside nested panels.
+- Keep shared page gutters and alignment consistent among header, toolbar, content panels and tables.
+- Prefer calm surfaces, one accent color, modest borders and predictable spacing from existing tokens; avoid card-inside-card decoration, decorative gradients, oversized empty panels and excessive shadows.
+- Use library-native controls. Do not copy one-off CSS size rules between screens.
+- A modal/drawer opened by user action should show immediate visual feedback. If asynchronous preparation is needed, show a scoped loading state; disable actions depending on incomplete data, and show a meaningful recoverable error if loading fails. Avoid stale data flashes, double submits and blocking the whole page for a local drawer.
+- Protect native Payload dialogs, document-conflict warnings, unsaved changes and permissions. The owner has explicitly observed transparent overlay surfaces and white-on-white buttons; treat contrast/background/portal scoping regressions as P0 UI bugs.
+- Distinguish not configured, genuinely empty, loading, stale and failed states. Do not fabricate data, duplicate action buttons or place an empty state in an arbitrary tall box.
+- On responsive screens, keep actions grouped, decide table overflow deliberately and avoid clipping or offscreen modal buttons.
+- The owner supplies desktop/mobile screenshots for visual acceptance; never run Playwright or self-claim visual PASS.
+
+The pre-implementation PREP REPORT approval gate in this Skill applies to new library adoptions and substantial cross-screen design refactors; **small scoped bugfixes already approved by the user may proceed directly** after reading applicable rules, without reopening a full redesign proposal.
+
+Source inspiration: `seo-ops-client/skills/design-omichannel-dashboard` and `.cursor/rules/modal-loading-feedback.mdc`. Filament, Blade and Livewire-specific instructions are intentionally omitted.
