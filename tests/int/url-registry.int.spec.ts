@@ -277,6 +277,7 @@ describe('url registry foundation', () => {
       data: {
         title: 'Offline post',
         slug: `offline-post-${suffix}`,
+        publicPath: `/posts/offline-post-${suffix}`,
         _status: 'published',
       },
     })

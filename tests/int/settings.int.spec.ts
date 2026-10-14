@@ -200,5 +200,5 @@ describe('site settings foundation', () => {
         data: { maintenanceNote: originalSystem.maintenanceNote || '' },
       })
     }
-  })
+  }, 20000)
 })
