@@ -1,10 +1,10 @@
 'use client'
 
 import type { ListViewClientProps, Where } from 'payload'
+import { Tabs } from '@mantine/core'
+import { DefaultListView, useListQuery } from '@payloadcms/ui'
 
-import { DefaultListView, Link, useListQuery } from '@payloadcms/ui'
-
-import './posts-list.scss'
+import { CollectionListHeader } from '@/components/admin/collections/CollectionListHeader'
 
 type StatusFilter = 'all' | 'draft' | 'published'
 
@@ -14,11 +14,8 @@ const statusFilters: Array<{ label: string; value: StatusFilter }> = [
   { label: 'Draft', value: 'draft' },
 ]
 
-function PostsListHeader({
-  hasCreatePermission,
-  newDocumentURL,
-}: Pick<ListViewClientProps, 'hasCreatePermission' | 'newDocumentURL'>) {
-  const { data, handleWhereChange, query } = useListQuery()
+function PostsStatusTabs() {
+  const { handleWhereChange, query } = useListQuery()
   const where = (query.where ?? {}) as Where
   const currentStatus = where._status
   const statusValue =
@@ -27,10 +24,9 @@ function PostsListHeader({
       : undefined
   const activeStatus: StatusFilter =
     statusValue === 'draft' || statusValue === 'published' ? statusValue : 'all'
-  const documentCount = data?.totalDocs ?? 0
 
-  const setStatus = async (status: StatusFilter) => {
-    if (!handleWhereChange || status === activeStatus) return
+  const setStatus = async (status: string | null) => {
+    if (!handleWhereChange || !status || status === activeStatus) return
 
     const nextWhere: Where = { ...where }
     delete nextWhere._status
@@ -43,45 +39,22 @@ function PostsListHeader({
   }
 
   return (
-    <header className="zyvavu-posts-header">
-      <nav aria-label="Breadcrumb" className="zyvavu-posts-header__breadcrumb">
-        <span>Content</span>
-        <span aria-hidden="true">/</span>
-        <span aria-current="page">Posts</span>
-      </nav>
-
-      <div className="zyvavu-posts-header__main">
-        <div>
-          <div className="zyvavu-posts-header__title-row">
-            <h1>Posts</h1>
-            <span className="zyvavu-posts-header__count">
-              {documentCount} {documentCount === 1 ? 'document' : 'documents'}
-            </span>
-          </div>
-          <p>Manage published stories and works in progress.</p>
-        </div>
-
-        {hasCreatePermission && (
-          <Link className="zyvavu-posts-header__create" href={newDocumentURL} prefetch={false}>
-            Create New
-          </Link>
-        )}
-      </div>
-
-      <div aria-label="Filter posts by status" className="zyvavu-posts-header__tabs" role="group">
+    <Tabs
+      aria-label="Filter posts by status"
+      className="zyvavu-status-tabs"
+      color="brand"
+      onChange={setStatus}
+      value={activeStatus}
+      variant="default"
+    >
+      <Tabs.List>
         {statusFilters.map(({ label, value }) => (
-          <button
-            aria-pressed={activeStatus === value}
-            className={activeStatus === value ? 'is-active' : undefined}
-            key={value}
-            onClick={() => void setStatus(value)}
-            type="button"
-          >
+          <Tabs.Tab key={value} value={value}>
             {label}
-          </button>
+          </Tabs.Tab>
         ))}
-      </div>
-    </header>
+      </Tabs.List>
+    </Tabs>
   )
 }
 
@@ -91,10 +64,15 @@ export function PostsListView(props: ListViewClientProps) {
       {...props}
       BeforeList={
         <>
-          <PostsListHeader
+          <CollectionListHeader
+            collectionLabel="Posts"
+            collectionSlug="posts"
+            description="Manage published stories and works in progress."
             hasCreatePermission={props.hasCreatePermission}
             newDocumentURL={props.newDocumentURL}
-          />
+          >
+            <PostsStatusTabs />
+          </CollectionListHeader>
           {props.BeforeList}
         </>
       }

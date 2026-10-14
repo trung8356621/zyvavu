@@ -1,0 +1,142 @@
+.collection-list--posts,
+.collection-list--categories,
+.collection-list--pages,
+.collection-list--tags {
+  .list-header {
+    display: none;
+  }
+
+  .collection-list__wrap {
+    padding-top: 0;
+  }
+
+  .list-controls {
+    align-items: center;
+    background: var(--theme-elevation-0);
+    border: 1px solid var(--theme-elevation-150);
+    border-radius: var(--style-radius-l, 12px);
+    gap: 12px;
+    margin-bottom: 16px;
+    padding: 12px;
+  }
+
+  .search-filter {
+    min-height: 42px;
+  }
+
+  .table {
+    border: 1px solid var(--theme-elevation-150);
+    border-radius: var(--style-radius-l, 12px);
+    box-shadow: 0 1px 2px rgb(15 23 42 / 4%);
+    overflow: hidden;
+  }
+}
+
+.zyvavu-collection-header {
+  background: var(--theme-elevation-0);
+  border-bottom: 1px solid var(--theme-elevation-150);
+  margin-bottom: 24px;
+  padding: 24px var(--gutter-h) 0;
+
+  &__breadcrumb {
+    align-items: center;
+    color: var(--theme-elevation-600);
+    display: flex;
+    font-size: 13px;
+    font-weight: 500;
+    gap: 8px;
+    line-height: 1.4;
+    margin-bottom: 14px;
+  }
+
+  &__main {
+    align-items: flex-start;
+    display: flex;
+    gap: 24px;
+    justify-content: space-between;
+  }
+
+  &__info {
+    min-width: 0;
+  }
+
+  &__title-row {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  &__title {
+    color: var(--theme-elevation-1000);
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    line-height: 1.2;
+    margin: 0;
+  }
+
+  &__description {
+    color: var(--theme-elevation-600);
+    font-size: 14px;
+    line-height: 1.5;
+    margin: 6px 0 0;
+  }
+
+  &__extra {
+    margin-top: 18px;
+  }
+}
+
+.zyvavu-status-tabs {
+  .mantine-Tabs-list {
+    gap: 20px;
+    border-bottom: 0;
+  }
+
+  .mantine-Tabs-tab {
+    background: transparent;
+    border-bottom: 2px solid transparent;
+    color: var(--theme-elevation-600);
+    font-size: 14px;
+    font-weight: 600;
+    padding: 8px 4px 12px;
+    transition: color 120ms ease, border-color 120ms ease;
+
+    &:hover {
+      background: transparent;
+      color: var(--theme-elevation-900);
+    }
+
+    &[data-active] {
+      border-bottom-color: var(--zyvavu-primary, #0e6b66);
+      color: var(--theme-elevation-1000);
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .zyvavu-collection-header {
+    padding-top: 18px;
+
+    &__main {
+      align-items: stretch;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    &__create {
+      align-self: flex-start;
+    }
+  }
+
+  .collection-list--posts,
+  .collection-list--categories,
+  .collection-list--pages,
+  .collection-list--tags {
+    .list-controls {
+      align-items: stretch;
+      flex-direction: column;
+    }
+  }
+}

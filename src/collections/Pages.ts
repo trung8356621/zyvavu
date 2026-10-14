@@ -13,6 +13,13 @@ export const Pages: CollectionConfig = {
     group: 'Content',
     useAsTitle: 'title',
     defaultColumns: ['title', 'slug', 'visibility', '_status', 'updatedAt'],
+    components: {
+      views: {
+        list: {
+          Component: '@/components/admin/pages/PagesListView#PagesListView',
+        },
+      },
+    },
   },
   versions: {
     drafts: true,

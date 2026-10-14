@@ -23,6 +23,9 @@ import { UnderlineFeatureClient as UnderlineFeatureClient_e70f5e05f09f93e00b997e
 import { BoldFeatureClient as BoldFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { ItalicFeatureClient as ItalicFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { PostsListView as PostsListView_a8ffc995a16183020e5f1470211d9639 } from '@/components/admin/posts/PostsListView'
+import { PagesListView as PagesListView_35e5a4f7a927d66d1956a89a74f9ad32 } from '@/components/admin/pages/PagesListView'
+import { CategoriesListView as CategoriesListView_e3e8f70244db5f30aeccb178abe9d28d } from '@/components/admin/categories/CategoriesListView'
+import { TagsListView as TagsListView_896150d58bc29744f1a1a1b474a094e5 } from '@/components/admin/tags/TagsListView'
 import { ZyvavuNav as ZyvavuNav_2bb94d3f839a4d5b2cf329bc3c58226a } from '@/components/admin/navigation/ZyvavuNav'
 import { Icon as Icon_a44df17d0fc3dcd873dae43dc3bf66bd } from '@/components/admin/Logo'
 import { Logo as Logo_a44df17d0fc3dcd873dae43dc3bf66bd } from '@/components/admin/Logo'
@@ -58,6 +61,9 @@ export const importMap = {
   "@payloadcms/richtext-lexical/client#BoldFeatureClient": BoldFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@payloadcms/richtext-lexical/client#ItalicFeatureClient": ItalicFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@/components/admin/posts/PostsListView#PostsListView": PostsListView_a8ffc995a16183020e5f1470211d9639,
+  "@/components/admin/pages/PagesListView#PagesListView": PagesListView_35e5a4f7a927d66d1956a89a74f9ad32,
+  "@/components/admin/categories/CategoriesListView#CategoriesListView": CategoriesListView_e3e8f70244db5f30aeccb178abe9d28d,
+  "@/components/admin/tags/TagsListView#TagsListView": TagsListView_896150d58bc29744f1a1a1b474a094e5,
   "@/components/admin/navigation/ZyvavuNav#ZyvavuNav": ZyvavuNav_2bb94d3f839a4d5b2cf329bc3c58226a,
   "@/components/admin/Logo#Icon": Icon_a44df17d0fc3dcd873dae43dc3bf66bd,
   "@/components/admin/Logo#Logo": Logo_a44df17d0fc3dcd873dae43dc3bf66bd,

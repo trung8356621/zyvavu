@@ -5,7 +5,17 @@ import { slugField } from '@/fields/slug'
 
 export const Categories: CollectionConfig = {
   slug: 'categories',
-  admin: { group: 'Content', useAsTitle: 'title' },
+  admin: {
+    group: 'Content',
+    useAsTitle: 'title',
+    components: {
+      views: {
+        list: {
+          Component: '@/components/admin/categories/CategoriesListView#CategoriesListView',
+        },
+      },
+    },
+  },
   access: {
     create: siteStaffAccess,
     read: () => true,

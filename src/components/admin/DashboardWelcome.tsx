@@ -1,3 +1,6 @@
+'use client'
+
+import { Badge, Card, SimpleGrid, Text, Title } from '@mantine/core'
 import Link from 'next/link'
 import React from 'react'
 
@@ -10,21 +13,39 @@ const quickActions = [
 
 export function DashboardWelcome() {
   return (
-    <section className="zyvavu-dashboard" aria-labelledby="zyvavu-dashboard-title">
+    <section aria-labelledby="zyvavu-dashboard-title" className="zyvavu-dashboard">
       <div className="zyvavu-dashboard__intro">
-        <span className="zyvavu-dashboard__eyebrow">Zyvavu workspace</span>
-        <h1 id="zyvavu-dashboard-title">Create, publish, and keep your site organized.</h1>
-        <p>Start with a common task or continue to a content area below.</p>
+        <Badge color="brand" size="sm" variant="light">
+          Zyvavu workspace
+        </Badge>
+        <Title id="zyvavu-dashboard-title" mt="xs" order={1}>
+          Create, publish, and keep your site organized.
+        </Title>
+        <Text c="dimmed" mt="xs" size="sm">
+          Start with a common task or continue to a content area below.
+        </Text>
       </div>
 
-      <nav className="zyvavu-dashboard__actions" aria-label="Quick actions">
+      <SimpleGrid className="zyvavu-dashboard__grid" cols={{ base: 1, sm: 2 }} spacing="sm">
         {quickActions.map((action) => (
-          <Link className="zyvavu-dashboard__action" href={action.href} key={action.href} prefetch={false}>
-            <span>{action.label}</span>
-            <small>{action.detail}</small>
-          </Link>
+          <Card
+            className="zyvavu-dashboard__card"
+            component={Link}
+            href={action.href}
+            key={action.href}
+            padding="md"
+            prefetch={false}
+            withBorder
+          >
+            <Text fw={650} size="sm">
+              {action.label}
+            </Text>
+            <Text c="dimmed" mt={4} size="xs">
+              {action.detail}
+            </Text>
+          </Card>
         ))}
-      </nav>
+      </SimpleGrid>
     </section>
   )
 }
