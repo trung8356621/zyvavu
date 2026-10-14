@@ -741,9 +741,9 @@ export interface Setting {
    * Default structure preset for post public URLs. Changing presets does not rewrite existing URL Registry records.
    */
   postPermalinkStructure: string;
-  pagePermalinkStructure?: string | null;
-  categoryPermalinkStructure?: string | null;
-  tagPermalinkStructure?: string | null;
+  pagePermalinkStructure: string;
+  categoryPermalinkStructure: string;
+  tagPermalinkStructure: string;
   /**
    * BCP 47 language code used by the default public site (e.g. vi).
    */
