@@ -201,7 +201,7 @@ export const Settings: GlobalConfig = {
             {
               name: 'pagePermalinkStructure',
               type: 'text',
-              required: true,
+              virtual: true,
               defaultValue: DEFAULT_PAGE_PERMALINK_STRUCTURE,
               label: 'Page URL Structure',
               validate: (value: unknown) => {
@@ -215,7 +215,7 @@ export const Settings: GlobalConfig = {
             {
               name: 'categoryPermalinkStructure',
               type: 'text',
-              required: true,
+              virtual: true,
               defaultValue: DEFAULT_CATEGORY_PERMALINK_STRUCTURE,
               label: 'Category URL Structure',
               validate: (value: unknown) => {
@@ -229,7 +229,7 @@ export const Settings: GlobalConfig = {
             {
               name: 'tagPermalinkStructure',
               type: 'text',
-              required: true,
+              virtual: true,
               defaultValue: DEFAULT_TAG_PERMALINK_STRUCTURE,
               label: 'Tag URL Structure',
               validate: (value: unknown) => {
