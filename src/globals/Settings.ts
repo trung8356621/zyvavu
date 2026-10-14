@@ -1,6 +1,16 @@
 import type { GlobalConfig } from 'payload'
 
 import { siteStaffAccess } from '@/access/roles'
+import {
+  DATE_FORMAT_OPTIONS,
+  DEFAULT_DATE_FORMAT,
+  DEFAULT_TIME_FORMAT,
+  DEFAULT_TIMEZONE,
+  DEFAULT_WEEK_STARTS_ON,
+  TIME_FORMAT_OPTIONS,
+  TIMEZONE_OPTIONS,
+  WEEK_STARTS_ON_OPTIONS,
+} from '@/lib/dateTime'
 import { canonicalPublicOrigin, normalizeSiteUrl } from '@/lib/site/origin'
 import { isLanguageCode } from '@/lib/site/setup'
 
@@ -24,6 +34,9 @@ export const Settings: GlobalConfig = {
   fields: [
     {
       type: 'tabs',
+      admin: {
+        className: 'zyvavu-settings-tabs',
+      },
       tabs: [
         {
           label: 'General',
@@ -43,12 +56,80 @@ export const Settings: GlobalConfig = {
                 normalizeSiteUrl(value) ? true : 'Enter an absolute http or https origin, without a path or query.',
             },
             {
-              name: 'language',
-              type: 'text',
+              name: 'logo',
+              type: 'upload',
+              relationTo: 'media',
+              label: 'Site Logo',
+              admin: {
+                description: 'Primary site brand logo. Select from Media Library or upload a new asset.',
+              },
+            },
+            {
+              name: 'favicon',
+              type: 'upload',
+              relationTo: 'media',
+              label: 'Site Favicon',
+              admin: {
+                description: 'Browser icon (PNG, SVG, or ICO asset). Used in public HTML head and metadata.',
+              },
+            },
+          ],
+        },
+        {
+          label: 'Date & Time',
+          fields: [
+            {
+              name: 'timezone',
+              type: 'select',
               required: true,
-              defaultValue: 'vi',
-              admin: { description: 'BCP 47 language used by the public site, such as vi.' },
-              validate: (value: unknown) => (isLanguageCode(value) ? true : 'Enter a language code such as vi.'),
+              defaultValue: DEFAULT_TIMEZONE,
+              label: 'Timezone',
+              options: TIMEZONE_OPTIONS,
+              admin: {
+                description: 'Select your local timezone (IANA identifier).',
+              },
+            },
+            {
+              name: 'dateFormat',
+              type: 'select',
+              required: true,
+              defaultValue: DEFAULT_DATE_FORMAT,
+              label: 'Date Format',
+              options: DATE_FORMAT_OPTIONS,
+              admin: {
+                description: 'Format used for date display.',
+              },
+            },
+            {
+              name: 'timeFormat',
+              type: 'select',
+              required: true,
+              defaultValue: DEFAULT_TIME_FORMAT,
+              label: 'Time Format',
+              options: TIME_FORMAT_OPTIONS,
+              admin: {
+                description: 'Format used for time display.',
+              },
+            },
+            {
+              name: 'weekStartsOn',
+              type: 'select',
+              required: true,
+              defaultValue: DEFAULT_WEEK_STARTS_ON,
+              label: 'Week Starts On',
+              options: WEEK_STARTS_ON_OPTIONS,
+              admin: {
+                description: 'First day of the week for calendars and scheduling.',
+              },
+            },
+            {
+              name: 'dateTimePreview',
+              type: 'ui',
+              admin: {
+                components: {
+                  Field: '@/components/admin/settings/DateTimePreview#DateTimePreview',
+                },
+              },
             },
           ],
         },
@@ -62,8 +143,75 @@ export const Settings: GlobalConfig = {
               defaultValue: 10,
               min: 1,
               max: 100,
-              admin: { description: 'Saved for a future posts listing. It does not change the site yet.' },
+              admin: { description: 'Saved for posts listing pagination. It does not change the site yet.' },
               validate: wholeNumber(1, 100),
+            },
+          ],
+        },
+        {
+          label: 'Permalinks',
+          fields: [
+            {
+              name: 'postPermalinkStructure',
+              type: 'select',
+              required: true,
+              defaultValue: 'posts',
+              label: 'Post URL Structure',
+              options: [
+                { label: 'Posts prefix: /posts/%postname% (Active & Supported)', value: 'posts' },
+                { label: 'Flat: /%postname% (Documented preset — requires Page collision safety)', value: 'flat' },
+                { label: 'Category-based: /%category%/%postname% (Documented — requires category sync)', value: 'category' },
+                { label: 'Date-based: /%year%/%monthnum%/%postname% (Documented — requires publish date sync)', value: 'date' },
+                { label: 'Custom Structure (Documented preset)', value: 'custom' },
+              ],
+              admin: {
+                description: 'Default structure preset for post public URLs. Changing presets does not rewrite existing URL Registry records.',
+              },
+            },
+            {
+              name: 'permalinksInfo',
+              type: 'ui',
+              admin: {
+                components: {
+                  Field: '@/components/admin/settings/PermalinksInfo#PermalinksInfo',
+                },
+              },
+            },
+          ],
+        },
+        {
+          label: 'Languages',
+          fields: [
+            {
+              name: 'language',
+              type: 'text',
+              required: true,
+              defaultValue: 'vi',
+              label: 'Default Language',
+              admin: { description: 'BCP 47 language code used by the default public site (e.g. vi).' },
+              validate: (value: unknown) => (isLanguageCode(value) ? true : 'Enter a language code such as vi.'),
+            },
+            {
+              name: 'secondaryLanguage',
+              type: 'select',
+              defaultValue: 'en',
+              label: 'Additional Language',
+              options: [
+                { label: 'None', value: 'none' },
+                { label: 'English (en) — Secondary locale foundation', value: 'en' },
+              ],
+              admin: {
+                description: 'Initial secondary locale foundation per DEC-LANG-001.',
+              },
+            },
+            {
+              name: 'languagesInfo',
+              type: 'ui',
+              admin: {
+                components: {
+                  Field: '@/components/admin/settings/LanguagesInfo#LanguagesInfo',
+                },
+              },
             },
           ],
         },

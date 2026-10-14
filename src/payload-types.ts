@@ -701,13 +701,54 @@ export interface Setting {
    */
   siteUrl: string;
   /**
-   * BCP 47 language used by the public site, such as vi.
+   * Primary site brand logo. Select from Media Library or upload a new asset.
+   */
+  logo?: (number | null) | Media;
+  /**
+   * Browser icon (PNG, SVG, or ICO asset). Used in public HTML head and metadata.
+   */
+  favicon?: (number | null) | Media;
+  /**
+   * Select your local timezone (IANA identifier).
+   */
+  timezone:
+    | 'Asia/Ho_Chi_Minh'
+    | 'Asia/Bangkok'
+    | 'Asia/Singapore'
+    | 'Asia/Tokyo'
+    | 'UTC'
+    | 'Europe/London'
+    | 'Europe/Paris'
+    | 'America/New_York'
+    | 'America/Los_Angeles';
+  /**
+   * Format used for date display.
+   */
+  dateFormat: 'dd/MM/yyyy' | 'yyyy-MM-dd' | 'MM/dd/yyyy' | 'd MMMM yyyy';
+  /**
+   * Format used for time display.
+   */
+  timeFormat: 'HH:mm' | 'hh:mm a' | 'HH:mm:ss' | 'hh:mm:ss a';
+  /**
+   * First day of the week for calendars and scheduling.
+   */
+  weekStartsOn: 'monday' | 'sunday' | 'saturday';
+  /**
+   * Saved for posts listing pagination. It does not change the site yet.
+   */
+  postsPerPage: number;
+  /**
+   * Default structure preset for post public URLs. Changing presets does not rewrite existing URL Registry records.
+   */
+  postPermalinkStructure: 'posts' | 'flat' | 'category' | 'date' | 'custom';
+  /**
+   * BCP 47 language code used by the default public site (e.g. vi).
    */
   language: string;
   /**
-   * Saved for a future posts listing. It does not change the site yet.
+   * Initial secondary locale foundation per DEC-LANG-001.
    */
-  postsPerPage: number;
+  secondaryLanguage?: ('none' | 'en') | null;
   /**
    * Registers the service worker and offline cache for eligible pages.
    */
@@ -744,8 +785,16 @@ export interface SettingsSelect<T extends boolean = true> {
   siteName?: T;
   tagline?: T;
   siteUrl?: T;
-  language?: T;
+  logo?: T;
+  favicon?: T;
+  timezone?: T;
+  dateFormat?: T;
+  timeFormat?: T;
+  weekStartsOn?: T;
   postsPerPage?: T;
+  postPermalinkStructure?: T;
+  language?: T;
+  secondaryLanguage?: T;
   pwaEnabled?: T;
   offlinePageLimit?: T;
   setupComplete?: T;

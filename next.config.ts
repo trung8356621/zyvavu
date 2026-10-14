@@ -8,7 +8,7 @@ const dirname = path.dirname(__filename)
 
 const nextConfig: NextConfig = {
   agentRules: false,
-  allowedDevOrigins: ['zyvavu.test'],
+  allowedDevOrigins: ['zyvavu.test', '127.0.0.1:3107', 'localhost:3107', '127.0.0.1', 'localhost'],
   images: {
     localPatterns: [
       {

@@ -19,6 +19,9 @@ export async function generateMetadata() {
     title: settings.siteName,
     metadataBase: new URL(settings.siteUrl),
     manifest: settings.pwaEnabled ? '/manifest.webmanifest' : undefined,
+    icons: {
+      icon: settings.faviconUrl || '/icon.png',
+    },
   }
 }
 
@@ -40,7 +43,13 @@ export default async function RootLayout(props: { children: React.ReactNode }) {
     <html lang={settings.language}>
       <body style={themeVariables('public') as CSSProperties}>
         <RegisterServiceWorker enabled={settings.pwaEnabled} />
-        <SiteHeader siteName={settings.siteName} tagline={settings.tagline} items={items} />
+        <SiteHeader
+          items={items}
+          logoAlt={settings.logoAlt}
+          logoUrl={settings.logoUrl}
+          siteName={settings.siteName}
+          tagline={settings.tagline}
+        />
         <main>{props.children}</main>
       </body>
     </html>

@@ -30,12 +30,16 @@ import { TagsListView as TagsListView_896150d58bc29744f1a1a1b474a094e5 } from '@
 import { MenusListView as MenusListView_5f5e4546ce4c49e8d6af150a40b47826 } from '@/components/admin/menus/MenusListView'
 import { UsersListView as UsersListView_9590dab51cc529cf0436456ed756da29 } from '@/components/admin/users/UsersListView'
 import { UrlRegistryListView as UrlRegistryListView_06f2f625bba876851287e4ca3ba49457 } from '@/components/admin/url-registry/UrlRegistryListView'
+import { DateTimePreview as DateTimePreview_50d045982608d1aa20db787ff79f0b9e } from '@/components/admin/settings/DateTimePreview'
+import { PermalinksInfo as PermalinksInfo_2fc4860f068f724db0e937af7792e65e } from '@/components/admin/settings/PermalinksInfo'
+import { LanguagesInfo as LanguagesInfo_6e29db4ffc0d015633b0a5b24b1fc471 } from '@/components/admin/settings/LanguagesInfo'
 import { ZyvavuNav as ZyvavuNav_2bb94d3f839a4d5b2cf329bc3c58226a } from '@/components/admin/navigation/ZyvavuNav'
 import { Icon as Icon_a44df17d0fc3dcd873dae43dc3bf66bd } from '@/components/admin/Logo'
 import { Logo as Logo_a44df17d0fc3dcd873dae43dc3bf66bd } from '@/components/admin/Logo'
 import { DashboardWelcome as DashboardWelcome_b81acdec2f847f3a2418fa446f7762ad } from '@/components/admin/DashboardWelcome'
 import { ThemeProvider as ThemeProvider_a1a3c4a847480f0a30c7903f2efa894d } from '@/components/admin/ThemeProvider'
 import { SystemView as SystemView_cdc5b7cf3ea627dfc2b22dc6609fc35d } from '@/components/admin/SystemView'
+import { SeoSettingsView as SeoSettingsView_68b35c68aea4f366f5ef6fe225e9b762 } from '@/components/admin/SeoSettingsView'
 import { CollectionCards as CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
 
 /** @type import('payload').ImportMap */
@@ -72,11 +76,15 @@ export const importMap = {
   "@/components/admin/menus/MenusListView#MenusListView": MenusListView_5f5e4546ce4c49e8d6af150a40b47826,
   "@/components/admin/users/UsersListView#UsersListView": UsersListView_9590dab51cc529cf0436456ed756da29,
   "@/components/admin/url-registry/UrlRegistryListView#UrlRegistryListView": UrlRegistryListView_06f2f625bba876851287e4ca3ba49457,
+  "@/components/admin/settings/DateTimePreview#DateTimePreview": DateTimePreview_50d045982608d1aa20db787ff79f0b9e,
+  "@/components/admin/settings/PermalinksInfo#PermalinksInfo": PermalinksInfo_2fc4860f068f724db0e937af7792e65e,
+  "@/components/admin/settings/LanguagesInfo#LanguagesInfo": LanguagesInfo_6e29db4ffc0d015633b0a5b24b1fc471,
   "@/components/admin/navigation/ZyvavuNav#ZyvavuNav": ZyvavuNav_2bb94d3f839a4d5b2cf329bc3c58226a,
   "@/components/admin/Logo#Icon": Icon_a44df17d0fc3dcd873dae43dc3bf66bd,
   "@/components/admin/Logo#Logo": Logo_a44df17d0fc3dcd873dae43dc3bf66bd,
   "@/components/admin/DashboardWelcome#DashboardWelcome": DashboardWelcome_b81acdec2f847f3a2418fa446f7762ad,
   "@/components/admin/ThemeProvider#ThemeProvider": ThemeProvider_a1a3c4a847480f0a30c7903f2efa894d,
   "@/components/admin/SystemView#SystemView": SystemView_cdc5b7cf3ea627dfc2b22dc6609fc35d,
+  "@/components/admin/SeoSettingsView#SeoSettingsView": SeoSettingsView_68b35c68aea4f366f5ef6fe225e9b762,
   "@payloadcms/next/rsc#CollectionCards": CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1
 }

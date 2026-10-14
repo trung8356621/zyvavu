@@ -6,7 +6,7 @@ import { ROLE_SITE_ADMIN } from '@/access/roles'
 import config from '../../src/payload.config.js'
 
 export const testUser = {
-  email: `zyvavu-e2e-${crypto.randomBytes(4).toString('hex')}@localhost`,
+  email: `zyvavu-e2e-${crypto.randomBytes(4).toString('hex')}@zyvavu.test`,
   password: crypto.randomBytes(18).toString('base64url'),
 }
 

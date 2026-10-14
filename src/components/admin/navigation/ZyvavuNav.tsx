@@ -7,7 +7,7 @@ import { Link, Logout, useAuth, useConfig, useEntityVisibility, useNav } from '@
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
-import { isSystemAdmin } from '@/access/roles'
+import { isSiteStaff, isSystemAdmin } from '@/access/roles'
 
 import './zyvavu-nav.scss'
 
@@ -46,6 +46,9 @@ const MenuIcon = (props: IconProps) => (
 )
 const SettingsIcon = (props: IconProps) => (
   <svg {...iconProps} {...props}><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2" /></svg>
+)
+const SeoIcon = (props: IconProps) => (
+  <svg {...iconProps} {...props}><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3M11 8v6M8 11h6" /></svg>
 )
 const UsersIcon = (props: IconProps) => (
   <svg {...iconProps} {...props}><circle cx="12" cy="8" r="4" /><path d="M4 21c1-5 4-7 8-7s7 2 8 7" /></svg>
@@ -110,6 +113,7 @@ export function ZyvavuNav() {
   ]
   const settingsItems: NavItem[] = [
     { href: globalURL('settings'), icon: SettingsIcon, label: 'Site settings', visible: globalVisible('settings') },
+    { href: `${adminRoute}/seo-settings`, icon: SeoIcon, label: 'SEO settings', visible: isSiteStaff(user) },
   ]
   const systemItems: NavItem[] = [
     { href: collectionURL('users'), icon: UsersIcon, label: 'Users', visible: collectionVisible('users') },

@@ -22,7 +22,20 @@ import { migrations } from './migrations'
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
 const publicOrigin = canonicalPublicOrigin(process.env.NEXT_PUBLIC_SERVER_URL)
-const allowedOrigins = Array.from(new Set([LOCAL_HTTP_ORIGIN, LOCAL_HTTPS_ORIGIN, publicOrigin]))
+const devOrigins = [
+  'http://127.0.0.1:3107',
+  'http://localhost:3107',
+  'http://127.0.0.1',
+  'http://localhost',
+]
+const allowedOrigins = Array.from(
+  new Set([
+    LOCAL_HTTP_ORIGIN,
+    LOCAL_HTTPS_ORIGIN,
+    publicOrigin,
+    ...(process.env.NODE_ENV !== 'production' ? devOrigins : []),
+  ]),
+)
 
 export default buildConfig({
   admin: {
@@ -55,6 +68,12 @@ export default buildConfig({
           exact: true,
           meta: { title: 'System' },
         },
+        seoSettings: {
+          Component: '@/components/admin/SeoSettingsView#SeoSettingsView',
+          path: '/seo-settings',
+          exact: true,
+          meta: { title: 'SEO Settings' },
+        },
       },
     },
   },
@@ -62,7 +81,7 @@ export default buildConfig({
   globals: [Settings, SystemSettings],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
-  serverURL: publicOrigin,
+  serverURL: process.env.NODE_ENV === 'production' ? publicOrigin : undefined,
   cors: allowedOrigins,
   csrf: allowedOrigins,
   typescript: {

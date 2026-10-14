@@ -258,6 +258,111 @@ select:focus-visible {
   box-shadow: inset 0 -2px 0 #0e6b66;
 }
 
+.zyvavu-settings-tabs {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 1.75rem;
+  align-items: start;
+  margin-top: 1rem;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+
+  .tabs-field__tabs-wrap {
+    position: sticky;
+    top: 1.5rem;
+    overflow: visible;
+    margin-bottom: 0;
+    border-radius: var(--style-radius-l, 12px);
+    background: var(--zyvavu-surface, #ffffff);
+    border: 1px solid var(--zyvavu-border, #dfe5e2);
+    padding: 0.5rem;
+    box-shadow: var(--zyvavu-shadow);
+  }
+
+  .tabs-field__tabs {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    width: 100%;
+    border-bottom: 0;
+    gap: 0.25rem;
+
+    &::before,
+    &::after {
+      display: none !important;
+    }
+  }
+
+  .tabs-field__tab-button {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border-radius: var(--style-radius-m, 8px);
+    border: 0;
+    background: transparent;
+    color: var(--zyvavu-ink, #17201f);
+    font-size: 14px;
+    font-weight: 550;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 140ms ease, color 140ms ease;
+    box-shadow: none;
+
+    &:hover {
+      background: #f0f4f3;
+      color: var(--zyvavu-primary, #0e6b66);
+    }
+
+    &--active {
+      background: var(--zyvavu-accent-soft, #e6f3f1);
+      color: var(--zyvavu-primary, #0e6b66);
+      font-weight: 650;
+      box-shadow: inset 3px 0 0 var(--zyvavu-primary, #0e6b66);
+    }
+  }
+
+  .tabs-field__content-wrap {
+    min-width: 0;
+    padding: 1.75rem;
+    border-radius: var(--style-radius-l, 12px);
+    background: var(--zyvavu-surface, #ffffff);
+    border: 1px solid var(--zyvavu-border, #dfe5e2);
+    box-shadow: var(--zyvavu-shadow);
+  }
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+
+    .tabs-field__tabs-wrap {
+      position: static;
+      overflow-x: auto;
+      padding: 0.35rem;
+    }
+
+    .tabs-field__tabs {
+      flex-direction: row;
+      gap: 0.35rem;
+      min-width: max-content;
+    }
+
+    .tabs-field__tab-button {
+      padding: 0.5rem 0.85rem;
+      white-space: nowrap;
+
+      &--active {
+        box-shadow: inset 0 -2px 0 var(--zyvavu-primary, #0e6b66);
+      }
+    }
+
+    .tabs-field__content-wrap {
+      padding: 1.25rem;
+    }
+  }
+}
+
 .document-fields--has-sidebar {
   --main-width: min(72%, calc(100% - 340px));
 }

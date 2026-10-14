@@ -1,6 +1,6 @@
 import 'dotenv/config'
 import { getPayload } from 'payload'
-import config from '../src/payload.config.ts'
+import config from '../src/payload.config'
 
 console.log('Initializing Payload...')
 try {
