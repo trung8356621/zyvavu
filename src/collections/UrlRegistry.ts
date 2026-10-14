@@ -7,6 +7,13 @@ export const UrlRegistry: CollectionConfig = {
   admin: {
     hidden: true,
     useAsTitle: 'path',
+    components: {
+      views: {
+        list: {
+          Component: '@/components/admin/url-registry/UrlRegistryListView#UrlRegistryListView',
+        },
+      },
+    },
   },
   access: {
     create: () => false,

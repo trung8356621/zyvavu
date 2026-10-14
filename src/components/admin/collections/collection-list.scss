@@ -1,7 +1,4 @@
-.collection-list--posts,
-.collection-list--categories,
-.collection-list--pages,
-.collection-list--tags {
+.collection-list {
   .list-header {
     display: none;
   }
@@ -83,6 +80,13 @@
     margin: 6px 0 0;
   }
 
+  &__actions {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
   &__extra {
     margin-top: 18px;
   }
@@ -90,8 +94,8 @@
 
 .zyvavu-status-tabs {
   .mantine-Tabs-list {
-    gap: 20px;
     border-bottom: 0;
+    gap: 20px;
   }
 
   .mantine-Tabs-tab {
@@ -115,6 +119,35 @@
   }
 }
 
+/* Document & Global Editor Shared Consistency */
+.global-edit,
+.collection-edit {
+  .doc-header {
+    background: var(--theme-elevation-0);
+    border-bottom: 1px solid var(--theme-elevation-150);
+    margin-bottom: 24px;
+    padding: 20px var(--gutter-h) 20px;
+
+    &__title {
+      color: var(--theme-elevation-1000);
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.025em;
+    }
+  }
+
+  .step-nav {
+    color: var(--theme-elevation-600);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 20px var(--gutter-h) 0;
+  }
+
+  .document-fields {
+    max-width: 1060px;
+  }
+}
+
 @media (max-width: 768px) {
   .zyvavu-collection-header {
     padding-top: 18px;
@@ -125,18 +158,14 @@
       gap: 16px;
     }
 
+    &__actions,
     &__create {
       align-self: flex-start;
     }
   }
 
-  .collection-list--posts,
-  .collection-list--categories,
-  .collection-list--pages,
-  .collection-list--tags {
-    .list-controls {
-      align-items: stretch;
-      flex-direction: column;
-    }
+  .collection-list .list-controls {
+    align-items: stretch;
+    flex-direction: column;
   }
 }

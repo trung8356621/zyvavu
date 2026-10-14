@@ -1,0 +1,32 @@
+.zyvavu-post-title-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.35;
+
+  &__link {
+    display: inline-block;
+    text-decoration: none;
+    color: inherit;
+
+    &:hover .zyvavu-post-title-cell__title {
+      color: var(--zyvavu-primary, #0e6b66);
+      text-decoration: underline;
+    }
+  }
+
+  &__title {
+    display: block;
+    color: var(--theme-elevation-1000, #17201f);
+    font-weight: 650;
+    font-size: 14px;
+    line-height: 1.35;
+  }
+
+  &__slug {
+    display: block;
+    color: var(--theme-elevation-550, #65716e);
+    font-size: 12px;
+    line-height: 1.35;
+  }
+}

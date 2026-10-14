@@ -38,6 +38,13 @@ export const Users: CollectionConfig = {
     group: 'System',
     useAsTitle: 'email',
     defaultColumns: ['email', 'role'],
+    components: {
+      views: {
+        list: {
+          Component: '@/components/admin/users/UsersListView#UsersListView',
+        },
+      },
+    },
   },
   auth: {
     cookies: {

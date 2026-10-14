@@ -6,6 +6,13 @@ export const Media: CollectionConfig = {
   slug: 'media',
   admin: {
     group: 'Content',
+    components: {
+      views: {
+        list: {
+          Component: '@/components/admin/media/MediaListView#MediaListView',
+        },
+      },
+    },
   },
   access: {
     create: siteStaffAccess,

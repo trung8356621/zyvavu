@@ -28,6 +28,12 @@ export default buildConfig({
   admin: {
     user: Users.slug,
     theme: 'light',
+    autoLogin:
+      process.env.NODE_ENV !== 'production'
+        ? {
+            email: 'trungtien1993@gmail.com',
+          }
+        : false,
     meta: {
       titleSuffix: '— Zyvavu',
     },

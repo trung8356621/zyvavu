@@ -24,8 +24,12 @@ import { BoldFeatureClient as BoldFeatureClient_e70f5e05f09f93e00b997edb1ef0c864
 import { ItalicFeatureClient as ItalicFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { PostsListView as PostsListView_a8ffc995a16183020e5f1470211d9639 } from '@/components/admin/posts/PostsListView'
 import { PagesListView as PagesListView_35e5a4f7a927d66d1956a89a74f9ad32 } from '@/components/admin/pages/PagesListView'
+import { MediaListView as MediaListView_9b12155b20b9c2b1aaa48f6181ff9b3d } from '@/components/admin/media/MediaListView'
 import { CategoriesListView as CategoriesListView_e3e8f70244db5f30aeccb178abe9d28d } from '@/components/admin/categories/CategoriesListView'
 import { TagsListView as TagsListView_896150d58bc29744f1a1a1b474a094e5 } from '@/components/admin/tags/TagsListView'
+import { MenusListView as MenusListView_5f5e4546ce4c49e8d6af150a40b47826 } from '@/components/admin/menus/MenusListView'
+import { UsersListView as UsersListView_9590dab51cc529cf0436456ed756da29 } from '@/components/admin/users/UsersListView'
+import { UrlRegistryListView as UrlRegistryListView_06f2f625bba876851287e4ca3ba49457 } from '@/components/admin/url-registry/UrlRegistryListView'
 import { ZyvavuNav as ZyvavuNav_2bb94d3f839a4d5b2cf329bc3c58226a } from '@/components/admin/navigation/ZyvavuNav'
 import { Icon as Icon_a44df17d0fc3dcd873dae43dc3bf66bd } from '@/components/admin/Logo'
 import { Logo as Logo_a44df17d0fc3dcd873dae43dc3bf66bd } from '@/components/admin/Logo'
@@ -62,8 +66,12 @@ export const importMap = {
   "@payloadcms/richtext-lexical/client#ItalicFeatureClient": ItalicFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@/components/admin/posts/PostsListView#PostsListView": PostsListView_a8ffc995a16183020e5f1470211d9639,
   "@/components/admin/pages/PagesListView#PagesListView": PagesListView_35e5a4f7a927d66d1956a89a74f9ad32,
+  "@/components/admin/media/MediaListView#MediaListView": MediaListView_9b12155b20b9c2b1aaa48f6181ff9b3d,
   "@/components/admin/categories/CategoriesListView#CategoriesListView": CategoriesListView_e3e8f70244db5f30aeccb178abe9d28d,
   "@/components/admin/tags/TagsListView#TagsListView": TagsListView_896150d58bc29744f1a1a1b474a094e5,
+  "@/components/admin/menus/MenusListView#MenusListView": MenusListView_5f5e4546ce4c49e8d6af150a40b47826,
+  "@/components/admin/users/UsersListView#UsersListView": UsersListView_9590dab51cc529cf0436456ed756da29,
+  "@/components/admin/url-registry/UrlRegistryListView#UrlRegistryListView": UrlRegistryListView_06f2f625bba876851287e4ca3ba49457,
   "@/components/admin/navigation/ZyvavuNav#ZyvavuNav": ZyvavuNav_2bb94d3f839a4d5b2cf329bc3c58226a,
   "@/components/admin/Logo#Icon": Icon_a44df17d0fc3dcd873dae43dc3bf66bd,
   "@/components/admin/Logo#Logo": Logo_a44df17d0fc3dcd873dae43dc3bf66bd,

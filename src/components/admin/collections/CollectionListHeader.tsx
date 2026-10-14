@@ -7,15 +7,19 @@ import { Link, useListQuery } from '@payloadcms/ui'
 import './collection-list.scss'
 
 export type CollectionListHeaderProps = {
+  actions?: ReactNode
+  breadcrumbGroup?: string
   children?: ReactNode
   collectionLabel: string
   collectionSlug: string
   description?: string
   hasCreatePermission: boolean
-  newDocumentURL: string
+  newDocumentURL?: string
 }
 
 export function CollectionListHeader({
+  actions,
+  breadcrumbGroup = 'Content',
   children,
   collectionLabel,
   collectionSlug,
@@ -29,7 +33,7 @@ export function CollectionListHeader({
   return (
     <header className="zyvavu-collection-header" data-collection={collectionSlug}>
       <nav aria-label="Breadcrumb" className="zyvavu-collection-header__breadcrumb">
-        <span>Content</span>
+        <span>{breadcrumbGroup}</span>
         <span aria-hidden="true">/</span>
         <span aria-current="page">{collectionLabel}</span>
       </nav>
@@ -45,7 +49,9 @@ export function CollectionListHeader({
           {description ? <p className="zyvavu-collection-header__description">{description}</p> : null}
         </div>
 
-        {hasCreatePermission && newDocumentURL ? (
+        {actions ? (
+          <div className="zyvavu-collection-header__actions">{actions}</div>
+        ) : hasCreatePermission && newDocumentURL ? (
           <Button
             className="zyvavu-collection-header__create"
             color="brand"

@@ -4,7 +4,17 @@ import { siteStaffAccess } from '@/access/roles'
 
 export const Menus: CollectionConfig = {
   slug: 'menus',
-  admin: { group: 'Appearance', useAsTitle: 'name' },
+  admin: {
+    group: 'Appearance',
+    useAsTitle: 'name',
+    components: {
+      views: {
+        list: {
+          Component: '@/components/admin/menus/MenusListView#MenusListView',
+        },
+      },
+    },
+  },
   access: {
     create: siteStaffAccess,
     read: () => true,
