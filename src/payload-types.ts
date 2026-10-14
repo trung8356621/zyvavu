@@ -740,7 +740,7 @@ export interface Setting {
   /**
    * Default structure preset for post public URLs. Changing presets does not rewrite existing URL Registry records.
    */
-  postPermalinkStructure: 'posts' | 'flat' | 'category' | 'date' | 'custom';
+  postPermalinkStructure: string;
   /**
    * BCP 47 language code used by the default public site (e.g. vi).
    */

@@ -1,7 +1,23 @@
 import { APIError, type Payload, type PayloadRequest } from 'payload'
 
+import {
+  DEFAULT_POST_PERMALINK_STRUCTURE,
+  extractSlugAndPattern,
+  normalizePermalinkPattern,
+  resolveEstablishedOrPattern,
+  resolvePostPath,
+} from '@/lib/permalinks'
 import { canonicalPathFor, type ResourceType } from './paths'
-import { isReservedPath } from './normalize'
+import { isReservedPath, normalizePath } from './normalize'
+
+async function getSiteDefaultPostStructure(req: PayloadRequest): Promise<string> {
+  try {
+    const settings = await req.payload.findGlobal({ slug: 'settings', overrideAccess: true, req })
+    return normalizePermalinkPattern(settings?.postPermalinkStructure as string)
+  } catch {
+    return DEFAULT_POST_PERMALINK_STRUCTURE
+  }
+}
 
 type RouteDoc = {
   id: number
@@ -128,6 +144,7 @@ export async function syncResourceRoute(
   req: PayloadRequest,
   resourceType: ResourceType,
   doc: ResourceDoc,
+  previousDoc?: ResourceDoc | null,
 ): Promise<void> {
   const id = doc.id
   const live = await liveDocument(req, resourceType, doc)
@@ -149,14 +166,35 @@ export async function syncResourceRoute(
     return
   }
 
-  const nextPath = canonicalPathFor(resourceType, live.slug as string, live.publicPath)
+  const payload = req.payload
+  const owned = await findRoutes(payload, req, resourceType === 'page' ? { page: { equals: id } } : { post: { equals: id } })
+  const canonical = owned.find((route) => route.recordRole === 'canonical')
+
+  let nextPath: string
+  if (resourceType === 'page') {
+    nextPath = canonicalPathFor('page', live.slug as string, live.publicPath)
+  } else {
+    // Post routing logic
+    if (typeof live.publicPath === 'string' && live.publicPath.trim()) {
+      nextPath = normalizePath(live.publicPath)
+    } else if (canonical) {
+      const oldSlug = previousDoc?.slug || extractSlugAndPattern(canonical.path)?.slug
+      if (!oldSlug || oldSlug === live.slug) {
+        nextPath = canonical.path
+      } else {
+        const defaultStructure = await getSiteDefaultPostStructure(req)
+        nextPath = resolveEstablishedOrPattern(canonical.path, oldSlug, live.slug as string, defaultStructure)
+      }
+    } else {
+      const defaultStructure = await getSiteDefaultPostStructure(req)
+      nextPath = resolvePostPath(defaultStructure, live.slug as string)
+    }
+  }
+
   if (isReservedPath(nextPath) || (resourceType === 'page' && nextPath.startsWith('/posts/'))) {
     throw new APIError('That public URL is reserved.', 409)
   }
 
-  const payload = req.payload
-  const owned = await findRoutes(payload, req, resourceType === 'page' ? { page: { equals: id } } : { post: { equals: id } })
-  const canonical = owned.find((route) => route.recordRole === 'canonical')
   const occupant = (await findRoutes(payload, req, { path: { equals: nextPath } })).find((route) => route.id !== canonical?.id)
 
   if (occupant && !owned.some((route) => route.id === occupant.id)) {

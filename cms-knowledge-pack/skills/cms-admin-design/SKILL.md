@@ -75,14 +75,26 @@ For any Mantine adoption or cross-screen UI refactor, first deliver a written **
 
 **STOP for user's explicit approval after this report**. No package installation, component refactoring, screen changes or migrations as part of the preparation phase.
 
+## UI verification policy (effective immediately)
+
+- **Do NOT run Playwright, browser automation, screenshot capture scripts, automated login scripts, or repeated browser selector debugging.**
+- The project owner will manually inspect the running Admin and provide screenshots and browser errors when necessary.
+
+**Agent responsibilities:**
+- Implement UI using the approved Payload/Mantine conventions.
+- Run build, typecheck, lint and appropriate non-destructive unit tests.
+- Analyze user-provided screenshots and fix identified issues.
+- Mark uninspected UI as NOT VERIFIED.
+- Never claim visual PASS without owner confirmation.
+
 ## UI implementation verification (only after explicit approval)
 
 - First integrate Mantine in a safe, limited Admin boundary using the library's official setup for actual installed Next/React versions and documented Payload extension points.
 - Preserve the V4 sidebar unless directly instructed otherwise.
-- Prove cross-screen consistency with screenshots at 1440×900 and mobile 390×844, at 100% zoom. Compare populated Posts with empty Categories and a genuine search-with-no-results state.
-- Verify keyboard/focus behavior, accessibility, filters, search, pagination, CRUD, draft/publish, role visibility, overlays/portals, and Public CSS isolation.
+- Visual inspection is conducted manually by the project owner across key viewports (e.g. 1440×900 and mobile 390×844) comparing populated Posts with empty Categories and search-with-no-results. Agents analyze user-supplied screenshots instead of running browser automation.
+- Verify keyboard/focus behavior, accessibility, filters, search, pagination, CRUD, draft/publish, role visibility, overlays/portals, and Public CSS isolation via static checks, unit tests, and user feedback.
 - Show the config change proof (e.g. admin default `md` to `sm` and back; Admin primary-color change and back). Do not permanently modify production branding just for proof.
-- Report each check as PASS/FAIL/NOT TESTED. Builds/tests are not a substitute for runtime screenshots.
+- Report UI status as PASS (only with owner confirmation), FAIL, or NOT VERIFIED. Never claim visual PASS autonomously. Builds/tests confirm code integrity, not visual acceptance.
 - No commit/push without explicit user authorization.
 
 ## Decision status

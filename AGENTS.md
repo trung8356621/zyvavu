@@ -18,7 +18,15 @@
 - Do not change database schema unless the task explicitly includes it.
 - Preserve URL Registry, publish lifecycle, authentication and permission contracts.
 - Never promote an `OPEN` decision to `CONFIRMED` independently.
-- Verify UI changes in the running browser at relevant desktop/mobile sizes; a build is not visual verification.
+- UI Verification Policy:
+  - Do NOT run Playwright, browser automation, screenshot capture scripts, automated login scripts, or repeated browser selector debugging.
+  - The project owner will manually inspect the running Admin and provide screenshots and browser errors when necessary.
+  - Responsibilities:
+    - Implement UI using the approved Payload/Mantine conventions.
+    - Run build, typecheck, lint and appropriate non-destructive unit tests.
+    - Analyze user-provided screenshots and fix identified issues.
+    - Mark uninspected UI as NOT VERIFIED.
+    - Never claim visual PASS without owner confirmation.
 - Report changed files, tests, visual limitations and environment issues.
 - Never commit or push without explicit permission.
 

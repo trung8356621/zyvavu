@@ -34,8 +34,8 @@ export const Pages: CollectionConfig = {
     beforeOperation: [capturePublishWrite],
     beforeChange: [preservePublishedPartialUpdate],
     afterChange: [
-      async ({ doc, req }) => {
-        await syncResourceRoute(req, 'page', doc)
+      async ({ doc, req, previousDoc }) => {
+        await syncResourceRoute(req, 'page', doc, previousDoc)
         return doc
       },
     ],

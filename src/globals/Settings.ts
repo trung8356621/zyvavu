@@ -13,6 +13,10 @@ import {
 } from '@/lib/dateTime'
 import { canonicalPublicOrigin, normalizeSiteUrl } from '@/lib/site/origin'
 import { isLanguageCode } from '@/lib/site/setup'
+import {
+  DEFAULT_POST_PERMALINK_STRUCTURE,
+  validatePermalinkPattern,
+} from '@/lib/permalinks'
 
 const wholeNumber = (min: number, max: number) => (value: unknown) => {
   if (typeof value !== 'number' || !Number.isInteger(value) || value < min || value > max) {
@@ -60,8 +64,16 @@ export const Settings: GlobalConfig = {
               type: 'upload',
               relationTo: 'media',
               label: 'Site Logo',
+              filterOptions: {
+                mimeType: {
+                  contains: 'image',
+                },
+              },
               admin: {
                 description: 'Primary site brand logo. Select from Media Library or upload a new asset.',
+                components: {
+                  Field: '@/components/admin/settings/MediaPickerField#MediaPickerField',
+                },
               },
             },
             {
@@ -69,8 +81,23 @@ export const Settings: GlobalConfig = {
               type: 'upload',
               relationTo: 'media',
               label: 'Site Favicon',
+              filterOptions: {
+                mimeType: {
+                  in: [
+                    'image/png',
+                    'image/svg+xml',
+                    'image/x-icon',
+                    'image/vnd.microsoft.icon',
+                    'image/webp',
+                    'image/jpeg',
+                  ],
+                },
+              },
               admin: {
                 description: 'Browser icon (PNG, SVG, or ICO asset). Used in public HTML head and metadata.',
+                components: {
+                  Field: '@/components/admin/settings/MediaPickerField#MediaPickerField',
+                },
               },
             },
           ],
@@ -153,27 +180,18 @@ export const Settings: GlobalConfig = {
           fields: [
             {
               name: 'postPermalinkStructure',
-              type: 'select',
+              type: 'text',
               required: true,
-              defaultValue: 'posts',
+              defaultValue: DEFAULT_POST_PERMALINK_STRUCTURE,
               label: 'Post URL Structure',
-              options: [
-                { label: 'Posts prefix: /posts/%postname% (Active & Supported)', value: 'posts' },
-                { label: 'Flat: /%postname% (Documented preset — requires Page collision safety)', value: 'flat' },
-                { label: 'Category-based: /%category%/%postname% (Documented — requires category sync)', value: 'category' },
-                { label: 'Date-based: /%year%/%monthnum%/%postname% (Documented — requires publish date sync)', value: 'date' },
-                { label: 'Custom Structure (Documented preset)', value: 'custom' },
-              ],
+              validate: (value: unknown) => {
+                const err = validatePermalinkPattern(value)
+                return err ? err : true
+              },
               admin: {
                 description: 'Default structure preset for post public URLs. Changing presets does not rewrite existing URL Registry records.',
-              },
-            },
-            {
-              name: 'permalinksInfo',
-              type: 'ui',
-              admin: {
                 components: {
-                  Field: '@/components/admin/settings/PermalinksInfo#PermalinksInfo',
+                  Field: '@/components/admin/settings/PermalinksField#PermalinksField',
                 },
               },
             },

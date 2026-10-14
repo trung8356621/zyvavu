@@ -35,8 +35,8 @@ export const Posts: CollectionConfig = {
     beforeOperation: [capturePublishWrite],
     beforeChange: [preservePublishedPartialUpdate],
     afterChange: [
-      async ({ doc, req }) => {
-        await syncResourceRoute(req, 'post', doc)
+      async ({ doc, req, previousDoc }) => {
+        await syncResourceRoute(req, 'post', doc, previousDoc)
         return doc
       },
     ],

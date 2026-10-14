@@ -189,6 +189,7 @@ describe('publish lifecycle write contract', () => {
       data: {
         title: 'Published post',
         slug: `contract-post-${suffix}`,
+        publicPath: `/posts/contract-post-${suffix}`,
         excerpt: 'published post',
         _status: 'published',
       },

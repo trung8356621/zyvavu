@@ -6,6 +6,10 @@ import {
   DEFAULT_TIMEZONE,
   DEFAULT_WEEK_STARTS_ON,
 } from '@/lib/dateTime'
+import {
+  DEFAULT_POST_PERMALINK_STRUCTURE,
+  normalizePermalinkPattern,
+} from '@/lib/permalinks'
 import { canonicalPublicOrigin } from './origin'
 import { assessSiteSetup, isLanguageCode, type SiteSetupAssessment } from './setup'
 
@@ -41,7 +45,7 @@ const fallback: PublicSiteSettings = {
   dateFormat: DEFAULT_DATE_FORMAT,
   timeFormat: DEFAULT_TIME_FORMAT,
   weekStartsOn: DEFAULT_WEEK_STARTS_ON,
-  postPermalinkStructure: 'posts',
+  postPermalinkStructure: DEFAULT_POST_PERMALINK_STRUCTURE,
 }
 
 export async function loadPublicSiteSettings(payload: Payload): Promise<PublicSiteSettings> {
@@ -78,7 +82,7 @@ export async function loadPublicSiteSettings(payload: Payload): Promise<PublicSi
       dateFormat: (settings.dateFormat as string) || fallback.dateFormat,
       timeFormat: (settings.timeFormat as string) || fallback.timeFormat,
       weekStartsOn: (settings.weekStartsOn as string) || fallback.weekStartsOn,
-      postPermalinkStructure: (settings.postPermalinkStructure as string) || fallback.postPermalinkStructure,
+      postPermalinkStructure: normalizePermalinkPattern(settings.postPermalinkStructure as string),
     }
   } catch {
     return fallback
