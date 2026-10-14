@@ -1,10 +1,12 @@
 import { APIError, type Payload, type PayloadRequest } from 'payload'
 
 import {
+  DEFAULT_PAGE_PERMALINK_STRUCTURE,
   DEFAULT_POST_PERMALINK_STRUCTURE,
   extractSlugAndPattern,
   normalizePermalinkPattern,
   resolveEstablishedOrPattern,
+  resolvePagePath,
   resolvePostPath,
 } from '@/lib/permalinks'
 import { canonicalPathFor, type ResourceType } from './paths'
@@ -13,9 +15,18 @@ import { isReservedPath, normalizePath } from './normalize'
 async function getSiteDefaultPostStructure(req: PayloadRequest): Promise<string> {
   try {
     const settings = await req.payload.findGlobal({ slug: 'settings', overrideAccess: true, req })
-    return normalizePermalinkPattern(settings?.postPermalinkStructure as string)
+    return normalizePermalinkPattern(settings?.postPermalinkStructure as string, 'posts')
   } catch {
     return DEFAULT_POST_PERMALINK_STRUCTURE
+  }
+}
+
+async function getSiteDefaultPageStructure(req: PayloadRequest): Promise<string> {
+  try {
+    const settings = await req.payload.findGlobal({ slug: 'settings', overrideAccess: true, req })
+    return normalizePermalinkPattern(settings?.pagePermalinkStructure as string, 'pages')
+  } catch {
+    return DEFAULT_PAGE_PERMALINK_STRUCTURE
   }
 }
 
@@ -172,7 +183,22 @@ export async function syncResourceRoute(
 
   let nextPath: string
   if (resourceType === 'page') {
-    nextPath = canonicalPathFor('page', live.slug as string, live.publicPath)
+    if (live.slug === 'home') {
+      nextPath = '/'
+    } else if (typeof live.publicPath === 'string' && live.publicPath.trim()) {
+      nextPath = normalizePath(live.publicPath)
+    } else if (canonical) {
+      const oldSlug = previousDoc?.slug || extractSlugAndPattern(canonical.path, '%slug%')?.slug
+      if (!oldSlug || oldSlug === live.slug) {
+        nextPath = canonical.path
+      } else {
+        const defaultStructure = await getSiteDefaultPageStructure(req)
+        nextPath = resolveEstablishedOrPattern(canonical.path, oldSlug, live.slug as string, defaultStructure, 'pages')
+      }
+    } else {
+      const defaultStructure = await getSiteDefaultPageStructure(req)
+      nextPath = resolvePagePath(defaultStructure, live.slug as string)
+    }
   } else {
     // Post routing logic
     if (typeof live.publicPath === 'string' && live.publicPath.trim()) {

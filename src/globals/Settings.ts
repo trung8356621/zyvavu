@@ -14,7 +14,10 @@ import {
 import { canonicalPublicOrigin, normalizeSiteUrl } from '@/lib/site/origin'
 import { isLanguageCode } from '@/lib/site/setup'
 import {
+  DEFAULT_CATEGORY_PERMALINK_STRUCTURE,
+  DEFAULT_PAGE_PERMALINK_STRUCTURE,
   DEFAULT_POST_PERMALINK_STRUCTURE,
+  DEFAULT_TAG_PERMALINK_STRUCTURE,
   validatePermalinkPattern,
 } from '@/lib/permalinks'
 
@@ -185,7 +188,7 @@ export const Settings: GlobalConfig = {
               defaultValue: DEFAULT_POST_PERMALINK_STRUCTURE,
               label: 'Post URL Structure',
               validate: (value: unknown) => {
-                const err = validatePermalinkPattern(value)
+                const err = validatePermalinkPattern(value, 'posts')
                 return err ? err : true
               },
               admin: {
@@ -193,6 +196,48 @@ export const Settings: GlobalConfig = {
                 components: {
                   Field: '@/components/admin/settings/PermalinksField#PermalinksField',
                 },
+              },
+            },
+            {
+              name: 'pagePermalinkStructure',
+              type: 'text',
+              required: true,
+              defaultValue: DEFAULT_PAGE_PERMALINK_STRUCTURE,
+              label: 'Page URL Structure',
+              validate: (value: unknown) => {
+                const err = validatePermalinkPattern(value, 'pages')
+                return err ? err : true
+              },
+              admin: {
+                hidden: true,
+              },
+            },
+            {
+              name: 'categoryPermalinkStructure',
+              type: 'text',
+              required: true,
+              defaultValue: DEFAULT_CATEGORY_PERMALINK_STRUCTURE,
+              label: 'Category URL Structure',
+              validate: (value: unknown) => {
+                const err = validatePermalinkPattern(value, 'categories')
+                return err ? err : true
+              },
+              admin: {
+                hidden: true,
+              },
+            },
+            {
+              name: 'tagPermalinkStructure',
+              type: 'text',
+              required: true,
+              defaultValue: DEFAULT_TAG_PERMALINK_STRUCTURE,
+              label: 'Tag URL Structure',
+              validate: (value: unknown) => {
+                const err = validatePermalinkPattern(value, 'tags')
+                return err ? err : true
+              },
+              admin: {
+                hidden: true,
               },
             },
           ],
