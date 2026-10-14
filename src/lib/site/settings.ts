@@ -7,7 +7,10 @@ import {
   DEFAULT_WEEK_STARTS_ON,
 } from '@/lib/dateTime'
 import {
+  DEFAULT_CATEGORY_PERMALINK_STRUCTURE,
+  DEFAULT_PAGE_PERMALINK_STRUCTURE,
   DEFAULT_POST_PERMALINK_STRUCTURE,
+  DEFAULT_TAG_PERMALINK_STRUCTURE,
   normalizePermalinkPattern,
 } from '@/lib/permalinks'
 import { canonicalPublicOrigin } from './origin'
@@ -30,6 +33,9 @@ export type PublicSiteSettings = {
   timeFormat: string
   weekStartsOn: string
   postPermalinkStructure: string
+  pagePermalinkStructure: string
+  categoryPermalinkStructure: string
+  tagPermalinkStructure: string
 }
 
 const fallback: PublicSiteSettings = {
@@ -46,6 +52,9 @@ const fallback: PublicSiteSettings = {
   timeFormat: DEFAULT_TIME_FORMAT,
   weekStartsOn: DEFAULT_WEEK_STARTS_ON,
   postPermalinkStructure: DEFAULT_POST_PERMALINK_STRUCTURE,
+  pagePermalinkStructure: DEFAULT_PAGE_PERMALINK_STRUCTURE,
+  categoryPermalinkStructure: DEFAULT_CATEGORY_PERMALINK_STRUCTURE,
+  tagPermalinkStructure: DEFAULT_TAG_PERMALINK_STRUCTURE,
 }
 
 export async function loadPublicSiteSettings(payload: Payload): Promise<PublicSiteSettings> {
@@ -82,7 +91,10 @@ export async function loadPublicSiteSettings(payload: Payload): Promise<PublicSi
       dateFormat: (settings.dateFormat as string) || fallback.dateFormat,
       timeFormat: (settings.timeFormat as string) || fallback.timeFormat,
       weekStartsOn: (settings.weekStartsOn as string) || fallback.weekStartsOn,
-      postPermalinkStructure: normalizePermalinkPattern(settings.postPermalinkStructure as string),
+      postPermalinkStructure: normalizePermalinkPattern(settings.postPermalinkStructure as string, 'posts'),
+      pagePermalinkStructure: normalizePermalinkPattern(settings.pagePermalinkStructure as string, 'pages'),
+      categoryPermalinkStructure: normalizePermalinkPattern(settings.categoryPermalinkStructure as string, 'categories'),
+      tagPermalinkStructure: normalizePermalinkPattern(settings.tagPermalinkStructure as string, 'tags'),
     }
   } catch {
     return fallback

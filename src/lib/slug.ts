@@ -1,4 +1,4 @@
-import { resolvePostPath } from './permalinks'
+import { resolvePagePath, resolvePostPath } from './permalinks'
 
 export function slugify(value: string): string {
   return value
@@ -10,8 +10,12 @@ export function slugify(value: string): string {
     .replace(/^-+|-+$/g, '')
 }
 
-export function pathForPageSlug(slug: string): string {
-  return slug === 'home' ? '/' : `/${slug}`
+export function pathForPageSlug(slug: string, structure?: string): string {
+  if (slug === 'home') return '/'
+  if (structure) {
+    return resolvePagePath(structure, slug)
+  }
+  return `/${slug}`
 }
 
 export function pathForPostSlug(slug: string, structure?: string): string {
