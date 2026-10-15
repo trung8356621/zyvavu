@@ -14,7 +14,6 @@ import {
   Group,
   Paper,
   SegmentedControl,
-  Select,
   Stack,
   Switch,
   Text,
@@ -32,6 +31,7 @@ import {
   GripVertical,
   Laptop,
   Layers,
+  Lock,
   Sparkles,
   Trash2,
 } from 'lucide-react'
@@ -48,7 +48,6 @@ import {
   updateNodeInTree,
   deleteNodeFromTree,
 } from './treeUtils'
-import { MenuTargetSelector, type MenuTarget } from './MenuTargetSelector'
 import { DropdownEffectPicker } from '../shared/DropdownEffectPicker'
 import type { DropdownEffectId, ItemDropdownEffectId } from '../shared/dropdownEffects'
 
@@ -87,55 +86,7 @@ export function MenuTreeEditor({
     })
   }
 
-  const handleTypeChange = (id: string, newType: 'page' | 'post' | 'custom') => {
-    const patch: Partial<MenuTreeNode> = {
-      link: {
-        type: newType,
-        page: null,
-        post: null,
-        url: newType === 'custom' ? '/' : '',
-        newTab: false,
-      },
-      url: newType === 'custom' ? '/' : '',
-    }
-    onChange(updateNodeInTree(tree, id, patch))
-  }
 
-  const handleSelectTarget = (
-    id: string,
-    target: MenuTarget | null,
-    targetType: 'page' | 'post',
-  ) => {
-    if (!target) {
-      onChange(
-        updateNodeInTree(tree, id, {
-          link: {
-            type: targetType,
-            page: null,
-            post: null,
-            url: '',
-            newTab: false,
-          },
-          url: '',
-        }),
-      )
-      return
-    }
-
-    onChange(
-      updateNodeInTree(tree, id, {
-        label: target.title,
-        link: {
-          type: targetType,
-          page: targetType === 'page' ? target.id : null,
-          post: targetType === 'post' ? target.id : null,
-          url: target.canonicalPath,
-          newTab: false,
-        },
-        url: target.canonicalPath,
-      }),
-    )
-  }
 
   const handleUpdateLabel = (id: string, newLabel: string) => {
     onChange(updateNodeInTree(tree, id, { label: newLabel }))
@@ -261,14 +212,14 @@ export function MenuTreeEditor({
         <Group justify="space-between" align="center">
           <div>
             <Group gap="xs">
-              <Text fw={600} size="sm" style={{ color: 'var(--zyvavu-text, #17201f)' }}>
+              <Text fw={600} fz={15} style={{ color: 'var(--zyvavu-text, #17201f)' }}>
                 Menu Structure
               </Text>
-              <Badge size="xs" variant="light" color="#0e6b66">
+              <Badge size="sm" variant="light" color="#0e6b66" fz={11.5}>
                 {rows.length} {rows.length === 1 ? 'item' : 'items'}
               </Badge>
             </Group>
-            <Text size="xs" c="dimmed">
+            <Text fz={12} c="#556260">
               Drag items or use indent/outdent buttons to organize parent-child navigation. Click an
               item to edit link and submenu settings.
             </Text>
@@ -367,7 +318,7 @@ export function MenuTreeEditor({
                       {/* Item Title and Badges */}
                       <Group gap={6} wrap="nowrap" style={{ overflow: 'hidden' }}>
                         <Text
-                          size="sm"
+                          fz={14}
                           fw={600}
                           style={{
                             cursor: 'pointer',
@@ -380,7 +331,7 @@ export function MenuTreeEditor({
                         </Text>
 
                         {/* Target badge */}
-                        <Badge size="xs" variant="outline" color="gray">
+                        <Badge size="sm" variant="outline" color="gray" fz={11.5}>
                           {itemType === 'page'
                             ? 'Page'
                             : itemType === 'post'
@@ -391,10 +342,11 @@ export function MenuTreeEditor({
                         {/* Submenu status badge */}
                         {node.hasSubmenu && (
                           <Badge
-                            size="xs"
+                            size="sm"
                             variant="light"
                             color={isMega ? 'teal' : 'blue'}
-                            leftSection={isMega ? <Sparkles size={10} /> : <Layers size={10} />}
+                            fz={11.5}
+                            leftSection={isMega ? <Sparkles size={11} /> : <Layers size={11} />}
                           >
                             {isMega ? 'Mega Menu' : 'Classic Dropdown'}
                           </Badge>
@@ -402,7 +354,7 @@ export function MenuTreeEditor({
 
                         {/* Trigger Only badge */}
                         {node.triggerOnly && (
-                          <Badge size="xs" variant="light" color="orange">
+                          <Badge size="sm" variant="light" color="orange" fz={11.5}>
                             Trigger Only
                           </Badge>
                         )}
@@ -480,11 +432,11 @@ export function MenuTreeEditor({
                   </Group>
 
                   {/* Expanded Settings Panel */}
-                  <Collapse in={isExpanded}>
+                  <Collapse expanded={isExpanded}>
                     <Box pt="sm">
                       <Divider mb="sm" />
                       <Stack gap="sm">
-                        {/* 1. Label and Target Type */}
+                        {/* 1. Primary Link Fields */}
                         <Group align="flex-start" grow>
                           <TextInput
                             label="Navigation Label"
@@ -495,108 +447,85 @@ export function MenuTreeEditor({
                             onChange={(e) => handleUpdateLabel(node.id, e.currentTarget.value)}
                           />
 
-                          <Select
-                            label="Link Type"
-                            size="xs"
-                            value={itemType}
-                            disabled={disabled}
-                            onChange={(val: any) => handleTypeChange(node.id, val)}
-                            data={[
-                              { label: 'Page', value: 'page' },
-                              { label: 'Post', value: 'post' },
-                              { label: 'Custom URL', value: 'custom' },
-                            ]}
-                          />
-                        </Group>
-
-                        {/* 2. Target Selector & Canonical Path */}
-                        <Group align="flex-start" grow>
-                          {isPageOrPost ? (
-                            <MenuTargetSelector
-                              type={itemType}
-                              value={targetId}
-                              initialTitle={targetTitle}
-                              initialPath={targetPath}
-                              disabled={disabled}
-                              onSelect={(target) =>
-                                handleSelectTarget(node.id, target, itemType as 'page' | 'post')
-                              }
-                            />
-                          ) : (
+                          {itemType === 'custom' ? (
                             <TextInput
-                              label="Custom URL"
+                              label="URL / Path"
                               size="xs"
-                              placeholder="/path or https://..."
+                              placeholder="https://... or /path"
                               value={node.url || node.link?.url || ''}
                               disabled={disabled}
                               onChange={(e) => handleUpdateCustomUrl(node.id, e.currentTarget.value)}
                             />
+                          ) : (
+                            <TextInput
+                              label="URL / Path"
+                              size="xs"
+                              value={resolvedCanonicalPreview || '—'}
+                              readOnly
+                              disabled
+                              rightSection={
+                                <Tooltip
+                                  label={
+                                    targetTitle
+                                      ? `Locked to ${itemType === 'page' ? 'Page' : 'Post'}: "${targetTitle}" (ID: ${targetId})`
+                                      : targetId
+                                        ? `Locked to ${itemType === 'page' ? 'Page' : 'Post'} ID #${targetId}`
+                                        : 'Locked canonical URL from CMS relationship'
+                                  }
+                                  withArrow
+                                >
+                                  <Lock size={12} color="#65716e" />
+                                </Tooltip>
+                              }
+                            />
                           )}
-
-                          <TextInput
-                            label="Canonical URL Preview"
-                            size="xs"
-                            value={resolvedCanonicalPreview || '—'}
-                            readOnly
-                            disabled
-                          />
                         </Group>
 
-                        {/* 3. Link Behavior Checkboxes */}
-                        <Group gap="xl">
-                          <Checkbox
-                            label="Open in new window / tab"
-                            size="xs"
-                            checked={Boolean(node.newTab || node.link?.newTab)}
-                            disabled={disabled}
-                            onChange={(e) => handleUpdateNewTab(node.id, e.currentTarget.checked)}
-                          />
-
-                          <Checkbox
-                            label="Trigger only (clicking only opens dropdown; does not navigate)"
-                            size="xs"
-                            checked={Boolean(node.triggerOnly)}
-                            disabled={disabled}
-                            onChange={(e) => handleUpdateTriggerOnly(node.id, e.currentTarget.checked)}
-                          />
-                        </Group>
+                        {/* 2. Link Behavior Checkbox */}
+                        <Checkbox
+                          label="Open link in a new window / tab"
+                          size="xs"
+                          checked={Boolean(node.newTab || node.link?.newTab)}
+                          disabled={disabled}
+                          onChange={(e) => handleUpdateNewTab(node.id, e.currentTarget.checked)}
+                        />
 
                         <Divider my={4} />
 
-                        {/* 4. Submenu Configuration */}
-                        <Stack gap="xs">
-                          <Group justify="space-between" align="center">
-                            <div>
-                              <Text size="xs" fw={600}>
-                                Submenu Configuration
-                              </Text>
-                              <Text size="11px" c="dimmed">
-                                Configure whether this item acts as a dropdown menu parent
-                              </Text>
-                            </div>
+                        {/* 3. Visually separate Advanced & Submenu Section */}
+                        <Paper
+                          withBorder
+                          p="xs"
+                          radius="sm"
+                          style={{
+                            backgroundColor: 'var(--zyvavu-surface-subtle, #f8f9fa)',
+                          }}
+                        >
+                          <Stack gap="xs">
+                            <Group justify="space-between" align="center">
+                              <div>
+                                <Text fz={15} fw={600} c="#17201f">
+                                  Submenu Configuration
+                                </Text>
+                                <Text fz={12} c="#556260">
+                                  Configure whether this item acts as a dropdown menu parent
+                                </Text>
+                              </div>
 
-                            <Switch
-                              size="xs"
-                              color="#0e6b66"
-                              label="Enable Submenu"
-                              checked={Boolean(node.hasSubmenu)}
-                              disabled={disabled}
-                              onChange={(e) => handleUpdateHasSubmenu(node.id, e.currentTarget.checked)}
-                            />
-                          </Group>
+                              <Switch
+                                size="xs"
+                                color="#0e6b66"
+                                label="Enable Submenu"
+                                checked={Boolean(node.hasSubmenu)}
+                                disabled={disabled}
+                                onChange={(e) => handleUpdateHasSubmenu(node.id, e.currentTarget.checked)}
+                              />
+                            </Group>
 
-                          {node.hasSubmenu && (
-                            <Paper
-                              withBorder
-                              p="xs"
-                              radius="sm"
-                              style={{
-                                backgroundColor: 'var(--zyvavu-surface-subtle, #f8f9fa)',
-                              }}
-                            >
-                              <Stack gap="xs">
+                            {node.hasSubmenu && (
+                              <Stack gap="xs" pt={4}>
                                 <div>
-                                  <Text size="xs" fw={600} mb={4}>
+                                  <Text fz={13} fw={600} mb={4} c="#17201f">
                                     Submenu Type
                                   </Text>
                                   <SegmentedControl
@@ -616,7 +545,7 @@ export function MenuTreeEditor({
                                     ]}
                                   />
                                   {!enableMegaMenu && (
-                                    <Text size="11px" c="dimmed" mt={4}>
+                                    <Text fz={12} c="#556260" mt={4}>
                                       Mega Menu is disabled in Site Settings. Enable it to design visual layouts.
                                     </Text>
                                   )}
@@ -626,10 +555,10 @@ export function MenuTreeEditor({
                                   <Paper withBorder p="xs" radius="sm" style={{ backgroundColor: '#ffffff' }}>
                                     <Group justify="space-between" align="center">
                                       <div>
-                                        <Text size="xs" fw={600} c="#0e6b66">
+                                        <Text fz={14} fw={600} c="#0e6b66">
                                           Dedicated Visual Mega Layout
                                         </Text>
-                                        <Text size="11px" c="dimmed">
+                                        <Text fz={12} c="#556260">
                                           This item uses an independent desktop layout designed in Puck.
                                         </Text>
                                       </div>
@@ -638,7 +567,8 @@ export function MenuTreeEditor({
                                         <Button
                                           component={Link}
                                           href={`/admin/menu-builder?menuId=${menuId}&itemId=${node.id}`}
-                                          size="xs"
+                                          size="sm"
+                                          fz={14}
                                           color="#0e6b66"
                                           leftSection={<Laptop size={14} />}
                                           rightSection={<ExternalLink size={12} />}
@@ -646,8 +576,11 @@ export function MenuTreeEditor({
                                           Open Mega Menu Editor
                                         </Button>
                                       ) : (
-                                        <Tooltip label="Save the menu first so a real ID exists before opening Puck" withArrow>
-                                          <Button size="xs" color="gray" variant="light" disabled>
+                                        <Tooltip
+                                          label="Save the menu first so a real ID exists before opening Puck"
+                                          withArrow
+                                        >
+                                          <Button size="sm" fz={14} color="gray" variant="light" disabled>
                                             Save Menu First to Open Puck
                                           </Button>
                                         </Tooltip>
@@ -655,14 +588,14 @@ export function MenuTreeEditor({
                                     </Group>
                                   </Paper>
                                 ) : (
-                                  <Text size="11px" c="dimmed">
+                                  <Text fz={12} c="#556260">
                                     Classic Submenu: arrange sub-items under this item by indenting them in the menu structure above.
                                   </Text>
                                 )}
 
                                 {/* Dropdown Animation Effect */}
                                 <Box pt={4}>
-                                  <Text size="xs" fw={600} mb={4}>
+                                  <Text fz={15} fw={600} mb={6} c="#17201f">
                                     Dropdown Animation Effect
                                   </Text>
                                   <DropdownEffectPicker
@@ -673,10 +606,18 @@ export function MenuTreeEditor({
                                     disabled={disabled}
                                   />
                                 </Box>
+
+                                <Checkbox
+                                  label="Trigger only (clicking only opens dropdown; does not navigate)"
+                                  size="sm"
+                                  checked={Boolean(node.triggerOnly)}
+                                  disabled={disabled}
+                                  onChange={(e) => handleUpdateTriggerOnly(node.id, e.currentTarget.checked)}
+                                />
                               </Stack>
-                            </Paper>
-                          )}
-                        </Stack>
+                            )}
+                          </Stack>
+                        </Paper>
                       </Stack>
                     </Box>
                   </Collapse>

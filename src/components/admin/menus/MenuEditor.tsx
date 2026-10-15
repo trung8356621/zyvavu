@@ -220,14 +220,14 @@ export function MenuEditor({ initialDoc, enableMegaMenu, menuId }: MenuEditorPro
               {isCreate ? 'Create Menu' : `Edit Menu: ${name || initialDoc.name}`}
             </Title>
             {!isCreate && (
-              <Text size="xs" c="dimmed">
+              <Text fz={12} c="#556260">
                 (ID: {menuId})
               </Text>
             )}
           </Group>
 
           {isDirty && (
-            <Badge color="yellow" variant="light" size="sm">
+            <Badge color="yellow" variant="light" size="sm" fz={11.5}>
               Unsaved changes
             </Badge>
           )}
@@ -235,7 +235,7 @@ export function MenuEditor({ initialDoc, enableMegaMenu, menuId }: MenuEditorPro
 
         <Group gap="sm">
           {saveSuccess && (
-            <Badge color="teal" variant="light" leftSection={<Check size={12} />}>
+            <Badge color="teal" variant="light" size="sm" fz={11.5} leftSection={<Check size={12} />}>
               Menu saved successfully
             </Badge>
           )}
@@ -303,7 +303,7 @@ export function MenuEditor({ initialDoc, enableMegaMenu, menuId }: MenuEditorPro
           </Group>
 
           <div>
-            <Text size="xs" fw={600} mb={6}>
+            <Text fz={15} fw={600} mb={6} c="#17201f">
               Default Dropdown Animation Effect
             </Text>
             <DropdownEffectPicker

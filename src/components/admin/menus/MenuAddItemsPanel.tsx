@@ -262,10 +262,10 @@ export function MenuAddItemsPanel({ onAddItems, disabled = false }: MenuAddItems
     >
       <Stack gap="sm">
         <div>
-          <Text fw={600} size="sm" style={{ color: 'var(--zyvavu-text, #17201f)' }}>
+          <Text fw={600} fz={15} style={{ color: 'var(--zyvavu-text, #17201f)' }}>
             Add Menu Items
           </Text>
-          <Text size="xs" c="dimmed">
+          <Text fz={12} c="#556260">
             Select items to append to the menu tree
           </Text>
         </div>
@@ -274,7 +274,7 @@ export function MenuAddItemsPanel({ onAddItems, disabled = false }: MenuAddItems
           {/* 1. Pages Accordion */}
           <Accordion.Item value="pages">
             <Accordion.Control icon={<FileText size={16} color="#0e6b66" />}>
-              <Text size="xs" fw={600}>
+              <Text fz={14} fw={600}>
                 Pages
               </Text>
             </Accordion.Control>
@@ -294,7 +294,7 @@ export function MenuAddItemsPanel({ onAddItems, disabled = false }: MenuAddItems
                       <Loader size="xs" />
                     </Box>
                   ) : pages.length === 0 ? (
-                    <Text size="xs" c="dimmed" py="xs" ta="center">
+                    <Text fz={12} c="#556260" py="xs" ta="center">
                       No published pages found.
                     </Text>
                   ) : (
@@ -309,10 +309,10 @@ export function MenuAddItemsPanel({ onAddItems, disabled = false }: MenuAddItems
                             onChange={() => togglePageSelect(String(p.id))}
                             label={
                               <Box>
-                                <Text size="xs" fw={500} lineClamp={1}>
+                                <Text fz={13} fw={500} lineClamp={1}>
                                   {p.title}
                                 </Text>
-                                <Text size="10px" c="dimmed">
+                                <Text fz={12} c="#556260" lineClamp={1}>
                                   {p.canonicalPath}
                                 </Text>
                               </Box>
@@ -328,6 +328,7 @@ export function MenuAddItemsPanel({ onAddItems, disabled = false }: MenuAddItems
                   <Button
                     variant="subtle"
                     size="compact-xs"
+                    fz={12}
                     color="gray"
                     onClick={toggleAllPages}
                     disabled={pages.length === 0}
@@ -338,6 +339,7 @@ export function MenuAddItemsPanel({ onAddItems, disabled = false }: MenuAddItems
                   </Button>
                   <Button
                     size="xs"
+                    fz={13}
                     variant="light"
                     color="#0e6b66"
                     leftSection={<Plus size={12} />}
@@ -354,7 +356,7 @@ export function MenuAddItemsPanel({ onAddItems, disabled = false }: MenuAddItems
           {/* 2. Posts Accordion */}
           <Accordion.Item value="posts">
             <Accordion.Control icon={<Globe size={16} color="#0e6b66" />}>
-              <Text size="xs" fw={600}>
+              <Text fz={14} fw={600}>
                 Posts
               </Text>
             </Accordion.Control>
@@ -374,7 +376,7 @@ export function MenuAddItemsPanel({ onAddItems, disabled = false }: MenuAddItems
                       <Loader size="xs" />
                     </Box>
                   ) : posts.length === 0 ? (
-                    <Text size="xs" c="dimmed" py="xs" ta="center">
+                    <Text fz={12} c="#556260" py="xs" ta="center">
                       No published posts found.
                     </Text>
                   ) : (
@@ -389,10 +391,10 @@ export function MenuAddItemsPanel({ onAddItems, disabled = false }: MenuAddItems
                             onChange={() => togglePostSelect(String(p.id))}
                             label={
                               <Box>
-                                <Text size="xs" fw={500} lineClamp={1}>
+                                <Text fz={13} fw={500} lineClamp={1}>
                                   {p.title}
                                 </Text>
-                                <Text size="10px" c="dimmed">
+                                <Text fz={12} c="#556260" lineClamp={1}>
                                   {p.canonicalPath}
                                 </Text>
                               </Box>
@@ -408,6 +410,7 @@ export function MenuAddItemsPanel({ onAddItems, disabled = false }: MenuAddItems
                   <Button
                     variant="subtle"
                     size="compact-xs"
+                    fz={12}
                     color="gray"
                     onClick={toggleAllPosts}
                     disabled={posts.length === 0}
@@ -418,6 +421,7 @@ export function MenuAddItemsPanel({ onAddItems, disabled = false }: MenuAddItems
                   </Button>
                   <Button
                     size="xs"
+                    fz={13}
                     variant="light"
                     color="#0e6b66"
                     leftSection={<Plus size={12} />}
@@ -434,7 +438,7 @@ export function MenuAddItemsPanel({ onAddItems, disabled = false }: MenuAddItems
           {/* 3. Custom Links Accordion */}
           <Accordion.Item value="custom">
             <Accordion.Control icon={<Link2 size={16} color="#0e6b66" />}>
-              <Text size="xs" fw={600}>
+              <Text fz={14} fw={600}>
                 Custom Links
               </Text>
             </Accordion.Control>
@@ -464,6 +468,7 @@ export function MenuAddItemsPanel({ onAddItems, disabled = false }: MenuAddItems
                 <Group justify="flex-end" pt="xs">
                   <Button
                     size="xs"
+                    fz={13}
                     variant="light"
                     color="#0e6b66"
                     leftSection={<Plus size={12} />}
