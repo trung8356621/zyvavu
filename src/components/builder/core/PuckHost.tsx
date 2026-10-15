@@ -1,13 +1,25 @@
 'use client'
 
 import React, { useCallback, useMemo, useState } from 'react'
-import { Puck, type Config, type Data } from '@puckeditor/core'
+import { Puck, type Config, type Data, type Viewport } from '@puckeditor/core'
 import '@puckeditor/core/dist/index.css'
 import { Alert, Box, Button, Group, LoadingOverlay, Text } from '@mantine/core'
 import { Check, AlertCircle, Save } from 'lucide-react'
 
 import { CURRENT_BUILDER_VERSION, validateBuilderDocument } from './document'
 import type { BuilderDocument } from './types'
+
+export const DESKTOP_ONLY_VIEWPORT: Viewport[] = [
+  { width: '100%', height: 'auto', label: 'Desktop', icon: 'Monitor' },
+]
+
+export const RESPONSIVE_VIEWPORTS: Viewport[] = [
+  { width: 360, height: 'auto', label: 'Mobile', icon: 'Smartphone' },
+  { width: 768, height: 'auto', label: 'Tablet', icon: 'Tablet' },
+  { width: '100%', height: 'auto', label: 'Desktop', icon: 'Monitor' },
+]
+
+export const MEGA_MENU_VIEWPORTS = DESKTOP_ONLY_VIEWPORT
 
 export type PuckHostProps = {
   config: Config
@@ -20,6 +32,8 @@ export type PuckHostProps = {
   headerActions?: React.ReactNode
   hideTopBar?: boolean
   height?: string | number
+  viewports?: Viewport[]
+  desktopOnly?: boolean
 }
 
 export function PuckHost({
@@ -33,6 +47,8 @@ export function PuckHost({
   headerActions,
   hideTopBar = false,
   height,
+  viewports,
+  desktopOnly = false,
 }: PuckHostProps) {
   const [localDoc, setLocalDoc] = useState<BuilderDocument>(document)
   const [validationError, setValidationError] = useState<string | null>(null)
@@ -110,13 +126,10 @@ export function PuckHost({
       style={{
         display: 'flex',
         flexDirection: 'column',
-        height: height || 'calc(100vh - 140px)',
-        minHeight: '600px',
+        height: height || '100%',
         width: '100%',
         position: 'relative',
         backgroundColor: 'var(--zyvavu-surface, #ffffff)',
-        border: '1px solid var(--zyvavu-border, #dfe5e2)',
-        borderRadius: '8px',
         overflow: 'hidden',
       }}
     >
@@ -190,15 +203,35 @@ export function PuckHost({
           position: 'relative',
         }}
       >
-        <Puck
-          config={config}
-          data={puckData}
-          overrides={{
-            headerActions: () => <React.Fragment />,
-          }}
-          onPublish={handlePublish}
-          onChange={handlePuckChange}
-        />
+        {(() => {
+          const activeViewports = desktopOnly
+            ? DESKTOP_ONLY_VIEWPORT
+            : viewports || RESPONSIVE_VIEWPORTS
+          const showControls = !desktopOnly
+
+          return (
+            <Puck
+              config={config}
+              data={puckData}
+              viewports={activeViewports}
+              ui={{
+                viewports: {
+                  current: {
+                    width: '100%',
+                    height: 'auto',
+                  },
+                  options: activeViewports,
+                  controlsVisible: showControls,
+                },
+              }}
+              overrides={{
+                headerActions: () => <React.Fragment />,
+              }}
+              onPublish={handlePublish}
+              onChange={handlePuckChange}
+            />
+          )
+        })()}
       </Box>
     </Box>
   )

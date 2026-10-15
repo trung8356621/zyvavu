@@ -100,10 +100,29 @@ export function MegaMenuBuilder({
       setSaveSuccess(false)
 
       try {
+        // CROSS-TAB DATA SAFETY:
+        // Before updating, fetch the latest menu document from server to ensure
+        // other items' layouts modified concurrently in another tab are strictly preserved.
+        let latestServerMegaLayouts = existingMegaLayouts || {}
+        try {
+          const freshRes = await fetch(`/api/menus/${menuId}?depth=0`, {
+            credentials: 'include',
+            headers: { 'Cache-Control': 'no-cache' },
+          })
+          if (freshRes.ok) {
+            const freshDoc = await freshRes.json()
+            if (freshDoc?.megaLayouts && typeof freshDoc.megaLayouts === 'object') {
+              latestServerMegaLayouts = freshDoc.megaLayouts
+            }
+          }
+        } catch {
+          // If fresh read fails, fallback to existingMegaLayouts
+        }
+
         // CONTRACT: Update ONLY megaLayouts[itemId].
         // Preserve other items' layouts, classic items, relationships, etc.
         const updatedMegaLayouts = {
-          ...(existingMegaLayouts || {}),
+          ...latestServerMegaLayouts,
           [itemId]: docToSave,
         }
 
@@ -150,42 +169,34 @@ export function MegaMenuBuilder({
         flexDirection: 'column',
         width: '100%',
         height: '100%',
-        padding: '12px 16px',
+        padding: 0,
+        margin: 0,
         boxSizing: 'border-box',
         backgroundColor: 'var(--zyvavu-background, #f5f6f4)',
-        gap: '12px',
+        overflow: 'hidden',
       }}
     >
-      {/* Top Header with Single Primary Save Action */}
-      <Paper
-        p="sm"
-        radius="md"
-        withBorder
+      {/* Top Header prioritizing Item Name, Unsaved Status, and Save */}
+      <header
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          height: '52px',
+          padding: '0 16px',
           backgroundColor: 'var(--zyvavu-surface, #ffffff)',
+          borderBottom: '1px solid var(--zyvavu-border, #dfe5e2)',
           flexShrink: 0,
+          zIndex: 10,
         }}
       >
         <Group gap="md">
-          <Button
-            variant="subtle"
-            size="sm"
-            color="gray"
-            leftSection={<ArrowLeft size={16} />}
-            onClick={handleBack}
-          >
-            Back to Menu Edit
-          </Button>
-
           <Group gap="xs">
-            <Title order={3} size="h4" style={{ color: 'var(--zyvavu-text, #17201f)', margin: 0 }}>
+            <Text fw={600} size="sm" style={{ color: 'var(--zyvavu-text, #17201f)', margin: 0 }}>
               Mega Menu: {itemLabel}
-            </Title>
+            </Text>
             <Text size="xs" c="dimmed">
-              (Menu: {menuName} #{menuId} | Item ID: {itemId})
+              ({menuName} &bull; Item ID: {itemId})
             </Text>
           </Group>
 
@@ -213,7 +224,7 @@ export function MegaMenuBuilder({
             Save Mega Layout
           </Button>
         </Group>
-      </Paper>
+      </header>
 
       {saveError && (
         <Alert
@@ -222,7 +233,7 @@ export function MegaMenuBuilder({
           color="red"
           withCloseButton
           onClose={() => setSaveError(null)}
-          style={{ flexShrink: 0 }}
+          style={{ flexShrink: 0, borderRadius: 0, borderLeft: 0, borderRight: 0 }}
         >
           {saveError}
         </Alert>
@@ -233,15 +244,18 @@ export function MegaMenuBuilder({
         style={{
           flex: 1,
           minHeight: 0,
+          width: '100%',
           display: 'flex',
           flexDirection: 'column',
           position: 'relative',
+          overflow: 'hidden',
         }}
       >
         <PuckHost
           config={megaMenuConfig}
           document={megaLayout}
           hideTopBar={true}
+          desktopOnly={true}
           height="100%"
           isSaving={isSaving}
           onChange={(updated) => {

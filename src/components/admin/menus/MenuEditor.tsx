@@ -131,15 +131,19 @@ export function MenuEditor({ initialDoc, enableMegaMenu, menuId }: MenuEditorPro
         items: flatList,
       }
 
-      // Preserve existing megaLayouts map & legacy fields
-      if (initialDoc.megaLayouts) {
-        payloadData.megaLayouts = initialDoc.megaLayouts
-      }
-      if (initialDoc.megaLayout) {
-        payloadData.megaLayout = initialDoc.megaLayout
-      }
-      if (initialDoc.mobileMenu) {
-        payloadData.mobileMenu = initialDoc.mobileMenu
+      // Only attach initial megaLayouts/mobileMenu when creating a brand new document.
+      // On PATCH (update), NEVER send stale megaLayouts, megaLayout, or mobileMenu
+      // so we don't overwrite concurrent edits saved from the Mega Builder tab.
+      if (isCreate) {
+        if (initialDoc.megaLayouts) {
+          payloadData.megaLayouts = initialDoc.megaLayouts
+        }
+        if (initialDoc.megaLayout) {
+          payloadData.megaLayout = initialDoc.megaLayout
+        }
+        if (initialDoc.mobileMenu) {
+          payloadData.mobileMenu = initialDoc.mobileMenu
+        }
       }
 
       const url = isCreate ? '/api/menus' : `/api/menus/${menuId}`
@@ -320,7 +324,7 @@ export function MenuEditor({ initialDoc, enableMegaMenu, menuId }: MenuEditorPro
       </Paper>
 
       {/* 3. WordPress-style Two-Column Layout */}
-      <Grid gutter="md">
+      <Grid gap="md">
         {/* Left Column (65–70%): Menu Structure Tree */}
         <Grid.Col span={{ base: 12, md: 8 }}>
           <MenuTreeEditor

@@ -567,6 +567,8 @@ export function MenuTreeEditor({
                                         <Button
                                           component={Link}
                                           href={`/admin/menu-builder?menuId=${menuId}&itemId=${node.id}`}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
                                           size="sm"
                                           fz={14}
                                           color="#0e6b66"

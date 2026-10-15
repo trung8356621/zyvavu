@@ -2,7 +2,6 @@ import React from 'react'
 import Link from 'next/link'
 import type { AdminViewServerProps } from 'payload'
 import { getPayload } from 'payload'
-import { DefaultTemplate } from '@payloadcms/next/templates'
 import { Button, Paper, Stack, Text, Title } from '@mantine/core'
 import { ArrowLeft } from 'lucide-react'
 
@@ -15,14 +14,56 @@ export async function MegaMenuBuilderView(props: AdminViewServerProps) {
   const req = props.initPageResult?.req || anyProps.req
   const user = req?.user || anyProps.user
   const payload = req?.payload || anyProps.payload || (await getPayload({ config }))
-  const visibleEntities =
-    props.initPageResult?.visibleEntities ||
-    anyProps.visibleEntities || { collections: {}, globals: {} }
 
   if (!isSiteStaff(user)) {
     return (
-      <div style={{ padding: '24px' }}>
-        <p>Forbidden. Mega Menu Builder is limited to site-admin and system-admin.</p>
+      <div
+        className="zyvavu-fullscreen-builder-forbidden"
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          width: '100vw',
+          height: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: 'var(--zyvavu-background, #f5f6f4)',
+          padding: '24px',
+          boxSizing: 'border-box',
+          zIndex: 9999,
+        }}
+      >
+        <Paper
+          p="xl"
+          radius="md"
+          withBorder
+          style={{
+            backgroundColor: 'var(--zyvavu-surface, #ffffff)',
+            maxWidth: '500px',
+            width: '100%',
+          }}
+        >
+          <Stack gap="md">
+            <Title order={2} size="h3" c="red">
+              Access Forbidden
+            </Title>
+            <Text size="sm">
+              Mega Menu Builder is limited to site-admin and system-admin roles.
+            </Text>
+            <Button
+              component={Link}
+              href="/admin"
+              variant="light"
+              color="gray"
+              leftSection={<ArrowLeft size={16} />}
+            >
+              Back to Dashboard
+            </Button>
+          </Stack>
+        </Paper>
       </div>
     )
   }
@@ -178,8 +219,9 @@ export async function MegaMenuBuilderView(props: AdminViewServerProps) {
       // 2. Fall back to legacy menuDoc.megaLayout if available
       // 3. Defaults to null (MegaMenuBuilder will generate default document)
       initialItemLayout =
-        menuDoc.megaLayouts?.[itemId] ||
-        (menuDoc.megaLayout && !menuDoc.megaLayouts?.[itemId] ? menuDoc.megaLayout : null)
+        itemId && menuDoc.megaLayouts?.[itemId]
+          ? menuDoc.megaLayouts[itemId]
+          : menuDoc.megaLayout || null
     } catch {
       errorContent = (
         <Paper
@@ -215,35 +257,60 @@ export async function MegaMenuBuilderView(props: AdminViewServerProps) {
     }
   }
 
-  return (
-    <DefaultTemplate
-      {...props}
-      payload={payload}
-      req={req}
-      user={user}
-      visibleEntities={visibleEntities}
-    >
+  if (errorContent) {
+    return (
       <div
+        className="zyvavu-fullscreen-builder-error"
         style={{
-          width: '100%',
-          height: 'calc(100vh - 60px)',
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          width: '100vw',
+          height: '100vh',
           display: 'flex',
-          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: 'var(--zyvavu-background, #f5f6f4)',
+          padding: '24px',
           boxSizing: 'border-box',
+          zIndex: 9999,
         }}
       >
-        {errorContent || (
-          <MegaMenuBuilder
-            menuId={menuId!}
-            itemId={itemId!}
-            itemLabel={itemLabel}
-            menuName={menuDoc?.name || 'Untitled Menu'}
-            initialMegaLayout={initialItemLayout}
-            existingMegaLayouts={menuDoc?.megaLayouts || {}}
-            existingMobileMenu={menuDoc?.mobileMenu}
-          />
-        )}
+        {errorContent}
       </div>
-    </DefaultTemplate>
+    )
+  }
+
+  return (
+    <div
+      className="zyvavu-fullscreen-builder-layout"
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100vw',
+        height: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        boxSizing: 'border-box',
+        overflow: 'hidden',
+        zIndex: 1,
+        backgroundColor: 'var(--zyvavu-background, #f5f6f4)',
+      }}
+    >
+      <MegaMenuBuilder
+        menuId={menuId!}
+        itemId={itemId!}
+        itemLabel={itemLabel}
+        menuName={menuDoc?.name || 'Untitled Menu'}
+        initialMegaLayout={initialItemLayout}
+        existingMegaLayouts={menuDoc?.megaLayouts || {}}
+        existingMobileMenu={menuDoc?.mobileMenu}
+      />
+    </div>
   )
 }

@@ -105,11 +105,22 @@ describe('Mega Menu Preset & Component Registry', () => {
     expect(megaMenuConfig.components).toHaveProperty('LinkList')
     expect(megaMenuConfig.components).toHaveProperty('PromoBanner')
     expect(megaMenuConfig.components).toHaveProperty('ContactCard')
+    expect(megaMenuConfig.components).toHaveProperty('PostCategoryList')
+    expect(megaMenuConfig.components).toHaveProperty('ProductCategoryList')
 
     expect(megaMenuConfig.categories?.layout?.components).toContain('Columns')
     expect(megaMenuConfig.categories?.navigation?.components).toContain('LinkList')
     expect(megaMenuConfig.categories?.navigation?.components).toContain('PromoBanner')
     expect(megaMenuConfig.categories?.navigation?.components).toContain('ContactCard')
+    expect(megaMenuConfig.categories?.navigation?.components).toContain('PostCategoryList')
+    expect(megaMenuConfig.categories?.navigation?.components).toContain('ProductCategoryList')
+  })
+
+  it('keeps ProductCategoryList in an explicit disabled state pending Products module', () => {
+    const productBlock = megaMenuConfig.components.ProductCategoryList
+    expect(productBlock).toBeDefined()
+    expect(productBlock.label).toContain('Disabled')
+    expect(productBlock.permissions?.edit).toBe(false)
   })
 
   it('does NOT expose a functional ProductList block in V1A', () => {
@@ -688,7 +699,7 @@ describe('Mega Menu V4 — Per-Item Mega Layout Storage & Isolation', () => {
       content: [{ type: 'LinkList', props: { id: 'l1-updated' } }],
     }
 
-    const patchPayload = {
+    const patchPayload: { megaLayouts: Record<string, any> } = {
       megaLayouts: {
         ...existingMegaLayouts,
         'item-1': updatedItem1Layout,
@@ -761,5 +772,45 @@ describe('Mega Menu V4 — Payload Collection Schema & Hooks', () => {
     ).resolves.toEqual({
       items: [{ label: 'Item 1', hasSubmenu: true, submenuType: 'classic' }],
     })
+  })
+})
+
+describe('Developer Item Template Registry & Extensible Adapters', () => {
+  it('registers and retrieves post item templates by stable ID', async () => {
+    const { getPostTemplate, getPostTemplateOptions, registerPostTemplate } = await import(
+      '@/components/builder'
+    )
+    const initialOptions = getPostTemplateOptions()
+    expect(initialOptions.some((o) => o.value === 'default-link-list')).toBe(true)
+    expect(initialOptions.some((o) => o.value === 'title-and-excerpt')).toBe(true)
+
+    // Developer registers custom template
+    registerPostTemplate({
+      id: 'custom-dev-card',
+      label: 'Custom Developer Card',
+      render: () => null,
+    })
+
+    const found = getPostTemplate('custom-dev-card')
+    expect(found.id).toBe('custom-dev-card')
+    expect(found.label).toBe('Custom Developer Card')
+
+    // Falls back to default if not found
+    const fallback = getPostTemplate('non-existent-id')
+    expect(fallback.id).toBe('default-link-list')
+  })
+
+  it('provides extensible product adapter throwing explicit pending module error', async () => {
+    const { pendingProductAdapter } = await import('@/components/builder')
+    await expect(
+      pendingProductAdapter.fetchProductsByCategory({ categoryId: '1', limit: 4 }),
+    ).rejects.toThrow(/ProductCatalogProviderUnavailable/)
+  })
+
+  it('configures desktop-only viewport without responsive switchers for mega menu', async () => {
+    const { DESKTOP_ONLY_VIEWPORT, RESPONSIVE_VIEWPORTS } = await import('@/components/builder')
+    expect(DESKTOP_ONLY_VIEWPORT).toHaveLength(1)
+    expect(DESKTOP_ONLY_VIEWPORT[0].width).toBe('100%')
+    expect(RESPONSIVE_VIEWPORTS.some((v) => v.label === 'Mobile')).toBe(true)
   })
 })
