@@ -39,10 +39,46 @@ export const Menus: CollectionConfig = {
       ],
     },
     {
+      name: 'defaultDropdownEffect',
+      type: 'select',
+      defaultValue: 'fade',
+      options: [
+        { label: 'None', value: 'none' },
+        { label: 'Fade', value: 'fade' },
+        { label: 'Slide Down', value: 'slide-down' },
+      ],
+      admin: {
+        description: 'Default dropdown animation transition for this menu.',
+      },
+    },
+    {
       name: 'items',
       type: 'array',
       fields: [
         { name: 'label', type: 'text', required: true },
+        { name: 'parentId', type: 'text', admin: { hidden: true } },
+        { name: 'hasSubmenu', type: 'checkbox', defaultValue: false },
+        {
+          name: 'submenuType',
+          type: 'select',
+          defaultValue: 'classic',
+          options: [
+            { label: 'Classic', value: 'classic' },
+            { label: 'Mega Menu', value: 'mega' },
+          ],
+        },
+        {
+          name: 'dropdownEffect',
+          type: 'select',
+          defaultValue: 'inherit',
+          options: [
+            { label: 'Inherit Default', value: 'inherit' },
+            { label: 'None', value: 'none' },
+            { label: 'Fade', value: 'fade' },
+            { label: 'Slide Down', value: 'slide-down' },
+          ],
+        },
+        { name: 'triggerOnly', type: 'checkbox', defaultValue: false },
         {
           name: 'link',
           type: 'group',
@@ -81,6 +117,13 @@ export const Menus: CollectionConfig = {
       ],
     },
     {
+      name: 'megaLayouts',
+      type: 'json',
+      admin: {
+        description: 'Map of item IDs to versioned Puck layout documents for Mega Menus.',
+      },
+    },
+    {
       name: 'mode',
       type: 'select',
       defaultValue: 'classic',
@@ -89,14 +132,14 @@ export const Menus: CollectionConfig = {
         { label: 'Mega Menu', value: 'mega' },
       ],
       admin: {
-        description: 'Menu rendering mode: Classic simple link tree or Desktop Mega Layout.',
+        description: 'Legacy menu rendering mode (maintained for backwards compatibility).',
       },
     },
     {
       name: 'megaLayout',
       type: 'json',
       admin: {
-        description: 'Versioned Puck layout document for Desktop Mega Menu.',
+        description: 'Legacy whole-menu Puck layout document (maintained for backwards compatibility).',
       },
     },
     {
@@ -110,7 +153,11 @@ export const Menus: CollectionConfig = {
   hooks: {
     beforeChange: [
       async ({ data, req }) => {
-        if (data?.mode === 'mega') {
+        const hasMegaSubmenu =
+          Array.isArray(data?.items) &&
+          data.items.some((i: any) => i?.hasSubmenu && i?.submenuType === 'mega')
+
+        if (data?.mode === 'mega' || hasMegaSubmenu) {
           const settings = await req.payload
             .findGlobal({
               slug: 'settings',

@@ -18,7 +18,6 @@ import {
   type BuilderDocument,
   createDefaultMegaMenuDocument,
   deserializeBuilderDocument,
-  extractNormalizedSourceLinks,
   megaMenuConfig,
   PuckHost,
   validateBuilderDocument,
@@ -26,15 +25,21 @@ import {
 
 export type MegaMenuBuilderProps = {
   menuId: string | number
+  itemId: string
+  itemLabel: string
   menuName: string
   initialMegaLayout?: any
+  existingMegaLayouts?: Record<string, any>
   existingMobileMenu?: any
 }
 
 export function MegaMenuBuilder({
   menuId,
+  itemId,
+  itemLabel,
   menuName,
   initialMegaLayout,
+  existingMegaLayouts = {},
   existingMobileMenu,
 }: MegaMenuBuilderProps) {
   const router = useRouter()
@@ -73,7 +78,7 @@ export function MegaMenuBuilder({
   const handleBack = () => {
     if (isDirty) {
       const confirmLeave = window.confirm(
-        'You have unsaved changes in the Mega Menu Layout. Are you sure you want to leave without saving?',
+        'You have unsaved changes in this Mega Menu Layout. Are you sure you want to leave without saving?',
       )
       if (!confirmLeave) return
     }
@@ -95,26 +100,15 @@ export function MegaMenuBuilder({
       setSaveSuccess(false)
 
       try {
-        const extractedSourceLinks = extractNormalizedSourceLinks(docToSave)
+        // CONTRACT: Update ONLY megaLayouts[itemId].
+        // Preserve other items' layouts, classic items, relationships, etc.
+        const updatedMegaLayouts = {
+          ...(existingMegaLayouts || {}),
+          [itemId]: docToSave,
+        }
 
-        // CONTRACT: Update ONLY megaLayout and mobileMenu source snapshot.
-        // Do NOT overwrite name, location, classic items, or page/post relationships.
         const patchBody: Record<string, any> = {
-          megaLayout: docToSave,
-          mobileMenu: {
-            version: existingMobileMenu?.version || 1,
-            items:
-              existingMobileMenu?.items && existingMobileMenu.items.length > 0
-                ? existingMobileMenu.items
-                : extractedSourceLinks.map((sl) => ({
-                    id: sl.id,
-                    label: sl.label,
-                    url: sl.url,
-                    newTab: sl.newTab,
-                    sourceLinkId: sl.id,
-                  })),
-            sourceSnapshot: extractedSourceLinks,
-          },
+          megaLayouts: updatedMegaLayouts,
         }
 
         const res = await fetch(`/api/menus/${menuId}`, {
@@ -145,7 +139,7 @@ export function MegaMenuBuilder({
         setIsSaving(false)
       }
     },
-    [existingMobileMenu, megaLayout, menuId],
+    [existingMegaLayouts, itemId, megaLayout, menuId],
   )
 
   return (
@@ -188,10 +182,10 @@ export function MegaMenuBuilder({
 
           <Group gap="xs">
             <Title order={3} size="h4" style={{ color: 'var(--zyvavu-text, #17201f)', margin: 0 }}>
-              Mega Menu Builder: {menuName}
+              Mega Menu: {itemLabel}
             </Title>
             <Text size="xs" c="dimmed">
-              (ID: {menuId})
+              (Menu: {menuName} #{menuId} | Item ID: {itemId})
             </Text>
           </Group>
 

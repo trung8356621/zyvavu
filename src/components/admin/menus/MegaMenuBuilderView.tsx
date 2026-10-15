@@ -40,12 +40,15 @@ export async function MegaMenuBuilderView(props: AdminViewServerProps) {
     enableMegaMenu = false
   }
 
-  // Extract menuId from searchParams (supporting sync or Promise searchParams)
+  // Extract menuId and itemId from searchParams
   const resolvedSearchParams = props.searchParams
     ? await Promise.resolve(props.searchParams)
     : undefined
   const rawMenuId = resolvedSearchParams?.menuId
   const menuId = Array.isArray(rawMenuId) ? rawMenuId[0] : rawMenuId
+
+  const rawItemId = resolvedSearchParams?.itemId
+  const itemId = Array.isArray(rawItemId) ? rawItemId[0] : rawItemId
 
   let errorContent: React.ReactNode = null
 
@@ -98,7 +101,7 @@ export async function MegaMenuBuilderView(props: AdminViewServerProps) {
             Menu Save Required
           </Title>
           <Text size="sm">
-            No existing menu was specified. Please save a Menu document first before designing its
+            No existing menu was specified. Please save the Menu document first before designing its
             Mega Layout.
           </Text>
           <Button
@@ -113,9 +116,44 @@ export async function MegaMenuBuilderView(props: AdminViewServerProps) {
         </Stack>
       </Paper>
     )
+  } else if (!itemId) {
+    errorContent = (
+      <Paper
+        p="xl"
+        radius="md"
+        withBorder
+        style={{
+          backgroundColor: 'var(--zyvavu-surface, #ffffff)',
+          maxWidth: '600px',
+          margin: '40px auto',
+        }}
+      >
+        <Stack gap="md">
+          <Title order={2} size="h3" c="orange">
+            Menu Item Required
+          </Title>
+          <Text size="sm">
+            No menu item ID was specified. In V4, Mega Menu layouts are configured per-item. Please
+            open the Mega Menu Editor from a specific menu item.
+          </Text>
+          <Button
+            component={Link}
+            href={`/admin/collections/menus/${menuId}`}
+            variant="light"
+            color="gray"
+            leftSection={<ArrowLeft size={16} />}
+          >
+            Back to Menu
+          </Button>
+        </Stack>
+      </Paper>
+    )
   }
 
   let menuDoc: any = null
+  let itemLabel = ''
+  let initialItemLayout: any = null
+
   if (!errorContent && menuId) {
     try {
       menuDoc = await payload.findByID({
@@ -128,6 +166,20 @@ export async function MegaMenuBuilderView(props: AdminViewServerProps) {
       if (!menuDoc) {
         throw new Error('Not found')
       }
+
+      const matchingItem = Array.isArray(menuDoc.items)
+        ? menuDoc.items.find((i: any) => String(i.id) === String(itemId))
+        : null
+
+      itemLabel = matchingItem?.label || `Item ${itemId}`
+
+      // Per-item layout resolution:
+      // 1. Check menuDoc.megaLayouts[itemId]
+      // 2. Fall back to legacy menuDoc.megaLayout if available
+      // 3. Defaults to null (MegaMenuBuilder will generate default document)
+      initialItemLayout =
+        menuDoc.megaLayouts?.[itemId] ||
+        (menuDoc.megaLayout && !menuDoc.megaLayouts?.[itemId] ? menuDoc.megaLayout : null)
     } catch {
       errorContent = (
         <Paper
@@ -183,8 +235,11 @@ export async function MegaMenuBuilderView(props: AdminViewServerProps) {
         {errorContent || (
           <MegaMenuBuilder
             menuId={menuId!}
+            itemId={itemId!}
+            itemLabel={itemLabel}
             menuName={menuDoc?.name || 'Untitled Menu'}
-            initialMegaLayout={menuDoc?.megaLayout}
+            initialMegaLayout={initialItemLayout}
+            existingMegaLayouts={menuDoc?.megaLayouts || {}}
             existingMobileMenu={menuDoc?.mobileMenu}
           />
         )}

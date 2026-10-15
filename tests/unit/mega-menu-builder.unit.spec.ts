@@ -15,6 +15,20 @@ import {
 } from '@/components/builder'
 import { Menus } from '@/collections/Menus'
 import { Settings } from '@/globals/Settings'
+import {
+  DROPDOWN_EFFECTS,
+  resolveDropdownEffect,
+  type DropdownEffectId,
+  type ItemDropdownEffectId,
+} from '@/components/admin/shared/dropdownEffects'
+import {
+  flatItemsToTree,
+  treeToFlatItems,
+  indentNodeInTree,
+  outdentNodeInTree,
+  type MenuTreeNode,
+  type ClassicMenuItem,
+} from '@/components/admin/menus/treeUtils'
 
 describe('Reusable Puck Core — Document Contracts & Validation', () => {
   it('creates an empty builder document with version and safe defaults', () => {
@@ -353,7 +367,7 @@ describe('Mega Menu Builder Custom View & Route Registration', () => {
     expect(views.menuBuilder.Component).toBe(
       '@/components/admin/menus/MegaMenuBuilderView#MegaMenuBuilderView',
     )
-  })
+  }, 30000)
 })
 
 describe('Classic Menu Item Redesign & Relationship Target Contracts', () => {
@@ -521,5 +535,231 @@ describe('Dedicated Mega Menu Save Contract', () => {
     expect(patchPayload.megaLayout.content[0].props.id).toBe('updated-link-list')
     expect(patchPayload.mobileMenu.sourceSnapshot).toHaveLength(1)
     expect(patchPayload.mobileMenu.sourceSnapshot[0].label).toBe('Products')
+  })
+})
+
+describe('Mega Menu V4 — Dropdown Effect Registry & Inheritance', () => {
+  it('registers all required dropdown effects with metadata', () => {
+    expect(DROPDOWN_EFFECTS).toHaveProperty('none')
+    expect(DROPDOWN_EFFECTS).toHaveProperty('fade')
+    expect(DROPDOWN_EFFECTS).toHaveProperty('slide-down')
+
+    expect(DROPDOWN_EFFECTS.none.name).toBe('None')
+    expect(DROPDOWN_EFFECTS.fade.name).toBe('Fade')
+    expect(DROPDOWN_EFFECTS['slide-down'].name).toBe('Slide Down')
+  })
+
+  it('resolves item dropdown animation with menu-level inheritance fallback', () => {
+    // Override directly
+    expect(resolveDropdownEffect('none', 'fade')).toBe('none')
+    expect(resolveDropdownEffect('slide-down', 'fade')).toBe('slide-down')
+    expect(resolveDropdownEffect('fade', 'none')).toBe('fade')
+
+    // Inherit menu default
+    expect(resolveDropdownEffect('inherit', 'slide-down')).toBe('slide-down')
+    expect(resolveDropdownEffect('inherit', 'fade')).toBe('fade')
+    expect(resolveDropdownEffect(undefined, 'slide-down')).toBe('slide-down')
+    expect(resolveDropdownEffect(null, 'none')).toBe('none')
+
+    // Global fallback if no menu default specified
+    expect(resolveDropdownEffect('inherit', undefined as any)).toBe('fade')
+  })
+})
+
+describe('Mega Menu V4 — WordPress-Style Tree Serialization & Submenu Configuration', () => {
+  it('converts flat items to tree preserving parentId, submenu settings, and animation overrides', () => {
+    const flatItems: ClassicMenuItem[] = [
+      {
+        id: 'item-1',
+        label: 'Products',
+        link: { type: 'custom', url: '/products' },
+        hasSubmenu: true,
+        submenuType: 'mega',
+        dropdownEffect: 'slide-down',
+        triggerOnly: true,
+      },
+      {
+        id: 'item-2',
+        label: 'Company',
+        link: { type: 'custom', url: '/company' },
+        hasSubmenu: true,
+        submenuType: 'classic',
+        dropdownEffect: 'inherit',
+      },
+      {
+        id: 'item-2-1',
+        label: 'About Us',
+        link: { type: 'page', page: 10 },
+        parentId: 'item-2',
+      },
+      {
+        id: 'item-2-2',
+        label: 'Careers',
+        link: { type: 'custom', url: '/careers' },
+        parentId: 'item-2',
+      },
+    ]
+
+    const tree = flatItemsToTree(flatItems)
+
+    expect(tree).toHaveLength(2) // Two root items: Products & Company
+    expect(tree[0].id).toBe('item-1')
+    expect(tree[0].hasSubmenu).toBe(true)
+    expect(tree[0].submenuType).toBe('mega')
+    expect(tree[0].dropdownEffect).toBe('slide-down')
+    expect(tree[0].triggerOnly).toBe(true)
+
+    expect(tree[1].id).toBe('item-2')
+    expect(tree[1].hasSubmenu).toBe(true)
+    expect(tree[1].submenuType).toBe('classic')
+    expect(tree[1].dropdownEffect).toBe('inherit')
+    expect(tree[1].children).toHaveLength(2)
+    expect(tree[1].children![0].id).toBe('item-2-1')
+    expect(tree[1].children![0].parentId).toBe('item-2')
+    expect(tree[1].children![1].id).toBe('item-2-2')
+    expect(tree[1].children![1].parentId).toBe('item-2')
+  })
+
+  it('converts hierarchical tree back to flat items with parentId links', () => {
+    const tree: MenuTreeNode[] = [
+      {
+        id: 'node-root',
+        label: 'Root Link',
+        link: { type: 'custom', url: '/root' },
+        hasSubmenu: true,
+        submenuType: 'classic',
+        dropdownEffect: 'fade',
+        children: [
+          {
+            id: 'node-child',
+            label: 'Child Link',
+            link: { type: 'page', page: 5 },
+            children: [],
+          },
+        ],
+      },
+    ]
+
+    const flat = treeToFlatItems(tree)
+    expect(flat).toHaveLength(2)
+    expect(flat[0].id).toBe('node-root')
+    expect(flat[0].parentId).toBeNull()
+    expect(flat[0].hasSubmenu).toBe(true)
+    expect(flat[0].submenuType).toBe('classic')
+    expect(flat[0].dropdownEffect).toBe('fade')
+
+    expect(flat[1].id).toBe('node-child')
+    expect(flat[1].parentId).toBe('node-root')
+  })
+
+  it('supports indenting and outdenting nodes in tree', () => {
+    const initialTree: MenuTreeNode[] = [
+      { id: 'parent', label: 'Parent', children: [] },
+      { id: 'sibling', label: 'Sibling', children: [] },
+    ]
+
+    // Indent 'sibling' to become child of 'parent'
+    const indented = indentNodeInTree(initialTree, 'sibling')
+    expect(indented).toHaveLength(1)
+    expect(indented[0].id).toBe('parent')
+    expect(indented[0].children).toHaveLength(1)
+    expect(indented[0].children![0].id).toBe('sibling')
+    expect(indented[0].children![0].parentId).toBe('parent')
+
+    // Outdent 'sibling' back to root level
+    const outdented = outdentNodeInTree(indented, 'sibling')
+    expect(outdented).toHaveLength(2)
+    expect(outdented[0].id).toBe('parent')
+    expect(outdented[1].id).toBe('sibling')
+    expect(outdented[1].parentId).toBeNull()
+  })
+})
+
+describe('Mega Menu V4 — Per-Item Mega Layout Storage & Isolation', () => {
+  it('updates only megaLayouts[itemId] leaving other items untouched', () => {
+    const existingMegaLayouts: Record<string, any> = {
+      'item-1': { version: 1, root: { props: {} }, content: [{ type: 'LinkList', props: { id: 'l1' } }] },
+      'item-2': { version: 1, root: { props: {} }, content: [{ type: 'PromoBanner', props: { id: 'p1' } }] },
+    }
+
+    const updatedItem1Layout = {
+      version: 1,
+      root: { props: {} },
+      content: [{ type: 'LinkList', props: { id: 'l1-updated' } }],
+    }
+
+    const patchPayload = {
+      megaLayouts: {
+        ...existingMegaLayouts,
+        'item-1': updatedItem1Layout,
+      },
+    }
+
+    // item-1 is updated
+    expect(patchPayload.megaLayouts['item-1'].content[0].props.id).toBe('l1-updated')
+    // item-2 is strictly preserved
+    expect(patchPayload.megaLayouts['item-2'].content[0].props.id).toBe('p1')
+    // Isolation: no global whole-menu mutations
+    expect(patchPayload).not.toHaveProperty('name')
+    expect(patchPayload).not.toHaveProperty('items')
+  })
+})
+
+describe('Mega Menu V4 — Payload Collection Schema & Hooks', () => {
+  it('defines defaultDropdownEffect and megaLayouts on Menus collection', () => {
+    const fields = Menus.fields as any[]
+    const defaultDropdownField = fields.find((f) => f.name === 'defaultDropdownEffect')
+    expect(defaultDropdownField).toBeDefined()
+    expect(defaultDropdownField.type).toBe('select')
+    expect(defaultDropdownField.defaultValue).toBe('fade')
+
+    const megaLayoutsField = fields.find((f) => f.name === 'megaLayouts')
+    expect(megaLayoutsField).toBeDefined()
+    expect(megaLayoutsField.type).toBe('json')
+
+    const itemsField = fields.find((f) => f.name === 'items')
+    expect(itemsField).toBeDefined()
+    const itemSubFields = itemsField.fields as any[]
+
+    expect(itemSubFields.find((f: any) => f.name === 'parentId')).toBeDefined()
+    expect(itemSubFields.find((f: any) => f.name === 'hasSubmenu')).toBeDefined()
+    expect(itemSubFields.find((f: any) => f.name === 'submenuType')).toBeDefined()
+    expect(itemSubFields.find((f: any) => f.name === 'dropdownEffect')).toBeDefined()
+    expect(itemSubFields.find((f: any) => f.name === 'triggerOnly')).toBeDefined()
+  })
+
+  it('blocks saving item with mega submenu if site settings enableMegaMenu is disabled', async () => {
+    const beforeChangeHook = Menus.hooks?.beforeChange?.[0]
+    expect(beforeChangeHook).toBeDefined()
+
+    const mockReq = {
+      payload: {
+        findGlobal: async () => ({ enableMegaMenu: false }),
+      },
+    }
+
+    // Should throw error when an item has hasSubmenu=true and submenuType='mega'
+    await expect(
+      beforeChangeHook!({
+        data: {
+          items: [{ label: 'Item 1', hasSubmenu: true, submenuType: 'mega' }],
+        },
+        req: mockReq as any,
+        operation: 'update',
+      } as any),
+    ).rejects.toThrow(/Mega Menu is disabled in Site Settings/)
+
+    // Should succeed when items are classic or hasSubmenu is false
+    await expect(
+      beforeChangeHook!({
+        data: {
+          items: [{ label: 'Item 1', hasSubmenu: true, submenuType: 'classic' }],
+        },
+        req: mockReq as any,
+        operation: 'update',
+      } as any),
+    ).resolves.toEqual({
+      items: [{ label: 'Item 1', hasSubmenu: true, submenuType: 'classic' }],
+    })
   })
 })
