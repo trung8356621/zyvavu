@@ -18,6 +18,8 @@ export type PuckHostProps = {
   isLoading?: boolean
   error?: string | null
   headerActions?: React.ReactNode
+  hideTopBar?: boolean
+  height?: string | number
 }
 
 export function PuckHost({
@@ -29,14 +31,18 @@ export function PuckHost({
   isLoading = false,
   error = null,
   headerActions,
+  hideTopBar = false,
+  height,
 }: PuckHostProps) {
   const [localDoc, setLocalDoc] = useState<BuilderDocument>(document)
   const [validationError, setValidationError] = useState<string | null>(null)
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false)
+  const latestDocRef = React.useRef<BuilderDocument>(localDoc)
 
   // Sync when initial document changes externally
   React.useEffect(() => {
     setLocalDoc(document)
+    latestDocRef.current = document
   }, [document])
 
   const puckData: Data = useMemo(() => {
@@ -49,13 +55,15 @@ export function PuckHost({
 
   const handlePuckChange = useCallback(
     (data: Data) => {
+      const current = latestDocRef.current || localDoc
       const updated: BuilderDocument = {
-        version: localDoc.version || CURRENT_BUILDER_VERSION,
+        version: current.version || CURRENT_BUILDER_VERSION,
         root: data.root,
         content: data.content,
         zones: data.zones || {},
-        metadata: localDoc.metadata,
+        metadata: current.metadata,
       }
+      latestDocRef.current = updated
       setLocalDoc(updated)
       setSaveSuccess(false)
       if (onChange) {
@@ -66,14 +74,17 @@ export function PuckHost({
   )
 
   const handlePublish = useCallback(
-    async (data: Data) => {
-      const updated: BuilderDocument = {
-        version: localDoc.version || CURRENT_BUILDER_VERSION,
-        root: data.root,
-        content: data.content,
-        zones: data.zones || {},
-        metadata: localDoc.metadata,
-      }
+    async (data?: Data) => {
+      const current = latestDocRef.current || localDoc
+      const updated: BuilderDocument = data
+        ? {
+            version: current.version || CURRENT_BUILDER_VERSION,
+            root: data.root,
+            content: data.content,
+            zones: data.zones || {},
+            metadata: current.metadata,
+          }
+        : current
 
       const validation = validateBuilderDocument(updated)
       if (!validation.valid) {
@@ -99,8 +110,8 @@ export function PuckHost({
       style={{
         display: 'flex',
         flexDirection: 'column',
-        height: 'calc(100vh - 140px)',
-        minHeight: '650px',
+        height: height || 'calc(100vh - 140px)',
+        minHeight: '600px',
         width: '100%',
         position: 'relative',
         backgroundColor: 'var(--zyvavu-surface, #ffffff)',
@@ -111,47 +122,49 @@ export function PuckHost({
     >
       <LoadingOverlay visible={isLoading || isSaving} overlayProps={{ blur: 1 }} />
 
-      {/* Builder Top Bar */}
-      <Box
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '8px 16px',
-          borderBottom: '1px solid var(--zyvavu-border, #dfe5e2)',
-          backgroundColor: 'var(--zyvavu-background, #f5f6f4)',
-        }}
-      >
-        <Group gap="sm">
-          <Text size="sm" fw={600} c="var(--zyvavu-text, #17201f)">
-            Visual Layout Builder
-          </Text>
-          <Text size="xs" c="dimmed">
-            (Puck Engine v{CURRENT_BUILDER_VERSION})
-          </Text>
-        </Group>
+      {/* Optional Builder Top Bar */}
+      {!hideTopBar && (
+        <Box
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '8px 16px',
+            borderBottom: '1px solid var(--zyvavu-border, #dfe5e2)',
+            backgroundColor: 'var(--zyvavu-background, #f5f6f4)',
+          }}
+        >
+          <Group gap="sm">
+            <Text size="sm" fw={600} c="var(--zyvavu-text, #17201f)">
+              Visual Layout Builder
+            </Text>
+            <Text size="xs" c="dimmed">
+              (Puck Engine v{CURRENT_BUILDER_VERSION})
+            </Text>
+          </Group>
 
-        <Group gap="sm">
-          {headerActions}
-          {saveSuccess && (
-            <Group gap={4} style={{ color: '#0e6b66' }}>
-              <Check size={14} />
-              <Text size="xs" fw={500}>
-                Saved
-              </Text>
-            </Group>
-          )}
-          <Button
-            size="xs"
-            color="#0e6b66"
-            leftSection={<Save size={14} />}
-            loading={isSaving}
-            onClick={() => handlePublish(puckData)}
-          >
-            Save Layout
-          </Button>
-        </Group>
-      </Box>
+          <Group gap="sm">
+            {headerActions}
+            {saveSuccess && (
+              <Group gap={4} style={{ color: '#0e6b66' }}>
+                <Check size={14} />
+                <Text size="xs" fw={500}>
+                  Saved
+                </Text>
+              </Group>
+            )}
+            <Button
+              size="xs"
+              color="#0e6b66"
+              leftSection={<Save size={14} />}
+              loading={isSaving}
+              onClick={() => handlePublish()}
+            >
+              Save Layout
+            </Button>
+          </Group>
+        </Box>
+      )}
 
       {(error || validationError) && (
         <Alert
@@ -180,6 +193,9 @@ export function PuckHost({
         <Puck
           config={config}
           data={puckData}
+          overrides={{
+            headerActions: () => <React.Fragment />,
+          }}
           onPublish={handlePublish}
           onChange={handlePuckChange}
         />

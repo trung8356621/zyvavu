@@ -340,3 +340,186 @@ describe('Menu Document ID Resolution', () => {
     expect(result.isCreate).toBe(false)
   })
 })
+
+describe('Mega Menu Builder Custom View & Route Registration', () => {
+  it('registers the dedicated /menu-builder route in payload.config', async () => {
+    const configModule = await import('@/payload.config')
+    const config = await configModule.default
+    const views = (config.admin?.components as any)?.views
+    expect(views).toBeDefined()
+    expect(views.menuBuilder).toBeDefined()
+    expect(views.menuBuilder.path).toBe('/menu-builder')
+    expect(views.menuBuilder.exact).toBe(true)
+    expect(views.menuBuilder.Component).toBe(
+      '@/components/admin/menus/MegaMenuBuilderView#MegaMenuBuilderView',
+    )
+  })
+})
+
+describe('Classic Menu Item Redesign & Relationship Target Contracts', () => {
+  it('correctly maps Page selection to link.page and clears link.post', () => {
+    const mockPageTarget = {
+      id: 7,
+      title: 'About Us',
+      slug: 'about-us',
+      publicPath: null,
+      canonicalPath: '/about-us',
+    }
+
+    const item = {
+      label: 'Old Label',
+      link: {
+        type: 'page' as const,
+        page: mockPageTarget.id,
+        post: null,
+        url: mockPageTarget.canonicalPath,
+        newTab: false,
+      },
+    }
+
+    expect(item.link.type).toBe('page')
+    expect(item.link.page).toBe(7)
+    expect(item.link.post).toBeNull()
+    expect(item.link.url).toBe('/about-us')
+  })
+
+  it('correctly maps Post selection to link.post and clears link.page', () => {
+    const mockPostTarget = {
+      id: 15,
+      title: 'Latest News',
+      slug: 'latest-news',
+      publicPath: null,
+      canonicalPath: '/latest-news.html',
+    }
+
+    const item = {
+      label: 'Old Label',
+      link: {
+        type: 'post' as const,
+        post: mockPostTarget.id,
+        page: null,
+        url: mockPostTarget.canonicalPath,
+        newTab: true,
+      },
+    }
+
+    expect(item.link.type).toBe('post')
+    expect(item.link.post).toBe(15)
+    expect(item.link.page).toBeNull()
+    expect(item.link.url).toBe('/latest-news.html')
+    expect(item.link.newTab).toBe(true)
+  })
+
+  it('correctly resets relationships when Type switches to custom', () => {
+    const item = {
+      label: 'External Link',
+      link: {
+        type: 'custom' as const,
+        url: 'https://example.com',
+        page: null,
+        post: null,
+        newTab: true,
+      },
+    }
+
+    expect(item.link.type).toBe('custom')
+    expect(item.link.url).toBe('https://example.com')
+    expect(item.link.page).toBeNull()
+    expect(item.link.post).toBeNull()
+  })
+
+  it('preserves relationship contracts expected by linksForMenu', async () => {
+    const { linksForMenu } = await import('@/lib/url/menu-links')
+
+    const mockPayload: any = {
+      find: async () => ({
+        docs: [{ path: '/about-us' }],
+      }),
+    }
+
+    const items = [
+      {
+        id: 'item-1',
+        label: 'About',
+        link: {
+          type: 'page',
+          page: 7,
+          newTab: false,
+        },
+      },
+      {
+        id: 'item-2',
+        label: 'External',
+        link: {
+          type: 'custom',
+          url: 'https://example.com',
+          newTab: true,
+        },
+      },
+    ]
+
+    const resolved = await linksForMenu(mockPayload, items)
+    expect(resolved).toHaveLength(2)
+    expect(resolved[0].href).toBe('/about-us')
+    expect(resolved[0].label).toBe('About')
+    expect(resolved[1].href).toBe('https://example.com')
+    expect(resolved[1].newTab).toBe(true)
+  })
+})
+
+describe('Dedicated Mega Menu Save Contract', () => {
+  it('isolates megaLayout edits and does not modify menu name, location, or items', () => {
+    const existingMenu = {
+      id: 4,
+      name: 'Primary Navigation',
+      location: 'header',
+      mode: 'mega',
+      items: [{ label: 'Home', link: { type: 'custom', url: '/' } }],
+      megaLayout: createDefaultMegaMenuDocument(),
+      mobileMenu: { version: 1, items: [] },
+    }
+
+    const updatedMegaLayout = {
+      ...createDefaultMegaMenuDocument(),
+      zones: {},
+      content: [
+        {
+          type: 'LinkList',
+          props: {
+            id: 'updated-link-list',
+            title: 'New Section',
+            items: [{ label: 'Products', url: '/products' }],
+          },
+        },
+      ],
+    }
+
+    const extractedLinks = extractNormalizedSourceLinks(updatedMegaLayout)
+
+    // Save payload from MegaMenuBuilder
+    const patchPayload = {
+      megaLayout: updatedMegaLayout,
+      mobileMenu: {
+        version: existingMenu.mobileMenu.version,
+        items: extractedLinks.map((sl) => ({
+          id: sl.id,
+          label: sl.label,
+          url: sl.url,
+          newTab: sl.newTab,
+          sourceLinkId: sl.id,
+        })),
+        sourceSnapshot: extractedLinks,
+      },
+    }
+
+    // Must NOT contain name, location, or items
+    expect(patchPayload).not.toHaveProperty('name')
+    expect(patchPayload).not.toHaveProperty('location')
+    expect(patchPayload).not.toHaveProperty('items')
+
+    // Contains updated layout and snapshot
+    expect(patchPayload.megaLayout.content[0].props.id).toBe('updated-link-list')
+    expect(patchPayload.mobileMenu.sourceSnapshot).toHaveLength(1)
+    expect(patchPayload.mobileMenu.sourceSnapshot[0].label).toBe('Products')
+  })
+})

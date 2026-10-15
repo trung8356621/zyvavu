@@ -38,14 +38,10 @@ import {
 import {
   type BuilderDocument,
   createDefaultMegaMenuDocument,
-  createEmptyBuilderDocument,
   deserializeBuilderDocument,
   extractNormalizedSourceLinks,
-  megaMenuConfig,
-  type MobileMenuData,
-  PuckHost,
-  validateBuilderDocument,
 } from '@/components/builder'
+import { MenuTargetSelector, type MenuTarget } from './MenuTargetSelector'
 
 export type ClassicMenuItem = {
   id?: string
@@ -54,7 +50,7 @@ export type ClassicMenuItem = {
     type?: 'page' | 'post' | 'custom'
     page?: any
     post?: any
-    url?: string
+    url?: string | null
     newTab?: boolean
   }
 }
@@ -81,7 +77,9 @@ export function MenuEditor({ initialDoc, enableMegaMenu, menuId }: MenuEditorPro
 
   const [name, setName] = useState<string>(initialDoc.name || '')
   const [location, setLocation] = useState<'header' | 'footer'>(initialDoc.location || 'header')
-  const [mode, setMode] = useState<'classic' | 'mega'>(initialDoc.mode === 'mega' && enableMegaMenu ? 'mega' : 'classic')
+  const [mode, setMode] = useState<'classic' | 'mega'>(
+    initialDoc.mode === 'mega' && enableMegaMenu ? 'mega' : 'classic',
+  )
 
   const [items, setItems] = useState<ClassicMenuItem[]>(initialDoc.items || [])
 
@@ -96,9 +94,7 @@ export function MenuEditor({ initialDoc, enableMegaMenu, menuId }: MenuEditorPro
     return createDefaultMegaMenuDocument()
   }, [initialDoc.megaLayout])
 
-  const [megaLayout, setMegaLayout] = useState<BuilderDocument>(initialMegaLayout)
   const [activeTab, setActiveTab] = useState<string | null>('desktop')
-
   const [isDirty, setIsDirty] = useState<boolean>(false)
   const [isSaving, setIsSaving] = useState<boolean>(false)
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false)
@@ -106,27 +102,21 @@ export function MenuEditor({ initialDoc, enableMegaMenu, menuId }: MenuEditorPro
 
   // Extracted mobile source links from mega layout
   const extractedSourceLinks = useMemo(() => {
-    return extractNormalizedSourceLinks(megaLayout)
-  }, [megaLayout])
+    if (initialDoc.mobileMenu?.sourceSnapshot?.length) {
+      return initialDoc.mobileMenu.sourceSnapshot
+    }
+    return extractNormalizedSourceLinks(initialMegaLayout)
+  }, [initialDoc.mobileMenu, initialMegaLayout])
 
-  const handleSave = async (customDoc?: BuilderDocument) => {
+  const handleSave = async () => {
     if (!name.trim()) {
       setSaveError('Menu name is required')
       return
     }
 
-    const docToSave = customDoc || megaLayout
-
-    if (mode === 'mega') {
-      if (!enableMegaMenu) {
-        setSaveError('Mega Menu feature is disabled in Site Settings')
-        return
-      }
-      const val = validateBuilderDocument(docToSave)
-      if (!val.valid) {
-        setSaveError(`Layout validation failed: ${val.errors.join('; ')}`)
-        return
-      }
+    if (mode === 'mega' && !enableMegaMenu) {
+      setSaveError('Mega Menu feature is disabled in Site Settings')
+      return
     }
 
     setIsSaving(true)
@@ -134,20 +124,65 @@ export function MenuEditor({ initialDoc, enableMegaMenu, menuId }: MenuEditorPro
     setSaveSuccess(false)
 
     try {
-      const payload: Record<string, any> = {
+      // Clean and sanitize items to match Payload schema & linksForMenu contracts
+      const sanitizedItems = items.map((item) => {
+        const itemType = item.link?.type || 'custom'
+        if (itemType === 'page') {
+          const pageId =
+            typeof item.link?.page === 'object' && item.link?.page !== null
+              ? item.link.page.id
+              : item.link?.page
+          return {
+            label: item.label.trim() || 'Untitled',
+            link: {
+              type: 'page' as const,
+              page: pageId ? Number(pageId) || pageId : null,
+              post: null,
+              url: null,
+              newTab: Boolean(item.link?.newTab),
+            },
+          }
+        } else if (itemType === 'post') {
+          const postId =
+            typeof item.link?.post === 'object' && item.link?.post !== null
+              ? item.link.post.id
+              : item.link?.post
+          return {
+            label: item.label.trim() || 'Untitled',
+            link: {
+              type: 'post' as const,
+              post: postId ? Number(postId) || postId : null,
+              page: null,
+              url: null,
+              newTab: Boolean(item.link?.newTab),
+            },
+          }
+        } else {
+          return {
+            label: item.label.trim() || 'Untitled',
+            link: {
+              type: 'custom' as const,
+              url: item.link?.url || '/',
+              page: null,
+              post: null,
+              newTab: Boolean(item.link?.newTab),
+            },
+          }
+        }
+      })
+
+      const payloadData: Record<string, any> = {
         name: name.trim(),
         location,
         mode,
-        // Always preserve items and relationships:
-        items,
+        items: sanitizedItems,
       }
 
-      if (mode === 'mega') {
-        payload.megaLayout = docToSave
-        // Automatically save updated source link snapshot to mobile foundation
-        payload.mobileMenu = {
+      if (isCreate && mode === 'mega') {
+        payloadData.megaLayout = initialMegaLayout
+        payloadData.mobileMenu = {
           version: 1,
-          items: extractedSourceLinks.map((sl) => ({
+          items: extractedSourceLinks.map((sl: any) => ({
             id: sl.id,
             label: sl.label,
             url: sl.url,
@@ -165,7 +200,7 @@ export function MenuEditor({ initialDoc, enableMegaMenu, menuId }: MenuEditorPro
         method,
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify(payload),
+        body: JSON.stringify(payloadData),
       })
 
       const json = await res.json().catch(() => ({}))
@@ -200,9 +235,91 @@ export function MenuEditor({ initialDoc, enableMegaMenu, menuId }: MenuEditorPro
       ...prev,
       {
         label: `Link ${prev.length + 1}`,
-        link: { type: 'custom', url: '/', newTab: false },
+        link: { type: 'page', page: null, post: null, url: '', newTab: false },
       },
     ])
+    setIsDirty(true)
+  }
+
+  const handleTypeChange = (index: number, newType: 'page' | 'post' | 'custom') => {
+    setItems((prev) => {
+      const next = [...prev]
+      const current = next[index]
+      if (newType === 'page') {
+        next[index] = {
+          ...current,
+          link: {
+            type: 'page',
+            page: null,
+            post: null,
+            url: '',
+            newTab: Boolean(current.link?.newTab),
+          },
+        }
+      } else if (newType === 'post') {
+        next[index] = {
+          ...current,
+          link: {
+            type: 'post',
+            page: null,
+            post: null,
+            url: '',
+            newTab: Boolean(current.link?.newTab),
+          },
+        }
+      } else {
+        next[index] = {
+          ...current,
+          link: {
+            type: 'custom',
+            page: null,
+            post: null,
+            url: current.link?.url || '/',
+            newTab: Boolean(current.link?.newTab),
+          },
+        }
+      }
+      return next
+    })
+    setIsDirty(true)
+  }
+
+  const handleSelectTarget = (
+    index: number,
+    target: MenuTarget | null,
+    targetType: 'page' | 'post',
+  ) => {
+    setItems((prev) => {
+      const next = [...prev]
+      const current = next[index]
+      if (!target) {
+        next[index] = {
+          ...current,
+          link: {
+            ...current.link,
+            type: targetType,
+            page: null,
+            post: null,
+            url: '',
+          },
+        }
+        return next
+      }
+
+      next[index] = {
+        ...current,
+        label: target.title,
+        link: {
+          ...current.link,
+          type: targetType,
+          page: targetType === 'page' ? target.id : null,
+          post: targetType === 'post' ? target.id : null,
+          url: target.canonicalPath,
+          newTab: Boolean(current.link?.newTab),
+        },
+      }
+      return next
+    })
     setIsDirty(true)
   }
 
@@ -307,7 +424,13 @@ export function MenuEditor({ initialDoc, enableMegaMenu, menuId }: MenuEditorPro
       )}
 
       {/* Menu Metadata Controls */}
-      <Paper p="md" radius="md" withBorder mb="md" style={{ backgroundColor: 'var(--zyvavu-surface, #ffffff)' }}>
+      <Paper
+        p="md"
+        radius="md"
+        withBorder
+        mb="md"
+        style={{ backgroundColor: 'var(--zyvavu-surface, #ffffff)' }}
+      >
         <Group grow align="flex-start">
           <TextInput
             label="Menu Name"
@@ -340,7 +463,9 @@ export function MenuEditor({ initialDoc, enableMegaMenu, menuId }: MenuEditorPro
             value={mode}
             onChange={(val) => {
               if (val === 'mega' && !enableMegaMenu) {
-                setSaveError('Mega Menu is disabled in Site Settings. Enable it under Settings > Mega Menu.')
+                setSaveError(
+                  'Mega Menu is disabled in Site Settings. Enable it under Settings > Mega Menu.',
+                )
                 return
               }
               if (val === 'classic' || val === 'mega') {
@@ -351,7 +476,9 @@ export function MenuEditor({ initialDoc, enableMegaMenu, menuId }: MenuEditorPro
             data={[
               { label: 'Classic (Simple Link Tree)', value: 'classic' },
               {
-                label: enableMegaMenu ? 'Mega Menu (Visual Layout Builder)' : 'Mega Menu (Disabled in Settings)',
+                label: enableMegaMenu
+                  ? 'Mega Menu (Visual Layout Builder)'
+                  : 'Mega Menu (Disabled in Settings)',
                 value: 'mega',
                 disabled: !enableMegaMenu,
               },
@@ -367,8 +494,13 @@ export function MenuEditor({ initialDoc, enableMegaMenu, menuId }: MenuEditorPro
 
       {/* Workspace Area */}
       {mode === 'classic' ? (
-        /* Classic Editor */
-        <Paper p="md" radius="md" withBorder style={{ backgroundColor: 'var(--zyvavu-surface, #ffffff)' }}>
+        /* Redesigned Classic Editor: Type -> Select Target -> Label -> URL */
+        <Paper
+          p="md"
+          radius="md"
+          withBorder
+          style={{ backgroundColor: 'var(--zyvavu-surface, #ffffff)' }}
+        >
           <Stack gap="md">
             <Group justify="space-between">
               <div>
@@ -376,10 +508,16 @@ export function MenuEditor({ initialDoc, enableMegaMenu, menuId }: MenuEditorPro
                   Classic Menu Items
                 </Text>
                 <Text size="xs" c="dimmed">
-                  Manage conventional hierarchical navigation links.
+                  Manage conventional navigation links with CMS relationship targets.
                 </Text>
               </div>
-              <Button size="xs" variant="light" color="#0e6b66" leftSection={<Plus size={14} />} onClick={handleAddItem}>
+              <Button
+                size="xs"
+                variant="light"
+                color="#0e6b66"
+                leftSection={<Plus size={14} />}
+                onClick={handleAddItem}
+              >
                 Add Link Item
               </Button>
             </Group>
@@ -394,112 +532,188 @@ export function MenuEditor({ initialDoc, enableMegaMenu, menuId }: MenuEditorPro
               </Box>
             ) : (
               <Stack gap="sm">
-                {items.map((item, idx) => (
-                  <Card key={idx} withBorder p="sm" radius="sm">
-                    <Group align="flex-end" gap="sm">
-                      <Group gap={4}>
+                {items.map((item, idx) => {
+                  const itemType = item.link?.type || 'custom'
+                  const isPageOrPost = itemType === 'page' || itemType === 'post'
+
+                  // Resolve target ID and pre-populated details
+                  const targetId =
+                    itemType === 'page'
+                      ? typeof item.link?.page === 'object' && item.link?.page !== null
+                        ? item.link.page.id
+                        : item.link?.page
+                      : typeof item.link?.post === 'object' && item.link?.post !== null
+                        ? item.link.post.id
+                        : item.link?.post
+
+                  const targetTitle =
+                    itemType === 'page'
+                      ? item.link?.page?.title
+                      : item.link?.post?.title
+
+                  const targetPath =
+                    itemType === 'page'
+                      ? item.link?.page?.publicPath ||
+                        (item.link?.page?.slug ? `/${item.link.page.slug}` : undefined)
+                      : item.link?.post?.publicPath ||
+                        (item.link?.post?.slug ? `/${item.link.post.slug}.html` : undefined)
+
+                  const resolvedCanonicalPreview =
+                    targetPath || item.link?.url || ''
+
+                  return (
+                    <Card key={idx} withBorder p="sm" radius="sm">
+                      <Group align="flex-start" gap="sm" wrap="nowrap">
+                        {/* Reorder Up / Down */}
+                        <Group gap={4} style={{ marginTop: '24px', flexShrink: 0 }}>
+                          <ActionIcon
+                            size="sm"
+                            variant="subtle"
+                            disabled={idx === 0}
+                            onClick={() => handleMoveItem(idx, 'up')}
+                            title="Move Up"
+                          >
+                            <ArrowUp size={14} />
+                          </ActionIcon>
+                          <ActionIcon
+                            size="sm"
+                            variant="subtle"
+                            disabled={idx === items.length - 1}
+                            onClick={() => handleMoveItem(idx, 'down')}
+                            title="Move Down"
+                          >
+                            <ArrowDown size={14} />
+                          </ActionIcon>
+                        </Group>
+
+                        {/* 1. Type (First control) */}
+                        <Select
+                          label="Type"
+                          size="xs"
+                          value={itemType}
+                          onChange={(val: any) => handleTypeChange(idx, val)}
+                          data={[
+                            { label: 'Page', value: 'page' },
+                            { label: 'Post', value: 'post' },
+                            { label: 'Custom URL', value: 'custom' },
+                          ]}
+                          style={{ width: '130px', flexShrink: 0 }}
+                        />
+
+                        {/* 2. Select Target (Page / Post searchable picker) */}
+                        {isPageOrPost ? (
+                          <MenuTargetSelector
+                            type={itemType}
+                            value={targetId}
+                            initialTitle={targetTitle}
+                            initialPath={targetPath}
+                            onSelect={(target) =>
+                              handleSelectTarget(idx, target, itemType as 'page' | 'post')
+                            }
+                            style={{ flex: 2 }}
+                          />
+                        ) : (
+                          <TextInput
+                            label="Target"
+                            size="xs"
+                            value="Direct Custom URL"
+                            disabled
+                            readOnly
+                            style={{ flex: 1, minWidth: '130px' }}
+                          />
+                        )}
+
+                        {/* 3. Label (Autofilled on target selection, but editable) */}
+                        <TextInput
+                          label="Label"
+                          size="xs"
+                          placeholder="Link Label"
+                          value={item.label}
+                          onChange={(e) =>
+                            handleUpdateItem(idx, {
+                              ...item,
+                              label: e.currentTarget.value,
+                            })
+                          }
+                          style={{ flex: 2, minWidth: '150px' }}
+                        />
+
+                        {/* 4. URL (Read-only Canonical Preview for Page/Post, Editable for Custom) */}
+                        {itemType === 'custom' ? (
+                          <TextInput
+                            label="URL / Path"
+                            size="xs"
+                            placeholder="e.g. /about or https://..."
+                            value={item.link?.url || ''}
+                            onChange={(e) =>
+                              handleUpdateItem(idx, {
+                                ...item,
+                                link: {
+                                  ...item.link,
+                                  type: 'custom',
+                                  url: e.currentTarget.value,
+                                  page: null,
+                                  post: null,
+                                },
+                              })
+                            }
+                            style={{ flex: 2, minWidth: '150px' }}
+                          />
+                        ) : (
+                          <TextInput
+                            label="Canonical URL Preview"
+                            size="xs"
+                            value={resolvedCanonicalPreview || '—'}
+                            readOnly
+                            disabled
+                            style={{ flex: 2, minWidth: '150px' }}
+                          />
+                        )}
+
+                        {/* 5. New Tab */}
+                        <Checkbox
+                          label="New Tab"
+                          size="xs"
+                          checked={Boolean(item.link?.newTab)}
+                          onChange={(e) =>
+                            handleUpdateItem(idx, {
+                              ...item,
+                              link: { ...item.link, newTab: e.currentTarget.checked },
+                            })
+                          }
+                          style={{ marginTop: '28px', flexShrink: 0 }}
+                        />
+
+                        {/* 6. Remove */}
                         <ActionIcon
-                          size="sm"
+                          color="red"
                           variant="subtle"
-                          disabled={idx === 0}
-                          onClick={() => handleMoveItem(idx, 'up')}
-                          title="Move Up"
-                        >
-                          <ArrowUp size={14} />
-                        </ActionIcon>
-                        <ActionIcon
                           size="sm"
-                          variant="subtle"
-                          disabled={idx === items.length - 1}
-                          onClick={() => handleMoveItem(idx, 'down')}
-                          title="Move Down"
+                          style={{ marginTop: '24px', flexShrink: 0 }}
+                          onClick={() => handleRemoveItem(idx)}
+                          title="Remove Item"
                         >
-                          <ArrowDown size={14} />
+                          <Trash2 size={16} />
                         </ActionIcon>
                       </Group>
-
-                      <TextInput
-                        label="Label"
-                        size="xs"
-                        value={item.label}
-                        onChange={(e) =>
-                          handleUpdateItem(idx, {
-                            ...item,
-                            label: e.currentTarget.value,
-                          })
-                        }
-                        style={{ flex: 2 }}
-                      />
-
-                      <Select
-                        label="Type"
-                        size="xs"
-                        value={item.link?.type || 'custom'}
-                        onChange={(val: any) =>
-                          handleUpdateItem(idx, {
-                            ...item,
-                            link: { ...item.link, type: val },
-                          })
-                        }
-                        data={[
-                          { label: 'Page', value: 'page' },
-                          { label: 'Post', value: 'post' },
-                          { label: 'Custom path', value: 'custom' },
-                        ]}
-                        style={{ flex: 1 }}
-                      />
-
-                      <TextInput
-                        label="Path / URL"
-                        size="xs"
-                        value={item.link?.url || ''}
-                        onChange={(e) =>
-                          handleUpdateItem(idx, {
-                            ...item,
-                            link: { ...item.link, url: e.currentTarget.value },
-                          })
-                        }
-                        placeholder="/about"
-                        style={{ flex: 2 }}
-                      />
-
-                      <Checkbox
-                        label="New Tab"
-                        size="xs"
-                        checked={Boolean(item.link?.newTab)}
-                        onChange={(e) =>
-                          handleUpdateItem(idx, {
-                            ...item,
-                            link: { ...item.link, newTab: e.currentTarget.checked },
-                          })
-                        }
-                        mb={8}
-                      />
-
-                      <ActionIcon
-                        color="red"
-                        variant="subtle"
-                        size="sm"
-                        mb={4}
-                        onClick={() => handleRemoveItem(idx)}
-                        title="Remove Item"
-                      >
-                        <Trash2 size={16} />
-                      </ActionIcon>
-                    </Group>
-                  </Card>
-                ))}
+                    </Card>
+                  )
+                })}
               </Stack>
             )}
           </Stack>
         </Paper>
       ) : (
-        /* Mega Mode: Desktop / Mobile Navigation Tabs */
+        /* Mega Mode: Dedicated Mega Menu Section & Mobile Navigation Foundation */
         <Box style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-          <Tabs value={activeTab} onChange={setActiveTab} style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+          <Tabs
+            value={activeTab}
+            onChange={setActiveTab}
+            style={{ display: 'flex', flexDirection: 'column', flex: 1 }}
+          >
             <Tabs.List mb="sm">
               <Tabs.Tab value="desktop" leftSection={<Laptop size={16} />}>
-                Desktop Layout (Mega Builder)
+                Desktop Mega Layout
               </Tabs.Tab>
               <Tabs.Tab
                 value="mobile"
@@ -514,30 +728,82 @@ export function MenuEditor({ initialDoc, enableMegaMenu, menuId }: MenuEditorPro
               </Tabs.Tab>
             </Tabs.List>
 
-            <Tabs.Panel value="desktop" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-              <PuckHost
-                config={megaMenuConfig}
-                document={megaLayout}
-                isSaving={isSaving}
-                onChange={(updated) => {
-                  setMegaLayout(updated)
-                  setIsDirty(true)
-                }}
-                onSave={async (updated) => {
-                  setMegaLayout(updated)
-                  await handleSave(updated)
-                }}
-              />
+            <Tabs.Panel value="desktop" style={{ flex: 1 }}>
+              <Paper
+                p="xl"
+                radius="md"
+                withBorder
+                style={{ backgroundColor: 'var(--zyvavu-surface, #ffffff)' }}
+              >
+                <Stack gap="md" maw={680}>
+                  <Group gap="sm">
+                    <Laptop size={28} style={{ color: '#0e6b66' }} />
+                    <div>
+                      <Text fw={600} size="md">
+                        Mega Menu Visual Layout
+                      </Text>
+                      <Text size="xs" c="dimmed">
+                        Design multi-column desktop dropdowns with LinkList, PromoBanner, and ContactCard blocks.
+                      </Text>
+                    </div>
+                  </Group>
+
+                  <Divider />
+
+                  {isCreate ? (
+                    <Alert
+                      icon={<AlertCircle size={16} />}
+                      title="Menu Save Required"
+                      color="orange"
+                    >
+                      This menu has not been saved yet. Please enter a menu name, select a location,
+                      and click <b>Save Menu</b> above. Once saved with a valid ID, the dedicated Mega
+                      Menu Editor will be unlocked.
+                    </Alert>
+                  ) : (
+                    <>
+                      <Text size="sm">
+                        Mega Menu layouts are edited in a dedicated, full-screen visual workspace powered
+                        by the Puck builder.
+                      </Text>
+
+                      <Group mt="xs">
+                        <Button
+                          color="#0e6b66"
+                          size="sm"
+                          leftSection={<ExternalLink size={16} />}
+                          onClick={() => {
+                            if (isDirty) {
+                              const confirmLeave = window.confirm(
+                                'You have unsaved changes on this menu form. Click OK to proceed to the Mega Menu Editor, or Cancel to stay and save.',
+                              )
+                              if (!confirmLeave) return
+                            }
+                            router.push(`/admin/menu-builder?menuId=${menuId}`)
+                          }}
+                        >
+                          Open Mega Menu Editor
+                        </Button>
+                      </Group>
+                    </>
+                  )}
+                </Stack>
+              </Paper>
             </Tabs.Panel>
 
             <Tabs.Panel value="mobile" style={{ flex: 1, minHeight: 0 }}>
-              <Paper p="lg" radius="md" withBorder style={{ backgroundColor: 'var(--zyvavu-surface, #ffffff)' }}>
+              <Paper
+                p="lg"
+                radius="md"
+                withBorder
+                style={{ backgroundColor: 'var(--zyvavu-surface, #ffffff)' }}
+              >
                 <Stack gap="md">
                   <Alert color="blue" title="Phase V1A Foundation — Mobile Navigation Tree Contract">
                     <Text size="sm">
-                      Mobile navigation uses structured links extracted from the Desktop Mega Layout. In this Phase V1A,
-                      the typed source-link foundation is established and live source links are synchronized.
-                      Custom drag-and-drop hierarchy reordering, nesting, and reset workflows will be enabled in Phase V1B.
+                      Mobile navigation uses structured links extracted from the Desktop Mega Layout.
+                      In Phase V1A, the typed source-link foundation is established and live source links
+                      are synchronized. Custom drag-and-drop hierarchy reordering will be enabled in Phase V1B.
                     </Text>
                   </Alert>
 
@@ -555,7 +821,7 @@ export function MenuEditor({ initialDoc, enableMegaMenu, menuId }: MenuEditorPro
                   {extractedSourceLinks.length === 0 ? (
                     <Box p="xl" style={{ textAlign: 'center' }}>
                       <Text size="sm" c="dimmed">
-                        No links found in current desktop layout. Add a LinkList or PromoBanner with CTA in the Desktop tab.
+                        No links found in current desktop layout. Add links in the dedicated Mega Menu Editor.
                       </Text>
                     </Box>
                   ) : (
@@ -570,7 +836,7 @@ export function MenuEditor({ initialDoc, enableMegaMenu, menuId }: MenuEditorPro
                         </Table.Tr>
                       </Table.Thead>
                       <Table.Tbody>
-                        {extractedSourceLinks.map((link, idx) => (
+                        {extractedSourceLinks.map((link: any, idx: number) => (
                           <Table.Tr key={link.id || idx}>
                             <Table.Td>{idx + 1}</Table.Td>
                             <Table.Td fw={500}>{link.label}</Table.Td>

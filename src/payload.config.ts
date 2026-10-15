@@ -74,6 +74,12 @@ export default buildConfig({
           exact: true,
           meta: { title: 'SEO Settings' },
         },
+        menuBuilder: {
+          Component: '@/components/admin/menus/MegaMenuBuilderView#MegaMenuBuilderView',
+          path: '/menu-builder',
+          exact: true,
+          meta: { title: 'Mega Menu Builder' },
+        },
       },
     },
   },

@@ -42,6 +42,7 @@ import { DashboardWelcome as DashboardWelcome_b81acdec2f847f3a2418fa446f7762ad }
 import { ThemeProvider as ThemeProvider_a1a3c4a847480f0a30c7903f2efa894d } from '@/components/admin/ThemeProvider'
 import { SystemView as SystemView_cdc5b7cf3ea627dfc2b22dc6609fc35d } from '@/components/admin/SystemView'
 import { SeoSettingsView as SeoSettingsView_68b35c68aea4f366f5ef6fe225e9b762 } from '@/components/admin/SeoSettingsView'
+import { MegaMenuBuilderView as MegaMenuBuilderView_cd12a9a38e31b53d58d77112a178cb2c } from '@/components/admin/menus/MegaMenuBuilderView'
 import { CollectionCards as CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
 
 /** @type import('payload').ImportMap */
@@ -90,5 +91,6 @@ export const importMap = {
   "@/components/admin/ThemeProvider#ThemeProvider": ThemeProvider_a1a3c4a847480f0a30c7903f2efa894d,
   "@/components/admin/SystemView#SystemView": SystemView_cdc5b7cf3ea627dfc2b22dc6609fc35d,
   "@/components/admin/SeoSettingsView#SeoSettingsView": SeoSettingsView_68b35c68aea4f366f5ef6fe225e9b762,
+  "@/components/admin/menus/MegaMenuBuilderView#MegaMenuBuilderView": MegaMenuBuilderView_cd12a9a38e31b53d58d77112a178cb2c,
   "@payloadcms/next/rsc#CollectionCards": CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1
 }
