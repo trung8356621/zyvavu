@@ -128,6 +128,8 @@ export function PuckHost({
         flexDirection: 'column',
         height: height || '100%',
         width: '100%',
+        minWidth: 0,
+        minHeight: 0,
         position: 'relative',
         backgroundColor: 'var(--zyvavu-surface, #ffffff)',
         overflow: 'hidden',
@@ -145,6 +147,7 @@ export function PuckHost({
             padding: '8px 16px',
             borderBottom: '1px solid var(--zyvavu-border, #dfe5e2)',
             backgroundColor: 'var(--zyvavu-background, #f5f6f4)',
+            flexShrink: 0,
           }}
         >
           <Group gap="sm">
@@ -199,6 +202,8 @@ export function PuckHost({
           flex: 1,
           width: '100%',
           height: '100%',
+          minWidth: 0,
+          minHeight: 0,
           overflow: 'hidden',
           position: 'relative',
         }}

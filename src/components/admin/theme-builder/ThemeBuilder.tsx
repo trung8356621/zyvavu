@@ -180,7 +180,10 @@ export function ThemeBuilder({
         flexDirection: 'column',
         height: '100%',
         width: '100%',
+        minWidth: 0,
+        minHeight: 0,
         backgroundColor: 'var(--zyvavu-surface, #ffffff)',
+        overflow: 'hidden',
       }}
     >
       <style dangerouslySetInnerHTML={{ __html: themeCss }} />
@@ -194,6 +197,7 @@ export function ThemeBuilder({
           borderRadius: 0,
           backgroundColor: 'var(--zyvavu-surface, #ffffff)',
           zIndex: 20,
+          flexShrink: 0,
         }}
       >
         <Group justify="space-between" wrap="wrap" gap="md">
@@ -282,7 +286,18 @@ export function ThemeBuilder({
       </Paper>
 
       {/* PUCK EDITOR WORKSPACE */}
-      <Box style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+      <Box
+        style={{
+          flex: 1,
+          minHeight: 0,
+          minWidth: 0,
+          width: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          position: 'relative',
+          overflow: 'hidden',
+        }}
+      >
         <PuckHost
           key={selectedTemplate}
           config={puckConfig}
@@ -291,6 +306,7 @@ export function ThemeBuilder({
           onChange={handleDocChange}
           isSaving={isSaving}
           hideTopBar={true}
+          height="100%"
         />
       </Box>
     </Box>

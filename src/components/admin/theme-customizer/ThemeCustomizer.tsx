@@ -419,6 +419,8 @@ export function ThemeCustomizer({
         display: 'flex',
         width: '100%',
         height: '100%',
+        minWidth: 0,
+        minHeight: 0,
         overflow: 'hidden',
         background: 'var(--mantine-color-body, #ffffff)',
       }}
@@ -432,6 +434,7 @@ export function ThemeCustomizer({
           width: 320,
           minWidth: 320,
           maxWidth: 320,
+          flexShrink: 0,
           height: '100%',
           display: 'flex',
           flexDirection: 'column',
@@ -509,7 +512,7 @@ export function ThemeCustomizer({
         )}
 
         {/* Scrollable Settings Area */}
-        <ScrollArea style={{ flex: 1 }} p="sm">
+        <ScrollArea style={{ flex: 1, minHeight: 0 }} p="sm">
           {/* -------------------------------------------------------- */}
           {/* 1. ROOT MENU PANEL                                       */}
           {/* -------------------------------------------------------- */}
@@ -1230,7 +1233,13 @@ export function ThemeCustomizer({
         </ScrollArea>
 
         {/* Sidebar Sticky Footer Controls */}
-        <Box p="sm" style={{ borderTop: '1px solid var(--mantine-color-default-border, #e5e7eb)' }}>
+        <Box
+          p="sm"
+          style={{
+            borderTop: '1px solid var(--mantine-color-default-border, #e5e7eb)',
+            flexShrink: 0,
+          }}
+        >
           <Stack gap="xs">
             <Group grow gap="xs">
               <Button
@@ -1272,6 +1281,8 @@ export function ThemeCustomizer({
       <Box
         style={{
           flex: 1,
+          minWidth: 0,
+          minHeight: 0,
           display: 'flex',
           flexDirection: 'column',
           background: '#f0f2f5',
@@ -1290,6 +1301,7 @@ export function ThemeCustomizer({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
+            flexShrink: 0,
           }}
         >
           <Group gap="sm">
@@ -1348,6 +1360,8 @@ export function ThemeCustomizer({
         <Box
           style={{
             flex: 1,
+            minWidth: 0,
+            minHeight: 0,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -1362,6 +1376,7 @@ export function ThemeCustomizer({
             style={{
               width: previewWidth,
               height: '100%',
+              minHeight: 0,
               overflow: 'hidden',
               background: '#ffffff',
               transition: 'width 0.2s ease',
@@ -1371,6 +1386,7 @@ export function ThemeCustomizer({
               ref={iframeRef}
               src={previewRoute}
               title="Zyvavu Theme Live Preview"
+              onLoad={() => pushStylesToPreview(tokens, slots)}
               style={{
                 width: '100%',
                 height: '100%',

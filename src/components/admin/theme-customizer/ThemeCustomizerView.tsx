@@ -1,7 +1,9 @@
 import React from 'react'
+import Link from 'next/link'
 import type { AdminViewServerProps } from 'payload'
 import { getPayload } from 'payload'
-import { DefaultTemplate } from '@payloadcms/next/templates'
+import { Button, Paper, Stack, Text, Title } from '@mantine/core'
+import { ArrowLeft } from 'lucide-react'
 
 import config from '@payload-config'
 import { isSiteStaff } from '@/access/roles'
@@ -18,14 +20,53 @@ export async function ThemeCustomizerView(props: AdminViewServerProps) {
   const req = props.initPageResult?.req || anyProps.req
   const user = req?.user || anyProps.user
   const payload = req?.payload || anyProps.payload || (await getPayload({ config }))
-  const visibleEntities =
-    props.initPageResult?.visibleEntities ||
-    anyProps.visibleEntities || { collections: {}, globals: {} }
 
   if (!isSiteStaff(user)) {
     return (
-      <div style={{ padding: '24px' }}>
-        <p>Forbidden. Theme Customizer is limited to site-admin and system-admin.</p>
+      <div
+        className="zyvavu-fullscreen-builder-forbidden"
+        style={{
+          position: 'fixed',
+          inset: 0,
+          width: '100vw',
+          height: '100dvh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: 'var(--zyvavu-background, #f5f6f4)',
+          padding: '24px',
+          boxSizing: 'border-box',
+          zIndex: 9999,
+        }}
+      >
+        <Paper
+          p="xl"
+          radius="md"
+          withBorder
+          style={{
+            backgroundColor: 'var(--zyvavu-surface, #ffffff)',
+            maxWidth: '500px',
+            width: '100%',
+          }}
+        >
+          <Stack gap="md">
+            <Title order={2} size="h3" c="red">
+              Access Forbidden
+            </Title>
+            <Text size="sm">
+              Theme Customizer is limited to site-admin and system-admin roles.
+            </Text>
+            <Button
+              component={Link}
+              href="/admin"
+              variant="light"
+              color="gray"
+              leftSection={<ArrowLeft size={16} />}
+            >
+              Back to Dashboard
+            </Button>
+          </Stack>
+        </Paper>
       </div>
     )
   }
@@ -75,30 +116,28 @@ export async function ThemeCustomizerView(props: AdminViewServerProps) {
   }
 
   return (
-    <DefaultTemplate
-      {...props}
-      payload={payload}
-      req={req}
-      user={user}
-      visibleEntities={visibleEntities}
+    <div
+      className="zyvavu-fullscreen-customizer-layout"
+      style={{
+        position: 'fixed',
+        inset: 0,
+        width: '100vw',
+        height: '100dvh',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        boxSizing: 'border-box',
+        zIndex: 1,
+        backgroundColor: 'var(--zyvavu-background, #f5f6f4)',
+      }}
     >
-      <div
-        style={{
-          width: '100%',
-          height: 'calc(100vh - 60px)',
-          display: 'flex',
-          flexDirection: 'column',
-          boxSizing: 'border-box',
-        }}
-      >
-        <ThemeCustomizer
-          bundledConfig={bundledConfig}
-          publishedConfig={publishedConfig}
-          draftConfig={draftConfig}
-          customPresets={customPresets}
-          previewRoutes={previewRoutes}
-        />
-      </div>
-    </DefaultTemplate>
+      <ThemeCustomizer
+        bundledConfig={bundledConfig}
+        publishedConfig={publishedConfig}
+        draftConfig={draftConfig}
+        customPresets={customPresets}
+        previewRoutes={previewRoutes}
+      />
+    </div>
   )
 }
