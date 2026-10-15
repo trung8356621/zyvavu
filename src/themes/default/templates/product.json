@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "template": "product",
+  "metadata": {
+    "status": "contract_only",
+    "note": "Awaiting real Products provider collection per architecture specification"
+  },
+  "root": {
+    "props": {}
+  },
+  "content": [
+    {
+      "type": "ProductHeader",
+      "props": {
+        "id": "prod-header-1",
+        "showPrice": true,
+        "showAddToCart": true,
+        "lock": {
+          "canDelete": false,
+          "canMove": false,
+          "canEditProps": true
+        }
+      }
+    }
+  ],
+  "zones": {}
+}

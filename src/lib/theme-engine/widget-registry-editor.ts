@@ -1,0 +1,140 @@
+'use client'
+
+import type { ComponentConfig, Config } from '@puckeditor/core'
+import type { TemplateContext } from './types'
+import { getTemplatePolicy } from './policy'
+
+// Import manifests
+import { postTitleManifest } from '@/widgets/PostTitle/manifest'
+import { postTitleEditor } from '@/widgets/PostTitle/editor'
+
+import { postContentManifest } from '@/widgets/PostContent/manifest'
+import { postContentEditor } from '@/widgets/PostContent/editor'
+
+import { postMetaManifest } from '@/widgets/PostMeta/manifest'
+import { postMetaEditor } from '@/widgets/PostMeta/editor'
+
+import { featuredMediaManifest } from '@/widgets/FeaturedMedia/manifest'
+import { featuredMediaEditor } from '@/widgets/FeaturedMedia/editor'
+
+import { columnsManifest } from '@/widgets/Columns/manifest'
+import { columnsEditor } from '@/widgets/Columns/editor'
+
+import { textBlockManifest } from '@/widgets/TextBlock/manifest'
+import { textBlockEditor } from '@/widgets/TextBlock/editor'
+
+import { recentPostsManifest } from '@/widgets/RecentPosts/manifest'
+import { recentPostsEditor } from '@/widgets/RecentPosts/editor'
+
+import { categoryHeaderManifest } from '@/widgets/CategoryHeader/manifest'
+import { categoryHeaderEditor } from '@/widgets/CategoryHeader/editor'
+
+import { productHeaderManifest } from '@/widgets/ProductHeader/manifest'
+import { productHeaderEditor } from '@/widgets/ProductHeader/editor'
+
+import { headerManifest } from '@/widgets/Header/manifest'
+import { headerEditor } from '@/widgets/Header/editor'
+
+import { headerBrandManifest } from '@/widgets/HeaderBrand/manifest'
+import { headerBrandEditor } from '@/widgets/HeaderBrand/editor'
+
+import { headerNavManifest } from '@/widgets/HeaderNav/manifest'
+import { headerNavEditor } from '@/widgets/HeaderNav/editor'
+
+import { headerActionManifest } from '@/widgets/HeaderAction/manifest'
+import { headerActionEditor } from '@/widgets/HeaderAction/editor'
+
+import { headerTopBarTextManifest } from '@/widgets/HeaderTopBarText/manifest'
+import { headerTopBarTextEditor } from '@/widgets/HeaderTopBarText/editor'
+
+import { footerManifest } from '@/widgets/Footer/manifest'
+import { footerEditor } from '@/widgets/Footer/editor'
+
+export type EditorWidgetEntry = {
+  manifest: any
+  config: any
+}
+
+const defaultEditorRegistry: Record<string, EditorWidgetEntry> = {
+  PostTitle: { manifest: postTitleManifest, config: postTitleEditor },
+  PostContent: { manifest: postContentManifest, config: postContentEditor },
+  PostMeta: { manifest: postMetaManifest, config: postMetaEditor },
+  FeaturedMedia: { manifest: featuredMediaManifest, config: featuredMediaEditor },
+  Columns: { manifest: columnsManifest, config: columnsEditor },
+  TextBlock: { manifest: textBlockManifest, config: textBlockEditor },
+  RecentPosts: { manifest: recentPostsManifest, config: recentPostsEditor },
+  CategoryHeader: { manifest: categoryHeaderManifest, config: categoryHeaderEditor },
+  ProductHeader: { manifest: productHeaderManifest, config: productHeaderEditor },
+  Header: { manifest: headerManifest, config: headerEditor },
+  HeaderBrand: { manifest: headerBrandManifest, config: headerBrandEditor },
+  HeaderNav: { manifest: headerNavManifest, config: headerNavEditor },
+  HeaderAction: { manifest: headerActionManifest, config: headerActionEditor },
+  HeaderTopBarText: { manifest: headerTopBarTextManifest, config: headerTopBarTextEditor },
+  Footer: { manifest: footerManifest, config: footerEditor },
+}
+
+const customEditorOverrides: Record<string, any> = {}
+
+export function registerEditorWidget(id: string, config: any) {
+  customEditorOverrides[id] = config
+}
+
+/**
+ * Builds a scoped Puck Config for a specific Template Context based on its TemplatePolicy.
+ * Only allowed widgets for that template are exposed to the user in the editor sidebar!
+ */
+export function getEditorConfigForContext(context: TemplateContext): Config {
+  const policy = getTemplatePolicy(context)
+  const allowedComponents: Record<string, any> = {}
+
+  // If header context, also include Header wrapper
+  const allowedSet = new Set(policy.allowedWidgets)
+  if (context === 'header') {
+    allowedSet.add('Header')
+  }
+  if (context === 'footer') {
+    allowedSet.add('Footer')
+  }
+
+  for (const widgetId of allowedSet) {
+    const custom = customEditorOverrides[widgetId]
+    const base = defaultEditorRegistry[widgetId]
+    if (custom) {
+      allowedComponents[widgetId] = custom
+    } else if (base) {
+      allowedComponents[widgetId] = base.config
+    }
+  }
+
+  // Group into categories
+  const categories: Record<string, { title: string; components: string[] }> = {}
+
+  for (const [id] of Object.entries(allowedComponents)) {
+    const entry = defaultEditorRegistry[id]
+    const catKey = entry?.manifest?.category || 'general'
+    const catTitle =
+      catKey === 'document'
+        ? 'Document Elements'
+        : catKey === 'layout'
+          ? 'Layout & Grid'
+          : catKey === 'header'
+            ? 'Header Elements'
+            : catKey === 'navigation'
+              ? 'Navigation'
+              : catKey === 'archive'
+                ? 'Archive & Lists'
+                : catKey === 'commerce'
+                  ? 'Commerce (Contract)'
+                  : 'General'
+
+    if (!categories[catKey]) {
+      categories[catKey] = { title: catTitle, components: [] }
+    }
+    categories[catKey].components.push(id)
+  }
+
+  return {
+    components: allowedComponents,
+    categories,
+  }
+}

@@ -29,13 +29,20 @@
 
 html {
   background: var(--zyvavu-background, #f5f6f4);
+  min-height: 100dvh;
 }
 
 .zyvavu-admin-theme {
-  min-height: 100%;
+  min-height: 100dvh;
   color: var(--zyvavu-text);
   background: var(--zyvavu-background);
   font-size: 15px;
+}
+
+body,
+#app {
+  min-height: 100dvh;
+  height: auto;
 }
 
 body {
@@ -47,6 +54,7 @@ body {
 
 .template-default {
   background: var(--theme-bg);
+  min-height: 100dvh;
 }
 
 .template-default__wrap {

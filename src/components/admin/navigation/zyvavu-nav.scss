@@ -9,8 +9,9 @@
   color: var(--nav-ink);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: visible;
   padding: 22px 14px 16px;
+  box-sizing: border-box;
 
   &__brand {
     align-items: center;
@@ -40,17 +41,10 @@
   }
 
   &__body {
-    flex: 1 1 auto;
+    flex: 0 0 auto;
     margin-top: 18px;
-    min-height: 0;
-    overflow-y: auto;
-    overscroll-behavior: contain;
+    overflow: visible;
     padding: 0 2px 16px;
-    scrollbar-width: thin;
-
-    &::-webkit-scrollbar {
-      width: 0;
-    }
   }
 
   &__section {
@@ -135,6 +129,7 @@
     display: flex;
     flex: 0 0 auto;
     gap: 6px;
+    margin-top: 16px;
     padding: 16px 4px 0;
 
     .nav__log-out {
@@ -233,17 +228,27 @@
 }
 
 @media (min-width: 1025px) {
+  .nav.zyvavu-nav,
   .zyvavu-nav {
-    height: 100vh;
+    align-self: stretch;
+    display: flex;
+    height: auto;
+    left: auto;
+    min-height: 100dvh;
     opacity: 1;
-    position: sticky;
-    top: 0;
+    overflow: visible;
+    position: relative;
+    top: auto;
     transform: none;
-    z-index: 30;
+    width: var(--nav-width, 248px);
+    z-index: 10;
   }
 
   .template-default:has(.zyvavu-nav) {
-    grid-template-columns: var(--nav-width) minmax(0, 1fr);
+    align-items: stretch;
+    display: grid;
+    grid-template-columns: var(--nav-width, 248px) minmax(0, 1fr) !important;
+    min-height: 100dvh;
   }
 
   body:has(.zyvavu-nav) .template-default__nav-toggler-container {
@@ -261,6 +266,12 @@
     transform: translateX(-105%);
     transition: transform 180ms ease;
     z-index: 50;
+    overflow-y: auto;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
 
     &.nav--nav-open {
       transform: translateX(0);

@@ -8,6 +8,14 @@ import { loadPublicSiteSettings } from '@/lib/site/settings'
 import { linksForMenu } from '@/lib/url/menu-links'
 import config from '@/payload.config'
 import { themeVariables } from '@/theme/cssVariables'
+import {
+  ThemeRenderer,
+  generateThemeCss,
+  resolveThemeTemplate,
+  resolveActiveThemeConfig,
+  getGoogleFontUrl,
+} from '@/lib/theme-engine'
+import { ThemeLivePreviewBridge } from '@/components/frontend/ThemeLivePreviewBridge'
 
 import './styles.css'
 
@@ -39,9 +47,25 @@ export default async function RootLayout(props: { children: React.ReactNode }) {
     .catch(() => null)
   const items = await linksForMenu(payload, menus?.docs?.[0]?.items || [])
 
+  const footerDoc = await resolveThemeTemplate(payload, 'footer').catch(() => null)
+  const activeThemeConfig = await resolveActiveThemeConfig(payload).catch(() => undefined)
+  const fontFamilies = [
+    activeThemeConfig?.tokens?.typography?.fontFamily,
+    activeThemeConfig?.tokens?.typography?.fontFamilyHeading,
+  ]
+  const fontUrl = getGoogleFontUrl(fontFamilies)
+
   return (
     <html lang={settings.language}>
+      <head>
+        {fontUrl && <link id="zyvavu-theme-font-link" rel="stylesheet" href={fontUrl} />}
+        <style
+          id="zyvavu-theme-styles"
+          dangerouslySetInnerHTML={{ __html: generateThemeCss(activeThemeConfig) }}
+        />
+      </head>
       <body style={themeVariables('public') as CSSProperties}>
+        <ThemeLivePreviewBridge />
         <RegisterServiceWorker enabled={settings.pwaEnabled} />
         <SiteHeader
           items={items}
@@ -51,6 +75,18 @@ export default async function RootLayout(props: { children: React.ReactNode }) {
           tagline={settings.tagline}
         />
         <main>{props.children}</main>
+        {footerDoc && (
+          <ThemeRenderer
+            document={footerDoc}
+            dataContext={{
+              type: 'footer',
+              site: {
+                siteName: settings.siteName,
+                tagline: settings.tagline,
+              },
+            }}
+          />
+        )}
       </body>
     </html>
   )

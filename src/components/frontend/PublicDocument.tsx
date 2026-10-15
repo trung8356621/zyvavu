@@ -2,9 +2,9 @@ import { notFound, permanentRedirect } from 'next/navigation'
 import { getPayload } from 'payload'
 import React from 'react'
 
-import { RenderBlocks } from '@/components/frontend/RenderBlocks'
 import { resolvePublicPath } from '@/lib/url/registry'
 import config from '@/payload.config'
+import { ThemeRenderer, resolveThemeTemplate } from '@/lib/theme-engine'
 
 export async function PublicDocument({
   path,
@@ -30,27 +30,36 @@ export async function PublicDocument({
       overrideAccess: true,
     })
     if (!page || page._status !== 'published' || page.visibility !== 'public') notFound()
+
+    const templateDoc = await resolveThemeTemplate(payload, 'page')
     return (
-      <article className="site-section">
-        <h1>{page.title}</h1>
-        {page.excerpt ? <p>{page.excerpt}</p> : null}
-        <RenderBlocks blocks={page.layout as Array<Record<string, unknown>>} />
-      </article>
+      <ThemeRenderer
+        document={templateDoc}
+        dataContext={{
+          type: 'page',
+          document: page,
+        }}
+      />
     )
   }
 
   const post = await payload.findByID({
     collection: 'posts',
     id: resolved.id,
-    depth: 1,
+    depth: 2,
     draft: false,
     overrideAccess: true,
   })
   if (!post || post._status !== 'published') notFound()
+
+  const templateDoc = await resolveThemeTemplate(payload, 'single')
   return (
-    <article className="site-section">
-      <h1>{post.title}</h1>
-      {post.excerpt ? <p>{post.excerpt}</p> : null}
-    </article>
+    <ThemeRenderer
+      document={templateDoc}
+      dataContext={{
+        type: 'single',
+        document: post,
+      }}
+    />
   )
 }

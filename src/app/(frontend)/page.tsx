@@ -1,17 +1,39 @@
 import React from 'react'
+import { getPayload } from 'payload'
 
 import { PublicDocument } from '@/components/frontend/PublicDocument'
+import { ThemeRenderer, resolveThemeTemplate } from '@/lib/theme-engine'
+import { resolvePublicPath } from '@/lib/url/registry'
+import config from '@/payload.config'
 
-export default function HomePage() {
+export default async function HomePage() {
+  const payload = await getPayload({ config })
+  const resolved = await resolvePublicPath(payload, '/')
+  if (resolved) {
+    return <PublicDocument path="/" />
+  }
+
+  // Fetch recent published posts for home template preview
+  const recentPosts = await payload
+    .find({
+      collection: 'posts',
+      where: { _status: { equals: 'published' } },
+      limit: 6,
+      depth: 1,
+      overrideAccess: true,
+    })
+    .catch(() => ({ docs: [] }))
+
+  const templateDoc = await resolveThemeTemplate(payload, 'home')
   return (
-    <PublicDocument
-      path="/"
-      missing={
-        <section className="site-section">
-          <h1>zyvavu</h1>
-          <p>Chưa có trang home đã xuất bản.</p>
-        </section>
-      }
+    <ThemeRenderer
+      document={templateDoc}
+      dataContext={{
+        type: 'home',
+        archive: {
+          posts: recentPosts.docs,
+        },
+      }}
     />
   )
 }
