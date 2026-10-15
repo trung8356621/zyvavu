@@ -201,7 +201,7 @@ export const Settings: GlobalConfig = {
             {
               name: 'pagePermalinkStructure',
               type: 'text',
-              virtual: true,
+              required: true,
               defaultValue: DEFAULT_PAGE_PERMALINK_STRUCTURE,
               label: 'Page URL Structure',
               validate: (value: unknown) => {
@@ -215,7 +215,7 @@ export const Settings: GlobalConfig = {
             {
               name: 'categoryPermalinkStructure',
               type: 'text',
-              virtual: true,
+              required: true,
               defaultValue: DEFAULT_CATEGORY_PERMALINK_STRUCTURE,
               label: 'Category URL Structure',
               validate: (value: unknown) => {
@@ -229,7 +229,7 @@ export const Settings: GlobalConfig = {
             {
               name: 'tagPermalinkStructure',
               type: 'text',
-              virtual: true,
+              required: true,
               defaultValue: DEFAULT_TAG_PERMALINK_STRUCTURE,
               label: 'Tag URL Structure',
               validate: (value: unknown) => {
@@ -296,6 +296,20 @@ export const Settings: GlobalConfig = {
               max: 100,
               admin: { description: 'Maximum number of eligible pages kept in the offline cache.' },
               validate: wholeNumber(1, 100),
+            },
+          ],
+        },
+        {
+          label: 'Mega Menu',
+          fields: [
+            {
+              name: 'enableMegaMenu',
+              type: 'checkbox',
+              defaultValue: false,
+              label: 'Enable Mega Menu',
+              admin: {
+                description: 'Enables the desktop Mega Menu visual builder and structured mobile menu navigation.',
+              },
             },
           ],
         },

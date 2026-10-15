@@ -27,6 +27,7 @@ import { PagesListView as PagesListView_35e5a4f7a927d66d1956a89a74f9ad32 } from 
 import { MediaListView as MediaListView_9b12155b20b9c2b1aaa48f6181ff9b3d } from '@/components/admin/media/MediaListView'
 import { CategoriesListView as CategoriesListView_e3e8f70244db5f30aeccb178abe9d28d } from '@/components/admin/categories/CategoriesListView'
 import { TagsListView as TagsListView_896150d58bc29744f1a1a1b474a094e5 } from '@/components/admin/tags/TagsListView'
+import { MenuEditView as MenuEditView_53662900c57a5bbe5fcf6984db7ba2b2 } from '@/components/admin/menus/MenuEditView'
 import { MenusListView as MenusListView_5f5e4546ce4c49e8d6af150a40b47826 } from '@/components/admin/menus/MenusListView'
 import { UsersListView as UsersListView_9590dab51cc529cf0436456ed756da29 } from '@/components/admin/users/UsersListView'
 import { UrlRegistryListView as UrlRegistryListView_06f2f625bba876851287e4ca3ba49457 } from '@/components/admin/url-registry/UrlRegistryListView'
@@ -74,6 +75,7 @@ export const importMap = {
   "@/components/admin/media/MediaListView#MediaListView": MediaListView_9b12155b20b9c2b1aaa48f6181ff9b3d,
   "@/components/admin/categories/CategoriesListView#CategoriesListView": CategoriesListView_e3e8f70244db5f30aeccb178abe9d28d,
   "@/components/admin/tags/TagsListView#TagsListView": TagsListView_896150d58bc29744f1a1a1b474a094e5,
+  "@/components/admin/menus/MenuEditView#MenuEditView": MenuEditView_53662900c57a5bbe5fcf6984db7ba2b2,
   "@/components/admin/menus/MenusListView#MenusListView": MenusListView_5f5e4546ce4c49e8d6af150a40b47826,
   "@/components/admin/users/UsersListView#UsersListView": UsersListView_9590dab51cc529cf0436456ed756da29,
   "@/components/admin/url-registry/UrlRegistryListView#UrlRegistryListView": UrlRegistryListView_06f2f625bba876851287e4ca3ba49457,

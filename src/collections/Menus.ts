@@ -12,6 +12,11 @@ export const Menus: CollectionConfig = {
         list: {
           Component: '@/components/admin/menus/MenusListView#MenusListView',
         },
+        edit: {
+          root: {
+            Component: '@/components/admin/menus/MenuEditView#MenuEditView',
+          },
+        },
       },
     },
   },
@@ -75,5 +80,50 @@ export const Menus: CollectionConfig = {
         },
       ],
     },
+    {
+      name: 'mode',
+      type: 'select',
+      defaultValue: 'classic',
+      options: [
+        { label: 'Classic', value: 'classic' },
+        { label: 'Mega Menu', value: 'mega' },
+      ],
+      admin: {
+        description: 'Menu rendering mode: Classic simple link tree or Desktop Mega Layout.',
+      },
+    },
+    {
+      name: 'megaLayout',
+      type: 'json',
+      admin: {
+        description: 'Versioned Puck layout document for Desktop Mega Menu.',
+      },
+    },
+    {
+      name: 'mobileMenu',
+      type: 'json',
+      admin: {
+        description: 'Mobile navigation tree data foundation.',
+      },
+    },
   ],
+  hooks: {
+    beforeChange: [
+      async ({ data, req }) => {
+        if (data?.mode === 'mega') {
+          const settings = await req.payload
+            .findGlobal({
+              slug: 'settings',
+              depth: 0,
+              overrideAccess: true,
+            })
+            .catch(() => null)
+          if (!settings?.enableMegaMenu) {
+            throw new Error('Mega Menu is disabled in Site Settings. Enable it before saving Mega menus.')
+          }
+        }
+        return data
+      },
+    ],
+  },
 }

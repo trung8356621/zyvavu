@@ -313,6 +313,34 @@ export interface Menu {
         id?: string | null;
       }[]
     | null;
+  /**
+   * Menu rendering mode: Classic simple link tree or Desktop Mega Layout.
+   */
+  mode?: ('classic' | 'mega') | null;
+  /**
+   * Versioned Puck layout document for Desktop Mega Menu.
+   */
+  megaLayout?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Mobile navigation tree data foundation.
+   */
+  mobileMenu?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -605,6 +633,9 @@ export interface MenusSelect<T extends boolean = true> {
             };
         id?: T;
       };
+  mode?: T;
+  megaLayout?: T;
+  mobileMenu?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -741,9 +772,9 @@ export interface Setting {
    * Default structure preset for post public URLs. Changing presets does not rewrite existing URL Registry records.
    */
   postPermalinkStructure: string;
-  pagePermalinkStructure?: string | null;
-  categoryPermalinkStructure?: string | null;
-  tagPermalinkStructure?: string | null;
+  pagePermalinkStructure: string;
+  categoryPermalinkStructure: string;
+  tagPermalinkStructure: string;
   /**
    * BCP 47 language code used by the default public site (e.g. vi).
    */
@@ -760,6 +791,10 @@ export interface Setting {
    * Maximum number of eligible pages kept in the offline cache.
    */
   offlinePageLimit: number;
+  /**
+   * Enables the desktop Mega Menu visual builder and structured mobile menu navigation.
+   */
+  enableMegaMenu?: boolean | null;
   /**
    * Reserved for the initial setup wizard. The wizard is not available yet.
    */
@@ -803,6 +838,7 @@ export interface SettingsSelect<T extends boolean = true> {
   secondaryLanguage?: T;
   pwaEnabled?: T;
   offlinePageLimit?: T;
+  enableMegaMenu?: T;
   setupComplete?: T;
   updatedAt?: T;
   createdAt?: T;
