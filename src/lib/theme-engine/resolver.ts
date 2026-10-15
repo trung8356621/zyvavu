@@ -12,13 +12,26 @@ import {
 export const ACTIVE_THEME_KEY = 'active_theme_id'
 
 /**
- * Resolves the currently active theme ID from payload-preferences.
- * Falls back to DEFAULT_THEME_ID ('corporate').
+ * Resolves the currently active theme ID from Settings global.
+ * Falls back to legacy payload-preferences, then to DEFAULT_THEME_ID ('corporate').
  */
 export async function resolveActiveThemeId(payload?: Payload): Promise<string> {
   if (!payload) return DEFAULT_THEME_ID
 
   try {
+    const settings = await payload
+      .findGlobal({
+        slug: 'settings',
+        overrideAccess: true,
+      })
+      .catch(() => null)
+
+    const raw = (settings as any)?.activeThemeId
+    if (typeof raw === 'string' && isValidThemeId(raw)) {
+      return normalizeThemeId(raw)
+    }
+
+    // Fallback to legacy payload-preferences if settings doesn't have it yet
     const pref = await payload
       .find({
         collection: 'payload-preferences' as any,
@@ -28,20 +41,20 @@ export async function resolveActiveThemeId(payload?: Payload): Promise<string> {
       })
       .catch(() => null)
 
-    const raw = pref?.docs?.[0]?.value
-    const id = typeof raw === 'string' ? raw : (raw as any)?.themeId
+    const prefRaw = pref?.docs?.[0]?.value
+    const id = typeof prefRaw === 'string' ? prefRaw : (prefRaw as any)?.themeId
     if (typeof id === 'string' && isValidThemeId(id)) {
       return normalizeThemeId(id)
     }
-  } catch {
-    // Safe fallback
+  } catch (err) {
+    console.error('[ThemeEngine] resolveActiveThemeId error:', err)
   }
 
   return DEFAULT_THEME_ID
 }
 
 /**
- * Sets the active theme site-wide.
+ * Sets the active theme site-wide in Settings global.
  */
 export async function setActiveThemeId(payload: Payload, themeId: string): Promise<boolean> {
   if (!isValidThemeId(themeId)) {
@@ -51,31 +64,16 @@ export async function setActiveThemeId(payload: Payload, themeId: string): Promi
   const normalized = normalizeThemeId(themeId)
 
   try {
-    const existing = await payload
-      .find({
-        collection: 'payload-preferences' as any,
-        where: { key: { equals: ACTIVE_THEME_KEY } },
-        limit: 1,
-        overrideAccess: true,
-      })
-      .catch(() => null)
-
-    if (existing?.docs?.length) {
-      await payload.update({
-        collection: 'payload-preferences' as any,
-        id: existing.docs[0].id,
-        data: { value: normalized },
-        overrideAccess: true,
-      })
-    } else {
-      await payload.create({
-        collection: 'payload-preferences' as any,
-        data: { key: ACTIVE_THEME_KEY, value: normalized },
-        overrideAccess: true,
-      })
-    }
+    await payload.updateGlobal({
+      slug: 'settings',
+      data: {
+        activeThemeId: normalized,
+      },
+      overrideAccess: true,
+    })
     return true
-  } catch {
+  } catch (err) {
+    console.error('[ThemeEngine] setActiveThemeId failed:', err)
     return false
   }
 }
@@ -125,10 +123,11 @@ export function getBundledTemplate(
  * Scoped by theme ID and template key.
  *
  * Hierarchy:
- * 1. Database template override scoped by theme: theme_template_${themeId}_${context}
- * 2. If theme is default/corporate, check legacy key: theme_template_${context}
- * 3. Bundled template JSON for this theme
- * 4. Safe fallback
+ * 1. Site-wide template override in Settings global: themeTemplates[theme_template_${themeId}_${context}]
+ * 2. If theme is corporate, check legacy key in Settings: themeTemplates[theme_template_${context}]
+ * 3. Fallback to legacy payload-preferences
+ * 4. Bundled template JSON for this theme
+ * 5. Safe fallback
  */
 export async function resolveThemeTemplate(
   payload: Payload,
@@ -140,8 +139,38 @@ export async function resolveThemeTemplate(
   const fallback = getBundledTemplate(context, targetTheme)
 
   try {
-    // 1. Check scoped payload-preferences key: theme_template_${targetTheme}_${context}
     const scopedKey = `theme_template_${targetTheme}_${context}`
+
+    // 1. Check Settings global
+    const settings = await payload
+      .findGlobal({
+        slug: 'settings',
+        overrideAccess: true,
+      })
+      .catch(() => null)
+
+    const settingsTemplates = (settings as any)?.themeTemplates
+    if (settingsTemplates && typeof settingsTemplates === 'object') {
+      const doc = settingsTemplates[scopedKey] as ThemeTemplateDocument | undefined
+      if (doc && typeof doc === 'object') {
+        const validation = validateThemeTemplateDocument(doc, context)
+        if (validation.valid) {
+          return doc
+        }
+      }
+
+      if (targetTheme === 'corporate') {
+        const legacyDoc = settingsTemplates[`theme_template_${context}`] as ThemeTemplateDocument | undefined
+        if (legacyDoc && typeof legacyDoc === 'object') {
+          const validation = validateThemeTemplateDocument(legacyDoc, context)
+          if (validation.valid) {
+            return legacyDoc
+          }
+        }
+      }
+    }
+
+    // 2. Fallback to legacy payload-preferences
     const preference = await payload
       .find({
         collection: 'payload-preferences' as any,
@@ -159,7 +188,6 @@ export async function resolveThemeTemplate(
       }
     }
 
-    // 2. If targetTheme is corporate/default, check legacy un-scoped key
     if (targetTheme === 'corporate') {
       const legacyPref = await payload
         .find({
@@ -179,14 +207,14 @@ export async function resolveThemeTemplate(
       }
     }
   } catch (err) {
-    // Fail-safe to bundled template
+    console.error('[ThemeEngine] resolveThemeTemplate error:', err)
   }
 
   return fallback
 }
 
 /**
- * Persists a user-edited template override scoped by theme ID to PostgreSQL.
+ * Persists a user-edited template override scoped by theme ID to Settings global in PostgreSQL.
  * Validates document before saving.
  */
 export async function saveThemeTemplateOverride(
@@ -215,67 +243,33 @@ export async function saveThemeTemplateOverride(
 
   const scopedKey = `theme_template_${targetTheme}_${context}`
 
-  // 3. Persist to payload_preferences with scoped key
-  const existing = await payload
-    .find({
-      collection: 'payload-preferences' as any,
-      where: { key: { equals: scopedKey } },
-      limit: 1,
-      overrideAccess: true,
-    })
-    .catch(() => null)
+  try {
+    // 3. Persist site-wide to Settings global
+    const settings = await payload
+      .findGlobal({
+        slug: 'settings',
+        overrideAccess: true,
+      })
+      .catch(() => null)
 
-  if (existing?.docs?.length) {
-    await payload.update({
-      collection: 'payload-preferences' as any,
-      id: existing.docs[0].id,
-      data: {
-        value: toSave,
-      },
-      overrideAccess: true,
-    })
-  } else {
-    await payload.create({
-      collection: 'payload-preferences' as any,
-      data: {
-        key: scopedKey,
-        value: toSave,
-      },
-      overrideAccess: true,
-    })
-  }
-
-  // 4. If corporate, keep legacy key in sync for backwards compatibility
-  if (targetTheme === 'corporate') {
-    try {
-      const legacyKey = `theme_template_${context}`
-      const legacyExisting = await payload
-        .find({
-          collection: 'payload-preferences' as any,
-          where: { key: { equals: legacyKey } },
-          limit: 1,
-          overrideAccess: true,
-        })
-        .catch(() => null)
-
-      if (legacyExisting?.docs?.length) {
-        await payload.update({
-          collection: 'payload-preferences' as any,
-          id: legacyExisting.docs[0].id,
-          data: { value: toSave },
-          overrideAccess: true,
-        })
-      } else {
-        await payload.create({
-          collection: 'payload-preferences' as any,
-          data: { key: legacyKey, value: toSave },
-          overrideAccess: true,
-        })
-      }
-    } catch {
-      // safe ignore
+    const existingTemplates = ((settings as any)?.themeTemplates as Record<string, ThemeTemplateDocument>) || {}
+    const updatedTemplates = {
+      ...existingTemplates,
+      [scopedKey]: toSave,
+      ...(targetTheme === 'corporate' ? { [`theme_template_${context}`]: toSave } : {}),
     }
-  }
 
-  return { success: true }
+    await payload.updateGlobal({
+      slug: 'settings',
+      data: {
+        themeTemplates: updatedTemplates,
+      },
+      overrideAccess: true,
+    })
+
+    return { success: true }
+  } catch (err: any) {
+    console.error('[ThemeEngine] saveThemeTemplateOverride failed:', err)
+    return { success: false, errors: [err?.message || 'Failed to save theme template.'] }
+  }
 }

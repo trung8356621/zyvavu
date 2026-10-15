@@ -4,6 +4,7 @@ import type { ListViewClientProps } from 'payload'
 import { DefaultListView } from '@payloadcms/ui'
 
 import { CollectionListHeader } from '@/components/admin/collections/CollectionListHeader'
+import { CollectionStatusTabs } from '@/components/admin/collections/CollectionStatusTabs'
 
 export function PagesListView(props: ListViewClientProps) {
   return (
@@ -17,7 +18,9 @@ export function PagesListView(props: ListViewClientProps) {
             description="Manage standalone site pages, structure, and landing content."
             hasCreatePermission={props.hasCreatePermission}
             newDocumentURL={props.newDocumentURL}
-          />
+          >
+            <CollectionStatusTabs label="Filter pages by status" />
+          </CollectionListHeader>
           {props.BeforeList}
         </>
       }

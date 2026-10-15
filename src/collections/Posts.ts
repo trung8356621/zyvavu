@@ -53,7 +53,7 @@ export const Posts: CollectionConfig = {
       required: true,
       admin: {
         components: {
-          Cell: '@/components/admin/posts/PostsTitleCell#PostsTitleCell',
+          Cell: '@/components/admin/collections/CollectionTitleCell#CollectionTitleCell',
         },
       },
     },

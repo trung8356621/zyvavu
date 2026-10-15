@@ -827,6 +827,46 @@ export interface Setting {
    * Reserved for the initial setup wizard. The wizard is not available yet.
    */
   setupComplete?: boolean | null;
+  /**
+   * Authoritative site-wide active theme ID.
+   */
+  activeThemeId?: string | null;
+  /**
+   * Site-wide theme template overrides scoped by theme ID and context.
+   */
+  themeTemplates?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Site-wide draft and published theme styles scoped by theme ID.
+   */
+  themeStyles?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Site-wide custom color and typography presets.
+   */
+  themeCustomPresets?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   updatedAt?: string | null;
   createdAt?: string | null;
 }
@@ -868,6 +908,10 @@ export interface SettingsSelect<T extends boolean = true> {
   offlinePageLimit?: T;
   enableMegaMenu?: T;
   setupComplete?: T;
+  activeThemeId?: T;
+  themeTemplates?: T;
+  themeStyles?: T;
+  themeCustomPresets?: T;
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;

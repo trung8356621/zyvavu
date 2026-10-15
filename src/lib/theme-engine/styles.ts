@@ -75,8 +75,38 @@ export async function resolveActiveThemeConfig(
   if (!payload) return base
 
   try {
-    // 1. Check scoped published key: theme_style_${targetTheme}_published
     const scopedKey = `theme_style_${targetTheme}_published`
+
+    // 1. Check Settings global
+    const settings = await payload
+      .findGlobal({
+        slug: 'settings',
+        overrideAccess: true,
+      })
+      .catch(() => null)
+
+    const settingsStyles = (settings as any)?.themeStyles
+    if (settingsStyles && typeof settingsStyles === 'object') {
+      const override = settingsStyles[scopedKey] as Partial<ThemeConfig> | undefined
+      if (override && typeof override === 'object') {
+        const validation = validateThemeTokens(override.tokens)
+        if (validation.valid) {
+          return mergeThemeConfig(base, override)
+        }
+      }
+
+      if (targetTheme === 'corporate') {
+        const legacyOverride = settingsStyles[THEME_STYLE_PUBLISHED_KEY] as Partial<ThemeConfig> | undefined
+        if (legacyOverride && typeof legacyOverride === 'object') {
+          const validation = validateThemeTokens(legacyOverride.tokens)
+          if (validation.valid) {
+            return mergeThemeConfig(base, legacyOverride)
+          }
+        }
+      }
+    }
+
+    // 2. Fallback to legacy payload-preferences
     const pref = await payload
       .find({
         collection: 'payload-preferences',
@@ -94,7 +124,6 @@ export async function resolveActiveThemeConfig(
       }
     }
 
-    // 2. If targetTheme is corporate, check legacy un-scoped published key
     if (targetTheme === 'corporate') {
       const legacyPref = await payload
         .find({
@@ -134,8 +163,38 @@ export async function resolveDraftThemeConfig(
   if (!payload) return base
 
   try {
-    // 1. Check scoped draft key: theme_style_${targetTheme}_draft
     const scopedKey = `theme_style_${targetTheme}_draft`
+
+    // 1. Check Settings global
+    const settings = await payload
+      .findGlobal({
+        slug: 'settings',
+        overrideAccess: true,
+      })
+      .catch(() => null)
+
+    const settingsStyles = (settings as any)?.themeStyles
+    if (settingsStyles && typeof settingsStyles === 'object') {
+      const draftOverride = settingsStyles[scopedKey] as Partial<ThemeConfig> | undefined
+      if (draftOverride && typeof draftOverride === 'object') {
+        const validation = validateThemeTokens(draftOverride.tokens)
+        if (validation.valid) {
+          return mergeThemeConfig(base, draftOverride)
+        }
+      }
+
+      if (targetTheme === 'corporate') {
+        const legacyOverride = settingsStyles[THEME_STYLE_DRAFT_KEY] as Partial<ThemeConfig> | undefined
+        if (legacyOverride && typeof legacyOverride === 'object') {
+          const validation = validateThemeTokens(legacyOverride.tokens)
+          if (validation.valid) {
+            return mergeThemeConfig(base, legacyOverride)
+          }
+        }
+      }
+    }
+
+    // 2. Fallback to legacy payload-preferences
     const draftPref = await payload
       .find({
         collection: 'payload-preferences',
@@ -153,7 +212,6 @@ export async function resolveDraftThemeConfig(
       }
     }
 
-    // 2. If targetTheme is corporate, check legacy un-scoped draft key
     if (targetTheme === 'corporate') {
       const legacyPref = await payload
         .find({
@@ -189,6 +247,23 @@ export async function resolveCustomPresets(payload?: any): Promise<CustomPresets
   if (!payload) return defaultStore
 
   try {
+    // 1. Check Settings global
+    const settings = await payload
+      .findGlobal({
+        slug: 'settings',
+        overrideAccess: true,
+      })
+      .catch(() => null)
+
+    const presets = (settings as any)?.themeCustomPresets as CustomPresetsStore | undefined
+    if (presets && typeof presets === 'object') {
+      return {
+        colors: Array.isArray(presets.colors) ? presets.colors : [],
+        typography: Array.isArray(presets.typography) ? presets.typography : [],
+      }
+    }
+
+    // 2. Fallback to legacy payload-preferences
     const pref = await payload
       .find({
         collection: 'payload-preferences',
@@ -213,7 +288,7 @@ export async function resolveCustomPresets(payload?: any): Promise<CustomPresets
 }
 
 /**
- * Persists draft or published style overrides to payload-preferences scoped by theme ID.
+ * Persists draft or published style overrides to Settings global scoped by theme ID.
  */
 export async function saveThemeStyleOverride(
   payload: any,
@@ -238,94 +313,43 @@ export async function saveThemeStyleOverride(
   }
 
   try {
-    const existing = await payload
-      .find({
-        collection: 'payload-preferences',
-        where: { key: { equals: scopedKey } },
-        limit: 1,
+    const settings = await payload
+      .findGlobal({
+        slug: 'settings',
         overrideAccess: true,
       })
       .catch(() => null)
 
-    if (existing?.docs?.length) {
-      await payload.update({
-        collection: 'payload-preferences',
-        id: existing.docs[0].id,
-        data: { value: overrideData },
-        overrideAccess: true,
-      })
-    } else {
-      await payload.create({
-        collection: 'payload-preferences',
-        data: { key: scopedKey, value: overrideData },
-        overrideAccess: true,
-      })
+    const existingStyles = ((settings as any)?.themeStyles as Record<string, any>) || {}
+    const updatedStyles = {
+      ...existingStyles,
+      [scopedKey]: overrideData,
+      ...(isPublished ? { [`theme_style_${targetTheme}_draft`]: overrideData } : {}),
+      ...(targetTheme === 'corporate'
+        ? {
+            [isPublished ? THEME_STYLE_PUBLISHED_KEY : THEME_STYLE_DRAFT_KEY]: overrideData,
+            ...(isPublished ? { [THEME_STYLE_DRAFT_KEY]: overrideData } : {}),
+          }
+        : {}),
     }
 
-    // When publishing, also sync draft for this theme so customizer sees clean state
-    if (isPublished) {
-      const draftKey = `theme_style_${targetTheme}_draft`
-      const draftExisting = await payload
-        .find({
-          collection: 'payload-preferences',
-          where: { key: { equals: draftKey } },
-          limit: 1,
-          overrideAccess: true,
-        })
-        .catch(() => null)
-
-      if (draftExisting?.docs?.length) {
-        await payload.update({
-          collection: 'payload-preferences',
-          id: draftExisting.docs[0].id,
-          data: { value: overrideData },
-          overrideAccess: true,
-        })
-      } else {
-        await payload.create({
-          collection: 'payload-preferences',
-          data: { key: draftKey, value: overrideData },
-          overrideAccess: true,
-        })
-      }
-    }
-
-    // If corporate, also sync legacy keys for backwards compatibility
-    if (targetTheme === 'corporate') {
-      const legacyKey = isPublished ? THEME_STYLE_PUBLISHED_KEY : THEME_STYLE_DRAFT_KEY
-      const legacyExisting = await payload
-        .find({
-          collection: 'payload-preferences',
-          where: { key: { equals: legacyKey } },
-          limit: 1,
-          overrideAccess: true,
-        })
-        .catch(() => null)
-
-      if (legacyExisting?.docs?.length) {
-        await payload.update({
-          collection: 'payload-preferences',
-          id: legacyExisting.docs[0].id,
-          data: { value: overrideData },
-          overrideAccess: true,
-        })
-      } else {
-        await payload.create({
-          collection: 'payload-preferences',
-          data: { key: legacyKey, value: overrideData },
-          overrideAccess: true,
-        })
-      }
-    }
+    await payload.updateGlobal({
+      slug: 'settings',
+      data: {
+        themeStyles: updatedStyles,
+      },
+      overrideAccess: true,
+    })
 
     return { success: true }
   } catch (err: any) {
+    console.error('[ThemeEngine] saveThemeStyleOverride failed:', err)
     return { success: false, errors: [err?.message || 'Failed to save theme styles.'] }
   }
 }
 
 /**
- * Saves or updates a custom color or typography preset.
+ * Saves or updates a custom color or typography preset in Settings global.
  */
 export async function saveCustomPreset(
   payload: any,
@@ -362,33 +386,18 @@ export async function saveCustomPreset(
   }
 
   try {
-    const existing = await payload
-      .find({
-        collection: 'payload-preferences',
-        where: { key: { equals: THEME_CUSTOM_PRESETS_KEY } },
-        limit: 1,
-        overrideAccess: true,
-      })
-      .catch(() => null)
-
-    if (existing?.docs?.length) {
-      await payload.update({
-        collection: 'payload-preferences',
-        id: existing.docs[0].id,
-        data: { value: store },
-        overrideAccess: true,
-      })
-    } else {
-      await payload.create({
-        collection: 'payload-preferences',
-        data: { key: THEME_CUSTOM_PRESETS_KEY, value: store },
-        overrideAccess: true,
-      })
-    }
+    await payload.updateGlobal({
+      slug: 'settings',
+      data: {
+        themeCustomPresets: store,
+      },
+      overrideAccess: true,
+    })
 
     return { success: true }
   } catch (err: any) {
-    return { success: false, errors: [err?.message || 'Failed to save preset.'] }
+    console.error('[ThemeEngine] saveCustomPreset failed:', err)
+    return { success: false, errors: [err?.message || 'Failed to save custom preset.'] }
   }
 }
 

@@ -17,21 +17,3 @@
     min-width: 180px;
   }
 }
-
-.zyvavu-post-title-cell {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-
-  &__title {
-    color: var(--theme-elevation-1000);
-    font-weight: 650;
-    line-height: 1.35;
-  }
-
-  &__slug {
-    color: var(--theme-elevation-550);
-    font-size: 12px;
-    line-height: 1.35;
-  }
-}

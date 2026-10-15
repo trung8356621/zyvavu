@@ -21,7 +21,7 @@ export const TEMPLATE_POLICIES: Record<TemplateContext, TemplatePolicy> = {
     context: 'home',
     mode: 'free',
     description: 'Free layout builder for the site homepage.',
-    allowedWidgets: ['TextBlock', 'Columns', 'RecentPosts', 'PromoBanner', 'ContactCard', 'LinkList'],
+    allowedWidgets: ['TextBlock', 'Columns', 'RecentPosts', 'FeaturedMedia', 'PromoBanner', 'ContactCard', 'LinkList'],
   },
   category: {
     context: 'category',

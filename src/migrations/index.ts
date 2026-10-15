@@ -5,6 +5,7 @@ import * as migration_20261014_100000_settings_v2 from './20261014_100000_settin
 import * as migration_20261014_150000_settings_permalinks_multi_type from './20261014_150000_settings_permalinks_multi_type';
 import * as migration_20261015_070000_mega_menu_foundation from './20261015_070000_mega_menu_foundation';
 import * as migration_20261015_110000_mega_menu_v4_per_item from './20261015_110000_mega_menu_v4_per_item';
+import * as migration_20261016_010000_theme_persistence from './20261016_010000_theme_persistence';
 
 export const migrations = [
   {
@@ -41,5 +42,10 @@ export const migrations = [
     up: migration_20261015_110000_mega_menu_v4_per_item.up,
     down: migration_20261015_110000_mega_menu_v4_per_item.down,
     name: '20261015_110000_mega_menu_v4_per_item'
+  },
+  {
+    up: migration_20261016_010000_theme_persistence.up,
+    down: migration_20261016_010000_theme_persistence.down,
+    name: '20261016_010000_theme_persistence'
   },
 ];

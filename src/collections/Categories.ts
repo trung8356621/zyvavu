@@ -22,5 +22,17 @@ export const Categories: CollectionConfig = {
     update: siteStaffAccess,
     delete: siteStaffAccess,
   },
-  fields: [{ name: 'title', type: 'text', required: true }, slugField],
+  fields: [
+    {
+      name: 'title',
+      type: 'text',
+      required: true,
+      admin: {
+        components: {
+          Cell: '@/components/admin/collections/CollectionTitleCell#CollectionTitleCell',
+        },
+      },
+    },
+    slugField,
+  ],
 }

@@ -46,7 +46,16 @@ export const Pages: CollectionConfig = {
     ],
   },
   fields: [
-    { name: 'title', type: 'text', required: true },
+    {
+      name: 'title',
+      type: 'text',
+      required: true,
+      admin: {
+        components: {
+          Cell: '@/components/admin/collections/CollectionTitleCell#CollectionTitleCell',
+        },
+      },
+    },
     slugField,
     publicPathField,
     { name: 'excerpt', type: 'textarea' },

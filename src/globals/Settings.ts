@@ -20,6 +20,7 @@ import {
   DEFAULT_TAG_PERMALINK_STRUCTURE,
   validatePermalinkPattern,
 } from '@/lib/permalinks'
+import { isValidThemeId } from '@/lib/theme-engine/themes'
 
 const wholeNumber = (min: number, max: number) => (value: unknown) => {
   if (typeof value !== 'number' || !Number.isInteger(value) || value < min || value > max) {
@@ -322,6 +323,46 @@ export const Settings: GlobalConfig = {
       admin: {
         hidden: true,
         description: 'Reserved for the initial setup wizard. The wizard is not available yet.',
+      },
+    },
+    {
+      name: 'activeThemeId',
+      type: 'text',
+      defaultValue: 'corporate',
+      admin: {
+        hidden: true,
+        description: 'Authoritative site-wide active theme ID.',
+      },
+      validate: (value: unknown) => {
+        if (!value) return true
+        if (typeof value !== 'string' || !isValidThemeId(value)) {
+          return `Invalid theme ID "${value}". Must be one of installed themes.`
+        }
+        return true
+      },
+    },
+    {
+      name: 'themeTemplates',
+      type: 'json',
+      admin: {
+        hidden: true,
+        description: 'Site-wide theme template overrides scoped by theme ID and context.',
+      },
+    },
+    {
+      name: 'themeStyles',
+      type: 'json',
+      admin: {
+        hidden: true,
+        description: 'Site-wide draft and published theme styles scoped by theme ID.',
+      },
+    },
+    {
+      name: 'themeCustomPresets',
+      type: 'json',
+      admin: {
+        hidden: true,
+        description: 'Site-wide custom color and typography presets.',
       },
     },
   ],
