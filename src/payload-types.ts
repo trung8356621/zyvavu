@@ -300,9 +300,18 @@ export interface Menu {
   id: number;
   name: string;
   location: 'header' | 'footer';
+  /**
+   * Default dropdown animation transition for this menu.
+   */
+  defaultDropdownEffect?: ('none' | 'fade' | 'slide-down') | null;
   items?:
     | {
         label: string;
+        parentId?: string | null;
+        hasSubmenu?: boolean | null;
+        submenuType?: ('classic' | 'mega') | null;
+        dropdownEffect?: ('inherit' | 'none' | 'fade' | 'slide-down') | null;
+        triggerOnly?: boolean | null;
         link: {
           type: 'page' | 'post' | 'custom';
           page?: (number | null) | Page;
@@ -314,11 +323,23 @@ export interface Menu {
       }[]
     | null;
   /**
-   * Menu rendering mode: Classic simple link tree or Desktop Mega Layout.
+   * Map of item IDs to versioned Puck layout documents for Mega Menus.
+   */
+  megaLayouts?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Legacy menu rendering mode (maintained for backwards compatibility).
    */
   mode?: ('classic' | 'mega') | null;
   /**
-   * Versioned Puck layout document for Desktop Mega Menu.
+   * Legacy whole-menu Puck layout document (maintained for backwards compatibility).
    */
   megaLayout?:
     | {
@@ -618,10 +639,16 @@ export interface TagsSelect<T extends boolean = true> {
 export interface MenusSelect<T extends boolean = true> {
   name?: T;
   location?: T;
+  defaultDropdownEffect?: T;
   items?:
     | T
     | {
         label?: T;
+        parentId?: T;
+        hasSubmenu?: T;
+        submenuType?: T;
+        dropdownEffect?: T;
+        triggerOnly?: T;
         link?:
           | T
           | {
@@ -633,6 +660,7 @@ export interface MenusSelect<T extends boolean = true> {
             };
         id?: T;
       };
+  megaLayouts?: T;
   mode?: T;
   megaLayout?: T;
   mobileMenu?: T;

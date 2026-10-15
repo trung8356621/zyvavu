@@ -23,6 +23,15 @@ const nextConfig: NextConfig = {
       '.mjs': ['.mts', '.mjs'],
     }
 
+    webpackConfig.watchOptions = {
+      ...webpackConfig.watchOptions,
+      ignored: [
+        /[\\/]node_modules[\\/]/,
+        /[\\/]\.git[\\/]/,
+        /[\\/]\.next[\\/]/,
+      ],
+    }
+
     return webpackConfig
   },
   turbopack: {

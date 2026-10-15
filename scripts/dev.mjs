@@ -1,20 +1,26 @@
 import { spawn } from 'node:child_process'
 import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 
 const server = JSON.parse(readFileSync(new URL('../config/dev-server.json', import.meta.url), 'utf8'))
 
+const preloadPath = fileURLToPath(new URL('./dev-preload.cjs', import.meta.url)).replaceAll('\\', '/')
 const baseNodeOptions = process.env.NODE_OPTIONS || ''
-const nodeOptions = baseNodeOptions.includes('--max-old-space-size')
-  ? baseNodeOptions
-  : `${baseNodeOptions} --no-deprecation --max-old-space-size=4096`.trim()
+const spaceOption = baseNodeOptions.includes('--max-old-space-size') ? '' : '--max-old-space-size=4096'
+const preloadOption = baseNodeOptions.includes('dev-preload') ? '' : `--require "${preloadPath}"`
+const nodeOptions = `${baseNodeOptions} --no-deprecation ${spaceOption} ${preloadOption}`.trim()
 
-console.log(`[dev-launcher] Starting Next.js dev server on http://${server.host}:${server.port} at ${new Date().toISOString()}`)
+const isWebpack = process.argv.includes('--webpack')
+const bundlerFlag = isWebpack ? '--webpack' : '--turbo'
+
+console.log(`[dev-launcher] Starting Next.js dev server (${isWebpack ? 'webpack' : 'turbopack'}) on http://${server.host}:${server.port} at ${new Date().toISOString()}`)
 
 const child = spawn(
   process.execPath,
   [
     'node_modules/next/dist/bin/next',
     'dev',
+    bundlerFlag,
     '--hostname',
     server.host,
     '--port',
