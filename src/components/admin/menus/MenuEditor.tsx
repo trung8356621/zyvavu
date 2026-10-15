@@ -131,17 +131,18 @@ export function MenuEditor({ initialDoc, enableMegaMenu, menuId }: MenuEditorPro
 
     setIsSaving(true)
     setSaveError(null)
+    setSaveSuccess(false)
 
     try {
       const payload: Record<string, any> = {
         name: name.trim(),
         location,
         mode,
+        // Always preserve items and relationships:
+        items,
       }
 
-      if (mode === 'classic') {
-        payload.items = items
-      } else {
+      if (mode === 'mega') {
         payload.megaLayout = docToSave
         // Automatically save updated source link snapshot to mobile foundation
         payload.mobileMenu = {
@@ -167,10 +168,15 @@ export function MenuEditor({ initialDoc, enableMegaMenu, menuId }: MenuEditorPro
         body: JSON.stringify(payload),
       })
 
-      const json = await res.json()
+      const json = await res.json().catch(() => ({}))
 
-      if (!res.ok) {
-        throw new Error(json.errors?.[0]?.message || json.message || 'Failed to save menu')
+      if (!res.ok || (json.errors && json.errors.length > 0)) {
+        const errorDetail =
+          json.errors?.[0]?.message ||
+          (Array.isArray(json.errors) && json.errors.map((e: any) => e.message).join('; ')) ||
+          json.message ||
+          `Failed to save menu (${res.status} ${res.statusText})`
+        throw new Error(errorDetail)
       }
 
       setIsDirty(false)
@@ -181,6 +187,7 @@ export function MenuEditor({ initialDoc, enableMegaMenu, menuId }: MenuEditorPro
         router.push(`/admin/collections/menus/${json.doc.id}`)
       }
     } catch (err: any) {
+      setSaveSuccess(false)
       setSaveError(err?.message || 'Error occurred while saving menu')
     } finally {
       setIsSaving(false)

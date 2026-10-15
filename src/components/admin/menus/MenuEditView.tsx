@@ -1,10 +1,38 @@
 import React from 'react'
 import { notFound } from 'next/navigation'
 import type { DocumentViewServerProps } from 'payload'
-import { DefaultTemplate } from '@payloadcms/next/templates'
 
 import { isSiteStaff } from '@/access/roles'
 import { MenuEditor, type MenuDoc } from './MenuEditor'
+
+export function resolveMenuDocumentId(props: Partial<DocumentViewServerProps>): {
+  id: string | number | undefined
+  isCreate: boolean
+} {
+  const docIDFromInit = props.initPageResult?.docID
+  const docIDFromDoc = props.doc?.id !== undefined ? props.doc.id : undefined
+
+  const segments = props.routeSegments || (props.params as any)?.segments
+  const lastSegment =
+    Array.isArray(segments) && segments.length > 0 ? segments[segments.length - 1] : undefined
+
+  if (lastSegment === 'create') {
+    return { id: undefined, isCreate: true }
+  }
+
+  const rawId =
+    docIDFromInit !== undefined
+      ? docIDFromInit
+      : docIDFromDoc !== undefined
+        ? docIDFromDoc
+        : lastSegment
+
+  if (rawId === undefined || rawId === 'create' || rawId === '') {
+    return { id: undefined, isCreate: true }
+  }
+
+  return { id: rawId, isCreate: false }
+}
 
 export async function MenuEditView(props: DocumentViewServerProps) {
   const req = props.initPageResult?.req
@@ -19,8 +47,7 @@ export async function MenuEditView(props: DocumentViewServerProps) {
     )
   }
 
-  const rawId = props.id || (props.params as any)?.id
-  const isCreate = !rawId || rawId === 'create'
+  const { id: rawId, isCreate } = resolveMenuDocumentId(props)
   let menuDoc: MenuDoc = {
     name: '',
     location: 'header',
@@ -29,20 +56,24 @@ export async function MenuEditView(props: DocumentViewServerProps) {
   }
 
   if (!isCreate) {
-    try {
-      const doc = await payload.findByID({
-        collection: 'menus',
-        id: Number(rawId) || String(rawId),
-        depth: 1,
-        overrideAccess: false,
-        user: user as any,
-      })
-      if (!doc) {
+    if (props.doc && String(props.doc.id) === String(rawId)) {
+      menuDoc = props.doc as unknown as MenuDoc
+    } else {
+      try {
+        const doc = await payload.findByID({
+          collection: 'menus',
+          id: Number(rawId) || String(rawId),
+          depth: 1,
+          overrideAccess: false,
+          user: user as any,
+        })
+        if (!doc) {
+          notFound()
+        }
+        menuDoc = doc as unknown as MenuDoc
+      } catch {
         notFound()
       }
-      menuDoc = doc as unknown as MenuDoc
-    } catch {
-      notFound()
     }
   }
 
@@ -58,23 +89,11 @@ export async function MenuEditView(props: DocumentViewServerProps) {
     enableMegaMenu = false
   }
 
-  const visibleEntities = props.initPageResult?.visibleEntities || { collections: {}, globals: {} }
-
   return (
-    <DefaultTemplate
-      {...props}
-      collectionSlug="menus"
-      docID={isCreate ? undefined : String(rawId)}
-      payload={payload}
-      req={req}
-      user={user || undefined}
-      visibleEntities={visibleEntities}
-    >
-      <MenuEditor
-        initialDoc={menuDoc}
-        enableMegaMenu={enableMegaMenu}
-        menuId={isCreate ? 'create' : rawId}
-      />
-    </DefaultTemplate>
+    <MenuEditor
+      initialDoc={menuDoc}
+      enableMegaMenu={enableMegaMenu}
+      menuId={isCreate ? 'create' : rawId}
+    />
   )
 }

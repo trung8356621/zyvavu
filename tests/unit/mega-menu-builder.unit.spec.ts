@@ -284,3 +284,59 @@ describe('Payload Schema & Configuration Integration', () => {
     expect(editRoot.Component).toBe('@/components/admin/menus/MenuEditView#MenuEditView')
   })
 })
+
+describe('Menu Document ID Resolution', () => {
+  it('correctly resolves existing ID from initPageResult.docID', async () => {
+    const { resolveMenuDocumentId } = await import('@/components/admin/menus/MenuEditView')
+    const result = resolveMenuDocumentId({
+      initPageResult: { docID: 4 } as any,
+    })
+    expect(result.id).toBe(4)
+    expect(result.isCreate).toBe(false)
+  })
+
+  it('correctly resolves existing ID from doc.id', async () => {
+    const { resolveMenuDocumentId } = await import('@/components/admin/menus/MenuEditView')
+    const result = resolveMenuDocumentId({
+      doc: { id: 4, name: 'Main Menu' } as any,
+    })
+    expect(result.id).toBe(4)
+    expect(result.isCreate).toBe(false)
+  })
+
+  it('correctly resolves existing ID from routeSegments', async () => {
+    const { resolveMenuDocumentId } = await import('@/components/admin/menus/MenuEditView')
+    const result = resolveMenuDocumentId({
+      routeSegments: ['collections', 'menus', '4'],
+    })
+    expect(result.id).toBe('4')
+    expect(result.isCreate).toBe(false)
+  })
+
+  it('correctly resolves existing ID from params.segments', async () => {
+    const { resolveMenuDocumentId } = await import('@/components/admin/menus/MenuEditView')
+    const result = resolveMenuDocumentId({
+      params: { segments: ['collections', 'menus', '4'] } as any,
+    })
+    expect(result.id).toBe('4')
+    expect(result.isCreate).toBe(false)
+  })
+
+  it('correctly identifies create route when last segment is "create"', async () => {
+    const { resolveMenuDocumentId } = await import('@/components/admin/menus/MenuEditView')
+    const result = resolveMenuDocumentId({
+      routeSegments: ['collections', 'menus', 'create'],
+    })
+    expect(result.id).toBeUndefined()
+    expect(result.isCreate).toBe(true)
+  })
+
+  it('does NOT treat non-existent numeric ID as create mode', async () => {
+    const { resolveMenuDocumentId } = await import('@/components/admin/menus/MenuEditView')
+    const result = resolveMenuDocumentId({
+      routeSegments: ['collections', 'menus', '99999'],
+    })
+    expect(result.id).toBe('99999')
+    expect(result.isCreate).toBe(false)
+  })
+})
