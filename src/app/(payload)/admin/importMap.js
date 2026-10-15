@@ -43,6 +43,7 @@ import { ThemeProvider as ThemeProvider_a1a3c4a847480f0a30c7903f2efa894d } from 
 import { SystemView as SystemView_cdc5b7cf3ea627dfc2b22dc6609fc35d } from '@/components/admin/SystemView'
 import { SeoSettingsView as SeoSettingsView_68b35c68aea4f366f5ef6fe225e9b762 } from '@/components/admin/SeoSettingsView'
 import { MegaMenuBuilderView as MegaMenuBuilderView_cd12a9a38e31b53d58d77112a178cb2c } from '@/components/admin/menus/MegaMenuBuilderView'
+import { ThemesListView as ThemesListView_60d9bad239f0a6776ef03cc8a2404cdb } from '@/components/admin/themes/ThemesListView'
 import { ThemeBuilderView as ThemeBuilderView_9a73f055ae5b1ab589574dd424bab8e5 } from '@/components/admin/theme-builder/ThemeBuilderView'
 import { ThemeCustomizerView as ThemeCustomizerView_b5083643391ddb7b766ff4cb51e19cdf } from '@/components/admin/theme-customizer/ThemeCustomizerView'
 import { CollectionCards as CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
@@ -94,6 +95,7 @@ export const importMap = {
   "@/components/admin/SystemView#SystemView": SystemView_cdc5b7cf3ea627dfc2b22dc6609fc35d,
   "@/components/admin/SeoSettingsView#SeoSettingsView": SeoSettingsView_68b35c68aea4f366f5ef6fe225e9b762,
   "@/components/admin/menus/MegaMenuBuilderView#MegaMenuBuilderView": MegaMenuBuilderView_cd12a9a38e31b53d58d77112a178cb2c,
+  "@/components/admin/themes/ThemesListView#ThemesListView": ThemesListView_60d9bad239f0a6776ef03cc8a2404cdb,
   "@/components/admin/theme-builder/ThemeBuilderView#ThemeBuilderView": ThemeBuilderView_9a73f055ae5b1ab589574dd424bab8e5,
   "@/components/admin/theme-customizer/ThemeCustomizerView#ThemeCustomizerView": ThemeCustomizerView_b5083643391ddb7b766ff4cb51e19cdf,
   "@payloadcms/next/rsc#CollectionCards": CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1

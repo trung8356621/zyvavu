@@ -186,6 +186,8 @@ export type ThemeDataContext = {
     logoUrl?: string
     logoAlt?: string
     menuItems?: any[]
+    menuTree?: any[]
+    menuDoc?: any
   }
 }
 

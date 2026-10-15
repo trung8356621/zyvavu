@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "template": "footer",
+  "root": {
+    "props": {}
+  },
+  "content": [
+    {
+      "type": "Footer",
+      "props": {
+        "id": "footer-root",
+        "copyright": "© 2026 Tạp chí Nghiên cứu Zyvavu. Giấy phép xuất bản số 128/GP-BTTTT. ISSN 2815-9926.",
+        "showBrand": true,
+        "lock": {
+          "canDelete": false,
+          "canMove": false,
+          "canEditProps": true
+        }
+      }
+    }
+  ],
+  "zones": {
+    "footer-root:footerContent": [
+      {
+        "type": "Columns",
+        "props": {
+          "id": "footer-cols-edit",
+          "distribution": "1:1:1",
+          "gap": "32px"
+        }
+      }
+    ],
+    "footer-cols-edit:column1": [
+      {
+        "type": "TextBlock",
+        "props": {
+          "id": "footer-text-edit-1",
+          "title": "HỘI ĐỒNG BIÊN TẬP",
+          "content": "Tổng biên tập: TS. Vũ Đình Nam\nThư ký tòa soạn: ThS. Hoàng Thu Thảo\nTòa soạn: Số 12 Đường Thi Sách, Quận 1, TP. Hồ Chí Minh"
+        }
+      }
+    ],
+    "footer-cols-edit:column2": [
+      {
+        "type": "TextBlock",
+        "props": {
+          "id": "footer-text-edit-2",
+          "title": "TIÊU CHUẨN XUẤT BẢN",
+          "content": "Mọi bài nghiên cứu và bình luận đều trải qua quy trình phản biện độc lập (Peer Review) nghiêm ngặt trước khi xuất bản."
+        }
+      }
+    ],
+    "footer-cols-edit:column3": [
+      {
+        "type": "TextBlock",
+        "props": {
+          "id": "footer-text-edit-3",
+          "title": "LIÊN HỆ ĐẶT BÀI",
+          "content": "Email gửi bản thảo: manuscript@zyvavu-journal.vn\nPhát hành & Đặt báo dài hạn: (028) 3939.8888"
+        }
+      }
+    ]
+  }
+}

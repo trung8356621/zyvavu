@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "template": "header",
+  "root": {
+    "props": {}
+  },
+  "content": [
+    {
+      "type": "Header",
+      "props": {
+        "id": "header-root",
+        "showTopBar": true,
+        "showBottomBar": false,
+        "sticky": true,
+        "lock": {
+          "canDelete": false,
+          "canMove": false,
+          "canEditProps": true
+        }
+      }
+    }
+  ],
+  "zones": {
+    "header-root:topBarLeft": [
+      {
+        "type": "HeaderTopBarText",
+        "props": {
+          "id": "topbar-text-1",
+          "text": "Cổng thông tin doanh nghiệp B2B — Hotline: 0900.000.000"
+        }
+      }
+    ],
+    "header-root:mainHeaderLeft": [
+      {
+        "type": "HeaderBrand",
+        "props": {
+          "id": "header-brand-1",
+          "showTagline": true,
+          "lock": {
+            "canDelete": false,
+            "canMove": true,
+            "canEditProps": true
+          }
+        }
+      }
+    ],
+    "header-root:mainHeaderCenter": [
+      {
+        "type": "HeaderNav",
+        "props": {
+          "id": "header-nav-1",
+          "dropdownEffect": "fade",
+          "lock": {
+            "canDelete": false,
+            "canMove": true,
+            "canEditProps": true
+          }
+        }
+      }
+    ],
+    "header-root:mainHeaderRight": [
+      {
+        "type": "HeaderAction",
+        "props": {
+          "id": "header-action-1",
+          "label": "Liên hệ ngay",
+          "url": "/about",
+          "variant": "solid"
+        }
+      }
+    ]
+  }
+}

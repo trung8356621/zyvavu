@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "template": "category",
+  "root": {
+    "props": {}
+  },
+  "content": [
+    {
+      "type": "CategoryHeader",
+      "props": {
+        "id": "cat-header-1",
+        "align": "left",
+        "lock": {
+          "canDelete": false,
+          "canMove": false,
+          "canEditProps": true
+        }
+      }
+    },
+    {
+      "type": "RecentPosts",
+      "props": {
+        "id": "cat-posts-1",
+        "heading": "Danh Sách Bài Viết Trong Chuyên Mục",
+        "limit": 12,
+        "columns": 3,
+        "lock": {
+          "canDelete": false,
+          "canMove": true,
+          "canEditProps": true
+        }
+      }
+    }
+  ],
+  "zones": {}
+}

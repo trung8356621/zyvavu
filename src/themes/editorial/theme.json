@@ -1,0 +1,79 @@
+{
+  "name": "editorial",
+  "version": 1,
+  "label": "Editorial Modern",
+  "description": "Publication & blog theme with warm cream/burgundy visual palette, refined typography, and literary reading layouts.",
+  "tokens": {
+    "colors": {
+      "primary": "#7c1d2e",
+      "primaryHover": "#611422",
+      "background": "#faf8f5",
+      "surface": "#f3efe8",
+      "text": "#261c1d",
+      "textMuted": "#6b5e5f",
+      "border": "#e5ded5",
+      "accent": "#b45309",
+      "headerBackground": "#faf8f5",
+      "headerText": "#261c1d",
+      "headerBorder": "#d9cfc3"
+    },
+    "typography": {
+      "fontFamily": "Merriweather, Georgia, serif",
+      "fontFamilyHeading": "Merriweather, Georgia, serif",
+      "baseFontSize": "19px",
+      "baseLineHeight": "1.85",
+      "h1": {
+        "size": "42px",
+        "lineHeight": "1.25",
+        "weight": "700",
+        "letterSpacing": "-0.01em"
+      },
+      "h2": {
+        "size": "30px",
+        "lineHeight": "1.35",
+        "weight": "700"
+      },
+      "h3": {
+        "size": "22px",
+        "lineHeight": "1.4",
+        "weight": "700"
+      }
+    },
+    "spacing": {
+      "xs": "4px",
+      "sm": "8px",
+      "md": "16px",
+      "lg": "24px",
+      "xl": "40px",
+      "xxl": "64px"
+    },
+    "layout": {
+      "containerWidth": "1160px",
+      "narrowWidth": "740px",
+      "wideWidth": "1360px"
+    },
+    "radius": {
+      "sm": "2px",
+      "md": "4px",
+      "lg": "8px",
+      "pill": "9999px"
+    }
+  },
+  "slots": {
+    "PostTitle": {
+      "root": "margin-bottom: 2rem; text-align: center;",
+      "title": "color: var(--zyvavu-theme-primary, #7c1d2e); font-style: normal; font-weight: 700;"
+    },
+    "PostContent": {
+      "root": "line-height: 1.9; color: var(--zyvavu-theme-text, #261c1d); font-size: 19px; max-width: 740px; margin: 0 auto;",
+      "body": "margin-bottom: 2rem;"
+    },
+    "Header": {
+      "topBar": "background: #f0ebe2; color: #6b5e5f; font-size: 12px; font-style: italic; border-bottom: 1px solid #e5ded5;",
+      "mainHeader": "background: var(--zyvavu-theme-header-background, #faf8f5); border-bottom: 1px solid var(--zyvavu-theme-header-border, #d9cfc3);"
+    },
+    "Footer": {
+      "root": "background: #f0ebe2; color: #524445; border-top: 1px solid #d9cfc3; padding: 48px 0 24px;"
+    }
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "template": "page",
+  "root": {
+    "props": {}
+  },
+  "content": [
+    {
+      "type": "PostTitle",
+      "props": {
+        "id": "page-title-1",
+        "tag": "h1",
+        "align": "left",
+        "variant": "default",
+        "lock": {
+          "canDelete": false,
+          "canMove": true,
+          "canEditProps": true
+        }
+      }
+    },
+    {
+      "type": "PostContent",
+      "props": {
+        "id": "page-content-1",
+        "showExcerptFirst": false,
+        "lock": {
+          "canDelete": false,
+          "canMove": false,
+          "canEditProps": true
+        }
+      }
+    }
+  ],
+  "zones": {}
+}

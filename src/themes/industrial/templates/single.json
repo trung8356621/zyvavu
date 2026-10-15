@@ -1,0 +1,78 @@
+{
+  "version": 1,
+  "template": "single",
+  "root": {
+    "props": {}
+  },
+  "content": [
+    {
+      "type": "Columns",
+      "props": {
+        "id": "ind-single-layout",
+        "distribution": "2:1",
+        "gap": "36px"
+      }
+    }
+  ],
+  "zones": {
+    "ind-single-layout:column1": [
+      {
+        "type": "PostTitle",
+        "props": {
+          "id": "ind-single-title",
+          "tag": "h1",
+          "align": "left",
+          "lock": {
+            "canDelete": false,
+            "canMove": false,
+            "canEditProps": true
+          }
+        }
+      },
+      {
+        "type": "PostMeta",
+        "props": {
+          "id": "ind-single-meta",
+          "showDate": true,
+          "showAuthor": true,
+          "showCategories": true,
+          "lock": {
+            "canDelete": false,
+            "canMove": true,
+            "canEditProps": true
+          }
+        }
+      },
+      {
+        "type": "FeaturedMedia",
+        "props": {
+          "id": "ind-single-media",
+          "aspectRatio": "16:9",
+          "caption": "Tài liệu kỹ thuật và hình ảnh vận hành"
+        }
+      },
+      {
+        "type": "PostContent",
+        "props": {
+          "id": "ind-single-content",
+          "showExcerpt": false,
+          "lock": {
+            "canDelete": false,
+            "canMove": false,
+            "canEditProps": true
+          }
+        }
+      }
+    ],
+    "ind-single-layout:column2": [
+      {
+        "type": "TextBlock",
+        "props": {
+          "id": "ind-single-sidebar",
+          "title": "THÔNG TIN KỸ THUẬT & DỰ ÁN",
+          "content": "Quý khách có nhu cầu khảo sát thực tế nhà máy hoặc nhận bảng dự toán kỹ thuật chi tiết, vui lòng gửi yêu cầu đến ban điều hành sản xuất.\n\nHotline: 1900.6868\nEmail: engineering@zyvavu-industrial.vn"
+        }
+      }
+    ]
+  }
+}

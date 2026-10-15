@@ -1,0 +1,80 @@
+{
+  "name": "industrial",
+  "version": 1,
+  "label": "Industrial Bold",
+  "description": "Manufacturing & garment industry theme with green/lime industrial palette, dark header, and high-impact layouts.",
+  "tokens": {
+    "colors": {
+      "primary": "#2f6a38",
+      "primaryHover": "#23512a",
+      "background": "#f4f6f4",
+      "surface": "#ffffff",
+      "text": "#142217",
+      "textMuted": "#526356",
+      "border": "#d3ded6",
+      "accent": "#84cc16",
+      "headerBackground": "#19271e",
+      "headerText": "#ffffff",
+      "headerBorder": "#2f6a38"
+    },
+    "typography": {
+      "fontFamily": "Montserrat, system-ui, -apple-system, sans-serif",
+      "fontFamilyHeading": "Montserrat, system-ui, -apple-system, sans-serif",
+      "baseFontSize": "18px",
+      "baseLineHeight": "1.7",
+      "h1": {
+        "size": "48px",
+        "lineHeight": "1.15",
+        "weight": "800",
+        "letterSpacing": "-0.02em"
+      },
+      "h2": {
+        "size": "34px",
+        "lineHeight": "1.25",
+        "weight": "700",
+        "letterSpacing": "-0.01em"
+      },
+      "h3": {
+        "size": "26px",
+        "lineHeight": "1.35",
+        "weight": "700"
+      }
+    },
+    "spacing": {
+      "xs": "4px",
+      "sm": "8px",
+      "md": "16px",
+      "lg": "24px",
+      "xl": "40px",
+      "xxl": "64px"
+    },
+    "layout": {
+      "containerWidth": "1280px",
+      "narrowWidth": "860px",
+      "wideWidth": "1440px"
+    },
+    "radius": {
+      "sm": "2px",
+      "md": "4px",
+      "lg": "6px",
+      "pill": "9999px"
+    }
+  },
+  "slots": {
+    "PostTitle": {
+      "root": "margin-bottom: 2rem; border-left: 4px solid var(--zyvavu-theme-primary, #2f6a38); padding-left: 16px;",
+      "title": "color: var(--zyvavu-theme-text, #142217); text-transform: uppercase; letter-spacing: -0.01em;"
+    },
+    "PostContent": {
+      "root": "line-height: 1.75; color: var(--zyvavu-theme-text, #142217); font-size: 18px;",
+      "body": "margin-bottom: 2rem;"
+    },
+    "Header": {
+      "topBar": "background: #111a14; color: #9bb0a1; font-size: 13px; border-bottom: 1px solid #233729;",
+      "mainHeader": "background: var(--zyvavu-theme-header-background, #19271e); color: var(--zyvavu-theme-header-text, #ffffff); border-bottom: 2px solid var(--zyvavu-theme-header-border, #2f6a38);"
+    },
+    "Footer": {
+      "root": "background: #16201a; color: #d3ded6; border-top: 3px solid var(--zyvavu-theme-primary, #2f6a38); padding: 56px 0 28px;"
+    }
+  }
+}

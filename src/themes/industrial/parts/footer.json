@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "template": "footer",
+  "root": {
+    "props": {}
+  },
+  "content": [
+    {
+      "type": "Footer",
+      "props": {
+        "id": "footer-root",
+        "copyright": "© 2026 Zyvavu Industrial Systems. Đã đăng ký bản quyền. Chứng nhận ISO 9001:2015.",
+        "showBrand": true,
+        "lock": {
+          "canDelete": false,
+          "canMove": false,
+          "canEditProps": true
+        }
+      }
+    }
+  ],
+  "zones": {
+    "footer-root:footerContent": [
+      {
+        "type": "Columns",
+        "props": {
+          "id": "footer-cols-ind",
+          "distribution": "1:1:1",
+          "gap": "32px"
+        }
+      }
+    ],
+    "footer-cols-ind:column1": [
+      {
+        "type": "TextBlock",
+        "props": {
+          "id": "footer-text-ind-1",
+          "title": "TRỤ SỞ & KHU LIÊN HỢP",
+          "content": "Khu Công Nghiệp VSIP II, Đường Dân Chủ, TX. Bến Cát, Bình Dương.\nĐiện thoại: (0274) 3888.999 — Email: contact@zyvavu-industrial.vn"
+        }
+      }
+    ],
+    "footer-cols-ind:column2": [
+      {
+        "type": "TextBlock",
+        "props": {
+          "id": "footer-text-ind-2",
+          "title": "NĂNG LỰC SẢN XUẤT",
+          "content": "• 03 Nhà xưởng tiêu chuẩn công nghiệp\n• Công suất 500,000 sản phẩm/tháng\n• Hệ thống kiểm soát chất lượng tự động hóa"
+        }
+      }
+    ],
+    "footer-cols-ind:column3": [
+      {
+        "type": "TextBlock",
+        "props": {
+          "id": "footer-text-ind-3",
+          "title": "HỖ TRỢ KỸ THUẬT 24/7",
+          "content": "Tổng đài tiếp nhận thông số & báo giá dự án hoạt động liên tục 24/7:\nHotline kỹ thuật: 1900.6868 (Nhánh 2)"
+        }
+      }
+    ]
+  }
+}

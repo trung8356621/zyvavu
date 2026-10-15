@@ -8,7 +8,12 @@ import { ArrowLeft } from 'lucide-react'
 import config from '@payload-config'
 import { isSiteStaff } from '@/access/roles'
 import type { TemplateContext, ThemeTemplateDocument } from '@/lib/theme-engine/types'
-import { resolveThemeTemplate } from '@/lib/theme-engine/resolver'
+import {
+  resolveThemeTemplate,
+  resolveActiveThemeId,
+  normalizeThemeId,
+  getAllInstalledThemes,
+} from '@/lib/theme-engine'
 import { ThemeBuilder } from './ThemeBuilder'
 
 export async function ThemeBuilderView(props: AdminViewServerProps) {
@@ -67,28 +72,35 @@ export async function ThemeBuilderView(props: AdminViewServerProps) {
     )
   }
 
-  // Resolve all templates
+  // Resolve target theme from searchParams (?theme=<id>) or active theme
+  const resolvedSearchParams = props.searchParams
+    ? await Promise.resolve(props.searchParams)
+    : undefined
+  const activeThemeId = await resolveActiveThemeId(payload)
+  const targetThemeId = normalizeThemeId(
+    (resolvedSearchParams?.theme as string) || activeThemeId,
+  )
+
+  // Resolve all templates for target theme
   const templateKeys: TemplateContext[] = ['single', 'page', 'home', 'header', 'footer', 'category', 'product']
   const initialTemplates: Record<string, ThemeTemplateDocument> = {}
 
   for (const key of templateKeys) {
     try {
-      initialTemplates[key] = await resolveThemeTemplate(payload, key)
+      initialTemplates[key] = await resolveThemeTemplate(payload, key, targetThemeId)
     } catch {
       // safe fallback
     }
   }
 
-  // Check searchParams for initial template
-  const resolvedSearchParams = props.searchParams
-    ? await Promise.resolve(props.searchParams)
-    : undefined
   const rawContext = resolvedSearchParams?.template
   const initialContext = (
     typeof rawContext === 'string' && templateKeys.includes(rawContext as TemplateContext)
       ? rawContext
       : 'single'
   ) as TemplateContext
+
+  const installedThemes = getAllInstalledThemes()
 
   return (
     <div
@@ -107,6 +119,9 @@ export async function ThemeBuilderView(props: AdminViewServerProps) {
       }}
     >
       <ThemeBuilder
+        themeId={targetThemeId}
+        activeThemeId={activeThemeId}
+        installedThemes={installedThemes}
         initialTemplates={initialTemplates as Record<TemplateContext, ThemeTemplateDocument>}
         initialContext={initialContext}
       />

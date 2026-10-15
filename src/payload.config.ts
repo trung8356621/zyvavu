@@ -80,6 +80,12 @@ export default buildConfig({
           exact: true,
           meta: { title: 'Mega Menu Builder' },
         },
+        themes: {
+          Component: '@/components/admin/themes/ThemesListView#ThemesListView',
+          path: '/themes',
+          exact: true,
+          meta: { title: 'Themes' },
+        },
         themeBuilder: {
           Component: '@/components/admin/theme-builder/ThemeBuilderView#ThemeBuilderView',
           path: '/theme-builder',
@@ -127,6 +133,63 @@ export default buildConfig({
       },
     },
     {
+      path: '/themes/activate',
+      method: 'post',
+      handler: async (req) => {
+        const { isSiteStaff } = await import('@/access/roles')
+        const { setActiveThemeId } = await import('@/lib/theme-engine/resolver')
+        if (!isSiteStaff(req.user)) {
+          return Response.json({ success: false, message: 'Forbidden' }, { status: 403 })
+        }
+        let body: any
+        try {
+          body = await req.json?.()
+        } catch {
+          return Response.json({ success: false, message: 'Invalid JSON' }, { status: 400 })
+        }
+        const { themeId } = body || {}
+        if (!themeId) {
+          return Response.json({ success: false, message: 'themeId is required' }, { status: 400 })
+        }
+        const ok = await setActiveThemeId(req.payload, themeId)
+        if (!ok) {
+          return Response.json({ success: false, message: 'Failed to activate theme' }, { status: 400 })
+        }
+        return Response.json({ success: true, activeTheme: themeId })
+      },
+    },
+    {
+      path: '/themes/preview-cookie',
+      method: 'post',
+      handler: async (req) => {
+        const { isSiteStaff } = await import('@/access/roles')
+        const { isValidThemeId, normalizeThemeId } = await import('@/lib/theme-engine/themes')
+        if (!isSiteStaff(req.user)) {
+          return Response.json({ success: false, message: 'Forbidden' }, { status: 403 })
+        }
+        let body: any
+        try {
+          body = await req.json?.()
+        } catch {
+          return Response.json({ success: false, message: 'Invalid JSON' }, { status: 400 })
+        }
+        const { themeId } = body || {}
+        const headers = new Headers({ 'Content-Type': 'application/json' })
+        if (themeId && isValidThemeId(themeId)) {
+          headers.set(
+            'Set-Cookie',
+            `zyvavu_preview_theme=${normalizeThemeId(themeId)}; Path=/; SameSite=Lax; Max-Age=3600`,
+          )
+        } else {
+          headers.set(
+            'Set-Cookie',
+            `zyvavu_preview_theme=; Path=/; SameSite=Lax; Max-Age=0`,
+          )
+        }
+        return new Response(JSON.stringify({ success: true }), { status: 200, headers })
+      },
+    },
+    {
       path: '/theme-builder/save',
       method: 'post',
       handler: async (req) => {
@@ -141,11 +204,11 @@ export default buildConfig({
         } catch {
           return Response.json({ success: false, message: 'Invalid JSON payload' }, { status: 400 })
         }
-        const { template, document } = body || {}
+        const { template, document, themeId } = body || {}
         if (!template || !document) {
           return Response.json({ success: false, message: 'Template and document are required' }, { status: 400 })
         }
-        const res = await saveThemeTemplateOverride(req.payload, template, document, req.user)
+        const res = await saveThemeTemplateOverride(req.payload, template, document, req.user, themeId)
         return Response.json(res, { status: res.success ? 200 : 400 })
       },
     },
@@ -164,11 +227,11 @@ export default buildConfig({
         } catch {
           return Response.json({ success: false, message: 'Invalid JSON' }, { status: 400 })
         }
-        const { tokens, slots } = body || {}
+        const { tokens, slots, themeId } = body || {}
         if (!tokens) {
           return Response.json({ success: false, message: 'Tokens are required' }, { status: 400 })
         }
-        const res = await saveThemeStyleOverride(req.payload, tokens, false, slots)
+        const res = await saveThemeStyleOverride(req.payload, tokens, false, slots, themeId)
         return Response.json(res, { status: res.success ? 200 : 400 })
       },
     },
@@ -187,11 +250,11 @@ export default buildConfig({
         } catch {
           return Response.json({ success: false, message: 'Invalid JSON' }, { status: 400 })
         }
-        const { tokens, slots } = body || {}
+        const { tokens, slots, themeId } = body || {}
         if (!tokens) {
           return Response.json({ success: false, message: 'Tokens are required' }, { status: 400 })
         }
-        const res = await saveThemeStyleOverride(req.payload, tokens, true, slots)
+        const res = await saveThemeStyleOverride(req.payload, tokens, true, slots, themeId)
         return Response.json(res, { status: res.success ? 200 : 400 })
       },
     },

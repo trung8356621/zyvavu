@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "template": "home",
+  "root": {
+    "props": {}
+  },
+  "content": [
+    {
+      "type": "TextBlock",
+      "props": {
+        "id": "home-hero-1",
+        "badge": "Single Theme Engine V1",
+        "title": "Nền tảng nội dung kiến trúc hiện đại",
+        "content": "Zyvavu CMS kết hợp sức mạnh của Next.js 16, Payload CMS 3 và visual theming linh hoạt cho doanh nghiệp.",
+        "align": "center",
+        "ctaLabel": "Khám phá giải pháp",
+        "ctaUrl": "/about"
+      }
+    },
+    {
+      "type": "Columns",
+      "props": {
+        "id": "home-cols-1",
+        "distribution": "equal-2"
+      }
+    },
+    {
+      "type": "RecentPosts",
+      "props": {
+        "id": "home-posts-1",
+        "heading": "Tin Tức & Hoạt Động Doanh Nghiệp",
+        "limit": 6,
+        "columns": 3
+      }
+    }
+  ],
+  "zones": {
+    "home-cols-1:column1": [
+      {
+        "type": "TextBlock",
+        "props": {
+          "id": "home-col1-text",
+          "title": "Hiệu suất tối ưu",
+          "content": "Render phía Server thuần túy (SSR), xuất HTML chuẩn ngữ nghĩa thân thiện SEO, không tải runtime editor ra trang công khai."
+        }
+      }
+    ],
+    "home-cols-1:column2": [
+      {
+        "type": "TextBlock",
+        "props": {
+          "id": "home-col2-text",
+          "title": "Tách bạch kiến trúc",
+          "content": "Theme sở hữu cấu trúc JSON và Style Rules (theme.json). Widgets là các gói độc lập cho phép mở rộng linh hoạt."
+        }
+      }
+    ]
+  }
+}

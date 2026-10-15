@@ -12,7 +12,10 @@ import {
   resolveActiveThemeConfig,
   resolveCustomPresets,
   resolveDraftThemeConfig,
-} from '@/lib/theme-engine/styles'
+  resolveActiveThemeId,
+  normalizeThemeId,
+  getAllInstalledThemes,
+} from '@/lib/theme-engine'
 import { ThemeCustomizer } from './ThemeCustomizer'
 
 export async function ThemeCustomizerView(props: AdminViewServerProps) {
@@ -71,13 +74,25 @@ export async function ThemeCustomizerView(props: AdminViewServerProps) {
     )
   }
 
-  const bundledConfig = getActiveThemeConfig()
-  const publishedConfig = await resolveActiveThemeConfig(payload).catch(() => bundledConfig)
-  const draftConfig = await resolveDraftThemeConfig(payload).catch(() => publishedConfig)
+  // Resolve target theme to customize from searchParams (?theme=<id>) or active theme
+  const resolvedSearchParams = props.searchParams
+    ? await Promise.resolve(props.searchParams)
+    : undefined
+  const activeThemeId = await resolveActiveThemeId(payload)
+  const targetThemeId = normalizeThemeId(
+    (resolvedSearchParams?.theme as string) || activeThemeId,
+  )
+
+  const bundledConfig = getActiveThemeConfig(targetThemeId)
+  const publishedConfig = await resolveActiveThemeConfig(payload, targetThemeId).catch(() => bundledConfig)
+  const draftConfig = await resolveDraftThemeConfig(payload, targetThemeId).catch(() => publishedConfig)
   const customPresets = await resolveCustomPresets(payload).catch(() => ({ colors: [], typography: [] }))
+  const installedThemes = getAllInstalledThemes()
 
   // Discover sample preview routes
-  const previewRoutes: { label: string; value: string }[] = [{ label: 'Home Page', value: '/' }]
+  const previewRoutes: { label: string; value: string }[] = [
+    { label: 'Home Page', value: `/?preview_theme=${targetThemeId}` },
+  ]
 
   try {
     const postDoc = await payload.find({
@@ -89,13 +104,13 @@ export async function ThemeCustomizerView(props: AdminViewServerProps) {
     if (postDoc.docs?.[0]?.slug) {
       previewRoutes.push({
         label: `Post: ${postDoc.docs[0].title || postDoc.docs[0].slug}`,
-        value: `/posts/${postDoc.docs[0].slug}`,
+        value: `/posts/${postDoc.docs[0].slug}?preview_theme=${targetThemeId}`,
       })
     } else {
-      previewRoutes.push({ label: 'Posts Archive', value: '/posts' })
+      previewRoutes.push({ label: 'Posts Archive', value: `/posts?preview_theme=${targetThemeId}` })
     }
   } catch {
-    previewRoutes.push({ label: 'Posts Archive', value: '/posts' })
+    previewRoutes.push({ label: 'Posts Archive', value: `/posts?preview_theme=${targetThemeId}` })
   }
 
   try {
@@ -108,7 +123,7 @@ export async function ThemeCustomizerView(props: AdminViewServerProps) {
     if (pageDoc.docs?.[0]?.slug) {
       previewRoutes.push({
         label: `Page: ${pageDoc.docs[0].title || pageDoc.docs[0].slug}`,
-        value: `/${pageDoc.docs[0].slug}`,
+        value: `/${pageDoc.docs[0].slug}?preview_theme=${targetThemeId}`,
       })
     }
   } catch {
@@ -132,6 +147,9 @@ export async function ThemeCustomizerView(props: AdminViewServerProps) {
       }}
     >
       <ThemeCustomizer
+        themeId={targetThemeId}
+        activeThemeId={activeThemeId}
+        installedThemes={installedThemes}
         bundledConfig={bundledConfig}
         publishedConfig={publishedConfig}
         draftConfig={draftConfig}

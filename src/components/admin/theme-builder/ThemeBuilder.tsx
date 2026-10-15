@@ -10,6 +10,7 @@ import {
   Group,
   Paper,
   SegmentedControl,
+  Select,
   Stack,
   Text,
   Title,
@@ -26,6 +27,9 @@ import { getEditorConfigForContext } from '@/lib/theme-engine/widget-registry-ed
 import { generateThemeCss } from '@/lib/theme-engine/styles'
 
 export type ThemeBuilderProps = {
+  themeId?: string
+  activeThemeId?: string
+  installedThemes?: any[]
   initialTemplates: Record<TemplateContext, ThemeTemplateDocument>
   initialContext?: TemplateContext
 }
@@ -41,6 +45,9 @@ const TEMPLATE_OPTIONS: { label: string; value: TemplateContext; badge?: string 
 ]
 
 export function ThemeBuilder({
+  themeId = 'corporate',
+  activeThemeId = 'corporate',
+  installedThemes = [],
   initialTemplates,
   initialContext = 'single',
 }: ThemeBuilderProps) {
@@ -141,6 +148,7 @@ export function ThemeBuilder({
           body: JSON.stringify({
             template: selectedTemplate,
             document: docToValidate,
+            themeId,
           }),
         })
 
@@ -205,7 +213,7 @@ export function ThemeBuilder({
           <Group gap="sm">
             <Button
               component={Link}
-              href="/admin"
+              href="/admin/themes"
               variant="subtle"
               color="gray"
               size="sm"
@@ -217,13 +225,21 @@ export function ThemeBuilder({
                 }
               }}
             >
-              Admin
+              Themes
             </Button>
             <Box>
               <Group gap="xs">
                 <Title order={3} size="h4" style={{ margin: 0, fontWeight: 700, color: 'var(--zyvavu-primary, #0e6b66)' }}>
                   Theme Builder
                 </Title>
+                <Badge
+                  color={themeId === activeThemeId ? 'teal' : 'gray'}
+                  variant="filled"
+                  size="sm"
+                >
+                  {installedThemes.find((t) => t.id === themeId)?.label || themeId}
+                  {themeId === activeThemeId ? ' (Active)' : ''}
+                </Badge>
                 <Badge color={modeBadge.color} variant="light" size="sm">
                   {modeBadge.label}
                 </Badge>
@@ -234,6 +250,23 @@ export function ThemeBuilder({
                 )}
               </Group>
             </Box>
+            {installedThemes.length > 1 && (
+              <Select
+                size="xs"
+                style={{ width: 170 }}
+                data={installedThemes.map((t) => ({
+                  value: t.id,
+                  label: `${t.label}${t.id === activeThemeId ? ' (Active)' : ''}`,
+                }))}
+                value={themeId}
+                onChange={(val) => {
+                  if (val && val !== themeId) {
+                    if (isDirty && !confirm('You have unsaved changes. Switch themes anyway?')) return
+                    window.location.href = `/admin/theme-builder?theme=${val}&template=${selectedTemplate}`
+                  }
+                }}
+              />
+            )}
           </Group>
 
           {/* Center: Template Selector */}

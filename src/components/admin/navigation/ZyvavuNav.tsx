@@ -112,6 +112,7 @@ export function ZyvavuNav() {
     { href: collectionURL('tags'), icon: TagIcon, label: 'Tags', visible: collectionVisible('tags') },
   ]
   const appearanceItems: NavItem[] = [
+    { href: `${adminRoute}/themes`, icon: PaletteIcon, label: 'Themes', visible: isSiteStaff(user) },
     { href: collectionURL('menus'), icon: MenuIcon, label: 'Menus', visible: collectionVisible('menus') },
     { href: `${adminRoute}/theme-builder`, icon: PagesIcon, label: 'Theme Builder', visible: isSiteStaff(user) },
     { href: `${adminRoute}/theme-customizer`, icon: PaletteIcon, label: 'Theme Customizer', visible: isSiteStaff(user) },

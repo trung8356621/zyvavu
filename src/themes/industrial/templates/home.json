@@ -1,0 +1,102 @@
+{
+  "version": 1,
+  "template": "home",
+  "root": {
+    "props": {}
+  },
+  "content": [
+    {
+      "type": "TextBlock",
+      "props": {
+        "id": "ind-hero-banner",
+        "title": "HỆ THỐNG SẢN XUẤT CÔNG NGHIỆP HIỆN ĐẠI",
+        "content": "Zyvavu Industrial cung cấp giải pháp gia công và chế tạo công nghiệp chuẩn xác cao, đáp ứng khắt khe các tiêu chuẩn kiểm định châu Âu và Bắc Mỹ.",
+        "align": "left",
+        "lock": {
+          "canDelete": false,
+          "canMove": true,
+          "canEditProps": true
+        }
+      }
+    },
+    {
+      "type": "Columns",
+      "props": {
+        "id": "ind-cols-features",
+        "distribution": "1:1:1",
+        "gap": "24px"
+      }
+    },
+    {
+      "type": "Columns",
+      "props": {
+        "id": "ind-cols-showcase",
+        "distribution": "2:1",
+        "gap": "32px"
+      }
+    },
+    {
+      "type": "RecentPosts",
+      "props": {
+        "id": "ind-home-posts",
+        "heading": "BẢN TIN DỰ ÁN & VẬN HÀNH NHÀ MÁY",
+        "limit": 4,
+        "showDate": true,
+        "showExcerpt": true,
+        "layout": "grid"
+      }
+    }
+  ],
+  "zones": {
+    "ind-cols-features:column1": [
+      {
+        "type": "TextBlock",
+        "props": {
+          "id": "ind-feat-1",
+          "title": "⚙️ CÔNG NGHỆ CHÍNH XÁC",
+          "content": "Dây chuyền tự động hóa 80% từ nạp liệu đến đóng gói thành phẩm, sai số dưới 0.05mm."
+        }
+      }
+    ],
+    "ind-cols-features:column2": [
+      {
+        "type": "TextBlock",
+        "props": {
+          "id": "ind-feat-2",
+          "title": "🛡️ KIỂM ĐỊNH KHẮT KHE",
+          "content": "Phòng LAB đo lường chuẩn quốc tế kiểm tra 100% mẫu xuất xưởng trước khi xuất kho."
+        }
+      }
+    ],
+    "ind-cols-features:column3": [
+      {
+        "type": "TextBlock",
+        "props": {
+          "id": "ind-feat-3",
+          "title": "🚚 LOGISTICS LINH HOẠT",
+          "content": "Mạng lưới kho bãi liên kết cảng biển Hải Phòng & Cát Lái, giao hàng đúng hạn cam kết."
+        }
+      }
+    ],
+    "ind-cols-showcase:column1": [
+      {
+        "type": "FeaturedMedia",
+        "props": {
+          "id": "ind-showcase-media",
+          "aspectRatio": "16:9",
+          "caption": "Phân xưởng lắp ráp số 2 tại KCN VSIP II"
+        }
+      }
+    ],
+    "ind-cols-showcase:column2": [
+      {
+        "type": "TextBlock",
+        "props": {
+          "id": "ind-showcase-text",
+          "title": "NĂNG LỰC DỰ ÁN LỚN",
+          "content": "Với hơn 25,000m² mặt sàn sản xuất cùng đội ngũ kỹ sư 15+ năm kinh nghiệm, chúng tôi sẵn sàng đáp ứng các hợp đồng gia công quy mô lớn cho đối tác toàn cầu."
+        }
+      }
+    ]
+  }
+}

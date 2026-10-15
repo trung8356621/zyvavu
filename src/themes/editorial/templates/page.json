@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "template": "page",
+  "root": {
+    "props": {}
+  },
+  "content": [
+    {
+      "type": "PostTitle",
+      "props": {
+        "id": "edit-page-title",
+        "tag": "h1",
+        "align": "center",
+        "lock": {
+          "canDelete": false,
+          "canMove": false,
+          "canEditProps": true
+        }
+      }
+    },
+    {
+      "type": "PostContent",
+      "props": {
+        "id": "edit-page-content",
+        "showExcerpt": false,
+        "lock": {
+          "canDelete": false,
+          "canMove": false,
+          "canEditProps": true
+        }
+      }
+    }
+  ],
+  "zones": {}
+}

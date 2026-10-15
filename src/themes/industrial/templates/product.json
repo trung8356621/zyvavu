@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "template": "product",
+  "root": {
+    "props": {}
+  },
+  "content": [
+    {
+      "type": "ProductHeader",
+      "props": {
+        "id": "ind-product-header",
+        "showPrice": true,
+        "showVariants": true,
+        "showPurchase": true,
+        "lock": {
+          "canDelete": false,
+          "canMove": false,
+          "canEditProps": true
+        }
+      }
+    },
+    {
+      "type": "PostContent",
+      "props": {
+        "id": "ind-product-specs",
+        "showExcerpt": false,
+        "lock": {
+          "canDelete": false,
+          "canMove": false,
+          "canEditProps": true
+        }
+      }
+    }
+  ],
+  "zones": {}
+}

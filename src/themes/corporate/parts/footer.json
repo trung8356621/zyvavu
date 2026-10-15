@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "template": "footer",
+  "root": {
+    "props": {}
+  },
+  "content": [
+    {
+      "type": "Footer",
+      "props": {
+        "id": "footer-root",
+        "copyright": "© 2026 Zyvavu Enterprise Platform. Mọi quyền được bảo lưu.",
+        "showBrand": true
+      }
+    }
+  ],
+  "zones": {
+    "footer-root:footerContent": [
+      {
+        "type": "Columns",
+        "props": {
+          "id": "footer-cols-1",
+          "distribution": "1:1:1"
+        }
+      }
+    ],
+    "footer-cols-1:column1": [
+      {
+        "type": "HeaderBrand",
+        "props": {
+          "id": "footer-brand-1",
+          "showTagline": true
+        }
+      },
+      {
+        "type": "TextBlock",
+        "props": {
+          "id": "footer-about-text",
+          "content": "Zyvavu CMS - Nền tảng quản trị nội dung linh hoạt, chuẩn SEO và tối ưu hóa hiệu năng phục vụ chuyển đổi số."
+        }
+      }
+    ],
+    "footer-cols-1:column2": [
+      {
+        "type": "TextBlock",
+        "props": {
+          "id": "footer-col2-heading",
+          "title": "Liên Kết Nhanh",
+          "content": "• Giới thiệu doanh nghiệp\n• Sản phẩm & Dịch vụ\n• Tin tức hoạt động\n• Tuyển dụng nhân sự"
+        }
+      }
+    ],
+    "footer-cols-1:column3": [
+      {
+        "type": "TextBlock",
+        "props": {
+          "id": "footer-contact-info",
+          "title": "Thông Tin Liên Hệ",
+          "content": "Địa chỉ: Tòa nhà Công nghệ, Hà Nội\nHotline: 0900.000.000\nEmail: contact@zyvavu.com"
+        }
+      }
+    ]
+  }
+}

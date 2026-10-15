@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "template": "category",
+  "root": {
+    "props": {}
+  },
+  "content": [
+    {
+      "type": "CategoryHeader",
+      "props": {
+        "id": "ind-cat-header",
+        "align": "left",
+        "showCount": true,
+        "lock": {
+          "canDelete": false,
+          "canMove": false,
+          "canEditProps": true
+        }
+      }
+    },
+    {
+      "type": "RecentPosts",
+      "props": {
+        "id": "ind-cat-posts",
+        "heading": "HỒ SƠ NĂNG LỰC & BÀI VIẾT TRONG CHUYÊN MỤC",
+        "limit": 8,
+        "showDate": true,
+        "showExcerpt": true,
+        "layout": "grid"
+      }
+    }
+  ],
+  "zones": {}
+}

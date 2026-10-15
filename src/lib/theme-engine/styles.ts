@@ -5,15 +5,21 @@ import type {
   ThemeTokens,
   TypographyPreset,
 } from './types'
-import defaultThemeJson from '@/themes/default/theme.json'
 import { validateThemeTokens } from './presets'
+import {
+  DEFAULT_THEME_ID,
+  getInstalledTheme,
+  normalizeThemeId,
+} from './themes'
+import { getPreviewThemeFromCookie, resolveActiveThemeId } from './resolver'
 
 export const THEME_STYLE_PUBLISHED_KEY = 'theme_style_published'
 export const THEME_STYLE_DRAFT_KEY = 'theme_style_draft'
 export const THEME_CUSTOM_PRESETS_KEY = 'theme_custom_presets'
 
-export function getActiveThemeConfig(): ThemeConfig {
-  return JSON.parse(JSON.stringify(defaultThemeJson)) as unknown as ThemeConfig
+export function getActiveThemeConfig(themeId?: string): ThemeConfig {
+  const theme = getInstalledTheme(themeId)
+  return JSON.parse(JSON.stringify(theme.themeConfig)) as ThemeConfig
 }
 
 /**
@@ -57,17 +63,24 @@ export function mergeThemeConfig(base: ThemeConfig, override?: Partial<ThemeConf
 
 /**
  * Resolves the currently published ThemeConfig from payload-preferences,
- * safely merged onto the bundled default theme.json.
+ * safely merged onto the bundled theme.json for the specified themeId.
  */
-export async function resolveActiveThemeConfig(payload?: any): Promise<ThemeConfig> {
-  const base = getActiveThemeConfig()
+export async function resolveActiveThemeConfig(
+  payload?: any,
+  themeId?: string,
+): Promise<ThemeConfig> {
+  const preview = await getPreviewThemeFromCookie()
+  const targetTheme = normalizeThemeId(themeId || preview || (await resolveActiveThemeId(payload)))
+  const base = getActiveThemeConfig(targetTheme)
   if (!payload) return base
 
   try {
+    // 1. Check scoped published key: theme_style_${targetTheme}_published
+    const scopedKey = `theme_style_${targetTheme}_published`
     const pref = await payload
       .find({
         collection: 'payload-preferences',
-        where: { key: { equals: THEME_STYLE_PUBLISHED_KEY } },
+        where: { key: { equals: scopedKey } },
         limit: 1,
         overrideAccess: true,
       })
@@ -80,6 +93,26 @@ export async function resolveActiveThemeConfig(payload?: any): Promise<ThemeConf
         return mergeThemeConfig(base, override)
       }
     }
+
+    // 2. If targetTheme is corporate, check legacy un-scoped published key
+    if (targetTheme === 'corporate') {
+      const legacyPref = await payload
+        .find({
+          collection: 'payload-preferences',
+          where: { key: { equals: THEME_STYLE_PUBLISHED_KEY } },
+          limit: 1,
+          overrideAccess: true,
+        })
+        .catch(() => null)
+
+      const legacyOverride = legacyPref?.docs?.[0]?.value as Partial<ThemeConfig> | undefined
+      if (legacyOverride && typeof legacyOverride === 'object') {
+        const validation = validateThemeTokens(legacyOverride.tokens)
+        if (validation.valid) {
+          return mergeThemeConfig(base, legacyOverride)
+        }
+      }
+    }
   } catch {
     // Fail-safe to base theme
   }
@@ -89,17 +122,24 @@ export async function resolveActiveThemeConfig(payload?: any): Promise<ThemeConf
 
 /**
  * Resolves the current draft ThemeConfig for the customizer.
- * Hierarchy: Draft override -> Published override -> Bundled default.
+ * Hierarchy: Draft override -> Published override -> Bundled theme default.
  */
-export async function resolveDraftThemeConfig(payload?: any): Promise<ThemeConfig> {
-  const base = getActiveThemeConfig()
+export async function resolveDraftThemeConfig(
+  payload?: any,
+  themeId?: string,
+): Promise<ThemeConfig> {
+  const preview = await getPreviewThemeFromCookie()
+  const targetTheme = normalizeThemeId(themeId || preview || (await resolveActiveThemeId(payload)))
+  const base = getActiveThemeConfig(targetTheme)
   if (!payload) return base
 
   try {
+    // 1. Check scoped draft key: theme_style_${targetTheme}_draft
+    const scopedKey = `theme_style_${targetTheme}_draft`
     const draftPref = await payload
       .find({
         collection: 'payload-preferences',
-        where: { key: { equals: THEME_STYLE_DRAFT_KEY } },
+        where: { key: { equals: scopedKey } },
         limit: 1,
         overrideAccess: true,
       })
@@ -112,16 +152,37 @@ export async function resolveDraftThemeConfig(payload?: any): Promise<ThemeConfi
         return mergeThemeConfig(base, draftOverride)
       }
     }
+
+    // 2. If targetTheme is corporate, check legacy un-scoped draft key
+    if (targetTheme === 'corporate') {
+      const legacyPref = await payload
+        .find({
+          collection: 'payload-preferences',
+          where: { key: { equals: THEME_STYLE_DRAFT_KEY } },
+          limit: 1,
+          overrideAccess: true,
+        })
+        .catch(() => null)
+
+      const legacyOverride = legacyPref?.docs?.[0]?.value as Partial<ThemeConfig> | undefined
+      if (legacyOverride && typeof legacyOverride === 'object') {
+        const validation = validateThemeTokens(legacyOverride.tokens)
+        if (validation.valid) {
+          return mergeThemeConfig(base, legacyOverride)
+        }
+      }
+    }
   } catch {
     // fallback
   }
 
   // Fallback to published
-  return resolveActiveThemeConfig(payload)
+  return resolveActiveThemeConfig(payload, targetTheme)
 }
 
 /**
  * Resolves saved custom user presets from storage.
+ * User presets are site-wide and available across all themes.
  */
 export async function resolveCustomPresets(payload?: any): Promise<CustomPresetsStore> {
   const defaultStore: CustomPresetsStore = { colors: [], typography: [] }
@@ -152,20 +213,25 @@ export async function resolveCustomPresets(payload?: any): Promise<CustomPresets
 }
 
 /**
- * Persists draft or published style overrides to payload-preferences.
+ * Persists draft or published style overrides to payload-preferences scoped by theme ID.
  */
 export async function saveThemeStyleOverride(
   payload: any,
   tokens: Partial<ThemeTokens>,
   isPublished: boolean,
   slots?: Record<string, Record<string, string>>,
+  themeId?: string,
 ): Promise<{ success: boolean; errors?: string[] }> {
   const validation = validateThemeTokens(tokens)
   if (!validation.valid) {
     return { success: false, errors: validation.errors }
   }
 
-  const key = isPublished ? THEME_STYLE_PUBLISHED_KEY : THEME_STYLE_DRAFT_KEY
+  const targetTheme = normalizeThemeId(themeId || (await resolveActiveThemeId(payload)))
+  const scopedKey = isPublished
+    ? `theme_style_${targetTheme}_published`
+    : `theme_style_${targetTheme}_draft`
+
   const overrideData: Partial<ThemeConfig> = {
     tokens: tokens as ThemeTokens,
     ...(slots ? { slots } : {}),
@@ -175,7 +241,7 @@ export async function saveThemeStyleOverride(
     const existing = await payload
       .find({
         collection: 'payload-preferences',
-        where: { key: { equals: key } },
+        where: { key: { equals: scopedKey } },
         limit: 1,
         overrideAccess: true,
       })
@@ -191,17 +257,18 @@ export async function saveThemeStyleOverride(
     } else {
       await payload.create({
         collection: 'payload-preferences',
-        data: { key, value: overrideData },
+        data: { key: scopedKey, value: overrideData },
         overrideAccess: true,
       })
     }
 
-    // When publishing, also sync draft so customizer sees clean state
+    // When publishing, also sync draft for this theme so customizer sees clean state
     if (isPublished) {
+      const draftKey = `theme_style_${targetTheme}_draft`
       const draftExisting = await payload
         .find({
           collection: 'payload-preferences',
-          where: { key: { equals: THEME_STYLE_DRAFT_KEY } },
+          where: { key: { equals: draftKey } },
           limit: 1,
           overrideAccess: true,
         })
@@ -217,7 +284,35 @@ export async function saveThemeStyleOverride(
       } else {
         await payload.create({
           collection: 'payload-preferences',
-          data: { key: THEME_STYLE_DRAFT_KEY, value: overrideData },
+          data: { key: draftKey, value: overrideData },
+          overrideAccess: true,
+        })
+      }
+    }
+
+    // If corporate, also sync legacy keys for backwards compatibility
+    if (targetTheme === 'corporate') {
+      const legacyKey = isPublished ? THEME_STYLE_PUBLISHED_KEY : THEME_STYLE_DRAFT_KEY
+      const legacyExisting = await payload
+        .find({
+          collection: 'payload-preferences',
+          where: { key: { equals: legacyKey } },
+          limit: 1,
+          overrideAccess: true,
+        })
+        .catch(() => null)
+
+      if (legacyExisting?.docs?.length) {
+        await payload.update({
+          collection: 'payload-preferences',
+          id: legacyExisting.docs[0].id,
+          data: { value: overrideData },
+          overrideAccess: true,
+        })
+      } else {
+        await payload.create({
+          collection: 'payload-preferences',
+          data: { key: legacyKey, value: overrideData },
           overrideAccess: true,
         })
       }
@@ -328,6 +423,12 @@ export async function deleteCustomPreset(
         data: { value: store },
         overrideAccess: true,
       })
+    } else {
+      await payload.create({
+        collection: 'payload-preferences',
+        data: { key: THEME_CUSTOM_PRESETS_KEY, value: store },
+        overrideAccess: true,
+      })
     }
 
     return { success: true }
@@ -361,6 +462,21 @@ export function generateThemeCss(themeConfig?: ThemeConfig): string {
         if (key === 'accent') cssVars.push(`--zyvavu-theme-accent: ${val};`)
       }
     }
+
+    // Header specific tokens with fallback to surface / text / border
+    const headerBg = tokens.colors.headerBackground || tokens.colors.surface || '#ffffff'
+    const headerText = tokens.colors.headerText || tokens.colors.text || '#17201f'
+    const headerBorder = tokens.colors.headerBorder || tokens.colors.border || '#dfe5e2'
+    cssVars.push(`--zyvavu-theme-header-background: ${headerBg};`)
+    cssVars.push(`--zyvavu-theme-header-text: ${headerText};`)
+    cssVars.push(`--zyvavu-theme-header-border: ${headerBorder};`)
+
+    // Legacy fallback variables for public compatibility
+    cssVars.push(`--zyvavu-surface: var(--zyvavu-theme-surface, #ffffff);`)
+    cssVars.push(`--zyvavu-text: var(--zyvavu-theme-text, #17201f);`)
+    cssVars.push(`--zyvavu-border: var(--zyvavu-theme-border, #dfe5e2);`)
+    cssVars.push(`--zyvavu-background: var(--zyvavu-theme-background, #ffffff);`)
+    cssVars.push(`--zyvavu-primary: var(--zyvavu-theme-primary, #0e6b66);`)
   }
 
   // 2. Layout & Container
@@ -428,12 +544,12 @@ export function generateThemeCss(themeConfig?: ThemeConfig): string {
         .replace(/^-+/, '')
       for (const [slotName, styleString] of Object.entries(widgetSlots)) {
         if (typeof styleString === 'string' && styleString.trim()) {
-          // Clean styleString: remove potential script tags
           const sanitizedStyle = styleString.replace(/<\/?[^>]+(>|$)/g, '')
+          const kebabSlot = slotName.replace(/([a-z0-9]|(?=[A-Z]))([A-Z])/g, '$1-$2').toLowerCase()
           const selector =
             slotName === 'root'
               ? `.zyvavu-widget-${kebabWidget}`
-              : `.zyvavu-widget-${kebabWidget}__${slotName}, .zyvavu-widget-${kebabWidget} .${slotName}`
+              : `.zyvavu-widget-${kebabWidget}__${slotName}, .zyvavu-widget-${kebabWidget}__${kebabSlot}, .zyvavu-widget-${kebabWidget} .${slotName}, .zyvavu-widget-${kebabWidget} .${kebabSlot}`
           slotRules.push(`${selector} { ${sanitizedStyle} }`)
         }
       }

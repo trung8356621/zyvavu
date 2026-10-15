@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "template": "header",
+  "root": {
+    "props": {}
+  },
+  "content": [
+    {
+      "type": "Header",
+      "props": {
+        "id": "header-root",
+        "showTopBar": true,
+        "showBottomBar": false,
+        "sticky": true,
+        "lock": {
+          "canDelete": false,
+          "canMove": false,
+          "canEditProps": true
+        }
+      }
+    }
+  ],
+  "zones": {
+    "header-root:topBarLeft": [
+      {
+        "type": "HeaderTopBarText",
+        "props": {
+          "id": "topbar-edit-1",
+          "text": "TẠP CHÍ NGHIÊN CỨU & BÌNH LUẬN KINH DOANH — ẤN BẢN ĐẶC BIỆT 2026"
+        }
+      }
+    ],
+    "header-root:mainHeaderLeft": [
+      {
+        "type": "HeaderBrand",
+        "props": {
+          "id": "header-brand-edit",
+          "showTagline": true,
+          "lock": {
+            "canDelete": false,
+            "canMove": true,
+            "canEditProps": true
+          }
+        }
+      }
+    ],
+    "header-root:mainHeaderCenter": [
+      {
+        "type": "HeaderNav",
+        "props": {
+          "id": "header-nav-edit",
+          "dropdownEffect": "fade",
+          "lock": {
+            "canDelete": false,
+            "canMove": true,
+            "canEditProps": true
+          }
+        }
+      }
+    ],
+    "header-root:mainHeaderRight": [
+      {
+        "type": "HeaderAction",
+        "props": {
+          "id": "header-action-edit",
+          "label": "Đăng ký ấn bản",
+          "url": "/subscribe",
+          "variant": "outline"
+        }
+      }
+    ]
+  }
+}

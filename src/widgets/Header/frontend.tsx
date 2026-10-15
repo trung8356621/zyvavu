@@ -37,11 +37,12 @@ export function HeaderFrontend({
 
   return (
     <header
-      className={`zyvavu-widget-header ${sticky ? 'zyvavu-widget-header--sticky' : ''}`}
+      className={`zyvavu-widget-header root ${sticky ? 'zyvavu-widget-header--sticky' : ''}`}
       style={{
         width: '100%',
-        backgroundColor: 'var(--zyvavu-theme-background, #ffffff)',
-        borderBottom: '1px solid var(--zyvavu-theme-border, #dfe5e2)',
+        backgroundColor: 'var(--zyvavu-theme-header-background, var(--zyvavu-theme-background, #ffffff))',
+        borderBottom: '1px solid var(--zyvavu-theme-header-border, var(--zyvavu-theme-border, #dfe5e2))',
+        color: 'var(--zyvavu-theme-header-text, var(--zyvavu-theme-text, #17201f))',
         position: sticky ? 'sticky' : 'relative',
         top: 0,
         zIndex: 100,
@@ -50,10 +51,11 @@ export function HeaderFrontend({
       {/* 1. TOP BAR */}
       {hasTopBar && (
         <div
-          className="zyvavu-header-tier zyvavu-header-tier--top"
+          className="zyvavu-header-tier zyvavu-header-tier--top topBar zyvavu-widget-header__topBar"
           style={{
             backgroundColor: 'var(--zyvavu-theme-surface, #f8faf9)',
             borderBottom: '1px solid var(--zyvavu-theme-border, #dfe5e2)',
+            color: 'var(--zyvavu-theme-text-muted, #5f7370)',
             padding: '6px 24px',
             fontSize: '13px',
           }}
@@ -76,9 +78,11 @@ export function HeaderFrontend({
 
       {/* 2. MAIN HEADER */}
       <div
-        className="zyvavu-header-tier zyvavu-header-tier--main"
+        className="zyvavu-header-tier zyvavu-header-tier--main mainHeader zyvavu-widget-header__mainHeader"
         style={{
           padding: '16px 24px',
+          backgroundColor: 'inherit',
+          color: 'inherit',
         }}
       >
         <div
@@ -106,11 +110,12 @@ export function HeaderFrontend({
       {/* 3. BOTTOM BAR */}
       {hasBottomBar && (
         <div
-          className="zyvavu-header-tier zyvavu-header-tier--bottom"
+          className="zyvavu-header-tier zyvavu-header-tier--bottom bottomBar zyvavu-widget-header__bottomBar"
           style={{
             backgroundColor: 'var(--zyvavu-theme-surface, #f8faf9)',
             borderTop: '1px solid var(--zyvavu-theme-border, #dfe5e2)',
             padding: '8px 24px',
+            color: 'var(--zyvavu-theme-text, #17201f)',
           }}
         >
           <div

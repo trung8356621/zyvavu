@@ -1,0 +1,94 @@
+{
+  "version": 1,
+  "template": "home",
+  "root": {
+    "props": {}
+  },
+  "content": [
+    {
+      "type": "Columns",
+      "props": {
+        "id": "edit-lead-story",
+        "distribution": "2:1",
+        "gap": "36px"
+      }
+    },
+    {
+      "type": "Columns",
+      "props": {
+        "id": "edit-columns-opinions",
+        "distribution": "1:1:1",
+        "gap": "28px"
+      }
+    },
+    {
+      "type": "RecentPosts",
+      "props": {
+        "id": "edit-home-posts",
+        "heading": "CÁC BÀI BÌNH LUẬN & NGHIÊN CỨU MỚI XUẤT BẢN",
+        "limit": 5,
+        "showDate": true,
+        "showExcerpt": true,
+        "layout": "grid"
+      }
+    }
+  ],
+  "zones": {
+    "edit-lead-story:column1": [
+      {
+        "type": "TextBlock",
+        "props": {
+          "id": "edit-lead-text",
+          "title": "BÌNH LUẬN TRỌNG ĐIỂM: NỀN KINH TẾ TRI THỨC VÀ BƯỚC NGOẶT CHUYỂN DỊCH QUẢN TRỊ",
+          "content": "Trong bối cảnh trí tuệ nhân tạo và tự động hóa tái định hình chuỗi giá trị toàn cầu, câu hỏi cốt lõi của nhà quản trị không còn là tối ưu chi phí ngắn hạn, mà là tái cấu trúc văn hóa học tập và năng lực thích ứng của toàn bộ tổ chức.",
+          "align": "left",
+          "lock": {
+            "canDelete": false,
+            "canMove": true,
+            "canEditProps": true
+          }
+        }
+      }
+    ],
+    "edit-lead-story:column2": [
+      {
+        "type": "FeaturedMedia",
+        "props": {
+          "id": "edit-lead-media",
+          "aspectRatio": "4:3",
+          "caption": "Tranh minh họa: Chuyển dịch mô hình quản trị doanh nghiệp"
+        }
+      }
+    ],
+    "edit-columns-opinions:column1": [
+      {
+        "type": "TextBlock",
+        "props": {
+          "id": "edit-col-1",
+          "title": "KINH TẾ VĨ MÔ",
+          "content": "Xu hướng lạm phát, dòng vốn FDI thế hệ mới và những tác động đa chiều đến thị trường nội địa."
+        }
+      }
+    ],
+    "edit-columns-opinions:column2": [
+      {
+        "type": "TextBlock",
+        "props": {
+          "id": "edit-col-2",
+          "title": "LÃNH ĐẠO & TỔ CHỨC",
+          "content": "Nghệ thuật phân quyền và xây dựng đội ngũ kế thừa trong các tập đoàn quy mô lớn."
+        }
+      }
+    ],
+    "edit-columns-opinions:column3": [
+      {
+        "type": "TextBlock",
+        "props": {
+          "id": "edit-col-3",
+          "title": "CÔNG NGHỆ SỐ",
+          "content": "Đạo đức thuật toán và chiến lược ứng dụng học máy có trách nhiệm trong kinh doanh."
+        }
+      }
+    ]
+  }
+}

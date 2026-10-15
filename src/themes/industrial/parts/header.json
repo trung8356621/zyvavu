@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "template": "header",
+  "root": {
+    "props": {}
+  },
+  "content": [
+    {
+      "type": "Header",
+      "props": {
+        "id": "header-root",
+        "showTopBar": true,
+        "showBottomBar": false,
+        "sticky": true,
+        "lock": {
+          "canDelete": false,
+          "canMove": false,
+          "canEditProps": true
+        }
+      }
+    }
+  ],
+  "zones": {
+    "header-root:topBarLeft": [
+      {
+        "type": "HeaderTopBarText",
+        "props": {
+          "id": "topbar-ind-1",
+          "text": "TỔ HỢP SẢN XUẤT CÔNG NGHIỆP & MAY MẶC — ISO 9001:2015 | Hotline: 1900.6868"
+        }
+      }
+    ],
+    "header-root:mainHeaderLeft": [
+      {
+        "type": "HeaderBrand",
+        "props": {
+          "id": "header-brand-ind",
+          "showTagline": true,
+          "lock": {
+            "canDelete": false,
+            "canMove": true,
+            "canEditProps": true
+          }
+        }
+      }
+    ],
+    "header-root:mainHeaderCenter": [
+      {
+        "type": "HeaderNav",
+        "props": {
+          "id": "header-nav-ind",
+          "dropdownEffect": "slide-down",
+          "lock": {
+            "canDelete": false,
+            "canMove": true,
+            "canEditProps": true
+          }
+        }
+      }
+    ],
+    "header-root:mainHeaderRight": [
+      {
+        "type": "HeaderAction",
+        "props": {
+          "id": "header-action-ind",
+          "label": "Yêu cầu báo giá",
+          "url": "/contact",
+          "variant": "solid"
+        }
+      }
+    ]
+  }
+}

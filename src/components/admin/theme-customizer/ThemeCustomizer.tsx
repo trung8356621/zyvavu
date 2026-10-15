@@ -61,6 +61,9 @@ import { CURATED_FONTS, SYSTEM_FONTS, getGoogleFontUrl } from '@/lib/theme-engin
 import { generateThemeCss } from '@/lib/theme-engine/styles'
 
 export type ThemeCustomizerProps = {
+  themeId?: string
+  activeThemeId?: string
+  installedThemes?: any[]
   bundledConfig: ThemeConfig
   publishedConfig: ThemeConfig
   draftConfig: ThemeConfig
@@ -71,6 +74,9 @@ export type ThemeCustomizerProps = {
 type PanelView = 'root' | 'colors' | 'typography' | 'background' | 'css-rules'
 
 export function ThemeCustomizer({
+  themeId = 'corporate',
+  activeThemeId = 'corporate',
+  installedThemes = [],
   bundledConfig,
   publishedConfig,
   draftConfig,
@@ -355,7 +361,7 @@ export function ThemeCustomizer({
       const res = await fetch('/api/theme-customizer/save-draft', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tokens, slots }),
+        body: JSON.stringify({ tokens, slots, themeId }),
       })
       const data = await res.json()
       if (res.ok && data.success) {
@@ -378,7 +384,7 @@ export function ThemeCustomizer({
       const res = await fetch('/api/theme-customizer/publish', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tokens, slots }),
+        body: JSON.stringify({ tokens, slots, themeId }),
       })
       const data = await res.json()
       if (res.ok && data.success) {
@@ -457,16 +463,44 @@ export function ThemeCustomizer({
                     Theme Customizer
                   </Title>
                 </Group>
-                <Text size="xs" c="dimmed">
-                  Single Theme Engine
-                </Text>
+                <Group gap={6} align="center">
+                  <Text size="xs" fw={700} c="var(--mantine-color-teal-7, #0e6b66)">
+                    {installedThemes.find((t) => t.id === themeId)?.label || themeId}
+                  </Text>
+                  {themeId === activeThemeId ? (
+                    <Badge size="xs" color="teal" variant="filled">
+                      Active
+                    </Badge>
+                  ) : (
+                    <Badge size="xs" color="gray" variant="light">
+                      Inactive
+                    </Badge>
+                  )}
+                </Group>
+                {installedThemes.length > 1 && (
+                  <Select
+                    size="xs"
+                    data={installedThemes.map((t) => ({
+                      value: t.id,
+                      label: `${t.label}${t.id === activeThemeId ? ' (Active)' : ''}`,
+                    }))}
+                    value={themeId}
+                    onChange={(val) => {
+                      if (val && val !== themeId) {
+                        if (isDirty && !confirm('You have unsaved changes. Switch themes anyway?')) return
+                        window.location.href = `/admin/theme-customizer?theme=${val}`
+                      }
+                    }}
+                    mt={4}
+                  />
+                )}
               </Stack>
-              <Group gap={6}>
+              <Group gap={6} align="flex-start">
                 <Badge size="sm" variant={isDirty ? 'filled' : 'light'} color={isDirty ? 'orange' : 'teal'}>
-                  {isDirty ? 'Draft Changes' : 'Published'}
+                  {isDirty ? 'Draft' : 'Synced'}
                 </Badge>
                 <Tooltip label="Exit to Admin">
-                  <ActionIcon component={Link} href="/admin" variant="subtle" color="gray" size="sm">
+                  <ActionIcon component={Link} href="/admin/themes" variant="subtle" color="gray" size="sm">
                     <X size={16} />
                   </ActionIcon>
                 </Tooltip>

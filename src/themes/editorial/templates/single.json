@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "template": "single",
+  "root": {
+    "props": {}
+  },
+  "content": [
+    {
+      "type": "PostTitle",
+      "props": {
+        "id": "edit-single-title",
+        "tag": "h1",
+        "align": "center",
+        "lock": {
+          "canDelete": false,
+          "canMove": false,
+          "canEditProps": true
+        }
+      }
+    },
+    {
+      "type": "PostMeta",
+      "props": {
+        "id": "edit-single-meta",
+        "showDate": true,
+        "showAuthor": true,
+        "showCategories": true,
+        "lock": {
+          "canDelete": false,
+          "canMove": true,
+          "canEditProps": true
+        }
+      }
+    },
+    {
+      "type": "FeaturedMedia",
+      "props": {
+        "id": "edit-single-media",
+        "aspectRatio": "16:9",
+        "caption": "Hình ảnh minh họa chuyên mục nghiên cứu"
+      }
+    },
+    {
+      "type": "PostContent",
+      "props": {
+        "id": "edit-single-content",
+        "showExcerpt": false,
+        "lock": {
+          "canDelete": false,
+          "canMove": false,
+          "canEditProps": true
+        }
+      }
+    }
+  ],
+  "zones": {}
+}
