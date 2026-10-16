@@ -102,10 +102,12 @@ export interface Config {
   globals: {
     settings: Setting;
     'system-settings': SystemSetting;
+    'seo-settings': SeoSetting;
   };
   globalsSelect: {
     settings: SettingsSelect<false> | SettingsSelect<true>;
     'system-settings': SystemSettingsSelect<false> | SystemSettingsSelect<true>;
+    'seo-settings': SeoSettingsSelect<false> | SeoSettingsSelect<true>;
   };
   locale: null;
   widgets: {
@@ -889,6 +891,25 @@ export interface SystemSetting {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "seo-settings".
+ */
+export interface SeoSetting {
+  id: number;
+  homeTitle?: string | null;
+  homeDescription?: string | null;
+  publisherType: 'Organization' | 'Person';
+  publisherName?: string | null;
+  sameAs?:
+    | {
+        url: string;
+        id?: string | null;
+      }[]
+    | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "settings_select".
  */
 export interface SettingsSelect<T extends boolean = true> {
@@ -926,6 +947,25 @@ export interface SettingsSelect<T extends boolean = true> {
  */
 export interface SystemSettingsSelect<T extends boolean = true> {
   maintenanceNote?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "seo-settings_select".
+ */
+export interface SeoSettingsSelect<T extends boolean = true> {
+  homeTitle?: T;
+  homeDescription?: T;
+  publisherType?: T;
+  publisherName?: T;
+  sameAs?:
+    | T
+    | {
+        url?: T;
+        id?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;

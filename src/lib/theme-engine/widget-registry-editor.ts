@@ -5,6 +5,19 @@ import { getTemplatePolicy } from './policy'
 import { resolvePageSettingsStyles, resolveEffectivePageLayout } from './page-settings'
 import { PageLayoutProvider } from './page-layout-context'
 import { isPageContentContext } from './normalization'
+import { useWidgetPreviewStyle } from '@/lib/style-engine/preview-store'
+
+function wrapWithStylePreview(config: any) {
+  if (!config || !config.render) return config
+  return {
+    ...config,
+    render: (props: any) => {
+      const preview = useWidgetPreviewStyle(props.id, props.puck?.id, props.puck?.componentId)
+      const effectiveProps = preview ? { ...props, style: preview } : props
+      return config.render(effectiveProps)
+    },
+  }
+}
 
 // Import manifests
 import { postTitleManifest } from '@/widgets/PostTitle/manifest'
@@ -129,9 +142,9 @@ export function getEditorConfigForContext(
     const custom = customEditorOverrides[widgetId]
     const base = defaultEditorRegistry[widgetId]
     if (custom) {
-      allowedComponents[widgetId] = custom
+      allowedComponents[widgetId] = wrapWithStylePreview(custom)
     } else if (base) {
-      allowedComponents[widgetId] = base.config
+      allowedComponents[widgetId] = wrapWithStylePreview(base.config)
     }
   }
 

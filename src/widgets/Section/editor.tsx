@@ -5,6 +5,7 @@ import type { ComponentConfig } from '@puckeditor/core'
 import type { SectionProps } from './frontend'
 import { resolveSectionLayerStyles } from '@/lib/style-engine/serializer'
 import { usePageLayout } from '@/lib/theme-engine/page-layout-context'
+import { useWidgetPreviewStyle } from '@/lib/style-engine/preview-store'
 
 export const sectionEditor: ComponentConfig<SectionProps> = {
   label: 'Section Container',
@@ -67,7 +68,10 @@ export const sectionEditor: ComponentConfig<SectionProps> = {
       pageLayout?.effectiveContainerWidth ||
       puck?.appState?.data?.root?.props?.pageSettings?.layout?.containerWidth
 
-    const layers = resolveSectionLayerStyles(style, {
+    const previewStyle = useWidgetPreviewStyle(id, puck?.id, puck?.componentId)
+    const effectiveStyle = previewStyle || style
+
+    const layers = resolveSectionLayerStyles(effectiveStyle, {
       containerWidth,
       pageContainerWidth,
       verticalPadding,

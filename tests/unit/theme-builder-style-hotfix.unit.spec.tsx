@@ -363,7 +363,7 @@ describe('Theme Builder Hotfix — Flat Accordion & Style Context Menu', () => {
       expect(onOpenColorModal).toHaveBeenCalledWith('background')
     })
 
-    it('renders prominent preview in image mode with overlay and fallback controls', () => {
+    it('renders prominent preview in image mode with overlay and fallback controls on configure', () => {
       const onChange = vi.fn()
       const onOpenColorModal = vi.fn()
 
@@ -398,15 +398,27 @@ describe('Theme Builder Hotfix — Flat Accordion & Style Context Menu', () => {
       expect(screen.getByText(/Overlay 60%/i)).toBeDefined()
       expect(screen.getByText(/Pattern: dots/i)).toBeDefined()
 
+      // Curated background presets are visible in quick view
+      expect(screen.getByText('Curated Backgrounds')).toBeDefined()
+
+      // Open Configure settings
+      const configBtn = screen.getByRole('button', { name: /Configure \/ Thiết lập/i })
+      fireEvent.click(configBtn)
+
       // Fallback Color section exists with Change button calling 'fallback'
       expect(screen.getByText('Fallback Color')).toBeDefined()
       const changeButtons = screen.getAllByRole('button', { name: /^Change$/i })
       expect(changeButtons.length).toBeGreaterThan(0)
       fireEvent.click(changeButtons[0])
       expect(onOpenColorModal).toHaveBeenCalledWith('fallback')
+
+      // Back button returns to quick view
+      const backBtn = screen.getByRole('button', { name: /Back to Selection/i })
+      fireEvent.click(backBtn)
+      expect(screen.getByText('Curated Backgrounds')).toBeDefined()
     })
 
-    it('renders prominent preview in video mode with poster and video overlay controls', () => {
+    it('renders prominent preview in video mode with poster and video overlay controls on configure', () => {
       const onChange = vi.fn()
       const onOpenColorModal = vi.fn()
 
@@ -434,7 +446,66 @@ describe('Theme Builder Hotfix — Flat Accordion & Style Context Menu', () => {
 
       expect(screen.getByText(/Video backdrop/i)).toBeDefined()
       expect(screen.getByText(/Overlay 40%/i)).toBeDefined()
+
+      // Open Configure settings
+      const configBtn = screen.getByRole('button', { name: /Configure \/ Thiết lập/i })
+      fireEvent.click(configBtn)
+
       expect(screen.getByLabelText(/Loop Video/i)).toBeDefined()
+    })
+
+    it('allows selecting curated demo background images directly', () => {
+      const onChange = vi.fn()
+      const onOpenColorModal = vi.fn()
+
+      render(
+        <MantineProvider>
+          <BackgroundStyleControl
+            value={{
+              mode: 'image',
+              image: {
+                url: '',
+              },
+            }}
+            onChange={onChange}
+            onOpenColorModal={onOpenColorModal}
+          />
+        </MantineProvider>,
+      )
+
+      const minimalPresetBtn = screen.getByRole('button', { name: /Select Modern Minimal background/i })
+      expect(minimalPresetBtn).toBeDefined()
+      fireEvent.click(minimalPresetBtn)
+      expect(onChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          image: expect.objectContaining({
+            url: expect.stringContaining('images.unsplash.com'),
+          }),
+        }),
+      )
+    })
+
+    it('opens theme color palette when directly clicking the color swatch card', () => {
+      const onChange = vi.fn()
+      const onOpenColorModal = vi.fn()
+
+      render(
+        <MantineProvider>
+          <BackgroundStyleControl
+            value={{
+              mode: 'color',
+              colorToken: 'primary',
+            }}
+            onChange={onChange}
+            onOpenColorModal={onOpenColorModal}
+          />
+        </MantineProvider>,
+      )
+
+      const swatchCard = screen.getByRole('button', { name: 'Change Palette' })
+      expect(swatchCard).toBeDefined()
+      fireEvent.click(swatchCard)
+      expect(onOpenColorModal).toHaveBeenCalledWith('background')
     })
   })
 })

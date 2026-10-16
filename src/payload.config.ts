@@ -13,6 +13,7 @@ import { Posts } from './collections/Posts'
 import { Tags } from './collections/Tags'
 import { UrlRegistry } from './collections/UrlRegistry'
 import { Users } from './collections/Users'
+import { SeoSettings } from './globals/SeoSettings'
 import { Settings } from './globals/Settings'
 import { SystemSettings } from './globals/SystemSettings'
 import { buildOfflineManifest } from './lib/offline/manifest'
@@ -102,7 +103,7 @@ export default buildConfig({
     },
   },
   collections: [Posts, Pages, Media, Categories, Tags, Menus, Users, UrlRegistry],
-  globals: [Settings, SystemSettings],
+  globals: [Settings, SystemSettings, SeoSettings],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
   serverURL: process.env.NODE_ENV === 'production' ? publicOrigin : undefined,

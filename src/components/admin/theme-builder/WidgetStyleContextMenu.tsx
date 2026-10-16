@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActionIcon,
   Box,
@@ -23,6 +23,8 @@ import type { ThemeConfig, WidgetSemanticStyle } from '@/lib/theme-engine/types'
 import { getWidgetManifest } from '@/lib/theme-engine/widget-registry-manifests'
 import { SharedDraggableModal } from '@/components/admin/shared/SharedDraggableModal'
 import { ThemeColorPaletteModal } from '@/components/admin/shared/ThemeColorPaletteModal'
+import { ADMIN_OVERLAY_LAYERS } from '@/theme/layers'
+import { stylePreviewStore } from '@/lib/style-engine/preview-store'
 import {
   getComponentStyleCapabilities,
   normalizeComponentType,
@@ -167,6 +169,15 @@ export function WidgetStyleContextMenu({
   onUpdateStyle,
 }: WidgetStyleContextMenuProps) {
   const componentType = normalizeComponentType(rawComponentType)
+
+  // Transactional Style States:
+  // 1. committedStyleRef: Snapshot of the style currently committed in Puck
+  const committedStyleRef = useRef<WidgetSemanticStyle>(currentStyle || {})
+  // 2. draftStyle: Temporary changes inside the Style Editor
+  const [draftStyle, setDraftStyle] = useState<WidgetSemanticStyle>(() => currentStyle || {})
+  // 3. prePaletteDraftRef: Snapshot before opening child Color Palette modal
+  const prePaletteDraftRef = useRef<WidgetSemanticStyle | null>(null)
+
   // Color Modal Target: 'text' | 'background' | 'overlay' | 'border' | 'fallback' | null
   const [colorModalTarget, setColorModalTarget] = useState<
     'text' | 'background' | 'overlay' | 'border' | 'fallback' | null
@@ -206,7 +217,7 @@ export function WidgetStyleContextMenu({
   })
 
   // Sync activeTab when component type or capabilities change
-  React.useEffect(() => {
+  useEffect(() => {
     if (componentType === 'Section' && hasBackground) {
       setActiveTab('background')
     } else if (hasTypography) {
@@ -220,6 +231,16 @@ export function WidgetStyleContextMenu({
     }
   }, [componentType, hasTypography, hasBackground, hasSpacingOrDimensions])
 
+  // Sync draftStyle when switching components or when opening with new style
+  useEffect(() => {
+    committedStyleRef.current = currentStyle || {}
+    setDraftStyle(currentStyle || {})
+    return () => {
+      // Clear canvas preview when unmounting or switching component
+      stylePreviewStore.clearPreview(componentId)
+    }
+  }, [componentId, currentStyle])
+
   // Resolve coordinate position translating iframe offsets if necessary
   const resolvedPosition = useMemo(() => {
     if (initialPosition) return initialPosition
@@ -227,38 +248,196 @@ export function WidgetStyleContextMenu({
     return undefined
   }, [initialPosition, anchorEl])
 
-  // Normalize currentStyle into UniversalStyle
-  const normalizedStyle: UniversalStyle = useMemo(() => {
-    const s = currentStyle as UniversalStyle
+  // Normalization helper
+  const normalizeStyle = useCallback((style: WidgetSemanticStyle): UniversalStyle => {
+    const s = style as UniversalStyle
     return {
       ...s,
       typography: {
-        typography: s.typography?.typography || (typeof currentStyle.typography === 'string' ? currentStyle.typography : undefined),
-        colorToken: s.typography?.colorToken || currentStyle.colorToken,
-        align: s.typography?.align || currentStyle.align,
+        typography: s.typography?.typography || (typeof style.typography === 'string' ? style.typography : undefined),
+        colorToken: s.typography?.colorToken || style.colorToken,
+        align: s.typography?.align || style.align,
         effectPreset: s.typography?.effectPreset,
         letterSpacing: s.typography?.letterSpacing,
         lineHeight: s.typography?.lineHeight,
         verticalText: s.typography?.verticalText,
       },
-      background: s.background || (currentStyle.backgroundToken ? { mode: 'color', colorToken: currentStyle.backgroundToken } : undefined),
-      spacing: s.spacing && typeof s.spacing === 'object' ? s.spacing : { padding: { token: typeof currentStyle.spacing === 'string' ? currentStyle.spacing : 'md' } },
-      radius: s.radius && typeof s.radius === 'object' ? s.radius : { radiusToken: typeof currentStyle.radius === 'string' ? currentStyle.radius : 'none' },
+      background: s.background || (style.backgroundToken ? { mode: 'color', colorToken: style.backgroundToken } : undefined),
+      spacing: s.spacing && typeof s.spacing === 'object' ? s.spacing : { padding: { token: typeof style.spacing === 'string' ? style.spacing : 'md' } },
+      radius: s.radius && typeof s.radius === 'object' ? s.radius : { radiusToken: typeof style.radius === 'string' ? style.radius : 'none' },
     }
-  }, [currentStyle])
+  }, [])
 
-  const update = (partial: Partial<UniversalStyle>) => {
-    const merged: WidgetSemanticStyle = {
-      ...currentStyle,
-      ...normalizedStyle,
-      ...partial,
-      // Maintain legacy top-level mirrors for backward compatibility
-      colorToken: partial.typography?.colorToken || normalizedStyle.typography?.colorToken || currentStyle.colorToken,
-      align: partial.typography?.align || normalizedStyle.typography?.align || currentStyle.align,
-      backgroundToken: partial.background?.colorToken || normalizedStyle.background?.colorToken || currentStyle.backgroundToken,
+  const normalizedDraft: UniversalStyle = useMemo(() => {
+    return normalizeStyle(draftStyle)
+  }, [draftStyle, normalizeStyle])
+
+  // Real-time draft update that immediately updates the canvas preview without committing to Puck
+  const updateDraft = useCallback((partial: Partial<UniversalStyle>) => {
+    setDraftStyle((prev) => {
+      const prevNorm = normalizeStyle(prev)
+      const merged: WidgetSemanticStyle = {
+        ...prev,
+        ...prevNorm,
+        ...partial,
+        // Maintain legacy top-level mirrors for backward compatibility
+        colorToken: partial.typography?.colorToken || prevNorm.typography?.colorToken || prev.colorToken,
+        align: partial.typography?.align || prevNorm.typography?.align || prev.align,
+        backgroundToken: partial.background?.colorToken || prevNorm.background?.colorToken || prev.backgroundToken,
+      }
+      // Broadcast live preview to canvas
+      stylePreviewStore.setPreview(componentId, merged)
+      return merged
+    })
+  }, [componentId, normalizeStyle])
+
+  // Apply Action: Commits draftStyle to Puck document in a single update
+  const handleApply = useCallback(() => {
+    onUpdateStyle(draftStyle)
+    stylePreviewStore.clearPreview(componentId)
+    onClose()
+  }, [draftStyle, onUpdateStyle, componentId, onClose])
+
+  // Cancel Action: Discards unapplied draft and restores canvas appearance
+  const handleCancel = useCallback(() => {
+    stylePreviewStore.clearPreview(componentId)
+    setDraftStyle(committedStyleRef.current)
+    onClose()
+  }, [componentId, onClose])
+
+  // Palette Child Opening
+  const handleOpenColorModal = (target: 'text' | 'background' | 'overlay' | 'border' | 'fallback') => {
+    if (typeof document !== 'undefined' && document.activeElement && 'blur' in document.activeElement) {
+      ;(document.activeElement as HTMLElement).blur()
     }
-    onUpdateStyle(merged)
+    prePaletteDraftRef.current = draftStyle
+    setColorModalTarget(target)
   }
+
+  // Palette Child Close/Cancel: Revert draft and canvas preview back to pre-palette state
+  const handlePaletteCloseOrCancel = useCallback(() => {
+    if (prePaletteDraftRef.current) {
+      stylePreviewStore.setPreview(componentId, prePaletteDraftRef.current)
+      setDraftStyle(prePaletteDraftRef.current)
+    }
+    setColorModalTarget(null)
+  }, [componentId])
+
+  // Helper to build draft with new token selection for live preview
+  const buildCandidateDraftWithToken = useCallback(
+    (target: string, tokenId: string): WidgetSemanticStyle => {
+      const base = draftStyle
+      const baseNorm = normalizeStyle(base)
+      if (target === 'text') {
+        return {
+          ...base,
+          typography: { ...baseNorm.typography, colorToken: tokenId },
+          colorToken: tokenId,
+        }
+      }
+      if (target === 'overlay') {
+        if (baseNorm.background?.mode === 'image') {
+          return {
+            ...base,
+            background: {
+              ...baseNorm.background,
+              image: {
+                ...baseNorm.background?.image,
+                overlay: { ...baseNorm.background?.image?.overlay, colorToken: tokenId },
+              },
+            },
+          }
+        }
+        if (baseNorm.background?.mode === 'video') {
+          return {
+            ...base,
+            background: {
+              ...baseNorm.background,
+              video: {
+                ...baseNorm.background?.video,
+                overlay: { ...baseNorm.background?.video?.overlay, colorToken: tokenId },
+              },
+            },
+          }
+        }
+      }
+      if (target === 'fallback') {
+        if (baseNorm.background?.mode === 'image') {
+          return {
+            ...base,
+            background: {
+              ...baseNorm.background,
+              image: {
+                ...baseNorm.background?.image,
+                fallbackColorToken: tokenId,
+              },
+            },
+          }
+        }
+        if (baseNorm.background?.mode === 'video') {
+          return {
+            ...base,
+            background: {
+              ...baseNorm.background,
+              video: {
+                ...baseNorm.background?.video,
+                fallbackColorToken: tokenId,
+              },
+            },
+          }
+        }
+      }
+      if (target === 'border') {
+        return {
+          ...base,
+          border: { ...baseNorm.border, colorToken: tokenId },
+        }
+      }
+      // Background solid color
+      return {
+        ...base,
+        background: {
+          ...baseNorm.background,
+          mode: 'color',
+          colorToken: tokenId,
+          gradient: undefined,
+          mesh: undefined,
+        },
+        backgroundToken: tokenId,
+      }
+    },
+    [draftStyle, normalizeStyle],
+  )
+
+  const buildCandidateDraftWithGradient = useCallback(
+    (gradient: GradientDef): WidgetSemanticStyle => {
+      return {
+        ...draftStyle,
+        background: {
+          ...normalizedDraft.background,
+          mode: 'color',
+          gradient,
+          mesh: undefined,
+        },
+      }
+    },
+    [draftStyle, normalizedDraft],
+  )
+
+  const buildCandidateDraftWithMesh = useCallback(
+    (mesh: MeshDef): WidgetSemanticStyle => {
+      return {
+        ...draftStyle,
+        background: {
+          ...normalizedDraft.background,
+          mode: 'color',
+          mesh,
+          gradient: undefined,
+        },
+      }
+    },
+    [draftStyle, normalizedDraft],
+  )
 
   if (!opened) return null
 
@@ -266,9 +445,9 @@ export function WidgetStyleContextMenu({
     <>
       <SharedDraggableModal
         opened={opened}
-        onClose={onClose}
+        onClose={handleCancel}
         title={`Style: ${manifest?.label || componentType}`}
-        subtitle={`Configure presentation without handwritten CSS`}
+        subtitle="Configure presentation without handwritten CSS"
         headerExtra={<Sliders size={16} color="var(--mantine-color-teal-7, #0e6b66)" />}
         width={360}
         anchorEl={anchorEl}
@@ -278,15 +457,20 @@ export function WidgetStyleContextMenu({
         showCloseButton={true}
         closeOnClickOutside={false}
         closeOnEscape={true}
-        zIndex={1050}
+        zIndex={ADMIN_OVERLAY_LAYERS.STYLE_MODAL}
         footer={
           <Group justify="space-between" w="100%">
             <Text size="xs" c="dimmed" style={{ fontSize: 12 }}>
-              Prop: {componentId}
+              {componentType}: {componentId}
             </Text>
-            <Button size="xs" color="teal" onClick={onClose}>
-              Done
-            </Button>
+            <Group gap="xs">
+              <Button variant="default" size="xs" onClick={handleCancel}>
+                Hủy / Cancel
+              </Button>
+              <Button color="teal" size="xs" onClick={handleApply}>
+                Áp dụng / Apply
+              </Button>
+            </Group>
           </Group>
         }
       >
@@ -325,52 +509,52 @@ export function WidgetStyleContextMenu({
           {/* 1. TYPOGRAPHY DOMAIN */}
           {activeTab === 'typography' && hasTypography && (
             <TypographyStyleControl
-              value={normalizedStyle.typography}
+              value={normalizedDraft.typography}
               themeConfig={themeConfig}
-              onChange={(typo) => update({ typography: typo })}
-              onOpenColorModal={() => setColorModalTarget('text')}
+              onChange={(typo) => updateDraft({ typography: typo })}
+              onOpenColorModal={() => handleOpenColorModal('text')}
             />
           )}
 
           {/* 2. BACKGROUND DOMAIN */}
           {activeTab === 'background' && hasBackground && (
             <BackgroundStyleControl
-              value={normalizedStyle.background}
+              value={normalizedDraft.background}
               themeConfig={themeConfig}
-              onChange={(bg) => update({ background: bg })}
-              onOpenColorModal={(target) => setColorModalTarget(target)}
+              onChange={(bg) => updateDraft({ background: bg })}
+              onOpenColorModal={(target) => handleOpenColorModal(target)}
             />
           )}
 
           {/* 3. SPACING & DIMENSIONS DOMAIN */}
           {activeTab === 'spacing' && hasSpacingOrDimensions && (
             <SpacingDimensionsControl
-              spacing={normalizedStyle.spacing}
-              dimensions={normalizedStyle.dimensions}
+              spacing={normalizedDraft.spacing}
+              dimensions={normalizedDraft.dimensions}
               showDimensions={capabilities.includes('dimensions') || capabilities.includes('section')}
-              onChangeSpacing={(sp) => update({ spacing: sp })}
-              onChangeDimensions={(dim) => update({ dimensions: dim })}
+              onChangeSpacing={(sp) => updateDraft({ spacing: sp })}
+              onChangeDimensions={(dim) => updateDraft({ dimensions: dim })}
             />
           )}
 
           {/* 4. BORDERS & EFFECTS DOMAIN */}
           {activeTab === 'borders' && hasBorderOrEffects && (
             <BordersEffectsControl
-              border={normalizedStyle.border}
-              radius={normalizedStyle.radius}
-              shadow={normalizedStyle.shadow}
-              effects={normalizedStyle.effects}
-              onChangeBorder={(border) => update({ border })}
-              onChangeRadius={(radius) => update({ radius })}
-              onChangeShadow={(shadow) => update({ shadow })}
-              onChangeEffects={(effects) => update({ effects })}
-              onOpenColorModal={() => setColorModalTarget('border')}
+              border={normalizedDraft.border}
+              radius={normalizedDraft.radius}
+              shadow={normalizedDraft.shadow}
+              effects={normalizedDraft.effects}
+              onChangeBorder={(border) => updateDraft({ border })}
+              onChangeRadius={(radius) => updateDraft({ radius })}
+              onChangeShadow={(shadow) => updateDraft({ shadow })}
+              onChangeEffects={(effects) => updateDraft({ effects })}
+              onOpenColorModal={() => handleOpenColorModal('border')}
             />
           )}
         </Stack>
       </SharedDraggableModal>
 
-      {/* Unified Color / Gradient / Mesh Modal */}
+      {/* Unified Color / Gradient / Mesh Modal (Child Transactional Selection) */}
       {colorModalTarget && (
         <ThemeColorPaletteModal
           opened={Boolean(colorModalTarget)}
@@ -389,126 +573,65 @@ export function WidgetStyleContextMenu({
           subtitle="Select semantic theme tokens or custom gradients"
           value={
             colorModalTarget === 'text'
-              ? normalizedStyle.typography?.colorToken || 'text'
+              ? normalizedDraft.typography?.colorToken || 'text'
               : colorModalTarget === 'overlay'
-                ? (normalizedStyle.background?.mode === 'image'
-                    ? normalizedStyle.background?.image?.overlay?.colorToken
-                    : normalizedStyle.background?.video?.overlay?.colorToken) || 'text'
+                ? (normalizedDraft.background?.mode === 'image'
+                    ? normalizedDraft.background?.image?.overlay?.colorToken
+                    : normalizedDraft.background?.video?.overlay?.colorToken) || 'text'
                 : colorModalTarget === 'border'
-                  ? normalizedStyle.border?.colorToken || 'border'
+                  ? normalizedDraft.border?.colorToken || 'border'
                   : colorModalTarget === 'fallback'
-                    ? (normalizedStyle.background?.mode === 'image'
-                        ? normalizedStyle.background?.image?.fallbackColorToken
-                        : normalizedStyle.background?.video?.fallbackColorToken) || 'surface'
-                    : normalizedStyle.background?.colorToken || 'surface'
+                    ? (normalizedDraft.background?.mode === 'image'
+                        ? normalizedDraft.background?.image?.fallbackColorToken
+                        : normalizedDraft.background?.video?.fallbackColorToken) || 'surface'
+                    : normalizedDraft.background?.colorToken || 'surface'
           }
           tokens={themeConfig?.tokens}
-          zIndex={1150}
+          zIndex={ADMIN_OVERLAY_LAYERS.PALETTE_MODAL}
           includeBackgroundTokens={true}
           supportedModes={
             colorModalTarget === 'background'
               ? ['solid', 'gradient', 'mesh']
               : ['solid']
           }
-          gradientValue={normalizedStyle.background?.gradient}
-          meshValue={normalizedStyle.background?.mesh}
-          onClose={() => setColorModalTarget(null)}
+          gradientValue={normalizedDraft.background?.gradient}
+          meshValue={normalizedDraft.background?.mesh}
+          onClose={handlePaletteCloseOrCancel}
+          onCancel={handlePaletteCloseOrCancel}
+          onSelectToken={(tokenId) => {
+            if (!colorModalTarget) return
+            const candidate = buildCandidateDraftWithToken(colorModalTarget, tokenId)
+            stylePreviewStore.setPreview(componentId, candidate)
+          }}
+          onChangeGradient={(grad) => {
+            const candidate = buildCandidateDraftWithGradient(grad)
+            stylePreviewStore.setPreview(componentId, candidate)
+          }}
+          onChangeMesh={(mesh) => {
+            const candidate = buildCandidateDraftWithMesh(mesh)
+            stylePreviewStore.setPreview(componentId, candidate)
+          }}
           onApplyToken={(tokenId) => {
-            if (colorModalTarget === 'text') {
-              update({
-                typography: {
-                  ...normalizedStyle.typography,
-                  colorToken: tokenId,
-                },
-              })
-            } else if (colorModalTarget === 'overlay') {
-              if (normalizedStyle.background?.mode === 'image') {
-                update({
-                  background: {
-                    ...normalizedStyle.background,
-                    image: {
-                      ...normalizedStyle.background?.image,
-                      overlay: {
-                        ...normalizedStyle.background?.image?.overlay,
-                        colorToken: tokenId,
-                      },
-                    },
-                  },
-                })
-              } else if (normalizedStyle.background?.mode === 'video') {
-                update({
-                  background: {
-                    ...normalizedStyle.background,
-                    video: {
-                      ...normalizedStyle.background?.video,
-                      overlay: {
-                        ...normalizedStyle.background?.video?.overlay,
-                        colorToken: tokenId,
-                      },
-                    },
-                  },
-                })
-              }
-            } else if (colorModalTarget === 'fallback') {
-              if (normalizedStyle.background?.mode === 'image') {
-                update({
-                  background: {
-                    ...normalizedStyle.background,
-                    image: {
-                      ...normalizedStyle.background?.image,
-                      fallbackColorToken: tokenId,
-                    },
-                  },
-                })
-              } else if (normalizedStyle.background?.mode === 'video') {
-                update({
-                  background: {
-                    ...normalizedStyle.background,
-                    video: {
-                      ...normalizedStyle.background?.video,
-                      fallbackColorToken: tokenId,
-                    },
-                  },
-                })
-              }
-            } else if (colorModalTarget === 'border') {
-              update({
-                border: {
-                  ...normalizedStyle.border,
-                  colorToken: tokenId,
-                },
-              })
-            } else {
-              update({
-                background: {
-                  ...normalizedStyle.background,
-                  mode: 'color',
-                  colorToken: tokenId,
-                  gradient: undefined,
-                  mesh: undefined,
-                },
-              })
-            }
+            if (!colorModalTarget) return
+            const candidate = buildCandidateDraftWithToken(colorModalTarget, tokenId)
+            setDraftStyle(candidate)
+            stylePreviewStore.setPreview(componentId, candidate)
+            prePaletteDraftRef.current = candidate
+            setColorModalTarget(null)
           }}
           onApplyGradient={(gradient: GradientDef) => {
-            update({
-              background: {
-                ...normalizedStyle.background,
-                mode: 'color',
-                gradient,
-                mesh: undefined,
-              },
-            })
+            const candidate = buildCandidateDraftWithGradient(gradient)
+            setDraftStyle(candidate)
+            stylePreviewStore.setPreview(componentId, candidate)
+            prePaletteDraftRef.current = candidate
+            setColorModalTarget(null)
           }}
           onApplyMesh={(mesh: MeshDef) => {
-            update({
-              background: {
-                ...normalizedStyle.background,
-                mode: 'color',
-                mesh,
-                gradient: undefined,
-              },
-            })
+            const candidate = buildCandidateDraftWithMesh(mesh)
+            setDraftStyle(candidate)
+            stylePreviewStore.setPreview(componentId, candidate)
+            prePaletteDraftRef.current = candidate
+            setColorModalTarget(null)
           }}
         />
       )}

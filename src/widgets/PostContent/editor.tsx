@@ -27,7 +27,7 @@ export const postContentEditor: ComponentConfig<PostContentProps> = {
           padding: '20px',
           border: '1px dashed #ced4da',
           borderRadius: '8px',
-          backgroundColor: '#fafafa',
+          backgroundColor: 'transparent',
           margin: '16px 0',
         }}
       >

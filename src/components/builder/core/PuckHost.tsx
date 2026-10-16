@@ -12,6 +12,7 @@ import type { ThemeConfig, WidgetSemanticStyle } from '@/lib/theme-engine/types'
 import { normalizeComponentType } from '@/lib/style-engine/capabilities'
 import { PageSettingsPanel } from '@/components/admin/theme-builder/PageSettingsPanel'
 import { WidgetStyleContextMenu, computeTranslatedAnchorPosition } from '@/components/admin/theme-builder/WidgetStyleContextMenu'
+import { stylePreviewStore } from '@/lib/style-engine/preview-store'
 
 const usePuck = createUsePuck()
 
@@ -310,6 +311,7 @@ export function PuckHost({
       anchorEl: HTMLElement | null
       initialPosition?: { x: number; y: number }
     }) => {
+      stylePreviewStore.clearPreview()
       setActiveStyleMenu({
         opened: true,
         componentType,
@@ -323,11 +325,13 @@ export function PuckHost({
   )
 
   const handleCloseStyleMenu = useCallback(() => {
+    stylePreviewStore.clearPreview()
     setActiveStyleMenu(null)
   }, [])
 
   const handleUpdateWidgetStyle = useCallback(
     (newStyle: WidgetSemanticStyle) => {
+      stylePreviewStore.clearPreview()
       if (!activeStyleMenu) return
       const { componentId } = activeStyleMenu
       const api = puckApiRef.current

@@ -1,3 +1,4 @@
+import type { PublicSeoSettings } from './settings'
 import type { PublicSiteSettings } from '@/lib/site/settings'
 
 export type SeoResourceType = 'home' | 'page' | 'post' | 'category' | 'tag'
@@ -25,7 +26,7 @@ export interface SeoBreadcrumbItem {
   url: string
 }
 
-export interface SeoSiteInfo extends PublicSiteSettings {
+export interface SeoSiteInfo extends PublicSiteSettings, Partial<PublicSeoSettings> {
   logo?: SeoImageInfo
 }
 
@@ -75,6 +76,8 @@ export interface SeoPageContext {
   page?: SeoPageData
   term?: SeoTaxonomyData
   document?: Record<string, unknown>
+  homeFallbackTitle?: string
+  homeFallbackDescription?: string
 }
 
 export interface SchemaIdReference {

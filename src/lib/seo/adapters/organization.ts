@@ -1,3 +1,4 @@
+import { publisherDisplayName } from '../settings'
 import type { SchemaAdapter, SchemaEntityIds, SchemaNode, SeoPageContext } from '../types'
 import { buildAbsoluteUrl } from '../utils'
 
@@ -11,10 +12,14 @@ export const OrganizationSchemaAdapter: SchemaAdapter = {
     const homeUrl = buildAbsoluteUrl(context.site.siteUrl, '/')
 
     const organizationNode: SchemaNode = {
-      '@type': 'Organization',
+      '@type': context.site.publisherType === 'Person' ? 'Person' : 'Organization',
       '@id': ids.organizationId,
-      name: context.site.siteName,
+      name: publisherDisplayName(context.site),
       url: homeUrl,
+    }
+
+    if (context.site.sameAs && context.site.sameAs.length > 0) {
+      organizationNode.sameAs = context.site.sameAs
     }
 
     if (context.site.logo?.url) {

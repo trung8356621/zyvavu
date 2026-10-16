@@ -6,6 +6,7 @@ export const Media: CollectionConfig = {
   slug: 'media',
   admin: {
     group: 'Content',
+    listSearchableFields: ['filename'],
     components: {
       views: {
         list: {

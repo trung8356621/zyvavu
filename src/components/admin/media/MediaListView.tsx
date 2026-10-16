@@ -3,9 +3,18 @@
 import type { ListViewClientProps } from 'payload'
 import { Button } from '@mantine/core'
 import { DefaultListView, Link, useBulkUpload, useModal } from '@payloadcms/ui'
-import React from 'react'
+import React, { useSyncExternalStore } from 'react'
 
 import { CollectionListHeader } from '@/components/admin/collections/CollectionListHeader'
+
+import { MediaLibraryStage } from './MediaLibraryStage'
+import {
+  getServerMediaLibraryView,
+  readMediaLibraryView,
+  subscribeMediaLibraryView,
+} from './mediaLibraryPreference'
+
+import './media-library.scss'
 
 function MediaActions({
   hasCreatePermission,
@@ -52,6 +61,12 @@ function MediaActions({
 }
 
 export function MediaListView(props: ListViewClientProps) {
+  const view = useSyncExternalStore(
+    subscribeMediaLibraryView,
+    readMediaLibraryView,
+    getServerMediaLibraryView,
+  )
+
   return (
     <DefaultListView
       {...props}
@@ -74,6 +89,13 @@ export function MediaListView(props: ListViewClientProps) {
           {props.BeforeList}
         </>
       }
+      BeforeListTable={
+        <>
+          <MediaLibraryStage view={view} />
+          {props.BeforeListTable}
+        </>
+      }
+      Table={view === 'table' ? props.Table : null}
     />
   )
 }

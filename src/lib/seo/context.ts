@@ -1,6 +1,8 @@
 import type { Payload } from 'payload'
 
 import { loadPublicSiteSettings } from '@/lib/site/settings'
+import { resolveHomeCopy } from './settings'
+import { loadPublicSeoSettings } from './settings-store'
 import { normalizePath } from '@/lib/url/normalize'
 import {
   getCanonicalPath,
@@ -15,6 +17,7 @@ import type {
   SeoSiteInfo,
   SeoTermInfo,
 } from './types'
+import { decideIndexability } from './indexability'
 import {
   buildAbsoluteUrl,
   countWords,
@@ -54,8 +57,11 @@ async function loadSeoSiteInfo(payload: Payload): Promise<SeoSiteInfo> {
     // Preserve fallback settings
   }
 
+  const seo = await loadPublicSeoSettings(payload)
+
   return {
     ...settings,
+    ...seo,
     logo,
   }
 }
@@ -64,7 +70,7 @@ function buildNotFoundContext(site: SeoSiteInfo, requestedPath: string): SeoPage
   return {
     status: 'not_found',
     requestedPath,
-    isIndexable: false,
+    isIndexable: decideIndexability({ status: 'not_found', canonicalPath: null }).indexable,
     site,
     title: `Not Found — ${site.siteName}`,
     documentTitle: 'Not Found',
@@ -82,7 +88,11 @@ function buildRedirectContext(
     status: 'redirect',
     requestedPath,
     redirectTarget,
-    isIndexable: false,
+    isIndexable: decideIndexability({
+      status: 'redirect',
+      canonicalPath: null,
+      recordRole: 'redirect',
+    }).indexable,
     site,
     title: site.siteName,
     documentTitle: site.siteName,
@@ -94,20 +104,30 @@ function buildRedirectContext(
 function buildDefaultHomeContext(site: SeoSiteInfo): SeoPageContext {
   const canonicalPath = '/'
   const canonicalUrl = buildAbsoluteUrl(site.siteUrl, canonicalPath)
-  const title = site.tagline ? `${site.siteName} — ${site.tagline}` : site.siteName
-  const description = site.tagline || site.siteName
+  const home = resolveHomeCopy(site, {
+    title: site.tagline ? `${site.siteName} — ${site.tagline}` : site.siteName,
+    description: site.tagline || site.siteName,
+    documentTitle: site.siteName,
+  })
 
   return {
     status: 'ok',
     requestedPath: '/',
     resourceType: 'home',
-    isIndexable: true,
+    isIndexable: decideIndexability({
+      status: 'ok',
+      resourceType: 'home',
+      canonicalPath,
+      recordRole: 'canonical',
+    }).indexable,
     site,
     canonicalPath,
     canonicalUrl,
-    title,
-    documentTitle: site.siteName,
-    description,
+    title: home.title,
+    documentTitle: home.documentTitle,
+    description: home.description,
+    homeFallbackTitle: home.homeFallbackTitle,
+    homeFallbackDescription: home.homeFallbackDescription,
     breadcrumbs: [],
   }
 }
@@ -219,13 +239,20 @@ export async function resolveSeoPageContext(
       site.tagline ||
       site.siteName
 
-    const title = isHome
-      ? pageTitle && pageTitle.toLowerCase() !== 'home' && pageTitle !== site.siteName
+    const fallbackTitle =
+      pageTitle && pageTitle.toLowerCase() !== 'home' && pageTitle !== site.siteName
         ? `${pageTitle} — ${site.siteName}`
         : site.tagline
           ? `${site.siteName} — ${site.tagline}`
           : site.siteName
-      : `${pageTitle} — ${site.siteName}`
+    const home = isHome
+      ? resolveHomeCopy(site, {
+          title: fallbackTitle,
+          description,
+          documentTitle: site.siteName,
+        })
+      : null
+    const title = home?.title || `${pageTitle} — ${site.siteName}`
 
     const publishedAt = toValidIsoDate(pageDoc.createdAt)
     const modifiedAt = toValidIsoDate(pageDoc.updatedAt)
@@ -242,13 +269,21 @@ export async function resolveSeoPageContext(
       status: 'ok',
       requestedPath: normalizedRequested,
       resourceType: isHome ? 'home' : 'page',
-      isIndexable: true,
+      isIndexable: decideIndexability({
+        status: 'ok',
+        resourceType: isHome ? 'home' : 'page',
+        doc: pageDoc,
+        canonicalPath: isHome ? '/' : canonicalPath,
+        recordRole: 'canonical',
+      }).indexable,
       site,
       canonicalPath: isHome ? '/' : canonicalPath,
       canonicalUrl: isHome ? homeUrl : canonicalUrl,
       title,
-      documentTitle: isHome ? site.siteName : pageTitle,
-      description,
+      documentTitle: home?.documentTitle || pageTitle,
+      description: home?.description || description,
+      homeFallbackTitle: home?.homeFallbackTitle,
+      homeFallbackDescription: home?.homeFallbackDescription,
       publishedAt,
       modifiedAt,
       primaryImage,
@@ -317,7 +352,13 @@ export async function resolveSeoPageContext(
       status: 'ok',
       requestedPath: normalizedRequested,
       resourceType: 'post',
-      isIndexable: true,
+      isIndexable: decideIndexability({
+        status: 'ok',
+        resourceType: 'post',
+        doc: postDoc,
+        canonicalPath,
+        recordRole: 'canonical',
+      }).indexable,
       site,
       canonicalPath,
       canonicalUrl,
@@ -375,7 +416,13 @@ export async function resolveSeoPageContext(
       status: 'ok',
       requestedPath: normalizedRequested,
       resourceType: resolved.resourceType,
-      isIndexable: true,
+      isIndexable: decideIndexability({
+        status: 'ok',
+        resourceType: resolved.resourceType,
+        doc: termDoc,
+        canonicalPath,
+        recordRole: 'canonical',
+      }).indexable,
       site,
       canonicalPath,
       canonicalUrl,

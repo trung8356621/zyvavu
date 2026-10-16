@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { ActionIcon, Box, Group, Paper, Portal, Text } from '@mantine/core'
 import { GripHorizontal, X } from 'lucide-react'
+import { ADMIN_OVERLAY_LAYERS } from '@/theme/layers'
 
 export type ModalPresentationMode = 'floating' | 'dialog'
 
@@ -99,7 +100,7 @@ export function SharedDraggableModal({
   withBackdrop = mode === 'dialog',
   closeOnClickOutside = mode === 'dialog',
   closeOnEscape = true,
-  zIndex = 1000,
+  zIndex = ADMIN_OVERLAY_LAYERS.STYLE_MODAL,
   className,
   style,
   headerExtra,
@@ -166,6 +167,12 @@ export function SharedDraggableModal({
     if (e.button !== 0) return
 
     e.preventDefault()
+
+    // Dismiss any active dropdown/popover before dragging starts
+    if (typeof document !== 'undefined' && document.activeElement && 'blur' in document.activeElement) {
+      ;(document.activeElement as HTMLElement).blur()
+    }
+
     isDraggingRef.current = true
     setIsDragging(true)
     hasBeenDraggedRef.current = true

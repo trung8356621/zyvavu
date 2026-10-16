@@ -3,10 +3,12 @@ import {
   Badge,
   Button,
   Card,
+  Combobox,
   createTheme,
   type MantineColorsTuple,
   type MantineSize,
   Paper,
+  Popover,
   SegmentedControl,
   Select,
   Tabs,
@@ -14,6 +16,7 @@ import {
 } from '@mantine/core'
 
 import rawTheme from './theme.json'
+import { ADMIN_OVERLAY_LAYERS } from './layers'
 
 export type AdminThemeConfig = {
   primary: string
@@ -132,6 +135,20 @@ export const adminMantineTheme = createTheme({
       defaultProps: {
         size: defaultSize,
         radius: defaultRadius,
+        comboboxProps: {
+          zIndex: ADMIN_OVERLAY_LAYERS.ACTIVE_DROPDOWN,
+          shadow: 'md',
+        },
+      },
+    }),
+    Combobox: Combobox.extend({
+      defaultProps: {
+        zIndex: ADMIN_OVERLAY_LAYERS.ACTIVE_DROPDOWN,
+      },
+    }),
+    Popover: Popover.extend({
+      defaultProps: {
+        zIndex: ADMIN_OVERLAY_LAYERS.ACTIVE_DROPDOWN,
       },
     }),
     ActionIcon: ActionIcon.extend({

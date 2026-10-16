@@ -796,6 +796,21 @@ h6 {
   box-sizing: border-box;
 }
 
+.zyvavu-section__container,
+.zyvavu-section__content {
+  background-color: transparent;
+}
+
+.zyvavu-widget-section [data-puck-dropzone],
+.zyvavu-widget-section ._DropZone_wc2ks_1 {
+  --puck-slot-color-bg: transparent;
+  --puck-color-selection-bg: transparent;
+}
+
+.zyvavu-widget-section [data-puck-dropzone]:not(:empty) {
+  background-color: transparent !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .zyvavu-section__media--video video {
     display: none !important;

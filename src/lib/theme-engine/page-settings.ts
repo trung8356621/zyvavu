@@ -104,6 +104,9 @@ export function resolveColorToken(token?: string, fallback?: string): string | u
 
   const kebab = tokenToKebab(clean)
 
+  if (clean === 'transparent' || clean === 'none') {
+    return 'transparent'
+  }
   if (clean === 'primary') {
     return 'var(--zyvavu-theme-primary, var(--zyvavu-theme-color-primary, #0e6b66))'
   }

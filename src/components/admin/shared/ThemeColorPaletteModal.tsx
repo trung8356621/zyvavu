@@ -23,6 +23,7 @@ import { parseColorToRgb, getRelativeLuminance } from '@/lib/theme-engine/preset
 import { SharedDraggableModal } from './SharedDraggableModal'
 import type { GradientDef, GradientStop, MeshDef, MeshPoint } from '@/lib/style-engine/types'
 import { serializeGradientCss, serializeMeshCss } from '@/lib/style-engine/token-resolver'
+import { ADMIN_OVERLAY_LAYERS } from '@/theme/layers'
 
 export interface PaletteSwatchItem {
   id: string
@@ -54,6 +55,8 @@ export interface ThemeColorPaletteModalProps {
   initialMode?: ColorPickerMode
   gradientValue?: GradientDef
   meshValue?: MeshDef
+  onChangeGradient?: (gradient: GradientDef) => void
+  onChangeMesh?: (mesh: MeshDef) => void
   onApplyGradient?: (gradient: GradientDef) => void
   onApplyMesh?: (mesh: MeshDef) => void
 }
@@ -118,7 +121,7 @@ export function ThemeColorPaletteModal({
   title = 'Theme Color Palette',
   subtitle = 'Choose a coordinated theme color',
   anchorEl,
-  zIndex = 1100,
+  zIndex = ADMIN_OVERLAY_LAYERS.PALETTE_MODAL,
   includeBackgroundTokens = false,
   onChange,
   onApply,
@@ -129,6 +132,8 @@ export function ThemeColorPaletteModal({
   initialMode = 'solid',
   gradientValue,
   meshValue,
+  onChangeGradient,
+  onChangeMesh,
   onApplyGradient,
   onApplyMesh,
 }: ThemeColorPaletteModalProps) {
@@ -230,8 +235,16 @@ export function ThemeColorPaletteModal({
   }
 
   // Gradient Handlers
+  const updateGradient = (updater: (prev: GradientDef) => GradientDef) => {
+    setGradient((prev) => {
+      const next = updater(prev)
+      onChangeGradient?.(next)
+      return next
+    })
+  }
+
   const handleAddStop = () => {
-    setGradient((prev) => ({
+    updateGradient((prev) => ({
       ...prev,
       stops: [
         ...prev.stops,
@@ -245,22 +258,30 @@ export function ThemeColorPaletteModal({
 
   const handleRemoveStop = (idx: number) => {
     if (gradient.stops.length <= 2) return
-    setGradient((prev) => ({
+    updateGradient((prev) => ({
       ...prev,
       stops: prev.stops.filter((_, i) => i !== idx),
     }))
   }
 
   const handleUpdateStop = (idx: number, partial: Partial<GradientStop>) => {
-    setGradient((prev) => ({
+    updateGradient((prev) => ({
       ...prev,
       stops: prev.stops.map((s, i) => (i === idx ? { ...s, ...partial } : s)),
     }))
   }
 
   // Mesh Handlers
+  const updateMesh = (updater: (prev: MeshDef) => MeshDef) => {
+    setMesh((prev) => {
+      const next = updater(prev)
+      onChangeMesh?.(next)
+      return next
+    })
+  }
+
   const handleAddMeshPoint = () => {
-    setMesh((prev) => ({
+    updateMesh((prev) => ({
       ...prev,
       points: [
         ...prev.points,
@@ -277,14 +298,14 @@ export function ThemeColorPaletteModal({
 
   const handleRemoveMeshPoint = (id: string) => {
     if (mesh.points.length <= 2) return
-    setMesh((prev) => ({
+    updateMesh((prev) => ({
       ...prev,
       points: prev.points.filter((p) => p.id !== id),
     }))
   }
 
   const handleUpdateMeshPoint = (id: string, partial: Partial<MeshPoint>) => {
-    setMesh((prev) => ({
+    updateMesh((prev) => ({
       ...prev,
       points: prev.points.map((p) => (p.id === id ? { ...p, ...partial } : p)),
     }))
@@ -448,7 +469,7 @@ export function ThemeColorPaletteModal({
                 size="xs"
                 value={gradient.type}
                 onChange={(val) =>
-                  setGradient((prev) => ({ ...prev, type: val as 'linear' | 'radial' }))
+                  updateGradient((prev) => ({ ...prev, type: val as 'linear' | 'radial' }))
                 }
                 data={[
                   { label: 'Linear', value: 'linear' },
@@ -461,7 +482,7 @@ export function ThemeColorPaletteModal({
                 size="xs"
                 color="gray"
                 leftSection={<RotateCcw size={12} />}
-                onClick={() => setGradient(DEFAULT_GRADIENT)}
+                onClick={() => updateGradient(() => DEFAULT_GRADIENT)}
               >
                 Reset
               </Button>
@@ -481,7 +502,7 @@ export function ThemeColorPaletteModal({
                   max={360}
                   step={5}
                   value={gradient.angle}
-                  onChange={(val) => setGradient((prev) => ({ ...prev, angle: val }))}
+                  onChange={(val) => updateGradient((prev) => ({ ...prev, angle: val }))}
                 />
               </Box>
             )}
@@ -596,7 +617,7 @@ export function ThemeColorPaletteModal({
                   size="xs"
                   color="gray"
                   leftSection={<RotateCcw size={13} />}
-                  onClick={() => setMesh(DEFAULT_MESH)}
+                  onClick={() => updateMesh(() => DEFAULT_MESH)}
                 >
                   Reset
                 </Button>
