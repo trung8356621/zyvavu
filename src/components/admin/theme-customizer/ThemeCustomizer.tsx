@@ -202,9 +202,7 @@ export function ThemeCustomizer({
   const currentHeaderTitle = useMemo(() => {
     if (activePanel === 'colors') {
       if (activeSubPanel === 'presets') return 'Change Color Theme'
-      if (activeSubPanel === 'basic') return 'Basic Colors'
-      if (activeSubPanel === 'accent') return 'Accent Colors'
-      if (activeSubPanel === 'other') return 'Other Colors'
+      if (activeSubPanel === 'advanced') return 'Advanced Settings'
       return 'Color Theme'
     }
     if (activePanel === 'typography') {
@@ -836,187 +834,152 @@ export function ThemeCustomizer({
           )}
 
           {/* ======================================================== */}
-          {/* 2. COLOR THEME: LAYER 2 & LAYER 3                        */}
+          {/* 2. COLOR THEME: WIX-STYLE SIDEBAR & SUBPANELS            */}
           {/* ======================================================== */}
           {activePanel === 'colors' && activeSubPanel === null && (
-            <Stack gap="xs">
-              <Text size="xs" c="dimmed" mb={4}>
-                Select how you would like to customize your site colors.
+            <Stack gap="md">
+              {/* Short explanation of the color theme */}
+              <Text size="xs" c="dimmed">
+                Customize your site&apos;s core color palette. Select any swatch below to adjust it in real time.
               </Text>
 
-              {/* Option 1: Change Color Theme */}
-              <Card
-                withBorder
-                padding="sm"
-                radius="sm"
-                role="button"
-                tabIndex={0}
-                style={{ cursor: 'pointer' }}
-                onClick={() => setActiveSubPanel('presets')}
-                onKeyDown={(e) => handleCardKeyDown(e, () => setActiveSubPanel('presets'))}
-              >
-                <Flex align="center" justify="space-between">
-                  <Box style={{ flex: 1, minWidth: 0 }} pr="xs">
-                    <Group gap={6} mb={2}>
-                      <Sparkles size={14} color="var(--mantine-color-teal-7, #0e6b66)" />
-                      <Text size="sm" fw={600}>
-                        Change Color Theme
-                      </Text>
-                    </Group>
-                    <Text size="xs" c="dimmed">
-                      Choose a complete, ready-made color palette
-                    </Text>
-                  </Box>
-                  <ChevronRight size={16} color="var(--mantine-color-dimmed)" />
-                </Flex>
-              </Card>
+              {/* Basic Colors: 1st = Main Text, 2nd = Primary Brand */}
+              <Box>
+                <Text size="xs" fw={700} mb={6}>
+                  Basic Colors
+                </Text>
+                <Group grow gap="xs" align="stretch">
+                  <WixColorPicker
+                    variant="basic-swatch"
+                    label="Main Text"
+                    description="Headings & body"
+                    value={tokens.colors.text}
+                    onChange={(val) => handleColorChange('text', val)}
+                  />
+                  <WixColorPicker
+                    variant="basic-swatch"
+                    label="Primary Brand"
+                    description="Buttons & links"
+                    value={tokens.colors.primary}
+                    onChange={(val) => handleColorChange('primary', val)}
+                  />
+                </Group>
+              </Box>
 
-              {/* Option 2: Basic Colors */}
-              <Card
-                withBorder
-                padding="sm"
-                radius="sm"
-                role="button"
-                tabIndex={0}
-                style={{ cursor: 'pointer' }}
-                onClick={() => setActiveSubPanel('basic')}
-                onKeyDown={(e) => handleCardKeyDown(e, () => setActiveSubPanel('basic'))}
-              >
-                <Flex align="center" justify="space-between">
-                  <Box style={{ flex: 1, minWidth: 0 }} pr="xs">
-                    <Text size="sm" fw={600}>
-                      Basic Colors
-                    </Text>
-                    <Text size="xs" c="dimmed">
-                      Visually edit your primary brand colors
-                    </Text>
-                  </Box>
-                  <Group gap={6} wrap="nowrap">
-                    <Box
-                      style={{
-                        width: 18,
-                        height: 18,
-                        borderRadius: '50%',
-                        background: tokens.colors.primary,
-                        border: '1px solid rgba(0,0,0,0.12)',
-                      }}
+              {/* Shadow Colors: Horizontal three-color strip */}
+              <Box>
+                <Text size="xs" fw={700} mb={6}>
+                  Shadow Colors
+                </Text>
+                <Paper withBorder p="xs" radius="sm">
+                  <Flex gap={0} align="stretch">
+                    <WixColorPicker
+                      variant="strip-segment"
+                      stripPosition="first"
+                      label="Shadow Soft"
+                      description="Soft"
+                      value={tokens.colors.shadowSoft || '#e6eceb'}
+                      onChange={(val) => handleColorChange('shadowSoft', val)}
                     />
-                    <Box
-                      style={{
-                        width: 18,
-                        height: 18,
-                        borderRadius: '50%',
-                        background: tokens.colors.primaryHover || tokens.colors.primary,
-                        border: '1px solid rgba(0,0,0,0.12)',
-                      }}
+                    <WixColorPicker
+                      variant="strip-segment"
+                      stripPosition="middle"
+                      label="Shadow Medium"
+                      description="Medium"
+                      value={tokens.colors.shadowMedium || '#bfd0cd'}
+                      onChange={(val) => handleColorChange('shadowMedium', val)}
                     />
-                    <ChevronRight size={16} color="var(--mantine-color-dimmed)" />
-                  </Group>
-                </Flex>
-              </Card>
+                    <WixColorPicker
+                      variant="strip-segment"
+                      stripPosition="last"
+                      label="Shadow Strong"
+                      description="Strong"
+                      value={tokens.colors.shadowStrong || '#7a9692'}
+                      onChange={(val) => handleColorChange('shadowStrong', val)}
+                    />
+                  </Flex>
+                </Paper>
+              </Box>
 
-              {/* Option 3: Accent Colors */}
-              <Card
-                withBorder
-                padding="sm"
-                radius="sm"
-                role="button"
-                tabIndex={0}
-                style={{ cursor: 'pointer' }}
-                onClick={() => setActiveSubPanel('accent')}
-                onKeyDown={(e) => handleCardKeyDown(e, () => setActiveSubPanel('accent'))}
-              >
-                <Flex align="center" justify="space-between">
-                  <Box style={{ flex: 1, minWidth: 0 }} pr="xs">
-                    <Text size="sm" fw={600}>
-                      Accent Colors
-                    </Text>
-                    <Text size="xs" c="dimmed">
-                      Edit highlight, badge and callout colors
-                    </Text>
-                  </Box>
-                  <Group gap={6} wrap="nowrap">
-                    <Box
-                      style={{
-                        width: 18,
-                        height: 18,
-                        borderRadius: '50%',
-                        background: tokens.colors.accent || tokens.colors.primary,
-                        border: '1px solid rgba(0,0,0,0.12)',
-                      }}
-                    />
-                    <ChevronRight size={16} color="var(--mantine-color-dimmed)" />
-                  </Group>
-                </Flex>
-              </Card>
+              {/* Accent Colors */}
+              <Box>
+                <Text size="xs" fw={700} mb={6}>
+                  Accent Colors
+                </Text>
+                <Stack gap="xs">
+                  <WixColorPicker
+                    variant="accent-swatch"
+                    label="Accent Highlight"
+                    description="Highlights, badges & callouts"
+                    value={tokens.colors.accent || tokens.colors.primary}
+                    onChange={(val) => handleColorChange('accent', val)}
+                  />
+                  <WixColorPicker
+                    variant="accent-swatch"
+                    label="Primary Hover"
+                    description="Interactive button hover state"
+                    value={tokens.colors.primaryHover || tokens.colors.primary}
+                    onChange={(val) => handleColorChange('primaryHover', val)}
+                  />
+                </Stack>
+              </Box>
 
-              {/* Option 4: Other Colors */}
-              <Card
-                withBorder
-                padding="sm"
-                radius="sm"
-                role="button"
-                tabIndex={0}
-                style={{ cursor: 'pointer' }}
-                onClick={() => setActiveSubPanel('other')}
-                onKeyDown={(e) => handleCardKeyDown(e, () => setActiveSubPanel('other'))}
-              >
-                <Flex align="center" justify="space-between">
-                  <Box style={{ flex: 1, minWidth: 0 }} pr="xs">
-                    <Text size="sm" fw={600}>
-                      Other Colors
-                    </Text>
-                    <Text size="xs" c="dimmed">
-                      Background, text, surface and border colors
-                    </Text>
-                  </Box>
-                  <Group gap={4} wrap="nowrap">
-                    <Box
-                      style={{
-                        width: 14,
-                        height: 14,
-                        borderRadius: '50%',
-                        background: tokens.colors.background,
-                        border: '1px solid rgba(0,0,0,0.15)',
-                      }}
-                    />
-                    <Box
-                      style={{
-                        width: 14,
-                        height: 14,
-                        borderRadius: '50%',
-                        background: tokens.colors.surface,
-                        border: '1px solid rgba(0,0,0,0.15)',
-                      }}
-                    />
-                    <Box
-                      style={{
-                        width: 14,
-                        height: 14,
-                        borderRadius: '50%',
-                        background: tokens.colors.text,
-                        border: '1px solid rgba(0,0,0,0.15)',
-                      }}
-                    />
-                    <ChevronRight size={16} color="var(--mantine-color-dimmed)" />
-                  </Group>
-                </Flex>
-              </Card>
-
-              {contrastCheck.warning && (
-                <Alert color="orange" icon={<AlertTriangle size={16} />} title="Contrast Warning" mt="xs">
-                  {contrastCheck.warning}
+              {/* Simple nonintrusive contrast warning (Main Text vs Page Background only) */}
+              {!contrastCheck.isReadable && contrastCheck.warning && (
+                <Alert color="orange" p="xs" icon={<AlertTriangle size={14} />}>
+                  <Text size="xs">{contrastCheck.warning}</Text>
                 </Alert>
               )}
+
+              <Divider />
+
+              {/* Advanced Settings entry */}
+              <Card
+                withBorder
+                padding="xs"
+                radius="sm"
+                role="button"
+                tabIndex={0}
+                style={{ cursor: 'pointer' }}
+                onClick={() => setActiveSubPanel('advanced')}
+                onKeyDown={(e) => handleCardKeyDown(e, () => setActiveSubPanel('advanced'))}
+              >
+                <Flex align="center" justify="space-between">
+                  <Group gap="xs">
+                    <Sliders size={14} color="var(--mantine-color-dimmed)" />
+                    <Box>
+                      <Text size="xs" fw={600}>
+                        Advanced Settings
+                      </Text>
+                      <Text size="xs" c="dimmed" style={{ fontSize: 11 }}>
+                        Background, surface, muted text & borders
+                      </Text>
+                    </Box>
+                  </Group>
+                  <ChevronRight size={14} color="var(--mantine-color-dimmed)" />
+                </Flex>
+              </Card>
+
+              {/* Change Color Theme button */}
+              <Button
+                variant="light"
+                color="teal"
+                size="sm"
+                fullWidth
+                leftSection={<Sparkles size={15} />}
+                onClick={() => setActiveSubPanel('presets')}
+              >
+                Change Color Theme
+              </Button>
             </Stack>
           )}
 
-          {/* LAYER 3: COLOR THEME -> CHANGE COLOR THEME (PRESETS) */}
+          {/* SUBPANEL: COLOR THEME -> CHANGE COLOR THEME (PRESETS) */}
           {activePanel === 'colors' && activeSubPanel === 'presets' && (
             <Stack gap="md">
               <Box>
                 <Text size="xs" c="dimmed" mb="xs">
-                  Click a palette below to preview it immediately on your site.
+                  Select a ready-made palette to update your theme colors.
                 </Text>
                 <Stack gap="xs">
                   {BUILTIN_COLOR_PRESETS.map((preset) => {
@@ -1049,11 +1012,11 @@ export function ThemeCustomizer({
                         </Flex>
                         <Group gap={6}>
                           {[
+                            preset.colors.text,
                             preset.colors.primary,
                             preset.colors.accent || preset.colors.primary,
                             preset.colors.background,
                             preset.colors.surface,
-                            preset.colors.text,
                           ].map((c, i) => (
                             <Box
                               key={i}
@@ -1149,11 +1112,11 @@ export function ThemeCustomizer({
                           </Flex>
                           <Group gap={6}>
                             {[
+                              preset.colors.text,
                               preset.colors.primary,
                               preset.colors.accent || preset.colors.primary,
                               preset.colors.background,
                               preset.colors.surface,
-                              preset.colors.text,
                             ].map((c, i) => (
                               <Box
                                 key={i}
@@ -1176,47 +1139,11 @@ export function ThemeCustomizer({
             </Stack>
           )}
 
-          {/* LAYER 3: COLOR THEME -> BASIC COLORS */}
-          {activePanel === 'colors' && activeSubPanel === 'basic' && (
+          {/* SUBPANEL: COLOR THEME -> ADVANCED SETTINGS */}
+          {activePanel === 'colors' && activeSubPanel === 'advanced' && (
             <Stack gap="sm">
               <Text size="xs" c="dimmed">
-                Select a swatch to adjust your main brand colors.
-              </Text>
-              <WixColorPicker
-                label="Primary Brand Color"
-                description="Main buttons, active links and key brand elements"
-                value={tokens.colors.primary}
-                onChange={(val) => handleColorChange('primary', val)}
-              />
-              <WixColorPicker
-                label="Primary Hover Color"
-                description="Shown when visitors point at primary buttons"
-                value={tokens.colors.primaryHover || tokens.colors.primary}
-                onChange={(val) => handleColorChange('primaryHover', val)}
-              />
-            </Stack>
-          )}
-
-          {/* LAYER 3: COLOR THEME -> ACCENT COLORS */}
-          {activePanel === 'colors' && activeSubPanel === 'accent' && (
-            <Stack gap="sm">
-              <Text size="xs" c="dimmed">
-                Highlight colors draw attention to badges, icons and secondary actions.
-              </Text>
-              <WixColorPicker
-                label="Accent Color"
-                description="Secondary highlights, tags and decorative accents"
-                value={tokens.colors.accent || tokens.colors.primary}
-                onChange={(val) => handleColorChange('accent', val)}
-              />
-            </Stack>
-          )}
-
-          {/* LAYER 3: COLOR THEME -> OTHER COLORS */}
-          {activePanel === 'colors' && activeSubPanel === 'other' && (
-            <Stack gap="sm">
-              <Text size="xs" c="dimmed">
-                Customize page backgrounds, card surfaces, text readability and borders.
+                Fine-tune backgrounds, card surfaces, secondary text and border tokens.
               </Text>
               <WixColorPicker
                 label="Page Background"
@@ -1231,12 +1158,6 @@ export function ThemeCustomizer({
                 onChange={(val) => handleColorChange('surface', val)}
               />
               <WixColorPicker
-                label="Primary Text Color"
-                description="Headings and main body copy"
-                value={tokens.colors.text}
-                onChange={(val) => handleColorChange('text', val)}
-              />
-              <WixColorPicker
                 label="Muted Text Color"
                 description="Captions, dates and secondary descriptions"
                 value={tokens.colors.textMuted || '#5f7370'}
@@ -1249,9 +1170,9 @@ export function ThemeCustomizer({
                 onChange={(val) => handleColorChange('border', val)}
               />
 
-              {contrastCheck.warning && (
-                <Alert color="orange" icon={<AlertTriangle size={16} />} title="Contrast Warning">
-                  {contrastCheck.warning}
+              {!contrastCheck.isReadable && contrastCheck.warning && (
+                <Alert color="orange" p="xs" icon={<AlertTriangle size={14} />}>
+                  <Text size="xs">{contrastCheck.warning}</Text>
                 </Alert>
               )}
             </Stack>

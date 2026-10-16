@@ -13,6 +13,9 @@
       "textMuted": "#5f7370",
       "border": "#dfe5e2",
       "accent": "#2b8a7f",
+      "shadowSoft": "#e6eceb",
+      "shadowMedium": "#bfd0cd",
+      "shadowStrong": "#7a9692",
       "headerBackground": "#ffffff",
       "headerText": "#17201f",
       "headerBorder": "#dfe5e2"

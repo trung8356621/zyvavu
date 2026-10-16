@@ -91,6 +91,9 @@ export type ThemeTokens = {
     textMuted?: string
     border: string
     accent?: string
+    shadowSoft?: string
+    shadowMedium?: string
+    shadowStrong?: string
     [key: string]: string | undefined
   }
   typography: {

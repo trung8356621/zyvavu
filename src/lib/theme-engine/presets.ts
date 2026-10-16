@@ -14,6 +14,9 @@ export const BUILTIN_COLOR_PRESETS: ColorPreset[] = [
       textMuted: '#5f7370',
       border: '#dfe5e2',
       accent: '#2b8a7f',
+      shadowSoft: '#e6eceb',
+      shadowMedium: '#bfd0cd',
+      shadowStrong: '#7a9692',
     },
   },
   {
@@ -29,6 +32,9 @@ export const BUILTIN_COLOR_PRESETS: ColorPreset[] = [
       textMuted: '#9ca3af',
       border: '#1f2937',
       accent: '#38bdf8',
+      shadowSoft: '#1e293b',
+      shadowMedium: '#334155',
+      shadowStrong: '#475569',
     },
   },
   {
@@ -44,6 +50,9 @@ export const BUILTIN_COLOR_PRESETS: ColorPreset[] = [
       textMuted: '#526b5a',
       border: '#d8e2dc',
       accent: '#52b788',
+      shadowSoft: '#e2ece5',
+      shadowMedium: '#b7d1bf',
+      shadowStrong: '#749c82',
     },
   },
   {
@@ -59,6 +68,9 @@ export const BUILTIN_COLOR_PRESETS: ColorPreset[] = [
       textMuted: '#78716c',
       border: '#fed7aa',
       accent: '#ea580c',
+      shadowSoft: '#f5ebe1',
+      shadowMedium: '#dfc6b0',
+      shadowStrong: '#a68265',
     },
   },
   {
@@ -74,6 +86,9 @@ export const BUILTIN_COLOR_PRESETS: ColorPreset[] = [
       textMuted: '#64748b',
       border: '#e2e8f0',
       accent: '#3b82f6',
+      shadowSoft: '#e2e8f0',
+      shadowMedium: '#cbd5e1',
+      shadowStrong: '#94a3b8',
     },
   },
   {
@@ -89,6 +104,9 @@ export const BUILTIN_COLOR_PRESETS: ColorPreset[] = [
       textMuted: '#78716c',
       border: '#fecdd3',
       accent: '#f43f5e',
+      shadowSoft: '#f5e1e4',
+      shadowMedium: '#dfb8be',
+      shadowStrong: '#a3727a',
     },
   },
   {
@@ -104,6 +122,9 @@ export const BUILTIN_COLOR_PRESETS: ColorPreset[] = [
       textMuted: '#71717a',
       border: '#e4e4e7',
       accent: '#52525b',
+      shadowSoft: '#e4e4e7',
+      shadowMedium: '#d4d4d8',
+      shadowStrong: '#a1a1aa',
     },
   },
 ]
