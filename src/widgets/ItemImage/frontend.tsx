@@ -1,6 +1,5 @@
 import React from 'react'
 import Link from 'next/link'
-import { useItemContext } from '@/lib/theme-engine/item-context'
 import type { ThemeDataContext } from '@/lib/theme-engine/types'
 
 export type ItemImageProps = {
@@ -18,7 +17,7 @@ export function ItemImageFrontend({
   className = '',
   dataContext,
 }: ItemImageProps) {
-  const item = useItemContext() || (dataContext as any)?.item
+  const item = dataContext?.item
   const imageUrl = item?.image?.url
   const imageAlt = item?.image?.alt || item?.title || 'Item image'
   const postUrl = item?.url || '#'

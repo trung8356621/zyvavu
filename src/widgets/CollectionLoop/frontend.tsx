@@ -1,9 +1,5 @@
 import React from 'react'
-import type { ThemeDataContext } from '@/lib/theme-engine/types'
-import {
-  ItemContextProvider,
-  type LoopItemRecord,
-} from '@/lib/theme-engine/item-context'
+import type { LoopItemRecord, ThemeDataContext } from '@/lib/theme-engine/types'
 import { ItemTitleFrontend } from '@/widgets/ItemTitle/frontend'
 import { ItemExcerptFrontend } from '@/widgets/ItemExcerpt/frontend'
 import { ItemLinkFrontend } from '@/widgets/ItemLink/frontend'
@@ -105,39 +101,44 @@ function renderRecords(props: CollectionLoopProps, records: LoopItemRecord[]) {
             gap: gap || '24px',
           }}
         >
-          {records.map((record, idx) => (
-            <article
-              key={record.id || idx}
-              className="zyvavu-widget-collection-loop__card"
-              style={{
-                border: '1px solid var(--zyvavu-theme-border, #e2e8f0)',
-                borderRadius: '8px',
-                padding: '20px',
-                background: 'var(--zyvavu-theme-surface, #ffffff)',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                gap: '12px',
-              }}
-            >
-              {renderSlot ? (
-                renderSlot(
+          {records.map((record, idx) => {
+            const itemContext: ThemeDataContext = {
+              ...(dataContext || { type: 'home' }),
+              item: record,
+            }
+            const slotContent = renderSlot
+              ? renderSlot(
                   'itemTemplate',
-                  {
-                    ...(dataContext || { type: 'home' }),
-                    item: record,
-                  },
+                  itemContext,
                   `loop-${id}-item-${record.id || idx}`,
                 )
-              ) : (
-                <ItemContextProvider item={record}>
-                  <ItemTitleFrontend />
-                  <ItemExcerptFrontend />
-                  <ItemLinkFrontend />
-                </ItemContextProvider>
-              )}
-            </article>
-          ))}
+              : null
+
+            return (
+              <article
+                key={record.id || idx}
+                className="zyvavu-widget-collection-loop__card"
+                style={{
+                  border: '1px solid var(--zyvavu-theme-border, #e2e8f0)',
+                  borderRadius: '8px',
+                  padding: '20px',
+                  background: 'var(--zyvavu-theme-surface, #ffffff)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  gap: '12px',
+                }}
+              >
+                {slotContent || (
+                  <>
+                    <ItemTitleFrontend dataContext={itemContext} />
+                    <ItemExcerptFrontend dataContext={itemContext} />
+                    <ItemLinkFrontend dataContext={itemContext} />
+                  </>
+                )}
+              </article>
+            )
+          })}
         </div>
       )}
     </div>

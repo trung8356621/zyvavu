@@ -1,5 +1,4 @@
 import React from 'react'
-import { useItemContext } from '@/lib/theme-engine/item-context'
 import type { ThemeDataContext } from '@/lib/theme-engine/types'
 
 export type ItemExcerptProps = {
@@ -13,7 +12,7 @@ export function ItemExcerptFrontend({
   className = '',
   dataContext,
 }: ItemExcerptProps) {
-  const item = useItemContext() || (dataContext as any)?.item
+  const item = dataContext?.item
   const excerpt = item?.excerpt || 'Tóm tắt nội dung mô tả chi tiết của bài viết này để hiển thị trên thẻ card xem trước.'
 
   return (

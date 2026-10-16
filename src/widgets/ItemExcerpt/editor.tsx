@@ -2,7 +2,16 @@
 
 import React from 'react'
 import type { ComponentConfig } from '@puckeditor/core'
+import { useItemContext } from '@/lib/theme-engine/item-context'
 import { ItemExcerptFrontend, type ItemExcerptProps } from './frontend'
+
+function ItemExcerptEditorPreview(props: ItemExcerptProps) {
+  const contextItem = useItemContext()
+  const dataContext =
+    props.dataContext ||
+    (contextItem ? { type: 'home' as const, item: contextItem } : undefined)
+  return <ItemExcerptFrontend {...props} dataContext={dataContext} />
+}
 
 export const itemExcerptEditor: ComponentConfig<ItemExcerptProps> = {
   label: 'Item Excerpt',
@@ -17,5 +26,5 @@ export const itemExcerptEditor: ComponentConfig<ItemExcerptProps> = {
   defaultProps: {
     maxLines: 3,
   },
-  render: (props: any) => <ItemExcerptFrontend {...(props as any)} />,
+  render: (props: any) => <ItemExcerptEditorPreview {...(props as any)} />,
 }

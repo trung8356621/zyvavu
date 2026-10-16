@@ -7,8 +7,20 @@ import {
   ItemContextProvider,
   type LoopItemRecord,
 } from '@/lib/theme-engine/item-context'
-import { getFrontendWidget } from '@/lib/theme-engine/widget-registry-frontend'
+import { ItemTitleFrontend } from '@/widgets/ItemTitle/frontend'
+import { ItemImageFrontend } from '@/widgets/ItemImage/frontend'
+import { ItemExcerptFrontend } from '@/widgets/ItemExcerpt/frontend'
+import { ItemLinkFrontend } from '@/widgets/ItemLink/frontend'
+import { TextBlockFrontend } from '@/widgets/TextBlock/frontend'
 import type { CollectionLoopProps } from './frontend'
+
+const SAFE_PREVIEW_COMPONENTS: Record<string, React.ComponentType<any>> = {
+  ItemTitle: ItemTitleFrontend,
+  ItemImage: ItemImageFrontend,
+  ItemExcerpt: ItemExcerptFrontend,
+  ItemLink: ItemLinkFrontend,
+  TextBlock: TextBlockFrontend,
+}
 
 const EDITOR_SAMPLE_RECORDS: LoopItemRecord[] = [
   {
@@ -338,13 +350,13 @@ export const collectionLoopEditor: ComponentConfig<CollectionLoopProps> = {
               <ItemContextProvider item={sampleRecord}>
                 {templateItems.length > 0 ? (
                   templateItems.map((child: any, cIdx: number) => {
-                    const entry = getFrontendWidget(child.type)
-                    if (!entry) return null
-                    const Component = entry.component
+                    const Component = SAFE_PREVIEW_COMPONENTS[child.type]
+                    if (!Component) return null
                     return (
                       <Component
                         key={child.props?.id || cIdx}
                         {...child.props}
+                        dataContext={{ type: 'home', item: sampleRecord }}
                       />
                     )
                   })

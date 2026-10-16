@@ -165,6 +165,43 @@ describe('Loop Item Engine V1 — Contracts & Rendering', () => {
       expect(widgetTypes).toContain('ItemTitle')
       expect(widgetTypes).toContain('ItemExcerpt')
       expect(widgetTypes).toContain('ItemLink')
+
+      // Renders dynamic posts via explicit dataContext.item propagation without client context
+      const html = renderToStaticMarkup(
+        <ThemeRenderer
+          document={doc}
+          dataContext={{
+            type: 'home',
+            archive: {
+              posts: [
+                {
+                  id: 101,
+                  title: 'Bài viết Động Số 1',
+                  excerpt: 'Tóm tắt động số 1.',
+                  publicPath: '/tin-tuc/bai-viet-dong-1',
+                  featuredMedia: { url: '/media/post-1.jpg', alt: 'Ảnh 1' },
+                },
+                {
+                  id: 102,
+                  title: 'Bài viết Động Số 2',
+                  excerpt: 'Tóm tắt động số 2.',
+                  publicPath: '/tin-tuc/bai-viet-dong-2',
+                  featuredMedia: { url: '/media/post-2.jpg', alt: 'Ảnh 2' },
+                },
+              ],
+            },
+          }}
+        />,
+      )
+
+      expect(html).toContain('Bài viết Động Số 1')
+      expect(html).toContain('Bài viết Động Số 2')
+      expect(html).toContain('Tóm tắt động số 1.')
+      expect(html).toContain('Tóm tắt động số 2.')
+      expect(html).toContain('href="/tin-tuc/bai-viet-dong-1"')
+      expect(html).toContain('href="/tin-tuc/bai-viet-dong-2"')
+      expect(html).toContain('src="/media/post-1.jpg"')
+      expect(html).toContain('src="/media/post-2.jpg"')
     }
   })
 })

@@ -45,7 +45,7 @@
         "columns": 2,
         "gap": "24px",
         "limit": 4,
-        "categoryId": "du-an",
+        "categoryId": "",
         "sort": "newest"
       }
     }

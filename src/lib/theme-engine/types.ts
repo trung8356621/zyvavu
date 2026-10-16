@@ -169,10 +169,27 @@ export type ThemeCustomizerState = {
   customPresets: CustomPresetsStore
 }
 
+export type LoopItemRecord = {
+  id?: string | number
+  title: string
+  slug?: string
+  url?: string
+  excerpt?: string
+  date?: string
+  category?: string
+  image?: {
+    url?: string
+    alt?: string
+    width?: number
+    height?: number
+  }
+  raw?: any
+}
+
 export type ThemeDataContext = {
   type: TemplateContext
   document?: Record<string, any>
-  item?: import('./item-context').LoopItemRecord
+  item?: LoopItemRecord
   archive?: {
     title?: string
     description?: string

@@ -2,7 +2,16 @@
 
 import React from 'react'
 import type { ComponentConfig } from '@puckeditor/core'
+import { useItemContext } from '@/lib/theme-engine/item-context'
 import { ItemLinkFrontend, type ItemLinkProps } from './frontend'
+
+function ItemLinkEditorPreview(props: ItemLinkProps) {
+  const contextItem = useItemContext()
+  const dataContext =
+    props.dataContext ||
+    (contextItem ? { type: 'home' as const, item: contextItem } : undefined)
+  return <ItemLinkFrontend {...props} dataContext={dataContext} />
+}
 
 export const itemLinkEditor: ComponentConfig<ItemLinkProps> = {
   label: 'Item Link / CTA',
@@ -25,5 +34,5 @@ export const itemLinkEditor: ComponentConfig<ItemLinkProps> = {
     label: 'Xem chi tiết →',
     variant: 'link',
   },
-  render: (props: any) => <ItemLinkFrontend {...(props as any)} />,
+  render: (props: any) => <ItemLinkEditorPreview {...(props as any)} />,
 }

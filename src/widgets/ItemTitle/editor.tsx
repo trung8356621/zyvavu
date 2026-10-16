@@ -2,7 +2,16 @@
 
 import React from 'react'
 import type { ComponentConfig } from '@puckeditor/core'
+import { useItemContext } from '@/lib/theme-engine/item-context'
 import { ItemTitleFrontend, type ItemTitleProps } from './frontend'
+
+function ItemTitleEditorPreview(props: ItemTitleProps) {
+  const contextItem = useItemContext()
+  const dataContext =
+    props.dataContext ||
+    (contextItem ? { type: 'home' as const, item: contextItem } : undefined)
+  return <ItemTitleFrontend {...props} dataContext={dataContext} />
+}
 
 export const itemTitleEditor: ComponentConfig<ItemTitleProps> = {
   label: 'Item Title',
@@ -30,5 +39,5 @@ export const itemTitleEditor: ComponentConfig<ItemTitleProps> = {
     tag: 'h3',
     linkToPost: true,
   },
-  render: (props: any) => <ItemTitleFrontend {...(props as any)} />,
+  render: (props: any) => <ItemTitleEditorPreview {...(props as any)} />,
 }

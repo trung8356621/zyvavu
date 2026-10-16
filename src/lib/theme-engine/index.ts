@@ -8,4 +8,4 @@ export * from './widget-registry-frontend'
 export * from './presets'
 export * from './fonts'
 export * from './themes'
-export * from './item-context'
+

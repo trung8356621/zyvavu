@@ -1,6 +1,5 @@
 import React from 'react'
 import Link from 'next/link'
-import { useItemContext } from '@/lib/theme-engine/item-context'
 import type { ThemeDataContext } from '@/lib/theme-engine/types'
 
 export type ItemTitleProps = {
@@ -16,7 +15,7 @@ export function ItemTitleFrontend({
   className = '',
   dataContext,
 }: ItemTitleProps) {
-  const item = useItemContext() || (dataContext as any)?.item
+  const item = dataContext?.item
   const title = item?.title || 'Tiêu đề bài viết mẫu'
   const url = item?.url || '#'
 

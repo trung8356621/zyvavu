@@ -2,7 +2,16 @@
 
 import React from 'react'
 import type { ComponentConfig } from '@puckeditor/core'
+import { useItemContext } from '@/lib/theme-engine/item-context'
 import { ItemImageFrontend, type ItemImageProps } from './frontend'
+
+function ItemImageEditorPreview(props: ItemImageProps) {
+  const contextItem = useItemContext()
+  const dataContext =
+    props.dataContext ||
+    (contextItem ? { type: 'home' as const, item: contextItem } : undefined)
+  return <ItemImageFrontend {...props} dataContext={dataContext} />
+}
 
 export const itemImageEditor: ComponentConfig<ItemImageProps> = {
   label: 'Item Image',
@@ -35,5 +44,5 @@ export const itemImageEditor: ComponentConfig<ItemImageProps> = {
     borderRadius: '4px',
     linkToPost: true,
   },
-  render: (props: any) => <ItemImageFrontend {...(props as any)} />,
+  render: (props: any) => <ItemImageEditorPreview {...(props as any)} />,
 }

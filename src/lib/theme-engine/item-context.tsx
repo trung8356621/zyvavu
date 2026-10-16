@@ -1,21 +1,9 @@
-import React, { createContext, useContext } from 'react'
+'use client'
 
-export type LoopItemRecord = {
-  id?: string | number
-  title: string
-  slug?: string
-  url?: string
-  excerpt?: string
-  date?: string
-  category?: string
-  image?: {
-    url?: string
-    alt?: string
-    width?: number
-    height?: number
-  }
-  raw?: any
-}
+import React, { createContext, useContext } from 'react'
+import type { LoopItemRecord } from './types'
+
+export type { LoopItemRecord }
 
 export const ItemContext = createContext<LoopItemRecord | null>(null)
 
