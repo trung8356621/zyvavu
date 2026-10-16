@@ -40,6 +40,37 @@
         "size": "22px",
         "lineHeight": "1.4",
         "weight": "700"
+      },
+      "h4": {
+        "size": "19px",
+        "lineHeight": "1.45",
+        "weight": "700"
+      },
+      "h5": {
+        "size": "16px",
+        "lineHeight": "1.5",
+        "weight": "700"
+      },
+      "h6": {
+        "size": "14px",
+        "lineHeight": "1.55",
+        "weight": "700",
+        "letterSpacing": "0.02em"
+      },
+      "p1": {
+        "size": "21px",
+        "lineHeight": "1.75",
+        "weight": "400"
+      },
+      "p2": {
+        "size": "17px",
+        "lineHeight": "1.75",
+        "weight": "400"
+      },
+      "p3": {
+        "size": "14px",
+        "lineHeight": "1.65",
+        "weight": "400"
       }
     },
     "spacing": {

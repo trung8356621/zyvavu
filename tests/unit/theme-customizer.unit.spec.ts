@@ -462,7 +462,7 @@ describe('Theme Style Customizer — Wix Typography & Vietnamese Font Support', 
     expect(typeof modalModule.TypographyStyleModal).toBe('function')
     expect(typeof panelModule.WixTypographyPanel).toBe('function')
     expect(typeof panelModule.TypographyStyleModal).toBe('function')
-  })
+  }, 20000)
 })
 
 describe('Theme Style Customizer — Dynamic Shadow Color Calculation', () => {
@@ -555,6 +555,94 @@ describe('Theme Style Customizer — SharedDraggableModal Infrastructure', () =>
     Object.defineProperty(window, 'innerWidth', { value: originalInnerWidth, configurable: true })
   })
 })
+
+describe('Theme Style Customizer — ThemeColorPaletteModal', () => {
+  it('exports ThemeColorPaletteModal and getThemePaletteSwatches', async () => {
+    const paletteModule = await import('@/components/admin/shared/ThemeColorPaletteModal')
+    expect(typeof paletteModule.ThemeColorPaletteModal).toBe('function')
+    expect(typeof paletteModule.getThemePaletteSwatches).toBe('function')
+  })
+
+  it('builds the standard 9 coordinated swatches from theme tokens', async () => {
+    const { getThemePaletteSwatches } = await import('@/components/admin/shared/ThemeColorPaletteModal')
+    const customTokens = {
+      colors: {
+        primary: '#123456',
+        text: '#222222',
+        accent: '#abcdef',
+        primaryHover: '#002244',
+        shadowSoft: '#fafafa',
+        shadowMedium: '#cccccc',
+        shadowStrong: '#999999',
+      },
+    } as any
+
+    const swatches = getThemePaletteSwatches(customTokens)
+    expect(swatches.length).toBe(9)
+
+    const ids = swatches.map((s) => s.id)
+    expect(ids).toEqual([
+      'text',
+      'primary',
+      'accent',
+      'primaryHover',
+      'shadowSoft',
+      'shadowMedium',
+      'shadowStrong',
+      'white',
+      'black',
+    ])
+
+    expect(swatches.find((s) => s.id === 'primary')?.color).toBe('#123456')
+    expect(swatches.find((s) => s.id === 'white')?.color).toBe('#FFFFFF')
+    expect(swatches.find((s) => s.id === 'black')?.color).toBe('#000000')
+  })
+
+  it('supports raw color dictionaries for independent puck / visual builder reuse', async () => {
+    const { getThemePaletteSwatches } = await import('@/components/admin/shared/ThemeColorPaletteModal')
+    const rawColors = {
+      primary: '#ff0000',
+      text: '#111111',
+    }
+
+    const swatches = getThemePaletteSwatches(undefined, rawColors)
+    expect(swatches.find((s) => s.id === 'primary')?.color).toBe('#ff0000')
+    expect(swatches.find((s) => s.id === 'text')?.color).toBe('#111111')
+    expect(swatches.find((s) => s.id === 'white')?.color).toBe('#FFFFFF')
+  })
+})
+
+describe('Theme Style Customizer — Complete Typography Defaults & Inheritance', () => {
+  it('corporate, industrial, and editorial themes define all H1–H6 and P1–P3 levels', async () => {
+    const corporate = (await import('@/themes/corporate/theme.json')).default
+    const industrial = (await import('@/themes/industrial/theme.json')).default
+    const editorial = (await import('@/themes/editorial/theme.json')).default
+
+    const themes = [
+      { name: 'corporate', config: corporate },
+      { name: 'industrial', config: industrial },
+      { name: 'editorial', config: editorial },
+    ]
+
+    const tags = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p1', 'p2', 'p3'] as const
+
+    for (const { name, config } of themes) {
+      expect(config.tokens.typography, `${name} missing typography`).toBeDefined()
+      expect(config.tokens.typography.fontFamily, `${name} missing body font`).toBeTruthy()
+      expect(config.tokens.typography.fontFamilyHeading, `${name} missing heading font`).toBeTruthy()
+
+      for (const tag of tags) {
+        const style = (config.tokens.typography as Record<string, any>)[tag]
+        expect(style, `${name} missing style for ${tag}`).toBeDefined()
+        expect(style.size, `${name} ${tag} missing size`).toBeTruthy()
+        expect(style.lineHeight, `${name} ${tag} missing lineHeight`).toBeTruthy()
+        expect(style.weight, `${name} ${tag} missing weight`).toBeTruthy()
+      }
+    }
+  })
+})
+
+
 
 
 

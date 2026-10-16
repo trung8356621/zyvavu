@@ -61,6 +61,8 @@ import {
   BUILTIN_TYPOGRAPHY_PRESETS,
   calculateContrastRatio,
   calculateShadowColor,
+  getRelativeLuminance,
+  parseColorToRgb,
 } from '@/lib/theme-engine/presets'
 import { CURATED_FONTS, SYSTEM_FONTS, getGoogleFontUrl } from '@/lib/theme-engine/fonts'
 import {
@@ -1509,32 +1511,34 @@ export function ThemeCustomizer({
                 </Flex>
               </Card>
 
-              {/* Option 4: Advanced Typography */}
-              <Card
-                withBorder
-                padding="sm"
-                radius="sm"
-                role="button"
-                tabIndex={0}
-                style={{ cursor: 'pointer' }}
-                onClick={() => setActiveSubPanel('advanced')}
-                onKeyDown={(e) => handleCardKeyDown(e, () => setActiveSubPanel('advanced'))}
-              >
-                <Flex align="center" justify="space-between">
-                  <Box style={{ flex: 1, minWidth: 0 }} pr="xs">
-                    <Group gap={6} mb={2}>
-                      <Sliders size={14} color="var(--mantine-color-dimmed)" />
-                      <Text size="sm" fw={600}>
-                        Advanced Typography
+              {/* Option 4: Advanced Typography (Temporarily hidden from Text Theme navigation; controls consolidated in H1-H6/P1-P3 modals) */}
+              {false && (
+                <Card
+                  withBorder
+                  padding="sm"
+                  radius="sm"
+                  role="button"
+                  tabIndex={0}
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => setActiveSubPanel('advanced')}
+                  onKeyDown={(e) => handleCardKeyDown(e, () => setActiveSubPanel('advanced'))}
+                >
+                  <Flex align="center" justify="space-between">
+                    <Box style={{ flex: 1, minWidth: 0 }} pr="xs">
+                      <Group gap={6} mb={2}>
+                        <Sliders size={14} color="var(--mantine-color-dimmed)" />
+                        <Text size="sm" fw={600}>
+                          Advanced Typography
+                        </Text>
+                      </Group>
+                      <Text size="xs" c="dimmed">
+                        Detailed hierarchy, line height and letter spacing
                       </Text>
-                    </Group>
-                    <Text size="xs" c="dimmed">
-                      Detailed hierarchy, line height and letter spacing
-                    </Text>
-                  </Box>
-                  <ChevronRight size={16} color="var(--mantine-color-dimmed)" />
-                </Flex>
-              </Card>
+                    </Box>
+                    <ChevronRight size={16} color="var(--mantine-color-dimmed)" />
+                  </Flex>
+                </Card>
+              )}
             </Stack>
           )}
 
@@ -1744,48 +1748,71 @@ export function ThemeCustomizer({
 
                 {(['h1', 'h2', 'h3', 'h4', 'h5', 'h6'] as const).map((tag, idx) => {
                   const conf = tokens.typography[tag] || { size: '24px', lineHeight: '1.3', weight: '600' }
-                  const headingFont = tokens.typography.fontFamilyHeading || tokens.typography.fontFamily || 'Inter'
+                  const headingFont = (conf as { fontFamily?: string }).fontFamily || tokens.typography.fontFamilyHeading || tokens.typography.fontFamily || 'Inter'
                   const titleLabel = `Heading ${idx + 1}`
-                  const descLabel = HEADING_FRIENDLY_LABELS[tag]
+                  const effectiveColor = conf.color || tokens.colors.text || '#17201f'
+
+                  const isVeryLight = (() => {
+                    const rgb = parseColorToRgb(effectiveColor)
+                    return rgb ? getRelativeLuminance(rgb) > 0.8 : false
+                  })()
+
+                  const rawPx = (() => {
+                    const s = conf.size || ''
+                    if (s.endsWith('rem') || s.endsWith('em')) return Math.round(parseFloat(s) * 16) || 24
+                    const num = parseInt(s, 10)
+                    return isNaN(num) ? 24 : num
+                  })()
+                  const displayFontSize = Math.min(Math.max(rawPx, 14), 36) + 'px'
 
                   return (
                     <Card
                       key={tag}
                       withBorder
-                      padding="xs"
+                      padding="sm"
                       radius="sm"
                       role="button"
                       tabIndex={0}
-                      style={{ cursor: 'pointer', transition: 'border-color 0.15s ease' }}
+                      style={{
+                        cursor: 'pointer',
+                        transition: 'border-color 0.15s ease, background-color 0.15s ease',
+                      }}
                       onClick={() => handleOpenTypographyEditor(tag)}
                       onKeyDown={(e) => handleCardKeyDown(e, () => handleOpenTypographyEditor(tag))}
                     >
-                      <Flex align="center" justify="space-between">
-                        <Box style={{ flex: 1, minWidth: 0 }}>
-                          <Group gap={6} align="center" mb={2}>
-                            <Text size="xs" fw={700}>
+                      <Flex align="center" justify="space-between" gap="sm">
+                        <Group gap="sm" align="flex-start" style={{ flex: 1, minWidth: 0 }}>
+                          <Box
+                            style={{
+                              width: 12,
+                              height: 12,
+                              borderRadius: '50%',
+                              backgroundColor: effectiveColor,
+                              border: '1px solid rgba(0, 0, 0, 0.25)',
+                              flexShrink: 0,
+                              marginTop: 6,
+                            }}
+                          />
+                          <Box style={{ flex: 1, minWidth: 0 }}>
+                            <Text
+                              truncate
+                              style={{
+                                fontFamily: headingFont,
+                                fontSize: displayFontSize,
+                                fontWeight: conf.weight || '700',
+                                lineHeight: 1.25,
+                                color: effectiveColor,
+                                textShadow: isVeryLight ? '0 0 1px #888, 0 0 2px rgba(0,0,0,0.4)' : undefined,
+                              }}
+                            >
                               {titleLabel}
                             </Text>
-                            <Badge size="xs" variant="light" color="gray" radius="xs" style={{ fontSize: 10 }}>
-                              {conf.size || '24px'}
-                            </Badge>
-                            <Badge size="xs" variant="subtle" color="teal" radius="xs" style={{ fontSize: 10 }}>
-                              {conf.weight || '600'}
-                            </Badge>
-                          </Group>
-                          <Text
-                            size="sm"
-                            truncate
-                            style={{
-                              fontFamily: headingFont,
-                              fontWeight: conf.weight || '600',
-                              color: 'var(--mantine-color-text)',
-                            }}
-                          >
-                            {descLabel}
-                          </Text>
-                        </Box>
-                        <ChevronRight size={14} color="var(--mantine-color-dimmed)" />
+                            <Text size="xs" c="dimmed" mt={4} style={{ fontSize: 11 }}>
+                              {headingFont}, {conf.size || `${rawPx}px`}
+                            </Text>
+                          </Box>
+                        </Group>
+                        <ChevronRight size={16} color="var(--mantine-color-dimmed)" style={{ flexShrink: 0 }} />
                       </Flex>
                     </Card>
                   )
@@ -1805,31 +1832,6 @@ export function ThemeCustomizer({
                 size="sm"
               />
 
-              <Group grow gap="xs">
-                <TextInput
-                  size="xs"
-                  label="Base Text Size"
-                  value={tokens.typography.baseFontSize || '18px'}
-                  onChange={(e) =>
-                    setTokens((prev) => ({
-                      ...prev,
-                      typography: { ...prev.typography, baseFontSize: e.currentTarget.value },
-                    }))
-                  }
-                />
-                <TextInput
-                  size="xs"
-                  label="Line Spacing"
-                  value={tokens.typography.baseLineHeight || '1.75'}
-                  onChange={(e) =>
-                    setTokens((prev) => ({
-                      ...prev,
-                      typography: { ...prev.typography, baseLineHeight: e.currentTarget.value },
-                    }))
-                  }
-                />
-              </Group>
-
               <Divider />
 
               <Stack gap="xs">
@@ -1842,48 +1844,71 @@ export function ThemeCustomizer({
 
                 {(['p1', 'p2', 'p3'] as const).map((tag, idx) => {
                   const conf = tokens.typography[tag] || { size: '16px', lineHeight: '1.6', weight: '400' }
-                  const bodyFont = tokens.typography.fontFamily || 'Inter'
+                  const bodyFont = (conf as { fontFamily?: string }).fontFamily || tokens.typography.fontFamily || 'Inter'
                   const titleLabel = `Paragraph ${idx + 1}`
-                  const descLabel = PARAGRAPH_FRIENDLY_LABELS[tag]
+                  const effectiveColor = conf.color || tokens.colors.text || '#17201f'
+
+                  const isVeryLight = (() => {
+                    const rgb = parseColorToRgb(effectiveColor)
+                    return rgb ? getRelativeLuminance(rgb) > 0.8 : false
+                  })()
+
+                  const rawPx = (() => {
+                    const s = conf.size || ''
+                    if (s.endsWith('rem') || s.endsWith('em')) return Math.round(parseFloat(s) * 16) || 16
+                    const num = parseInt(s, 10)
+                    return isNaN(num) ? 16 : num
+                  })()
+                  const displayFontSize = Math.min(Math.max(rawPx, 13), 22) + 'px'
 
                   return (
                     <Card
                       key={tag}
                       withBorder
-                      padding="xs"
+                      padding="sm"
                       radius="sm"
                       role="button"
                       tabIndex={0}
-                      style={{ cursor: 'pointer', transition: 'border-color 0.15s ease' }}
+                      style={{
+                        cursor: 'pointer',
+                        transition: 'border-color 0.15s ease, background-color 0.15s ease',
+                      }}
                       onClick={() => handleOpenTypographyEditor(tag)}
                       onKeyDown={(e) => handleCardKeyDown(e, () => handleOpenTypographyEditor(tag))}
                     >
-                      <Flex align="center" justify="space-between">
-                        <Box style={{ flex: 1, minWidth: 0 }}>
-                          <Group gap={6} align="center" mb={2}>
-                            <Text size="xs" fw={700}>
+                      <Flex align="center" justify="space-between" gap="sm">
+                        <Group gap="sm" align="flex-start" style={{ flex: 1, minWidth: 0 }}>
+                          <Box
+                            style={{
+                              width: 12,
+                              height: 12,
+                              borderRadius: '50%',
+                              backgroundColor: effectiveColor,
+                              border: '1px solid rgba(0, 0, 0, 0.25)',
+                              flexShrink: 0,
+                              marginTop: 6,
+                            }}
+                          />
+                          <Box style={{ flex: 1, minWidth: 0 }}>
+                            <Text
+                              truncate
+                              style={{
+                                fontFamily: bodyFont,
+                                fontSize: displayFontSize,
+                                fontWeight: conf.weight || '400',
+                                lineHeight: 1.35,
+                                color: effectiveColor,
+                                textShadow: isVeryLight ? '0 0 1px #888, 0 0 2px rgba(0,0,0,0.4)' : undefined,
+                              }}
+                            >
                               {titleLabel}
                             </Text>
-                            <Badge size="xs" variant="light" color="gray" radius="xs" style={{ fontSize: 10 }}>
-                              {conf.size || '16px'}
-                            </Badge>
-                            <Badge size="xs" variant="subtle" color="teal" radius="xs" style={{ fontSize: 10 }}>
-                              {conf.weight || '400'}
-                            </Badge>
-                          </Group>
-                          <Text
-                            size="xs"
-                            truncate
-                            style={{
-                              fontFamily: bodyFont,
-                              fontWeight: conf.weight || '400',
-                              color: 'var(--mantine-color-dimmed)',
-                            }}
-                          >
-                            {descLabel}
-                          </Text>
-                        </Box>
-                        <ChevronRight size={14} color="var(--mantine-color-dimmed)" />
+                            <Text size="xs" c="dimmed" mt={4} style={{ fontSize: 11 }}>
+                              {bodyFont}, {conf.size || `${rawPx}px`}
+                            </Text>
+                          </Box>
+                        </Group>
+                        <ChevronRight size={16} color="var(--mantine-color-dimmed)" style={{ flexShrink: 0 }} />
                       </Flex>
                     </Card>
                   )
@@ -1892,8 +1917,8 @@ export function ThemeCustomizer({
             </Stack>
           )}
 
-          {/* LAYER 3: TEXT THEME -> ADVANCED TYPOGRAPHY */}
-          {activePanel === 'typography' && activeSubPanel === 'advanced' && (
+          {/* LAYER 3: TEXT THEME -> ADVANCED TYPOGRAPHY (Hidden; controls consolidated into H1-H6 / P1-P3 style modals) */}
+          {false && activePanel === 'typography' && activeSubPanel === 'advanced' && (
             <Stack gap="md">
               <Box>
                 <Text size="xs" fw={700} style={{ textTransform: 'uppercase' }} mb={8}>

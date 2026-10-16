@@ -280,7 +280,7 @@ export function SharedDraggableModal({
         ref={modalRef}
         withBorder
         radius="sm"
-        shadow="xl"
+        shadow="sm"
         className={className}
         style={{
           position: 'fixed',
@@ -294,7 +294,7 @@ export function SharedDraggableModal({
           zIndex,
           backgroundColor: 'var(--mantine-color-body, #ffffff)',
           borderColor: 'var(--mantine-color-default-border, #e5e7eb)',
-          boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05)',
+          boxShadow: '0 4px 14px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.04)',
           overflow: 'hidden',
           transition: isDragging ? 'none' : 'box-shadow 0.15s ease',
           pointerEvents: 'auto',

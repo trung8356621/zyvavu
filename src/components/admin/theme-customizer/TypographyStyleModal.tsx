@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Accordion,
   Box,
@@ -13,11 +13,13 @@ import {
   Stack,
   Text,
   TextInput,
+  UnstyledButton,
 } from '@mantine/core'
 import { Sliders, Type } from 'lucide-react'
 import type { ThemeTokens } from '@/lib/theme-engine/types'
 import { WixFontPicker } from './WixFontPicker'
 import { ThemeColorPalettePicker } from './ThemeColorPalettePicker'
+import { ThemeColorPaletteModal, getThemePaletteSwatches } from './ThemeColorPaletteModal'
 import { SharedDraggableModal, type ModalPresentationMode } from '@/components/admin/shared/SharedDraggableModal'
 
 export interface TypographyStyleValue {
@@ -88,6 +90,17 @@ export function TypographyStyleModal({
   const [currentColor, setCurrentColor] = useState(value.color || defaultColor)
   const [currentLineHeight, setCurrentLineHeight] = useState(value.lineHeight || (isHeading ? '1.25' : '1.6'))
   const [currentLetterSpacing, setCurrentLetterSpacing] = useState(value.letterSpacing || 'normal')
+  const [isPaletteOpen, setIsPaletteOpen] = useState(false)
+  const colorTriggerRef = useRef<HTMLButtonElement | null>(null)
+
+  const paletteSwatches = useMemo(
+    () => getThemePaletteSwatches(paletteTokens),
+    [paletteTokens],
+  )
+  const activeColorSwatch = useMemo(() => {
+    const norm = (currentColor || '').toLowerCase().trim()
+    return paletteSwatches.find((s) => s.color.toLowerCase().trim() === norm)
+  }, [paletteSwatches, currentColor])
 
   // Parse numerical size for slider
   const numericSize = parseInt(currentSize, 10) || (isHeading ? 32 : 16)
@@ -243,32 +256,81 @@ export function TypographyStyleModal({
           onChange={(val) => val && handleWeightChange(val)}
         />
 
-        {/* Typography Color from Theme Palette */}
+        {/* Typography Color Compact Selector & Separate Draggable Palette Modal */}
         {paletteTokens && (
           <Box>
-            <Flex align="center" justify="space-between" mb={6}>
-              <div>
-                <Text size="xs" fw={600}>
-                  Text Color
-                </Text>
-                <Text size="xs" c="dimmed" style={{ fontSize: 11 }}>
-                  Select from Theme Palette
-                </Text>
-              </div>
-              <Box
-                style={{
-                  width: 20,
-                  height: 20,
-                  borderRadius: 4,
-                  backgroundColor: currentColor,
-                  border: '1px solid rgba(0,0,0,0.18)',
-                }}
-              />
+            <Flex align="center" justify="space-between" mb={4}>
+              <Text size="xs" fw={600}>
+                Text Color
+              </Text>
+              <Text size="xs" c="dimmed" style={{ fontSize: 11 }}>
+                Theme Palette
+              </Text>
             </Flex>
-            <ThemeColorPalettePicker
-              tokens={paletteTokens}
+
+            <UnstyledButton
+              ref={colorTriggerRef}
+              onClick={() => setIsPaletteOpen((prev) => !prev)}
+              aria-label="Choose Text Color from Theme Palette"
+              style={{ width: '100%', display: 'block' }}
+            >
+              <Paper
+                withBorder
+                p="xs"
+                radius="sm"
+                style={{
+                  cursor: 'pointer',
+                  borderColor: isPaletteOpen ? 'var(--mantine-color-primary, #0e6b66)' : undefined,
+                  borderWidth: isPaletteOpen ? 2 : 1,
+                  transition: 'border-color 0.15s ease',
+                  backgroundColor: 'var(--mantine-color-gray-0, #f8f9fa)',
+                }}
+              >
+                <Flex align="center" justify="space-between" gap="xs">
+                  <Group gap="xs" style={{ minWidth: 0, flex: 1 }}>
+                    <Box
+                      style={{
+                        width: 20,
+                        height: 20,
+                        borderRadius: 4,
+                        backgroundColor: currentColor,
+                        border: '1px solid rgba(0,0,0,0.2)',
+                        boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.2)',
+                        flexShrink: 0,
+                      }}
+                    />
+                    <Box style={{ minWidth: 0, flex: 1 }}>
+                      <Text size="xs" fw={600} truncate>
+                        {activeColorSwatch?.label || 'Selected Theme Color'}
+                      </Text>
+                      <Text size="xs" c="dimmed" style={{ fontSize: 10 }}>
+                        {currentColor.toUpperCase()}
+                      </Text>
+                    </Box>
+                  </Group>
+                  <Button size="compact-xs" variant="light" color="teal">
+                    Change
+                  </Button>
+                </Flex>
+              </Paper>
+            </UnstyledButton>
+
+            <ThemeColorPaletteModal
+              opened={isPaletteOpen}
+              onClose={() => setIsPaletteOpen(false)}
               value={currentColor}
+              tokens={paletteTokens}
+              anchorEl={colorTriggerRef.current}
+              title="Typography Color"
+              subtitle={`Select color for ${title}`}
               onChange={handleColorChange}
+              onApply={(newColor) => {
+                handleColorChange(newColor)
+                setIsPaletteOpen(false)
+              }}
+              onCancel={() => {
+                setIsPaletteOpen(false)
+              }}
             />
           </Box>
         )}
@@ -302,13 +364,14 @@ export function TypographyStyleModal({
           </Accordion.Item>
         </Accordion>
 
-        {/* Live Typography Preview Box */}
+        {/* Live Typography Preview Box (Always light background and black text for font evaluation) */}
         <Paper
           withBorder
           p="md"
           radius="sm"
           style={{
-            background: 'var(--mantine-color-gray-0, #f8f9fa)',
+            background: '#ffffff',
+            borderColor: 'var(--mantine-color-default-border, #e5e7eb)',
             overflow: 'hidden',
           }}
         >
@@ -322,7 +385,7 @@ export function TypographyStyleModal({
               fontWeight: currentWeight,
               lineHeight: currentLineHeight,
               letterSpacing: currentLetterSpacing,
-              color: currentColor,
+              color: '#000000',
               wordBreak: 'break-word',
             }}
           >
