@@ -10,7 +10,6 @@ import {
   Box,
   Button,
   Card,
-  ColorInput,
   Divider,
   Flex,
   Group,
@@ -29,6 +28,7 @@ import {
   ArrowLeft,
   Check,
   CheckCircle2,
+  ChevronRight,
   Code,
   ExternalLink,
   Layout,
@@ -37,7 +37,9 @@ import {
   Plus,
   RefreshCw,
   RotateCcw,
+  Sliders,
   Smartphone,
+  Sparkles,
   Tablet,
   Trash2,
   Type,
@@ -59,6 +61,7 @@ import {
 } from '@/lib/theme-engine/presets'
 import { CURATED_FONTS, SYSTEM_FONTS, getGoogleFontUrl } from '@/lib/theme-engine/fonts'
 import { generateThemeCss } from '@/lib/theme-engine/styles'
+import { WixColorPicker } from './WixColorPicker'
 
 export type ThemeCustomizerProps = {
   themeId?: string
@@ -73,11 +76,68 @@ export type ThemeCustomizerProps = {
 
 type PanelView = 'root' | 'colors' | 'typography' | 'background' | 'css-rules'
 
+const WIDGET_FRIENDLY_LABELS: Record<string, { title: string; description: string }> = {
+  Header: {
+    title: 'Header & Navigation',
+    description: 'Top announcement bar and main navigation bar styling',
+  },
+  Footer: {
+    title: 'Footer Area',
+    description: 'Bottom site footer background, spacing and border rules',
+  },
+  PostTitle: {
+    title: 'Article Title',
+    description: 'Headline spacing and appearance on blog posts and pages',
+  },
+  PostContent: {
+    title: 'Article Content',
+    description: 'Reading area spacing and body paragraph layout rules',
+  },
+}
+
+const SLOT_FRIENDLY_LABELS: Record<string, string> = {
+  root: 'Main Container',
+  title: 'Title Text',
+  body: 'Content Body',
+  topBar: 'Top Announcement Bar',
+  mainHeader: 'Main Header Bar',
+}
+
+function formatFriendlyName(raw: string): string {
+  return raw
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/[-_]/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase())
+}
+
+const HEADING_FRIENDLY_LABELS: Record<'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6', string> = {
+  h1: 'Page Title (H1)',
+  h2: 'Section Title (H2)',
+  h3: 'Subsection Heading (H3)',
+  h4: 'Card Title (H4)',
+  h5: 'Small Heading (H5)',
+  h6: 'Label Heading (H6)',
+}
+
+const PARAGRAPH_FRIENDLY_LABELS: Record<'p1' | 'p2' | 'p3', string> = {
+  p1: 'Primary Body Text (Large)',
+  p2: 'Standard Body Text (Medium)',
+  p3: 'Caption & Helper Text (Small)',
+}
+
+const WEIGHT_OPTIONS = [
+  { value: '400', label: 'Regular' },
+  { value: '500', label: 'Medium' },
+  { value: '600', label: 'Semi-Bold' },
+  { value: '700', label: 'Bold' },
+  { value: '800', label: 'Extra Bold' },
+]
+
 export function ThemeCustomizer({
   themeId = 'corporate',
   activeThemeId = 'corporate',
   installedThemes = [],
-  bundledConfig,
+  bundledConfig: _bundledConfig,
   publishedConfig,
   draftConfig,
   customPresets: initialCustomPresets,
@@ -86,8 +146,9 @@ export function ThemeCustomizer({
     { label: 'Posts Archive', value: '/posts' },
   ],
 }: ThemeCustomizerProps) {
-  // Navigation panel state
+  // Layer 1 / Layer 2 / Layer 3 Navigation state
   const [activePanel, setActivePanel] = useState<PanelView>('root')
+  const [activeSubPanel, setActiveSubPanel] = useState<string | null>(null)
 
   // Theme tokens state
   const [tokens, setTokens] = useState<ThemeTokens>(draftConfig.tokens)
@@ -110,8 +171,11 @@ export function ThemeCustomizer({
 
   // Determine if draft differs from published
   const isDirty = useMemo(() => {
-    return JSON.stringify(tokens) !== JSON.stringify(publishedConfig.tokens)
-  }, [tokens, publishedConfig.tokens])
+    return (
+      JSON.stringify(tokens) !== JSON.stringify(publishedConfig.tokens) ||
+      JSON.stringify(slots) !== JSON.stringify(publishedConfig.slots || {})
+    )
+  }, [tokens, slots, publishedConfig.tokens, publishedConfig.slots])
 
   // Contrast check
   const contrastCheck = useMemo(() => {
@@ -119,6 +183,51 @@ export function ThemeCustomizer({
     const bg = tokens.colors.background || '#ffffff'
     return calculateContrastRatio(text, bg)
   }, [tokens.colors.text, tokens.colors.background])
+
+  // Predictable Back navigation handler: Layer 3 -> Layer 2 -> Layer 1
+  const handleBackNavigation = useCallback(() => {
+    if (activeSubPanel !== null) {
+      setActiveSubPanel(null)
+    } else {
+      setActivePanel('root')
+    }
+  }, [activeSubPanel])
+
+  const openPanel = useCallback((panel: PanelView) => {
+    setActivePanel(panel)
+    setActiveSubPanel(null)
+  }, [])
+
+  // Dynamic header title for Layer 2 & Layer 3
+  const currentHeaderTitle = useMemo(() => {
+    if (activePanel === 'colors') {
+      if (activeSubPanel === 'presets') return 'Change Color Theme'
+      if (activeSubPanel === 'basic') return 'Basic Colors'
+      if (activeSubPanel === 'accent') return 'Accent Colors'
+      if (activeSubPanel === 'other') return 'Other Colors'
+      return 'Color Theme'
+    }
+    if (activePanel === 'typography') {
+      if (activeSubPanel === 'presets') return 'Change Text Theme'
+      if (activeSubPanel === 'headings') return 'Headings'
+      if (activeSubPanel === 'body') return 'Body Text'
+      if (activeSubPanel === 'advanced') return 'Advanced Typography'
+      return 'Text Theme'
+    }
+    if (activePanel === 'background') {
+      if (activeSubPanel === 'page-bg') return 'Page Background'
+      if (activeSubPanel === 'content-width') return 'Content Width'
+      if (activeSubPanel === 'layout-options') return 'Layout Options'
+      return 'Background & Layout'
+    }
+    if (activePanel === 'css-rules') {
+      if (activeSubPanel) {
+        return WIDGET_FRIENDLY_LABELS[activeSubPanel]?.title || formatFriendlyName(activeSubPanel)
+      }
+      return 'Theme CSS Rules'
+    }
+    return 'Theme Customizer'
+  }, [activePanel, activeSubPanel])
 
   // Helper to send draft CSS to iframe
   const pushStylesToPreview = useCallback(
@@ -233,7 +342,7 @@ export function ThemeCustomizer({
         ...preset.colors,
       },
     }))
-    setFeedback({ type: 'success', message: `Color theme preset "${preset.name}" applied to draft.` })
+    setFeedback({ type: 'success', message: `Color theme "${preset.name}" applied to draft.` })
   }
 
   const handleSelectTypographyPreset = (preset: TypographyPreset) => {
@@ -244,7 +353,7 @@ export function ThemeCustomizer({
         ...preset.typography,
       },
     }))
-    setFeedback({ type: 'success', message: `Text theme preset "${preset.name}" applied to draft.` })
+    setFeedback({ type: 'success', message: `Text theme "${preset.name}" applied to draft.` })
   }
 
   // Save Custom Color Preset
@@ -403,12 +512,12 @@ export function ThemeCustomizer({
     }
   }
 
-  // Font options for select
+  // Font options for select (clean display names without raw CSS stacks)
   const fontOptions = useMemo(() => {
     const list = [...SYSTEM_FONTS, ...CURATED_FONTS]
     return list.map((f) => ({
       value: f.family,
-      label: `${f.family} (${f.category})`,
+      label: f.family,
     }))
   }, [])
 
@@ -418,6 +527,14 @@ export function ThemeCustomizer({
     if (previewDevice === 'tablet') return '768px'
     return '100%'
   }, [previewDevice])
+
+  // Helper for keyboard accessible card activation
+  const handleCardKeyDown = (e: React.KeyboardEvent, action: () => void) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      action()
+    }
+  }
 
   return (
     <Box
@@ -507,21 +624,23 @@ export function ThemeCustomizer({
               </Group>
             </Flex>
           ) : (
-            <Flex align="center" justify="space-between">
+            <Flex align="center" justify="space-between" gap="xs">
               <Button
                 variant="subtle"
                 color="gray"
                 size="compact-sm"
                 leftSection={<ArrowLeft size={14} />}
-                onClick={() => setActivePanel('root')}
+                onClick={handleBackNavigation}
               >
                 Back
               </Button>
-              <Text size="xs" fw={700} style={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                {activePanel === 'colors' && 'Color Theme'}
-                {activePanel === 'typography' && 'Text Theme'}
-                {activePanel === 'background' && 'Page Background'}
-                {activePanel === 'css-rules' && 'Theme CSS Rules'}
+              <Text
+                size="xs"
+                fw={700}
+                truncate
+                style={{ textTransform: 'uppercase', letterSpacing: '0.04em' }}
+              >
+                {currentHeaderTitle}
               </Text>
               <Badge size="xs" variant={isDirty ? 'filled' : 'outline'} color={isDirty ? 'orange' : 'teal'}>
                 {isDirty ? 'Draft' : 'Synced'}
@@ -547,13 +666,13 @@ export function ThemeCustomizer({
 
         {/* Scrollable Settings Area */}
         <ScrollArea style={{ flex: 1, minHeight: 0 }} p="sm">
-          {/* -------------------------------------------------------- */}
-          {/* 1. ROOT MENU PANEL                                       */}
-          {/* -------------------------------------------------------- */}
+          {/* ======================================================== */}
+          {/* LAYER 1: ROOT MENU PANEL                                 */}
+          {/* ======================================================== */}
           {activePanel === 'root' && (
             <Stack gap="xs">
               <Text size="xs" c="dimmed" mb={4}>
-                Customize global visual design tokens. Changes preview in real-time on the right.
+                Customize your website appearance. Changes preview in real-time on the right.
               </Text>
 
               {/* Color Theme Entry */}
@@ -561,8 +680,11 @@ export function ThemeCustomizer({
                 withBorder
                 padding="sm"
                 radius="sm"
+                role="button"
+                tabIndex={0}
                 style={{ cursor: 'pointer', transition: 'border-color 0.15s ease' }}
-                onClick={() => setActivePanel('colors')}
+                onClick={() => openPanel('colors')}
+                onKeyDown={(e) => handleCardKeyDown(e, () => openPanel('colors'))}
               >
                 <Flex align="center" justify="space-between">
                   <Group gap="xs">
@@ -583,6 +705,7 @@ export function ThemeCustomizer({
                         height: 14,
                         borderRadius: '50%',
                         background: tokens.colors.primary,
+                        border: '1px solid rgba(0,0,0,0.1)',
                       }}
                     />
                     <Box
@@ -591,6 +714,7 @@ export function ThemeCustomizer({
                         height: 14,
                         borderRadius: '50%',
                         background: tokens.colors.accent || tokens.colors.primary,
+                        border: '1px solid rgba(0,0,0,0.1)',
                       }}
                     />
                   </Group>
@@ -602,8 +726,11 @@ export function ThemeCustomizer({
                 withBorder
                 padding="sm"
                 radius="sm"
+                role="button"
+                tabIndex={0}
                 style={{ cursor: 'pointer', transition: 'border-color 0.15s ease' }}
-                onClick={() => setActivePanel('typography')}
+                onClick={() => openPanel('typography')}
+                onKeyDown={(e) => handleCardKeyDown(e, () => openPanel('typography'))}
               >
                 <Flex align="center" justify="space-between">
                   <Group gap="xs">
@@ -628,8 +755,11 @@ export function ThemeCustomizer({
                 withBorder
                 padding="sm"
                 radius="sm"
+                role="button"
+                tabIndex={0}
                 style={{ cursor: 'pointer', transition: 'border-color 0.15s ease' }}
-                onClick={() => setActivePanel('background')}
+                onClick={() => openPanel('background')}
+                onKeyDown={(e) => handleCardKeyDown(e, () => openPanel('background'))}
               >
                 <Flex align="center" justify="space-between">
                   <Group gap="xs">
@@ -660,8 +790,11 @@ export function ThemeCustomizer({
                 withBorder
                 padding="sm"
                 radius="sm"
+                role="button"
+                tabIndex={0}
                 style={{ cursor: 'pointer', transition: 'border-color 0.15s ease' }}
-                onClick={() => setActivePanel('css-rules')}
+                onClick={() => openPanel('css-rules')}
+                onKeyDown={(e) => handleCardKeyDown(e, () => openPanel('css-rules'))}
               >
                 <Flex align="center" justify="space-between">
                   <Group gap="xs">
@@ -671,10 +804,11 @@ export function ThemeCustomizer({
                         Theme CSS Rules
                       </Text>
                       <Text size="xs" c="dimmed">
-                        Widget slot style rules & overrides
+                        Section & component style adjustments
                       </Text>
                     </div>
                   </Group>
+                  <ChevronRight size={14} color="var(--mantine-color-dimmed)" />
                 </Flex>
               </Card>
 
@@ -701,21 +835,195 @@ export function ThemeCustomizer({
             </Stack>
           )}
 
-          {/* -------------------------------------------------------- */}
-          {/* 2. COLOR THEME PANEL (Wix-inspired UX)                   */}
-          {/* -------------------------------------------------------- */}
-          {activePanel === 'colors' && (
+          {/* ======================================================== */}
+          {/* 2. COLOR THEME: LAYER 2 & LAYER 3                        */}
+          {/* ======================================================== */}
+          {activePanel === 'colors' && activeSubPanel === null && (
+            <Stack gap="xs">
+              <Text size="xs" c="dimmed" mb={4}>
+                Select how you would like to customize your site colors.
+              </Text>
+
+              {/* Option 1: Change Color Theme */}
+              <Card
+                withBorder
+                padding="sm"
+                radius="sm"
+                role="button"
+                tabIndex={0}
+                style={{ cursor: 'pointer' }}
+                onClick={() => setActiveSubPanel('presets')}
+                onKeyDown={(e) => handleCardKeyDown(e, () => setActiveSubPanel('presets'))}
+              >
+                <Flex align="center" justify="space-between">
+                  <Box style={{ flex: 1, minWidth: 0 }} pr="xs">
+                    <Group gap={6} mb={2}>
+                      <Sparkles size={14} color="var(--mantine-color-teal-7, #0e6b66)" />
+                      <Text size="sm" fw={600}>
+                        Change Color Theme
+                      </Text>
+                    </Group>
+                    <Text size="xs" c="dimmed">
+                      Choose a complete, ready-made color palette
+                    </Text>
+                  </Box>
+                  <ChevronRight size={16} color="var(--mantine-color-dimmed)" />
+                </Flex>
+              </Card>
+
+              {/* Option 2: Basic Colors */}
+              <Card
+                withBorder
+                padding="sm"
+                radius="sm"
+                role="button"
+                tabIndex={0}
+                style={{ cursor: 'pointer' }}
+                onClick={() => setActiveSubPanel('basic')}
+                onKeyDown={(e) => handleCardKeyDown(e, () => setActiveSubPanel('basic'))}
+              >
+                <Flex align="center" justify="space-between">
+                  <Box style={{ flex: 1, minWidth: 0 }} pr="xs">
+                    <Text size="sm" fw={600}>
+                      Basic Colors
+                    </Text>
+                    <Text size="xs" c="dimmed">
+                      Visually edit your primary brand colors
+                    </Text>
+                  </Box>
+                  <Group gap={6} wrap="nowrap">
+                    <Box
+                      style={{
+                        width: 18,
+                        height: 18,
+                        borderRadius: '50%',
+                        background: tokens.colors.primary,
+                        border: '1px solid rgba(0,0,0,0.12)',
+                      }}
+                    />
+                    <Box
+                      style={{
+                        width: 18,
+                        height: 18,
+                        borderRadius: '50%',
+                        background: tokens.colors.primaryHover || tokens.colors.primary,
+                        border: '1px solid rgba(0,0,0,0.12)',
+                      }}
+                    />
+                    <ChevronRight size={16} color="var(--mantine-color-dimmed)" />
+                  </Group>
+                </Flex>
+              </Card>
+
+              {/* Option 3: Accent Colors */}
+              <Card
+                withBorder
+                padding="sm"
+                radius="sm"
+                role="button"
+                tabIndex={0}
+                style={{ cursor: 'pointer' }}
+                onClick={() => setActiveSubPanel('accent')}
+                onKeyDown={(e) => handleCardKeyDown(e, () => setActiveSubPanel('accent'))}
+              >
+                <Flex align="center" justify="space-between">
+                  <Box style={{ flex: 1, minWidth: 0 }} pr="xs">
+                    <Text size="sm" fw={600}>
+                      Accent Colors
+                    </Text>
+                    <Text size="xs" c="dimmed">
+                      Edit highlight, badge and callout colors
+                    </Text>
+                  </Box>
+                  <Group gap={6} wrap="nowrap">
+                    <Box
+                      style={{
+                        width: 18,
+                        height: 18,
+                        borderRadius: '50%',
+                        background: tokens.colors.accent || tokens.colors.primary,
+                        border: '1px solid rgba(0,0,0,0.12)',
+                      }}
+                    />
+                    <ChevronRight size={16} color="var(--mantine-color-dimmed)" />
+                  </Group>
+                </Flex>
+              </Card>
+
+              {/* Option 4: Other Colors */}
+              <Card
+                withBorder
+                padding="sm"
+                radius="sm"
+                role="button"
+                tabIndex={0}
+                style={{ cursor: 'pointer' }}
+                onClick={() => setActiveSubPanel('other')}
+                onKeyDown={(e) => handleCardKeyDown(e, () => setActiveSubPanel('other'))}
+              >
+                <Flex align="center" justify="space-between">
+                  <Box style={{ flex: 1, minWidth: 0 }} pr="xs">
+                    <Text size="sm" fw={600}>
+                      Other Colors
+                    </Text>
+                    <Text size="xs" c="dimmed">
+                      Background, text, surface and border colors
+                    </Text>
+                  </Box>
+                  <Group gap={4} wrap="nowrap">
+                    <Box
+                      style={{
+                        width: 14,
+                        height: 14,
+                        borderRadius: '50%',
+                        background: tokens.colors.background,
+                        border: '1px solid rgba(0,0,0,0.15)',
+                      }}
+                    />
+                    <Box
+                      style={{
+                        width: 14,
+                        height: 14,
+                        borderRadius: '50%',
+                        background: tokens.colors.surface,
+                        border: '1px solid rgba(0,0,0,0.15)',
+                      }}
+                    />
+                    <Box
+                      style={{
+                        width: 14,
+                        height: 14,
+                        borderRadius: '50%',
+                        background: tokens.colors.text,
+                        border: '1px solid rgba(0,0,0,0.15)',
+                      }}
+                    />
+                    <ChevronRight size={16} color="var(--mantine-color-dimmed)" />
+                  </Group>
+                </Flex>
+              </Card>
+
+              {contrastCheck.warning && (
+                <Alert color="orange" icon={<AlertTriangle size={16} />} title="Contrast Warning" mt="xs">
+                  {contrastCheck.warning}
+                </Alert>
+              )}
+            </Stack>
+          )}
+
+          {/* LAYER 3: COLOR THEME -> CHANGE COLOR THEME (PRESETS) */}
+          {activePanel === 'colors' && activeSubPanel === 'presets' && (
             <Stack gap="md">
-              {/* Wix-style Preset Theme Cards */}
               <Box>
-                <Text size="xs" fw={700} style={{ textTransform: 'uppercase' }} mb={6}>
-                  Color Presets
+                <Text size="xs" c="dimmed" mb="xs">
+                  Click a palette below to preview it immediately on your site.
                 </Text>
                 <Stack gap="xs">
                   {BUILTIN_COLOR_PRESETS.map((preset) => {
                     const isSelected =
                       tokens.colors.primary.toLowerCase() === preset.colors.primary.toLowerCase() &&
-                      tokens.colors.background.toLowerCase() === preset.colors.background.toLowerCase()
+                      tokens.colors.background.toLowerCase() === preset.colors.background.toLowerCase() &&
+                      (tokens.colors.accent || '').toLowerCase() === (preset.colors.accent || '').toLowerCase()
 
                     return (
                       <Card
@@ -723,21 +1031,23 @@ export function ThemeCustomizer({
                         withBorder
                         padding="xs"
                         radius="sm"
+                        role="button"
+                        tabIndex={0}
                         style={{
                           cursor: 'pointer',
                           borderColor: isSelected ? 'var(--mantine-color-primary, #0e6b66)' : undefined,
                           borderWidth: isSelected ? 2 : 1,
                         }}
                         onClick={() => handleSelectColorPreset(preset)}
+                        onKeyDown={(e) => handleCardKeyDown(e, () => handleSelectColorPreset(preset))}
                       >
-                        <Flex align="center" justify="space-between" mb={4}>
+                        <Flex align="center" justify="space-between" mb={6}>
                           <Text size="xs" fw={600}>
                             {preset.name}
                           </Text>
                           {isSelected && <Check size={14} color="var(--mantine-color-primary, #0e6b66)" />}
                         </Flex>
-                        {/* Swatches strip */}
-                        <Group gap={4}>
+                        <Group gap={6}>
                           {[
                             preset.colors.primary,
                             preset.colors.accent || preset.colors.primary,
@@ -748,11 +1058,11 @@ export function ThemeCustomizer({
                             <Box
                               key={i}
                               style={{
-                                width: 22,
-                                height: 22,
-                                borderRadius: 4,
+                                width: 24,
+                                height: 24,
+                                borderRadius: 6,
                                 background: c,
-                                border: '1px solid rgba(0,0,0,0.1)',
+                                border: '1px solid rgba(0,0,0,0.12)',
                               }}
                             />
                           ))}
@@ -765,85 +1075,15 @@ export function ThemeCustomizer({
 
               <Divider />
 
-              {/* Individual Color Pickers */}
-              <Box>
-                <Text size="xs" fw={700} style={{ textTransform: 'uppercase' }} mb={8}>
-                  Color Palette Controls
-                </Text>
-                <Stack gap="xs">
-                  <ColorInput
-                    size="sm"
-                    label="Primary Brand Color"
-                    value={tokens.colors.primary}
-                    onChange={(val) => handleColorChange('primary', val)}
-                  />
-                  <ColorInput
-                    size="sm"
-                    label="Primary Hover"
-                    value={tokens.colors.primaryHover || tokens.colors.primary}
-                    onChange={(val) => handleColorChange('primaryHover', val)}
-                  />
-                  <ColorInput
-                    size="sm"
-                    label="Accent Color"
-                    value={tokens.colors.accent || tokens.colors.primary}
-                    onChange={(val) => handleColorChange('accent', val)}
-                  />
-                  <ColorInput
-                    size="sm"
-                    label="Page Background"
-                    value={tokens.colors.background}
-                    onChange={(val) => handleColorChange('background', val)}
-                  />
-                  <ColorInput
-                    size="sm"
-                    label="Surface / Card Background"
-                    value={tokens.colors.surface}
-                    onChange={(val) => handleColorChange('surface', val)}
-                  />
-                  <ColorInput
-                    size="sm"
-                    label="Primary Text Color"
-                    value={tokens.colors.text}
-                    onChange={(val) => handleColorChange('text', val)}
-                  />
-                  <ColorInput
-                    size="sm"
-                    label="Muted Text Color"
-                    value={tokens.colors.textMuted || '#5f7370'}
-                    onChange={(val) => handleColorChange('textMuted', val)}
-                  />
-                  <ColorInput
-                    size="sm"
-                    label="Border Color"
-                    value={tokens.colors.border}
-                    onChange={(val) => handleColorChange('border', val)}
-                  />
-                </Stack>
-              </Box>
-
-              {/* Contrast Warning Banner */}
-              {contrastCheck.warning && (
-                <Alert
-                  color="orange"
-                  icon={<AlertTriangle size={16} />}
-                  title="Contrast Warning"
-                >
-                  {contrastCheck.warning}
-                </Alert>
-              )}
-
-              <Divider />
-
               {/* Custom User Color Presets */}
               <Box>
                 <Text size="xs" fw={700} style={{ textTransform: 'uppercase' }} mb={6}>
-                  My Color Presets
+                  My Saved Palettes
                 </Text>
                 <Group gap="xs" mb="xs">
                   <TextInput
                     size="xs"
-                    placeholder="New preset name..."
+                    placeholder="New palette name..."
                     value={newColorPresetName}
                     onChange={(e) => setNewColorPresetName(e.currentTarget.value)}
                     style={{ flex: 1 }}
@@ -861,51 +1101,281 @@ export function ThemeCustomizer({
 
                 {customPresets.colors.length === 0 ? (
                   <Text size="xs" c="dimmed">
-                    No custom presets saved yet.
+                    No custom palettes saved yet.
                   </Text>
                 ) : (
                   <Stack gap="xs">
-                    {customPresets.colors.map((preset) => (
-                      <Paper key={preset.id} withBorder p="xs" radius="sm">
-                        <Flex align="center" justify="space-between">
-                          <Text size="xs" fw={600}>
-                            {preset.name}
-                          </Text>
-                          <Group gap={4}>
-                            <Button
-                              size="compact-xs"
-                              variant="subtle"
-                              onClick={() => handleSelectColorPreset(preset)}
-                            >
-                              Apply
-                            </Button>
-                            <ActionIcon
-                              size="xs"
-                              color="red"
-                              variant="subtle"
-                              onClick={() => handleDeleteCustomColorPreset(preset.id)}
-                            >
-                              <Trash2 size={12} />
-                            </ActionIcon>
+                    {customPresets.colors.map((preset) => {
+                      const isSelected =
+                        tokens.colors.primary.toLowerCase() === preset.colors.primary.toLowerCase() &&
+                        tokens.colors.background.toLowerCase() === preset.colors.background.toLowerCase()
+
+                      return (
+                        <Card
+                          key={preset.id}
+                          withBorder
+                          padding="xs"
+                          radius="sm"
+                          style={{
+                            borderColor: isSelected ? 'var(--mantine-color-primary, #0e6b66)' : undefined,
+                            borderWidth: isSelected ? 2 : 1,
+                          }}
+                        >
+                          <Flex align="center" justify="space-between" mb={6}>
+                            <Group gap={6}>
+                              <Text size="xs" fw={600}>
+                                {preset.name}
+                              </Text>
+                              {isSelected && <Check size={14} color="var(--mantine-color-primary, #0e6b66)" />}
+                            </Group>
+                            <Group gap={4}>
+                              <Button
+                                size="compact-xs"
+                                variant="subtle"
+                                onClick={() => handleSelectColorPreset(preset)}
+                              >
+                                Apply
+                              </Button>
+                              <ActionIcon
+                                size="xs"
+                                color="red"
+                                variant="subtle"
+                                aria-label={`Delete ${preset.name}`}
+                                onClick={() => handleDeleteCustomColorPreset(preset.id)}
+                              >
+                                <Trash2 size={12} />
+                              </ActionIcon>
+                            </Group>
+                          </Flex>
+                          <Group gap={6}>
+                            {[
+                              preset.colors.primary,
+                              preset.colors.accent || preset.colors.primary,
+                              preset.colors.background,
+                              preset.colors.surface,
+                              preset.colors.text,
+                            ].map((c, i) => (
+                              <Box
+                                key={i}
+                                style={{
+                                  width: 20,
+                                  height: 20,
+                                  borderRadius: 4,
+                                  background: c,
+                                  border: '1px solid rgba(0,0,0,0.12)',
+                                }}
+                              />
+                            ))}
                           </Group>
-                        </Flex>
-                      </Paper>
-                    ))}
+                        </Card>
+                      )
+                    })}
                   </Stack>
                 )}
               </Box>
             </Stack>
           )}
 
-          {/* -------------------------------------------------------- */}
-          {/* 3. TYPOGRAPHY THEME PANEL (Wix-inspired UX)              */}
-          {/* -------------------------------------------------------- */}
-          {activePanel === 'typography' && (
+          {/* LAYER 3: COLOR THEME -> BASIC COLORS */}
+          {activePanel === 'colors' && activeSubPanel === 'basic' && (
+            <Stack gap="sm">
+              <Text size="xs" c="dimmed">
+                Select a swatch to adjust your main brand colors.
+              </Text>
+              <WixColorPicker
+                label="Primary Brand Color"
+                description="Main buttons, active links and key brand elements"
+                value={tokens.colors.primary}
+                onChange={(val) => handleColorChange('primary', val)}
+              />
+              <WixColorPicker
+                label="Primary Hover Color"
+                description="Shown when visitors point at primary buttons"
+                value={tokens.colors.primaryHover || tokens.colors.primary}
+                onChange={(val) => handleColorChange('primaryHover', val)}
+              />
+            </Stack>
+          )}
+
+          {/* LAYER 3: COLOR THEME -> ACCENT COLORS */}
+          {activePanel === 'colors' && activeSubPanel === 'accent' && (
+            <Stack gap="sm">
+              <Text size="xs" c="dimmed">
+                Highlight colors draw attention to badges, icons and secondary actions.
+              </Text>
+              <WixColorPicker
+                label="Accent Color"
+                description="Secondary highlights, tags and decorative accents"
+                value={tokens.colors.accent || tokens.colors.primary}
+                onChange={(val) => handleColorChange('accent', val)}
+              />
+            </Stack>
+          )}
+
+          {/* LAYER 3: COLOR THEME -> OTHER COLORS */}
+          {activePanel === 'colors' && activeSubPanel === 'other' && (
+            <Stack gap="sm">
+              <Text size="xs" c="dimmed">
+                Customize page backgrounds, card surfaces, text readability and borders.
+              </Text>
+              <WixColorPicker
+                label="Page Background"
+                description="Main backdrop across your website pages"
+                value={tokens.colors.background}
+                onChange={(val) => handleColorChange('background', val)}
+              />
+              <WixColorPicker
+                label="Surface & Card Background"
+                description="Cards, panels and elevated content sections"
+                value={tokens.colors.surface}
+                onChange={(val) => handleColorChange('surface', val)}
+              />
+              <WixColorPicker
+                label="Primary Text Color"
+                description="Headings and main body copy"
+                value={tokens.colors.text}
+                onChange={(val) => handleColorChange('text', val)}
+              />
+              <WixColorPicker
+                label="Muted Text Color"
+                description="Captions, dates and secondary descriptions"
+                value={tokens.colors.textMuted || '#5f7370'}
+                onChange={(val) => handleColorChange('textMuted', val)}
+              />
+              <WixColorPicker
+                label="Border & Divider Color"
+                description="Lines between sections, cards and inputs"
+                value={tokens.colors.border}
+                onChange={(val) => handleColorChange('border', val)}
+              />
+
+              {contrastCheck.warning && (
+                <Alert color="orange" icon={<AlertTriangle size={16} />} title="Contrast Warning">
+                  {contrastCheck.warning}
+                </Alert>
+              )}
+            </Stack>
+          )}
+
+          {/* ======================================================== */}
+          {/* 3. TEXT THEME: LAYER 2 & LAYER 3                         */}
+          {/* ======================================================== */}
+          {activePanel === 'typography' && activeSubPanel === null && (
+            <Stack gap="xs">
+              <Text size="xs" c="dimmed" mb={4}>
+                Choose a complete font pairing or customize headings and body text.
+              </Text>
+
+              {/* Option 1: Change Text Theme */}
+              <Card
+                withBorder
+                padding="sm"
+                radius="sm"
+                role="button"
+                tabIndex={0}
+                style={{ cursor: 'pointer' }}
+                onClick={() => setActiveSubPanel('presets')}
+                onKeyDown={(e) => handleCardKeyDown(e, () => setActiveSubPanel('presets'))}
+              >
+                <Flex align="center" justify="space-between">
+                  <Box style={{ flex: 1, minWidth: 0 }} pr="xs">
+                    <Group gap={6} mb={2}>
+                      <Sparkles size={14} color="var(--mantine-color-teal-7, #0e6b66)" />
+                      <Text size="sm" fw={600}>
+                        Change Text Theme
+                      </Text>
+                    </Group>
+                    <Text size="xs" c="dimmed">
+                      Choose curated font combinations for your brand
+                    </Text>
+                  </Box>
+                  <ChevronRight size={16} color="var(--mantine-color-dimmed)" />
+                </Flex>
+              </Card>
+
+              {/* Option 2: Headings */}
+              <Card
+                withBorder
+                padding="sm"
+                radius="sm"
+                role="button"
+                tabIndex={0}
+                style={{ cursor: 'pointer' }}
+                onClick={() => setActiveSubPanel('headings')}
+                onKeyDown={(e) => handleCardKeyDown(e, () => setActiveSubPanel('headings'))}
+              >
+                <Flex align="center" justify="space-between">
+                  <Box style={{ flex: 1, minWidth: 0 }} pr="xs">
+                    <Text size="sm" fw={600}>
+                      Headings
+                    </Text>
+                    <Text size="xs" c="dimmed">
+                      Edit heading font and title sizes
+                    </Text>
+                  </Box>
+                  <ChevronRight size={16} color="var(--mantine-color-dimmed)" />
+                </Flex>
+              </Card>
+
+              {/* Option 3: Body Text */}
+              <Card
+                withBorder
+                padding="sm"
+                radius="sm"
+                role="button"
+                tabIndex={0}
+                style={{ cursor: 'pointer' }}
+                onClick={() => setActiveSubPanel('body')}
+                onKeyDown={(e) => handleCardKeyDown(e, () => setActiveSubPanel('body'))}
+              >
+                <Flex align="center" justify="space-between">
+                  <Box style={{ flex: 1, minWidth: 0 }} pr="xs">
+                    <Text size="sm" fw={600}>
+                      Body Text
+                    </Text>
+                    <Text size="xs" c="dimmed">
+                      Edit paragraph font and reading comfort
+                    </Text>
+                  </Box>
+                  <ChevronRight size={16} color="var(--mantine-color-dimmed)" />
+                </Flex>
+              </Card>
+
+              {/* Option 4: Advanced Typography */}
+              <Card
+                withBorder
+                padding="sm"
+                radius="sm"
+                role="button"
+                tabIndex={0}
+                style={{ cursor: 'pointer' }}
+                onClick={() => setActiveSubPanel('advanced')}
+                onKeyDown={(e) => handleCardKeyDown(e, () => setActiveSubPanel('advanced'))}
+              >
+                <Flex align="center" justify="space-between">
+                  <Box style={{ flex: 1, minWidth: 0 }} pr="xs">
+                    <Group gap={6} mb={2}>
+                      <Sliders size={14} color="var(--mantine-color-dimmed)" />
+                      <Text size="sm" fw={600}>
+                        Advanced Typography
+                      </Text>
+                    </Group>
+                    <Text size="xs" c="dimmed">
+                      Detailed hierarchy, line height and letter spacing
+                    </Text>
+                  </Box>
+                  <ChevronRight size={16} color="var(--mantine-color-dimmed)" />
+                </Flex>
+              </Card>
+            </Stack>
+          )}
+
+          {/* LAYER 3: TEXT THEME -> CHANGE TEXT THEME (PRESETS) */}
+          {activePanel === 'typography' && activeSubPanel === 'presets' && (
             <Stack gap="md">
-              {/* Wix-style Typography Preset Cards */}
               <Box>
-                <Text size="xs" fw={700} style={{ textTransform: 'uppercase' }} mb={6}>
-                  Typography Presets
+                <Text size="xs" c="dimmed" mb="xs">
+                  Select a typography preset to update headings and body text together.
                 </Text>
                 <Stack gap="xs">
                   {BUILTIN_TYPOGRAPHY_PRESETS.map((preset) => {
@@ -919,12 +1389,15 @@ export function ThemeCustomizer({
                         withBorder
                         padding="xs"
                         radius="sm"
+                        role="button"
+                        tabIndex={0}
                         style={{
                           cursor: 'pointer',
                           borderColor: isSelected ? 'var(--mantine-color-primary, #0e6b66)' : undefined,
                           borderWidth: isSelected ? 2 : 1,
                         }}
                         onClick={() => handleSelectTypographyPreset(preset)}
+                        onKeyDown={(e) => handleCardKeyDown(e, () => handleSelectTypographyPreset(preset))}
                       >
                         <Flex align="center" justify="space-between" mb={2}>
                           <Text size="xs" fw={600}>
@@ -932,11 +1405,11 @@ export function ThemeCustomizer({
                           </Text>
                           {isSelected && <Check size={14} color="var(--mantine-color-primary, #0e6b66)" />}
                         </Flex>
-                        <Text size="xs" c="dimmed" mb={4}>
+                        <Text size="xs" c="dimmed" mb={6}>
                           {preset.description}
                         </Text>
                         <Box
-                          p={6}
+                          p={8}
                           style={{
                             background: 'var(--mantine-color-gray-0, #f8f9fa)',
                             borderRadius: 4,
@@ -945,10 +1418,10 @@ export function ThemeCustomizer({
                           <div
                             style={{
                               fontFamily: preset.typography.fontFamilyHeading,
-                              fontSize: 15,
+                              fontSize: 16,
                               fontWeight: 700,
-                              lineHeight: 1.2,
-                              marginBottom: 2,
+                              lineHeight: 1.25,
+                              marginBottom: 4,
                             }}
                           >
                             Sample Headline
@@ -958,10 +1431,10 @@ export function ThemeCustomizer({
                               fontFamily: preset.typography.fontFamily,
                               fontSize: 12,
                               color: '#555',
-                              lineHeight: 1.4,
+                              lineHeight: 1.45,
                             }}
                           >
-                            The quick brown fox jumps over the lazy dog.
+                            Clear, comfortable reading for your visitors across every device.
                           </div>
                         </Box>
                       </Card>
@@ -972,16 +1445,288 @@ export function ThemeCustomizer({
 
               <Divider />
 
-              {/* Font Family Selectors */}
+              {/* Custom User Typography Presets */}
+              <Box>
+                <Text size="xs" fw={700} style={{ textTransform: 'uppercase' }} mb={6}>
+                  My Saved Text Themes
+                </Text>
+                <Group gap="xs" mb="xs">
+                  <TextInput
+                    size="xs"
+                    placeholder="New text theme name..."
+                    value={newTypoPresetName}
+                    onChange={(e) => setNewTypoPresetName(e.currentTarget.value)}
+                    style={{ flex: 1 }}
+                  />
+                  <Button
+                    size="xs"
+                    variant="light"
+                    leftSection={<Plus size={12} />}
+                    onClick={handleSaveCustomTypoPreset}
+                    disabled={!newTypoPresetName.trim()}
+                  >
+                    Save
+                  </Button>
+                </Group>
+
+                {customPresets.typography.length === 0 ? (
+                  <Text size="xs" c="dimmed">
+                    No custom text themes saved yet.
+                  </Text>
+                ) : (
+                  <Stack gap="xs">
+                    {customPresets.typography.map((preset) => {
+                      const isSelected =
+                        tokens.typography.fontFamily === preset.typography.fontFamily &&
+                        tokens.typography.fontFamilyHeading === preset.typography.fontFamilyHeading
+
+                      return (
+                        <Card
+                          key={preset.id}
+                          withBorder
+                          padding="xs"
+                          radius="sm"
+                          style={{
+                            borderColor: isSelected ? 'var(--mantine-color-primary, #0e6b66)' : undefined,
+                            borderWidth: isSelected ? 2 : 1,
+                          }}
+                        >
+                          <Flex align="center" justify="space-between" mb={6}>
+                            <Group gap={6}>
+                              <Text size="xs" fw={600}>
+                                {preset.name}
+                              </Text>
+                              {isSelected && <Check size={14} color="var(--mantine-color-primary, #0e6b66)" />}
+                            </Group>
+                            <Group gap={4}>
+                              <Button
+                                size="compact-xs"
+                                variant="subtle"
+                                onClick={() => handleSelectTypographyPreset(preset)}
+                              >
+                                Apply
+                              </Button>
+                              <ActionIcon
+                                size="xs"
+                                color="red"
+                                variant="subtle"
+                                aria-label={`Delete ${preset.name}`}
+                                onClick={() => handleDeleteCustomTypoPreset(preset.id)}
+                              >
+                                <Trash2 size={12} />
+                              </ActionIcon>
+                            </Group>
+                          </Flex>
+                          <Box
+                            p={6}
+                            style={{
+                              background: 'var(--mantine-color-gray-0, #f8f9fa)',
+                              borderRadius: 4,
+                            }}
+                          >
+                            <div
+                              style={{
+                                fontFamily: preset.typography.fontFamilyHeading,
+                                fontSize: 14,
+                                fontWeight: 700,
+                                lineHeight: 1.25,
+                              }}
+                            >
+                              Sample Headline
+                            </div>
+                            <div
+                              style={{
+                                fontFamily: preset.typography.fontFamily,
+                                fontSize: 11,
+                                color: '#555',
+                              }}
+                            >
+                              Body text sample preview
+                            </div>
+                          </Box>
+                        </Card>
+                      )
+                    })}
+                  </Stack>
+                )}
+              </Box>
+            </Stack>
+          )}
+
+          {/* LAYER 3: TEXT THEME -> HEADINGS */}
+          {activePanel === 'typography' && activeSubPanel === 'headings' && (
+            <Stack gap="md">
+              <Select
+                size="sm"
+                label="Heading Font"
+                description="Used for page titles and section headlines"
+                data={fontOptions}
+                value={tokens.typography.fontFamilyHeading || 'Inter'}
+                onChange={(val) => val && handleFontChange('fontFamilyHeading', val)}
+                searchable
+              />
+
+              <Divider />
+
+              <Stack gap="xs">
+                <Text size="xs" fw={700} style={{ textTransform: 'uppercase' }}>
+                  Heading Sizes & Style
+                </Text>
+                {(['h1', 'h2', 'h3', 'h4', 'h5', 'h6'] as const).map((tag) => {
+                  const conf = tokens.typography[tag] || { size: '24px', lineHeight: '1.3', weight: '600' }
+                  return (
+                    <Paper key={tag} withBorder p="xs" radius="sm">
+                      <Stack gap="xs">
+                        <Text size="xs" fw={700}>
+                          {HEADING_FRIENDLY_LABELS[tag]}
+                        </Text>
+                        <Group grow gap="xs">
+                          <TextInput
+                            size="xs"
+                            label="Size"
+                            value={conf.size || ''}
+                            onChange={(e) => handleHeadingPropChange(tag, 'size', e.currentTarget.value)}
+                          />
+                          <Select
+                            size="xs"
+                            label="Weight"
+                            data={WEIGHT_OPTIONS}
+                            value={String(conf.weight || '600')}
+                            onChange={(val) => val && handleHeadingPropChange(tag, 'weight', val)}
+                          />
+                        </Group>
+                        <Box
+                          p="xs"
+                          style={{
+                            background: 'var(--mantine-color-gray-0, #f8f9fa)',
+                            borderRadius: 4,
+                            overflow: 'hidden',
+                          }}
+                        >
+                          <div
+                            style={{
+                              fontFamily: tokens.typography.fontFamilyHeading || tokens.typography.fontFamily,
+                              fontSize: conf.size,
+                              lineHeight: conf.lineHeight || '1.3',
+                              fontWeight: conf.weight || '600',
+                            }}
+                          >
+                            Sample Heading
+                          </div>
+                        </Box>
+                      </Stack>
+                    </Paper>
+                  )
+                })}
+              </Stack>
+            </Stack>
+          )}
+
+          {/* LAYER 3: TEXT THEME -> BODY TEXT */}
+          {activePanel === 'typography' && activeSubPanel === 'body' && (
+            <Stack gap="md">
+              <Select
+                size="sm"
+                label="Body Font"
+                description="Used for articles, descriptions and general text"
+                data={fontOptions}
+                value={tokens.typography.fontFamily || 'Inter'}
+                onChange={(val) => val && handleFontChange('fontFamily', val)}
+                searchable
+              />
+
+              <Group grow gap="xs">
+                <TextInput
+                  size="sm"
+                  label="Base Text Size"
+                  value={tokens.typography.baseFontSize || '18px'}
+                  onChange={(e) =>
+                    setTokens((prev) => ({
+                      ...prev,
+                      typography: { ...prev.typography, baseFontSize: e.currentTarget.value },
+                    }))
+                  }
+                />
+                <TextInput
+                  size="sm"
+                  label="Line Spacing"
+                  value={tokens.typography.baseLineHeight || '1.75'}
+                  onChange={(e) =>
+                    setTokens((prev) => ({
+                      ...prev,
+                      typography: { ...prev.typography, baseLineHeight: e.currentTarget.value },
+                    }))
+                  }
+                />
+              </Group>
+
+              <Divider />
+
+              <Stack gap="xs">
+                <Text size="xs" fw={700} style={{ textTransform: 'uppercase' }}>
+                  Paragraph Styles
+                </Text>
+                {(['p1', 'p2', 'p3'] as const).map((tag) => {
+                  const conf = tokens.typography[tag] || { size: '16px', lineHeight: '1.6', weight: '400' }
+                  return (
+                    <Paper key={tag} withBorder p="xs" radius="sm">
+                      <Stack gap="xs">
+                        <Text size="xs" fw={700}>
+                          {PARAGRAPH_FRIENDLY_LABELS[tag]}
+                        </Text>
+                        <Group grow gap="xs">
+                          <TextInput
+                            size="xs"
+                            label="Size"
+                            value={conf.size || ''}
+                            onChange={(e) => handleHeadingPropChange(tag, 'size', e.currentTarget.value)}
+                          />
+                          <Select
+                            size="xs"
+                            label="Weight"
+                            data={WEIGHT_OPTIONS}
+                            value={String(conf.weight || '400')}
+                            onChange={(val) => val && handleHeadingPropChange(tag, 'weight', val)}
+                          />
+                        </Group>
+                        <Box
+                          p="xs"
+                          style={{
+                            background: 'var(--mantine-color-gray-0, #f8f9fa)',
+                            borderRadius: 4,
+                            overflow: 'hidden',
+                          }}
+                        >
+                          <div
+                            style={{
+                              fontFamily: tokens.typography.fontFamily,
+                              fontSize: conf.size,
+                              lineHeight: conf.lineHeight || '1.6',
+                              fontWeight: conf.weight || '400',
+                            }}
+                          >
+                            The quick brown fox jumps over the lazy dog.
+                          </div>
+                        </Box>
+                      </Stack>
+                    </Paper>
+                  )
+                })}
+              </Stack>
+            </Stack>
+          )}
+
+          {/* LAYER 3: TEXT THEME -> ADVANCED TYPOGRAPHY */}
+          {activePanel === 'typography' && activeSubPanel === 'advanced' && (
+            <Stack gap="md">
               <Box>
                 <Text size="xs" fw={700} style={{ textTransform: 'uppercase' }} mb={8}>
-                  Font Pairing
+                  Font Pairing & Base Metrics
                 </Text>
                 <Stack gap="xs">
                   <Select
                     size="sm"
                     label="Heading Font (H1–H6)"
-                    description="Google Fonts or system fonts"
                     data={fontOptions}
                     value={tokens.typography.fontFamilyHeading || 'Inter'}
                     onChange={(val) => val && handleFontChange('fontFamilyHeading', val)}
@@ -990,7 +1735,6 @@ export function ThemeCustomizer({
                   <Select
                     size="sm"
                     label="Body Font"
-                    description="Paragraphs, lists, and general content"
                     data={fontOptions}
                     value={tokens.typography.fontFamily || 'Inter'}
                     onChange={(val) => val && handleFontChange('fontFamily', val)}
@@ -1023,10 +1767,9 @@ export function ThemeCustomizer({
 
               <Divider />
 
-              {/* Heading & Text Styles Accordion */}
               <Box>
                 <Text size="xs" fw={700} style={{ textTransform: 'uppercase' }} mb={6}>
-                  Headings & Styles Hierarchy
+                  Detailed Hierarchy Controls
                 </Text>
                 <Accordion variant="separated">
                   {(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p1', 'p2', 'p3'] as const).map((tag) => {
@@ -1092,7 +1835,9 @@ export function ThemeCustomizer({
                                   letterSpacing: conf.letterSpacing,
                                 }}
                               >
-                                {tag.startsWith('h') ? `${tag.toUpperCase()} Preview Title` : 'Paragraph body sample text preview'}
+                                {tag.startsWith('h')
+                                  ? `${tag.toUpperCase()} Preview Title`
+                                  : 'Paragraph body sample text preview'}
                               </div>
                             </Box>
                           </Stack>
@@ -1102,164 +1847,320 @@ export function ThemeCustomizer({
                   })}
                 </Accordion>
               </Box>
-
-              <Divider />
-
-              {/* Custom User Typography Presets */}
-              <Box>
-                <Text size="xs" fw={700} style={{ textTransform: 'uppercase' }} mb={6}>
-                  My Typography Presets
-                </Text>
-                <Group gap="xs" mb="xs">
-                  <TextInput
-                    size="xs"
-                    placeholder="New preset name..."
-                    value={newTypoPresetName}
-                    onChange={(e) => setNewTypoPresetName(e.currentTarget.value)}
-                    style={{ flex: 1 }}
-                  />
-                  <Button
-                    size="xs"
-                    variant="light"
-                    leftSection={<Plus size={12} />}
-                    onClick={handleSaveCustomTypoPreset}
-                    disabled={!newTypoPresetName.trim()}
-                  >
-                    Save
-                  </Button>
-                </Group>
-
-                {customPresets.typography.length === 0 ? (
-                  <Text size="xs" c="dimmed">
-                    No custom presets saved yet.
-                  </Text>
-                ) : (
-                  <Stack gap="xs">
-                    {customPresets.typography.map((preset) => (
-                      <Paper key={preset.id} withBorder p="xs" radius="sm">
-                        <Flex align="center" justify="space-between">
-                          <Text size="xs" fw={600}>
-                            {preset.name}
-                          </Text>
-                          <Group gap={4}>
-                            <Button
-                              size="compact-xs"
-                              variant="subtle"
-                              onClick={() => handleSelectTypographyPreset(preset)}
-                            >
-                              Apply
-                            </Button>
-                            <ActionIcon
-                              size="xs"
-                              color="red"
-                              variant="subtle"
-                              onClick={() => handleDeleteCustomTypoPreset(preset.id)}
-                            >
-                              <Trash2 size={12} />
-                            </ActionIcon>
-                          </Group>
-                        </Flex>
-                      </Paper>
-                    ))}
-                  </Stack>
-                )}
-              </Box>
             </Stack>
           )}
 
-          {/* -------------------------------------------------------- */}
-          {/* 4. PAGE BACKGROUND & LAYOUT PANEL                        */}
-          {/* -------------------------------------------------------- */}
-          {activePanel === 'background' && (
-            <Stack gap="md">
-              <Box>
-                <Text size="xs" fw={700} style={{ textTransform: 'uppercase' }} mb={8}>
-                  Background Colors
-                </Text>
-                <Stack gap="xs">
-                  <ColorInput
-                    size="sm"
-                    label="Page Background"
-                    value={tokens.colors.background}
-                    onChange={(val) => handleColorChange('background', val)}
-                  />
-                  <ColorInput
-                    size="sm"
-                    label="Surface Background"
-                    value={tokens.colors.surface}
-                    onChange={(val) => handleColorChange('surface', val)}
-                  />
-                </Stack>
-              </Box>
+          {/* ======================================================== */}
+          {/* 4. PAGE BACKGROUND & LAYOUT: LAYER 2 & LAYER 3           */}
+          {/* ======================================================== */}
+          {activePanel === 'background' && activeSubPanel === null && (
+            <Stack gap="xs">
+              <Text size="xs" c="dimmed" mb={4}>
+                Adjust page backdrops, container widths and layout spacing.
+              </Text>
 
-              <Divider />
+              {/* Option 1: Page Background */}
+              <Card
+                withBorder
+                padding="sm"
+                radius="sm"
+                role="button"
+                tabIndex={0}
+                style={{ cursor: 'pointer' }}
+                onClick={() => setActiveSubPanel('page-bg')}
+                onKeyDown={(e) => handleCardKeyDown(e, () => setActiveSubPanel('page-bg'))}
+              >
+                <Flex align="center" justify="space-between">
+                  <Box style={{ flex: 1, minWidth: 0 }} pr="xs">
+                    <Text size="sm" fw={600}>
+                      Page Background
+                    </Text>
+                    <Text size="xs" c="dimmed">
+                      Main page canvas and section surface colors
+                    </Text>
+                  </Box>
+                  <Group gap={6} wrap="nowrap">
+                    <Box
+                      style={{
+                        width: 18,
+                        height: 18,
+                        borderRadius: 4,
+                        background: tokens.colors.background,
+                        border: '1px solid rgba(0,0,0,0.15)',
+                      }}
+                    />
+                    <ChevronRight size={16} color="var(--mantine-color-dimmed)" />
+                  </Group>
+                </Flex>
+              </Card>
 
-              <Box>
-                <Text size="xs" fw={700} style={{ textTransform: 'uppercase' }} mb={8}>
-                  Container Layout
-                </Text>
-                <Stack gap="xs">
-                  <TextInput
-                    size="sm"
-                    label="Standard Container Width"
-                    value={tokens.layout.containerWidth}
-                    onChange={(e) =>
-                      setTokens((prev) => ({
-                        ...prev,
-                        layout: { ...prev.layout, containerWidth: e.currentTarget.value },
-                      }))
-                    }
-                  />
-                  <TextInput
-                    size="sm"
-                    label="Narrow Container Width"
-                    value={tokens.layout.narrowWidth || '800px'}
-                    onChange={(e) =>
-                      setTokens((prev) => ({
-                        ...prev,
-                        layout: { ...prev.layout, narrowWidth: e.currentTarget.value },
-                      }))
-                    }
-                  />
-                </Stack>
-              </Box>
+              {/* Option 2: Content Width */}
+              <Card
+                withBorder
+                padding="sm"
+                radius="sm"
+                role="button"
+                tabIndex={0}
+                style={{ cursor: 'pointer' }}
+                onClick={() => setActiveSubPanel('content-width')}
+                onKeyDown={(e) => handleCardKeyDown(e, () => setActiveSubPanel('content-width'))}
+              >
+                <Flex align="center" justify="space-between">
+                  <Box style={{ flex: 1, minWidth: 0 }} pr="xs">
+                    <Text size="sm" fw={600}>
+                      Content Width
+                    </Text>
+                    <Text size="xs" c="dimmed">
+                      Standard and reading container widths
+                    </Text>
+                  </Box>
+                  <ChevronRight size={16} color="var(--mantine-color-dimmed)" />
+                </Flex>
+              </Card>
+
+              {/* Option 3: Layout Options */}
+              <Card
+                withBorder
+                padding="sm"
+                radius="sm"
+                role="button"
+                tabIndex={0}
+                style={{ cursor: 'pointer' }}
+                onClick={() => setActiveSubPanel('layout-options')}
+                onKeyDown={(e) => handleCardKeyDown(e, () => setActiveSubPanel('layout-options'))}
+              >
+                <Flex align="center" justify="space-between">
+                  <Box style={{ flex: 1, minWidth: 0 }} pr="xs">
+                    <Text size="sm" fw={600}>
+                      Layout Options
+                    </Text>
+                    <Text size="xs" c="dimmed">
+                      Corner rounding and section spacing rhythm
+                    </Text>
+                  </Box>
+                  <ChevronRight size={16} color="var(--mantine-color-dimmed)" />
+                </Flex>
+              </Card>
             </Stack>
           )}
 
-          {/* -------------------------------------------------------- */}
-          {/* 5. THEME CSS RULES PANEL                                 */}
-          {/* -------------------------------------------------------- */}
-          {activePanel === 'css-rules' && (
+          {/* LAYER 3: PAGE BACKGROUND & LAYOUT -> PAGE BACKGROUND */}
+          {activePanel === 'background' && activeSubPanel === 'page-bg' && (
+            <Stack gap="sm">
+              <Text size="xs" c="dimmed">
+                Choose the background colors for your website pages and content blocks.
+              </Text>
+              <WixColorPicker
+                label="Page Background"
+                description="Overall website background color"
+                value={tokens.colors.background}
+                onChange={(val) => handleColorChange('background', val)}
+              />
+              <WixColorPicker
+                label="Surface Background"
+                description="Background for cards, headers and highlighted sections"
+                value={tokens.colors.surface}
+                onChange={(val) => handleColorChange('surface', val)}
+              />
+            </Stack>
+          )}
+
+          {/* LAYER 3: PAGE BACKGROUND & LAYOUT -> CONTENT WIDTH */}
+          {activePanel === 'background' && activeSubPanel === 'content-width' && (
             <Stack gap="md">
               <Text size="xs" c="dimmed">
-                Controlled widget style slot CSS rules from theme.json.
+                Control how wide your website content stretches on desktop screens.
               </Text>
-              {Object.entries(slots).map(([widgetName, widgetSlots]) => (
-                <Paper key={widgetName} withBorder p="xs" radius="sm">
-                  <Text size="xs" fw={700} mb={4}>
-                    {widgetName}
+              <TextInput
+                size="sm"
+                label="Standard Page Width"
+                description="Default container width (e.g. 1200px)"
+                value={tokens.layout.containerWidth}
+                onChange={(e) =>
+                  setTokens((prev) => ({
+                    ...prev,
+                    layout: { ...prev.layout, containerWidth: e.currentTarget.value },
+                  }))
+                }
+              />
+              <TextInput
+                size="sm"
+                label="Article Reading Width"
+                description="Narrower width for comfortable reading (e.g. 800px)"
+                value={tokens.layout.narrowWidth || '800px'}
+                onChange={(e) =>
+                  setTokens((prev) => ({
+                    ...prev,
+                    layout: { ...prev.layout, narrowWidth: e.currentTarget.value },
+                  }))
+                }
+              />
+            </Stack>
+          )}
+
+          {/* LAYER 3: PAGE BACKGROUND & LAYOUT -> LAYOUT OPTIONS */}
+          {activePanel === 'background' && activeSubPanel === 'layout-options' && (
+            <Stack gap="md">
+              <Box>
+                <Text size="xs" fw={700} style={{ textTransform: 'uppercase' }} mb={6}>
+                  Corner Rounding
+                </Text>
+                <Stack gap="xs">
+                  <TextInput
+                    size="xs"
+                    label="Small Elements (Buttons & Inputs)"
+                    value={tokens.radius?.sm || '4px'}
+                    onChange={(e) =>
+                      setTokens((prev) => ({
+                        ...prev,
+                        radius: { ...(prev.radius || {}), sm: e.currentTarget.value },
+                      }))
+                    }
+                  />
+                  <TextInput
+                    size="xs"
+                    label="Medium Elements (Cards & Panels)"
+                    value={tokens.radius?.md || '8px'}
+                    onChange={(e) =>
+                      setTokens((prev) => ({
+                        ...prev,
+                        radius: { ...(prev.radius || {}), md: e.currentTarget.value },
+                      }))
+                    }
+                  />
+                  <TextInput
+                    size="xs"
+                    label="Large Sections & Banners"
+                    value={tokens.radius?.lg || '12px'}
+                    onChange={(e) =>
+                      setTokens((prev) => ({
+                        ...prev,
+                        radius: { ...(prev.radius || {}), lg: e.currentTarget.value },
+                      }))
+                    }
+                  />
+                </Stack>
+              </Box>
+
+              <Divider />
+
+              <Box>
+                <Text size="xs" fw={700} style={{ textTransform: 'uppercase' }} mb={6}>
+                  Section Spacing Scale
+                </Text>
+                <Stack gap="xs">
+                  <TextInput
+                    size="xs"
+                    label="Compact Spacing"
+                    value={tokens.spacing?.sm || '8px'}
+                    onChange={(e) =>
+                      setTokens((prev) => ({
+                        ...prev,
+                        spacing: { ...(prev.spacing || {}), sm: e.currentTarget.value },
+                      }))
+                    }
+                  />
+                  <TextInput
+                    size="xs"
+                    label="Standard Spacing"
+                    value={tokens.spacing?.md || '16px'}
+                    onChange={(e) =>
+                      setTokens((prev) => ({
+                        ...prev,
+                        spacing: { ...(prev.spacing || {}), md: e.currentTarget.value },
+                      }))
+                    }
+                  />
+                  <TextInput
+                    size="xs"
+                    label="Large Section Spacing"
+                    value={tokens.spacing?.xl || '40px'}
+                    onChange={(e) =>
+                      setTokens((prev) => ({
+                        ...prev,
+                        spacing: { ...(prev.spacing || {}), xl: e.currentTarget.value },
+                      }))
+                    }
+                  />
+                </Stack>
+              </Box>
+            </Stack>
+          )}
+
+          {/* ======================================================== */}
+          {/* 5. THEME CSS RULES: LAYER 2 & LAYER 3                    */}
+          {/* ======================================================== */}
+          {activePanel === 'css-rules' && activeSubPanel === null && (
+            <Stack gap="xs">
+              <Text size="xs" c="dimmed" mb={4}>
+                Select a website area below to fine-tune its styling rules.
+              </Text>
+              {Object.keys(slots).length === 0 ? (
+                <Paper withBorder p="sm" radius="sm">
+                  <Text size="xs" c="dimmed">
+                    No section style rules are defined for this theme.
                   </Text>
-                  {Object.entries(widgetSlots).map(([slotName, cssRule]) => (
-                    <Box key={slotName} mb={4}>
-                      <Text size="xs" c="dimmed">
-                        slot: {slotName}
-                      </Text>
-                      <TextInput
-                        size="xs"
-                        value={cssRule}
-                        onChange={(e) => {
-                          const val = e.currentTarget.value
-                          setSlots((prev) => ({
-                            ...prev,
-                            [widgetName]: {
-                              ...(prev[widgetName] || {}),
-                              [slotName]: val,
-                            },
-                          }))
-                        }}
-                      />
-                    </Box>
-                  ))}
+                </Paper>
+              ) : (
+                Object.entries(slots).map(([widgetName, widgetSlots]) => {
+                  const info = WIDGET_FRIENDLY_LABELS[widgetName] || {
+                    title: formatFriendlyName(widgetName),
+                    description: `${Object.keys(widgetSlots).length} customizable style area(s)`,
+                  }
+                  return (
+                    <Card
+                      key={widgetName}
+                      withBorder
+                      padding="sm"
+                      radius="sm"
+                      role="button"
+                      tabIndex={0}
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => setActiveSubPanel(widgetName)}
+                      onKeyDown={(e) => handleCardKeyDown(e, () => setActiveSubPanel(widgetName))}
+                    >
+                      <Flex align="center" justify="space-between">
+                        <Box style={{ flex: 1, minWidth: 0 }} pr="xs">
+                          <Text size="sm" fw={600}>
+                            {info.title}
+                          </Text>
+                          <Text size="xs" c="dimmed">
+                            {info.description}
+                          </Text>
+                        </Box>
+                        <ChevronRight size={16} color="var(--mantine-color-dimmed)" />
+                      </Flex>
+                    </Card>
+                  )
+                })
+              )}
+            </Stack>
+          )}
+
+          {/* LAYER 3: THEME CSS RULES -> SELECTED WIDGET GROUP */}
+          {activePanel === 'css-rules' && activeSubPanel !== null && (
+            <Stack gap="sm">
+              <Text size="xs" c="dimmed">
+                Customize styling rules for{' '}
+                {WIDGET_FRIENDLY_LABELS[activeSubPanel]?.title || formatFriendlyName(activeSubPanel)}.
+              </Text>
+              {Object.entries(slots[activeSubPanel] || {}).map(([slotName, cssRule]) => (
+                <Paper key={slotName} withBorder p="xs" radius="sm">
+                  <TextInput
+                    size="xs"
+                    label={SLOT_FRIENDLY_LABELS[slotName] || formatFriendlyName(slotName)}
+                    value={cssRule}
+                    onChange={(e) => {
+                      const val = e.currentTarget.value
+                      setSlots((prev) => ({
+                        ...prev,
+                        [activeSubPanel]: {
+                          ...(prev[activeSubPanel] || {}),
+                          [slotName]: val,
+                        },
+                      }))
+                    }}
+                  />
                 </Paper>
               ))}
             </Stack>

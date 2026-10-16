@@ -5,7 +5,6 @@ import { HexColorPicker } from 'react-colorful'
 import {
   Box,
   Button,
-  Collapse,
   Flex,
   Group,
   Paper,
@@ -114,49 +113,51 @@ export function WixColorPicker({
       middlewares={{ flip: true, shift: { padding: 12 } }}
     >
       <Popover.Target>
-        <Paper
-          component={UnstyledButton}
-          withBorder
-          p="xs"
-          radius="sm"
+        <UnstyledButton
           onClick={() => handleOpenChange(!opened)}
           aria-label={`Chọn màu: ${label}`}
           aria-expanded={opened}
-          style={{
-            width: '100%',
-            textAlign: 'left',
-            cursor: 'pointer',
-            borderColor: opened
-              ? 'var(--mantine-color-primary, #0e6b66)'
-              : undefined,
-            borderWidth: opened ? 2 : 1,
-            transition: 'border-color 0.15s ease, background-color 0.15s ease',
-          }}
+          style={{ width: '100%', display: 'block', textAlign: 'left' }}
         >
-          <Flex align="center" justify="space-between" gap="xs">
-            <Box style={{ flex: 1, minWidth: 0 }}>
-              <Text size="sm" fw={600} truncate>
-                {label}
-              </Text>
-              {description && (
-                <Text size="xs" c="dimmed" lineClamp={2}>
-                  {description}
+          <Paper
+            withBorder
+            p="xs"
+            radius="sm"
+            style={{
+              width: '100%',
+              cursor: 'pointer',
+              borderColor: opened
+                ? 'var(--mantine-color-primary, #0e6b66)'
+                : undefined,
+              borderWidth: opened ? 2 : 1,
+              transition: 'border-color 0.15s ease, background-color 0.15s ease',
+            }}
+          >
+            <Flex align="center" justify="space-between" gap="xs">
+              <Box style={{ flex: 1, minWidth: 0 }}>
+                <Text size="sm" fw={600} truncate>
+                  {label}
                 </Text>
-              )}
-            </Box>
-            <Box
-              style={{
-                width: 28,
-                height: 28,
-                borderRadius: '50%',
-                backgroundColor: committedColor,
-                border: '2px solid var(--mantine-color-default-border, #dfe5e2)',
-                boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.08)',
-                flexShrink: 0,
-              }}
-            />
-          </Flex>
-        </Paper>
+                {description && (
+                  <Text size="xs" c="dimmed" lineClamp={2}>
+                    {description}
+                  </Text>
+                )}
+              </Box>
+              <Box
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: '50%',
+                  backgroundColor: committedColor,
+                  border: '2px solid var(--mantine-color-default-border, #dfe5e2)',
+                  boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.08)',
+                  flexShrink: 0,
+                }}
+              />
+            </Flex>
+          </Paper>
+        </UnstyledButton>
       </Popover.Target>
 
       <Popover.Dropdown p="sm" style={{ width: 260 }}>
@@ -223,7 +224,7 @@ export function WixColorPicker({
             >
               Tùy chọn nâng cao (HEX)
             </Button>
-            <Collapse in={showAdvancedHex}>
+            {showAdvancedHex && (
               <Box pt={6}>
                 <TextInput
                   size="xs"
@@ -233,7 +234,7 @@ export function WixColorPicker({
                   onChange={(e) => handleHexInputChange(e.currentTarget.value)}
                 />
               </Box>
-            </Collapse>
+            )}
           </Box>
 
           <Group grow gap="xs" mt={4}>
