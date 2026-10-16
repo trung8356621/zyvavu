@@ -1,4 +1,5 @@
 import type { WidgetManifest } from './types'
+import { normalizeComponentType } from '@/lib/style-engine/capabilities'
 
 import { postTitleManifest } from '@/widgets/PostTitle/manifest'
 import { postContentManifest } from '@/widgets/PostContent/manifest'
@@ -55,8 +56,9 @@ export function registerWidgetManifest(id: string, manifest?: Partial<WidgetMani
 }
 
 export function getWidgetManifest(id: string): WidgetManifest | undefined {
-  const custom = customManifestOverrides[id]
-  const base = defaultManifestRegistry[id]
+  const normalized = normalizeComponentType(id)
+  const custom = customManifestOverrides[normalized] || customManifestOverrides[id]
+  const base = defaultManifestRegistry[normalized] || defaultManifestRegistry[id]
 
   if (!base && !custom) return undefined
 

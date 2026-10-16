@@ -6,36 +6,87 @@
   },
   "content": [
     {
-      "type": "Columns",
+      "type": "Section",
       "props": {
-        "id": "edit-lead-story",
-        "distribution": "2:1",
-        "gap": "36px"
+        "id": "edit-home-lead-section",
+        "containerWidth": "containerWidth",
+        "verticalPadding": "lg",
+        "minHeight": "auto",
+        "style": {
+          "background": {
+            "mode": "color",
+            "colorToken": "surface"
+          }
+        }
       }
     },
     {
-      "type": "Columns",
+      "type": "Section",
       "props": {
-        "id": "edit-columns-opinions",
-        "distribution": "1:1:1",
-        "gap": "28px"
+        "id": "edit-home-opinions-section",
+        "containerWidth": "containerWidth",
+        "verticalPadding": "md",
+        "minHeight": "auto",
+        "style": {
+          "background": {
+            "mode": "color",
+            "colorToken": "background"
+          }
+        }
       }
     },
     {
-      "type": "CollectionLoop",
+      "type": "Section",
       "props": {
-        "id": "edit-posts-loop",
-        "heading": "CÁC BÀI BÌNH LUẬN & NGHIÊN CỨU MỚI XUẤT BẢN",
-        "mode": "dynamic",
-        "source": "posts",
-        "columns": 3,
-        "gap": "32px",
-        "limit": 6,
-        "sort": "newest"
+        "id": "edit-home-loop-section",
+        "containerWidth": "containerWidth",
+        "verticalPadding": "lg",
+        "minHeight": "auto",
+        "style": {
+          "background": {
+            "mode": "color",
+            "colorToken": "surface"
+          }
+        }
       }
     }
   ],
   "zones": {
+    "edit-home-lead-section:content": [
+      {
+        "type": "Columns",
+        "props": {
+          "id": "edit-lead-story",
+          "distribution": "2:1",
+          "gap": "36px"
+        }
+      }
+    ],
+    "edit-home-opinions-section:content": [
+      {
+        "type": "Columns",
+        "props": {
+          "id": "edit-columns-opinions",
+          "distribution": "1:1:1",
+          "gap": "28px"
+        }
+      }
+    ],
+    "edit-home-loop-section:content": [
+      {
+        "type": "CollectionLoop",
+        "props": {
+          "id": "edit-posts-loop",
+          "heading": "CÁC BÀI BÌNH LUẬN & NGHIÊN CỨU MỚI XUẤT BẢN",
+          "mode": "dynamic",
+          "source": "posts",
+          "columns": 3,
+          "gap": "32px",
+          "limit": 6,
+          "sort": "newest"
+        }
+      }
+    ],
     "edit-lead-story:column1": [
       {
         "type": "TextBlock",

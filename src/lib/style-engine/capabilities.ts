@@ -104,6 +104,31 @@ export const COMPONENT_STYLE_CAPABILITIES: Record<string, StyleDomain[]> = {
   ],
 }
 
+export const LABEL_TO_COMPONENT_TYPE: Record<string, string> = {
+  'Document Title': 'PostTitle',
+  'Document Body Content': 'PostContent',
+  'Document Metadata': 'PostMeta',
+  'Text & Content Card': 'TextBlock',
+  'Section Container': 'Section',
+  'Recent Posts Grid': 'RecentPosts',
+  'Header Brand / Logo': 'HeaderBrand',
+  'Header Navigation Menu': 'HeaderNav',
+  'Top Bar Text': 'HeaderTopBarText',
+  'Item Title': 'ItemTitle',
+  'Item Image': 'ItemImage',
+  'Item Excerpt': 'ItemExcerpt',
+  'Item Link / CTA': 'ItemLink',
+  'Collection Loop': 'CollectionLoop',
+}
+
+export function normalizeComponentType(typeOrLabel: string): string {
+  if (!typeOrLabel) return ''
+  if (COMPONENT_STYLE_CAPABILITIES[typeOrLabel]) {
+    return typeOrLabel
+  }
+  return LABEL_TO_COMPONENT_TYPE[typeOrLabel] || typeOrLabel
+}
+
 /**
  * Resolves allowed style domains for a given component type and manifest.
  */
@@ -111,9 +136,11 @@ export function getComponentStyleCapabilities(
   componentType: string,
   manifest?: WidgetManifest,
 ): StyleDomain[] {
+  const normalized = normalizeComponentType(componentType)
+
   // 1. Direct registry lookup
-  if (COMPONENT_STYLE_CAPABILITIES[componentType]) {
-    return COMPONENT_STYLE_CAPABILITIES[componentType]
+  if (COMPONENT_STYLE_CAPABILITIES[normalized]) {
+    return COMPONENT_STYLE_CAPABILITIES[normalized]
   }
 
   // 2. Infer from manifest capabilities if present

@@ -2,7 +2,9 @@
 
 import React from 'react'
 import type { ComponentConfig } from '@puckeditor/core'
-import { usePuck } from '@puckeditor/core'
+import { createUsePuck } from '@puckeditor/core'
+
+const usePuck = createUsePuck()
 import {
   ItemContextProvider,
   type LoopItemRecord,
@@ -136,7 +138,7 @@ export const collectionLoopEditor: ComponentConfig<CollectionLoopProps> = {
       },
       getItemSummary: (item) => item.title || 'Untitled Item',
     },
-    itemTemplate: { type: 'slot' },
+    itemTemplate: { type: 'slot', disallow: ['Section'] },
   },
   defaultProps: {
     mode: 'dynamic',
@@ -163,9 +165,9 @@ function CollectionLoopEditorCanvas({
   manualItems = [],
   itemTemplate: ItemTemplateSlot,
 }: any) {
-  const { appState } = usePuck()
+  const zones = usePuck((s) => s.appState?.data?.zones)
   const zoneKey = `${id}:itemTemplate`
-  const templateItems: any[] = appState?.data?.zones?.[zoneKey] || []
+  const templateItems: any[] = zones?.[zoneKey] || []
 
   // Active records for preview
   const activeRecords: LoopItemRecord[] =

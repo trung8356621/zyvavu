@@ -23,6 +23,7 @@ import type { BuilderDocument } from '@/components/builder/core/types'
 import type { TemplateContext, ThemeConfig, ThemeTemplateDocument } from '@/lib/theme-engine/types'
 import { getTemplatePolicy } from '@/lib/theme-engine/policy'
 import { validateThemeTemplateDocument } from '@/lib/theme-engine/validation'
+import { normalizeThemeTemplateDocument } from '@/lib/theme-engine/normalization'
 import { getEditorConfigForContext } from '@/lib/theme-engine/widget-registry-editor'
 import { generateThemeCss } from '@/lib/theme-engine/styles'
 import { getGoogleFontUrl } from '@/lib/theme-engine/fonts'
@@ -54,8 +55,18 @@ export function ThemeBuilder({
   initialContext = 'single',
   themeConfig,
 }: ThemeBuilderProps) {
+  const normalizedInitialTemplates = useMemo(() => {
+    const result: Record<TemplateContext, ThemeTemplateDocument> = {} as any
+    if (initialTemplates) {
+      for (const [ctx, doc] of Object.entries(initialTemplates)) {
+        result[ctx as TemplateContext] = normalizeThemeTemplateDocument(doc)
+      }
+    }
+    return result
+  }, [initialTemplates])
+
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateContext>(initialContext)
-  const [templates, setTemplates] = useState<Record<TemplateContext, ThemeTemplateDocument>>(initialTemplates)
+  const [templates, setTemplates] = useState<Record<TemplateContext, ThemeTemplateDocument>>(normalizedInitialTemplates)
   const [isDirty, setIsDirty] = useState<boolean>(false)
   const [isSaving, setIsSaving] = useState<boolean>(false)
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false)
@@ -347,7 +358,7 @@ export function ThemeBuilder({
         <PuckHost
           key={selectedTemplate}
           config={puckConfig}
-          document={activeDoc as unknown as BuilderDocument}
+          document={(activeDoc || { content: [], root: { props: {} } }) as unknown as BuilderDocument}
           onSave={handleSave}
           onChange={handleDocChange}
           isSaving={isSaving}

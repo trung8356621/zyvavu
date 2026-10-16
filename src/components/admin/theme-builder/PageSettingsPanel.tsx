@@ -16,12 +16,14 @@ import {
   Textarea,
   TextInput,
 } from '@mantine/core'
-import { AlertTriangle, Code, Layout, Palette, Settings, Type } from 'lucide-react'
-import { usePuck } from '@puckeditor/core'
+import { AlertTriangle, Code, Layout, Palette, RotateCcw, Settings, Type } from 'lucide-react'
+import { createUsePuck } from '@puckeditor/core'
 
 import type { PageSettings, ThemeConfig } from '@/lib/theme-engine/types'
-import { resolveColorToken } from '@/lib/theme-engine/page-settings'
+import { resolveColorToken, isLegacySystemDefaultLayout } from '@/lib/theme-engine/page-settings'
 import { ThemeColorPaletteModal } from '@/components/admin/shared/ThemeColorPaletteModal'
+
+const usePuck = createUsePuck()
 
 export interface PageSettingsPanelProps {
   themeConfig?: ThemeConfig
@@ -29,20 +31,58 @@ export interface PageSettingsPanelProps {
 }
 
 export function PageSettingsPanel({ themeConfig, templateName }: PageSettingsPanelProps) {
-  const { appState, dispatch } = usePuck()
+  const dispatch = usePuck((s) => s.dispatch)
+  const rootProps = usePuck((s) => (s.appState?.data?.root?.props as Record<string, any>) || {})
 
   const [colorModalTarget, setColorModalTarget] = useState<'background' | 'text' | null>(null)
   const [colorModalAnchor, setColorModalAnchor] = useState<HTMLElement | null>(null)
 
   // Current page settings from Puck document root
-  const rootProps = (appState.data?.root?.props as Record<string, any>) || {}
   const pageSettings: PageSettings = (rootProps.pageSettings as PageSettings) || {}
 
   const background = pageSettings.background || { type: 'theme' }
   const text = pageSettings.text || { typography: 'p1', colorToken: 'text' }
-  const layout = pageSettings.layout || { containerWidth: 'containerWidth', spacing: 'md', alignment: 'left' }
+  const rawLayout = pageSettings.layout
   const customCSS = pageSettings.customCSS || ''
   const customJS = pageSettings.customJS || ''
+
+  const themeTokens = themeConfig?.tokens
+  const themeContainerWidth = themeTokens?.layout?.containerWidth || '1200px'
+  const themeNarrowWidth = themeTokens?.layout?.narrowWidth || '800px'
+  const themeWideWidth = themeTokens?.layout?.wideWidth || '1400px'
+  const themeSpacing = themeTokens?.layout?.pageSpacing || themeTokens?.layout?.spacing || 'md'
+  const themeAlign = themeTokens?.layout?.alignment || themeTokens?.layout?.contentAlignment || 'left'
+
+  const isLegacyDefault = isLegacySystemDefaultLayout(rawLayout)
+  const currentContainerWidth = (!isLegacyDefault && rawLayout?.containerWidth) || 'inherit'
+  const currentSpacing = (!isLegacyDefault && rawLayout?.spacing) || 'inherit'
+  const currentAlignment = (!isLegacyDefault && rawLayout?.alignment) || 'inherit'
+
+  const hasLayoutOverrides = !isLegacyDefault && Boolean(
+    (rawLayout?.containerWidth && rawLayout.containerWidth !== 'inherit') ||
+    (rawLayout?.spacing && rawLayout.spacing !== 'inherit') ||
+    (rawLayout?.alignment && rawLayout.alignment !== 'inherit')
+  )
+
+  const handleResetLayoutToTheme = () => {
+    const updated: PageSettings = {
+      ...pageSettings,
+      layout: undefined,
+    }
+    dispatch({
+      type: 'setData',
+      data: (prev) => ({
+        ...prev,
+        root: {
+          ...prev.root,
+          props: {
+            ...prev.root?.props,
+            pageSettings: updated,
+          },
+        },
+      }),
+    })
+  }
 
   // Typography options discovered from theme config
   const typographyOptions = useMemo(() => {
@@ -377,28 +417,42 @@ export function PageSettingsPanel({ themeConfig, templateName }: PageSettingsPan
           {/* SECTION 3: LAYOUT & SPACING */}
           <Accordion.Item value="layout">
             <Accordion.Control icon={<Layout size={15} color="var(--mantine-color-teal-7, #0e6b66)" />}>
-              <Text fw={600} size="xs">
-                Layout & Spacing
-              </Text>
+              <Group justify="space-between" align="center" style={{ width: '100%' }} pr="xs">
+                <Text fw={600} size="xs">
+                  Layout & Spacing
+                </Text>
+                {hasLayoutOverrides ? (
+                  <Badge size="xs" color="blue" variant="light">
+                    Customized
+                  </Badge>
+                ) : (
+                  <Badge size="xs" color="gray" variant="subtle">
+                    Inheriting
+                  </Badge>
+                )}
+              </Group>
             </Accordion.Control>
             <Accordion.Panel>
               <Stack gap="xs">
                 <Select
                   label="Container Width"
                   size="xs"
-                  value={layout.containerWidth || 'containerWidth'}
-                  onChange={(val) =>
+                  value={currentContainerWidth}
+                  onChange={(val) => {
+                    const newWidth = val || 'inherit'
                     updateSettings({
                       layout: {
-                        ...layout,
-                        containerWidth: val || 'containerWidth',
+                        ...(rawLayout || {}),
+                        containerWidth: newWidth,
+                        isOverride: true,
                       },
                     })
-                  }
+                  }}
                   data={[
-                    { value: 'containerWidth', label: 'Default Container (1200px)' },
-                    { value: 'narrowWidth', label: 'Narrow Container (800px)' },
-                    { value: 'wideWidth', label: 'Wide Container (1400px)' },
+                    { value: 'inherit', label: `Inherit Theme (${themeContainerWidth})` },
+                    { value: 'containerWidth', label: `Standard Container (${themeContainerWidth})` },
+                    { value: 'narrowWidth', label: `Narrow Container (${themeNarrowWidth})` },
+                    { value: 'wideWidth', label: `Wide Container (${themeWideWidth})` },
                     { value: 'full', label: 'Full Width (100%)' },
                   ]}
                 />
@@ -406,22 +460,25 @@ export function PageSettingsPanel({ themeConfig, templateName }: PageSettingsPan
                 <Select
                   label="Spacing Preset"
                   size="xs"
-                  value={layout.spacing || 'md'}
-                  onChange={(val) =>
+                  value={currentSpacing}
+                  onChange={(val) => {
+                    const newSpacing = val || 'inherit'
                     updateSettings({
                       layout: {
-                        ...layout,
-                        spacing: val || 'md',
+                        ...(rawLayout || {}),
+                        spacing: newSpacing,
+                        isOverride: true,
                       },
                     })
-                  }
+                  }}
                   data={[
+                    { value: 'inherit', label: `Inherit Theme (${themeSpacing.toUpperCase()})` },
                     { value: 'none', label: 'None (0px)' },
-                    { value: 'xs', label: 'Extra Small (xs)' },
-                    { value: 'sm', label: 'Small (sm)' },
-                    { value: 'md', label: 'Medium (md)' },
-                    { value: 'lg', label: 'Large (lg)' },
-                    { value: 'xl', label: 'Extra Large (xl)' },
+                    { value: 'xs', label: `Extra Small (${themeTokens?.spacing?.xs || '4px'})` },
+                    { value: 'sm', label: `Small (${themeTokens?.spacing?.sm || '8px'})` },
+                    { value: 'md', label: `Medium (${themeTokens?.spacing?.md || '16px'})` },
+                    { value: 'lg', label: `Large (${themeTokens?.spacing?.lg || '24px'})` },
+                    { value: 'xl', label: `Extra Large (${themeTokens?.spacing?.xl || '40px'})` },
                   ]}
                 />
 
@@ -432,22 +489,38 @@ export function PageSettingsPanel({ themeConfig, templateName }: PageSettingsPan
                   <SegmentedControl
                     size="xs"
                     fullWidth
-                    value={layout.alignment || 'left'}
+                    value={currentAlignment}
                     onChange={(val) =>
                       updateSettings({
                         layout: {
-                          ...layout,
-                          alignment: val as 'left' | 'center' | 'right',
+                          ...(rawLayout || {}),
+                          alignment: val as 'inherit' | 'left' | 'center' | 'right',
+                          isOverride: true,
                         },
                       })
                     }
                     data={[
+                      { label: `Inherit (${themeAlign})`, value: 'inherit' },
                       { label: 'Left', value: 'left' },
                       { label: 'Center', value: 'center' },
                       { label: 'Right', value: 'right' },
                     ]}
                   />
                 </Box>
+
+                {hasLayoutOverrides && (
+                  <Group justify="flex-end" mt="xs">
+                    <Button
+                      size="xs"
+                      variant="subtle"
+                      color="gray"
+                      leftSection={<RotateCcw size={13} />}
+                      onClick={handleResetLayoutToTheme}
+                    >
+                      Reset to Theme
+                    </Button>
+                  </Group>
+                )}
               </Stack>
             </Accordion.Panel>
           </Accordion.Item>

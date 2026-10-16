@@ -18,7 +18,9 @@ export interface AuditSummary {
   crawledPages: number
   passCount: number
   failCount: number
+  confirmedFailCount: number
   warningCount: number
+  inconclusiveCount: number
   notTestedCount: number
   highCount: number
   mediumCount: number
@@ -46,6 +48,7 @@ export interface HttpAuditResult {
   isIndexable: boolean
   isSoft404: boolean
   originMatch: boolean
+  isInconclusiveTimeout?: boolean
   etag: string | null
   cacheControl: string | null
 }
@@ -124,7 +127,10 @@ export interface LinkGraphResult {
   brokenLinks: Array<{ fromUrl: string; targetUrl: string; statusCode?: number; error?: string }>
   redirectingLinks: Array<{ fromUrl: string; targetUrl: string; finalUrl: string; statusCode: number }>
   nonCanonicalLinks: Array<{ fromUrl: string; targetUrl: string; canonicalTarget: string }>
+  inconclusiveTimeoutLinks: Array<{ fromUrl: string; targetUrl: string; retryCount: number; error?: string }>
   orphanUrls: string[]
+  orphanStatus: 'VERIFIED' | 'NOT_VERIFIED'
+  orphanReason?: string
   unreachableInventoryUrls: string[]
 }
 

@@ -1,298 +1,188 @@
 {
-  "timestamp": "2026-10-16T08:55:44.864Z",
+  "timestamp": "2026-10-16T10:01:39.440Z",
   "targetBaseUrl": "https://zyvavu.test",
   "mode": "self",
   "parityStatus": "NOT YET VERIFIED",
   "summary": {
-    "totalAuditedUrls": 10,
-    "crawledPages": 8,
-    "passCount": 13,
-    "failCount": 7,
-    "warningCount": 7,
+    "totalAuditedUrls": 11,
+    "crawledPages": 1,
+    "passCount": 1,
+    "failCount": 11,
+    "confirmedFailCount": 11,
+    "warningCount": 4,
+    "inconclusiveCount": 0,
     "notTestedCount": 0,
-    "highCount": 7,
+    "highCount": 11,
     "mediumCount": 3,
-    "lowCount": 4
+    "lowCount": 1
   },
   "findings": [
     {
-      "id": "CANONICAL_VALID",
-      "category": "http",
-      "severity": "info",
-      "status": "pass",
-      "title": "Canonical URL is valid and self-referential",
-      "description": "Canonical tag correctly points to https://zyvavu.test.",
-      "affectedUrls": [
-        "https://zyvavu.test/"
-      ]
-    },
-    {
-      "id": "SEMANTIC_DESC_SHORT",
-      "category": "semantic",
-      "severity": "low",
-      "status": "warning",
-      "title": "Meta description is short (< 30 chars)",
-      "description": "Meta description is only 23 characters long.",
-      "affectedUrls": [
-        "https://zyvavu.test/"
-      ],
-      "evidence": "\"Tagline from site-admin\""
-    },
-    {
-      "id": "SEMANTIC_H1_MISSING",
-      "category": "semantic",
-      "severity": "high",
-      "status": "fail",
-      "title": "Missing primary <h1> heading",
-      "description": "The page has no <h1> heading rendered in SSR HTML.",
-      "affectedUrls": [
-        "https://zyvavu.test/"
-      ],
-      "recommendation": "Render the page or article title within a single semantic <h1>."
-    },
-    {
-      "id": "SCHEMA_GRAPH_VALID",
-      "category": "structured-data",
-      "severity": "info",
-      "status": "pass",
-      "title": "Schema @graph entities and relationships valid",
-      "description": "Parsed 4 entity node(s) successfully with consistent relationships.",
-      "affectedUrls": [
-        "https://zyvavu.test/"
-      ]
-    },
-    {
-      "id": "CANONICAL_MISSING",
+      "id": "HTTP_SERVER_ERROR",
       "category": "http",
       "severity": "high",
       "status": "fail",
-      "title": "Missing canonical URL link tag",
-      "description": "Published page does not declare a <link rel=\"canonical\"> element.",
+      "title": "HTTP 5xx Server Error (500)",
+      "description": "Server failed to render or respond to request.",
       "affectedUrls": [
-        "https://zyvavu.test/feed"
+        "https://zyvavu.test/"
       ],
-      "recommendation": "Emit <link rel=\"canonical\"> in server metadata."
+      "evidence": "HTTP 500 Internal Server Error",
+      "recommendation": "Check server logs for unhandled runtime exceptions or database connectivity."
     },
     {
-      "id": "SEMANTIC_DESC_MISSING",
-      "category": "semantic",
-      "severity": "medium",
-      "status": "warning",
-      "title": "Missing meta description",
-      "description": "No <meta name=\"description\"> found in SSR HTML.",
-      "affectedUrls": [
-        "https://zyvavu.test/feed"
-      ],
-      "recommendation": "Provide descriptive meta description from excerpt or content snippet."
-    },
-    {
-      "id": "SEMANTIC_H1_MISSING",
-      "category": "semantic",
+      "id": "HTTP_SERVER_ERROR",
+      "category": "http",
       "severity": "high",
       "status": "fail",
-      "title": "Missing primary <h1> heading",
-      "description": "The page has no <h1> heading rendered in SSR HTML.",
-      "affectedUrls": [
-        "https://zyvavu.test/feed"
-      ],
-      "recommendation": "Render the page or article title within a single semantic <h1>."
-    },
-    {
-      "id": "SEMANTIC_MAIN_MISSING",
-      "category": "semantic",
-      "severity": "low",
-      "status": "warning",
-      "title": "Missing semantic <main> landmark",
-      "description": "Page structure does not contain a semantic <main> element.",
-      "affectedUrls": [
-        "https://zyvavu.test/feed"
-      ],
-      "recommendation": "Wrap the primary content area in <main>."
-    },
-    {
-      "id": "CANONICAL_VALID",
-      "category": "http",
-      "severity": "info",
-      "status": "pass",
-      "title": "Canonical URL is valid and self-referential",
-      "description": "Canonical tag correctly points to https://zyvavu.test/gioi-thieu.",
+      "title": "HTTP 5xx Server Error (500)",
+      "description": "Server failed to render or respond to request.",
       "affectedUrls": [
         "https://zyvavu.test/gioi-thieu"
-      ]
+      ],
+      "evidence": "HTTP 500 Internal Server Error",
+      "recommendation": "Check server logs for unhandled runtime exceptions or database connectivity."
     },
     {
-      "id": "SCHEMA_GRAPH_VALID",
-      "category": "structured-data",
-      "severity": "info",
-      "status": "pass",
-      "title": "Schema @graph entities and relationships valid",
-      "description": "Parsed 5 entity node(s) successfully with consistent relationships.",
-      "affectedUrls": [
-        "https://zyvavu.test/gioi-thieu"
-      ]
-    },
-    {
-      "id": "CANONICAL_VALID",
+      "id": "HTTP_SERVER_ERROR",
       "category": "http",
-      "severity": "info",
-      "status": "pass",
-      "title": "Canonical URL is valid and self-referential",
-      "description": "Canonical tag correctly points to https://zyvavu.test/posts/keep-post-9c752682.",
+      "severity": "high",
+      "status": "fail",
+      "title": "HTTP 5xx Server Error (500)",
+      "description": "Server failed to render or respond to request.",
       "affectedUrls": [
-        "https://zyvavu.test/posts/keep-post-9c752682"
-      ]
+        "https://zyvavu.test/to-0e5366b2"
+      ],
+      "evidence": "HTTP 500 Internal Server Error",
+      "recommendation": "Check server logs for unhandled runtime exceptions or database connectivity."
     },
     {
-      "id": "SEMANTIC_DESC_SHORT",
-      "category": "semantic",
-      "severity": "low",
-      "status": "warning",
-      "title": "Meta description is short (< 30 chars)",
-      "description": "Meta description is only 15 characters long.",
+      "id": "HTTP_SERVER_ERROR",
+      "category": "http",
+      "severity": "high",
+      "status": "fail",
+      "title": "HTTP 5xx Server Error (500)",
+      "description": "Server failed to render or respond to request.",
       "affectedUrls": [
         "https://zyvavu.test/posts/keep-post-9c752682"
       ],
-      "evidence": "\"Updated excerpt\""
+      "evidence": "HTTP 500 Internal Server Error",
+      "recommendation": "Check server logs for unhandled runtime exceptions or database connectivity."
     },
     {
-      "id": "SCHEMA_GRAPH_VALID",
-      "category": "structured-data",
-      "severity": "info",
-      "status": "pass",
-      "title": "Schema @graph entities and relationships valid",
-      "description": "Parsed 6 entity node(s) successfully with consistent relationships.",
-      "affectedUrls": [
-        "https://zyvavu.test/posts/keep-post-9c752682"
-      ]
-    },
-    {
-      "id": "CANONICAL_VALID",
+      "id": "HTTP_SERVER_ERROR",
       "category": "http",
-      "severity": "info",
-      "status": "pass",
-      "title": "Canonical URL is valid and self-referential",
-      "description": "Canonical tag correctly points to https://zyvavu.test/posts/renamed-slug-9c752682.",
-      "affectedUrls": [
-        "https://zyvavu.test/posts/renamed-slug-9c752682"
-      ]
-    },
-    {
-      "id": "SEMANTIC_DESC_SHORT",
-      "category": "semantic",
-      "severity": "low",
-      "status": "warning",
-      "title": "Meta description is short (< 30 chars)",
-      "description": "Meta description is only 23 characters long.",
+      "severity": "high",
+      "status": "fail",
+      "title": "HTTP 5xx Server Error (500)",
+      "description": "Server failed to render or respond to request.",
       "affectedUrls": [
         "https://zyvavu.test/posts/renamed-slug-9c752682"
       ],
-      "evidence": "\"Tagline from site-admin\""
+      "evidence": "HTTP 500 Internal Server Error",
+      "recommendation": "Check server logs for unhandled runtime exceptions or database connectivity."
     },
     {
-      "id": "SCHEMA_GRAPH_VALID",
-      "category": "structured-data",
-      "severity": "info",
-      "status": "pass",
-      "title": "Schema @graph entities and relationships valid",
-      "description": "Parsed 6 entity node(s) successfully with consistent relationships.",
-      "affectedUrls": [
-        "https://zyvavu.test/posts/renamed-slug-9c752682"
-      ]
-    },
-    {
-      "id": "CANONICAL_VALID",
+      "id": "HTTP_SERVER_ERROR",
       "category": "http",
-      "severity": "info",
-      "status": "pass",
-      "title": "Canonical URL is valid and self-referential",
-      "description": "Canonical tag correctly points to https://zyvavu.test/posts/bai-khong-prefetch.",
+      "severity": "high",
+      "status": "fail",
+      "title": "HTTP 5xx Server Error (500)",
+      "description": "Server failed to render or respond to request.",
       "affectedUrls": [
         "https://zyvavu.test/posts/bai-khong-prefetch"
-      ]
+      ],
+      "evidence": "HTTP 500 Internal Server Error",
+      "recommendation": "Check server logs for unhandled runtime exceptions or database connectivity."
     },
     {
-      "id": "SCHEMA_GRAPH_VALID",
-      "category": "structured-data",
-      "severity": "info",
-      "status": "pass",
-      "title": "Schema @graph entities and relationships valid",
-      "description": "Parsed 6 entity node(s) successfully with consistent relationships.",
-      "affectedUrls": [
-        "https://zyvavu.test/posts/bai-khong-prefetch"
-      ]
-    },
-    {
-      "id": "HTTP_NOT_FOUND",
+      "id": "HTTP_SERVER_ERROR",
       "category": "http",
       "severity": "high",
       "status": "fail",
-      "title": "HTTP 404 Not Found for published route",
-      "description": "Published or expected URL returned HTTP 404.",
+      "title": "HTTP 5xx Server Error (500)",
+      "description": "Server failed to render or respond to request.",
       "affectedUrls": [
-        "https://zyvavu.test/category/cong-nghe"
+        "https://zyvavu.test/category/test"
       ],
-      "evidence": "HTTP 404 at https://zyvavu.test/category/cong-nghe",
-      "recommendation": "Verify URL Registry entry or route mapping for this resource."
+      "evidence": "HTTP 500 Internal Server Error",
+      "recommendation": "Check server logs for unhandled runtime exceptions or database connectivity."
     },
     {
-      "id": "HTTP_NOT_FOUND",
+      "id": "HTTP_SERVER_ERROR",
       "category": "http",
       "severity": "high",
       "status": "fail",
-      "title": "HTTP 404 Not Found for published route",
-      "description": "Published or expected URL returned HTTP 404.",
+      "title": "HTTP 5xx Server Error (500)",
+      "description": "Server failed to render or respond to request.",
       "affectedUrls": [
-        "https://zyvavu.test/tag/typescript"
+        "https://zyvavu.test/tag/fish"
       ],
-      "evidence": "HTTP 404 at https://zyvavu.test/tag/typescript",
-      "recommendation": "Verify URL Registry entry or route mapping for this resource."
+      "evidence": "HTTP 500 Internal Server Error",
+      "recommendation": "Check server logs for unhandled runtime exceptions or database connectivity."
     },
     {
-      "id": "HTTP_NOT_FOUND",
+      "id": "HTTP_SERVER_ERROR",
       "category": "http",
       "severity": "high",
       "status": "fail",
-      "title": "HTTP 404 Not Found for published route",
-      "description": "Published or expected URL returned HTTP 404.",
+      "title": "HTTP 5xx Server Error (500)",
+      "description": "Server failed to render or respond to request.",
       "affectedUrls": [
-        "https://zyvavu.test/old-gioi-thieu"
+        "https://zyvavu.test/from-0e5366b2"
       ],
-      "evidence": "HTTP 404 at https://zyvavu.test/old-gioi-thieu",
-      "recommendation": "Verify URL Registry entry or route mapping for this resource."
+      "evidence": "HTTP 500 Internal Server Error",
+      "recommendation": "Check server logs for unhandled runtime exceptions or database connectivity."
     },
     {
-      "id": "HTTP_404_VERIFIED",
+      "id": "HTTP_SERVER_ERROR",
       "category": "http",
-      "severity": "info",
-      "status": "pass",
-      "title": "Nonexistent URL returns clean 404 status",
-      "description": "The requested nonexistent URL properly returned HTTP 404 Not Found without leaking soft-404.",
+      "severity": "high",
+      "status": "fail",
+      "title": "HTTP 5xx Server Error (500)",
+      "description": "Server failed to render or respond to request.",
+      "affectedUrls": [
+        "https://zyvavu.test/posts/orig-slug-9c752682"
+      ],
+      "evidence": "HTTP 500 Internal Server Error",
+      "recommendation": "Check server logs for unhandled runtime exceptions or database connectivity."
+    },
+    {
+      "id": "HTTP_404_LEAK",
+      "category": "http",
+      "severity": "high",
+      "status": "fail",
+      "title": "Nonexistent URL did not return 404",
+      "description": "Expected 404 for nonexistent route, but received HTTP 500.",
       "affectedUrls": [
         "https://zyvavu.test/non-existent-page-404-audit-test"
-      ]
+      ],
+      "evidence": "HTTP 500",
+      "recommendation": "Ensure missing content triggers notFound() and returns HTTP 404 status."
     },
     {
-      "id": "DISCOVERY_RSS_LINK_FOUND",
+      "id": "DISCOVERY_RSS_LINK_MISSING",
       "category": "discovery",
-      "severity": "info",
-      "status": "pass",
-      "title": "RSS feed auto-discovery link present in head",
-      "description": "Discovered <link rel=\"alternate\" type=\"application/rss+xml\" href=\"https://zyvavu.test/feed/\">.",
+      "severity": "low",
+      "status": "warning",
+      "title": "RSS feed auto-discovery link missing in head",
+      "description": "Homepage does not expose a <link rel=\"alternate\" type=\"application/rss+xml\"> tag.",
       "affectedUrls": [
         "https://zyvavu.test"
-      ]
+      ],
+      "recommendation": "Add RSS auto-discovery link tag in root layout metadata."
     },
     {
-      "id": "DISCOVERY_RSS_FEED_VALID",
+      "id": "DISCOVERY_RSS_FEED_MISSING",
       "category": "discovery",
-      "severity": "info",
-      "status": "pass",
-      "title": "Valid RSS feed active at /feed",
-      "description": "RSS feed returns 200 OK with 4 items and valid XML structure.",
+      "severity": "medium",
+      "status": "warning",
+      "title": "RSS feed not found at /feed",
+      "description": "Request to https://zyvavu.test/feed returned HTTP 500.",
       "affectedUrls": [
         "https://zyvavu.test/feed"
       ],
-      "evidence": "Content-Type: application/rss+xml; charset=utf-8, Items: 4"
+      "recommendation": "Implement an RSS 2.0 feed route at /feed."
     },
     {
       "id": "DISCOVERY_ROBOTS_TXT_MISSING",
@@ -300,7 +190,7 @@
       "severity": "medium",
       "status": "warning",
       "title": "robots.txt is missing (404)",
-      "description": "Request to https://zyvavu.test/robots.txt returned HTTP 404. Crawlers expect a standard robots.txt.",
+      "description": "Request to https://zyvavu.test/robots.txt returned HTTP 500. Crawlers expect a standard robots.txt.",
       "affectedUrls": [
         "https://zyvavu.test/robots.txt"
       ],
@@ -312,24 +202,22 @@
       "severity": "medium",
       "status": "warning",
       "title": "XML Sitemap missing (not yet implemented)",
-      "description": "Request to https://zyvavu.test/sitemap.xml returned HTTP 404. Zyvavu does not currently expose /sitemap.xml.",
+      "description": "Request to https://zyvavu.test/sitemap.xml returned HTTP 500. Zyvavu does not currently expose /sitemap.xml.",
       "affectedUrls": [
         "https://zyvavu.test/sitemap.xml"
       ],
       "recommendation": "Implement dynamic sitemap.xml generation for published posts, pages, categories, and tags."
     },
     {
-      "id": "LINK_BROKEN_INTERNAL",
+      "id": "LINK_GRAPH_HEALTHY",
       "category": "link-graph",
-      "severity": "high",
-      "status": "fail",
-      "title": "Broken internal link(s) discovered in SSR HTML",
-      "description": "Discovered 1 internal link(s) returning 4xx or 5xx status.",
+      "severity": "info",
+      "status": "pass",
+      "title": "No broken or redirecting internal links found",
+      "description": "Crawled 1 pages without detecting broken internal links.",
       "affectedUrls": [
-        "https://zyvavu.test/about"
-      ],
-      "evidence": "https://zyvavu.test/ -> https://zyvavu.test/about (HTTP 404)",
-      "recommendation": "Update or remove broken <a href> links from templates or menus."
+        "https://zyvavu.test/"
+      ]
     }
   ],
   "pages": [
@@ -337,403 +225,36 @@
       "url": "https://zyvavu.test/",
       "http": {
         "url": "https://zyvavu.test/",
-        "statusCode": 200,
-        "statusText": "OK",
+        "statusCode": 500,
+        "statusText": "Internal Server Error",
         "finalUrl": "https://zyvavu.test/",
         "redirectHops": [],
         "isRedirectLoop": false,
         "contentType": "text/html; charset=utf-8",
-        "canonicalTag": "https://zyvavu.test",
-        "canonicalTagsCount": 1,
-        "isCanonicalMatching": true,
-        "robotsMeta": "index, follow",
-        "xRobotsTag": null,
-        "isIndexable": true,
-        "isSoft404": false,
-        "originMatch": true,
-        "etag": null,
-        "cacheControl": "no-cache, must-revalidate"
-      },
-      "semantic": {
-        "url": "https://zyvavu.test/",
-        "title": "Zyvavu 0873aaba — Tagline from site-admin",
-        "titleLength": 41,
-        "metaDescription": "Tagline from site-admin",
-        "descriptionLength": 23,
-        "hasMainTag": true,
-        "hasArticleTag": true,
-        "hasNavTag": true,
-        "hasHeaderTag": true,
-        "hasFooterTag": true,
-        "h1List": [],
-        "headings": [
-          {
-            "tag": "h2",
-            "text": "Nền tảng nội dung kiến trúc hiện đại",
-            "level": 2
-          },
-          {
-            "tag": "h2",
-            "text": "Hiệu suất tối ưu",
-            "level": 2
-          },
-          {
-            "tag": "h2",
-            "text": "Tách bạch kiến trúc",
-            "level": 2
-          },
-          {
-            "tag": "h2",
-            "text": "Tin Tức & Hoạt Động Doanh Nghiệp",
-            "level": 2
-          },
-          {
-            "tag": "h3",
-            "text": "Original Slug Post 9c752682",
-            "level": 3
-          },
-          {
-            "tag": "h3",
-            "text": "Keep Post 9c752682",
-            "level": 3
-          },
-          {
-            "tag": "h3",
-            "text": "Legacy Post Updated 9c752682",
-            "level": 3
-          },
-          {
-            "tag": "h3",
-            "text": "Bài không prefetch",
-            "level": 3
-          },
-          {
-            "tag": "h2",
-            "text": "Liên Kết Nhanh",
-            "level": 2
-          },
-          {
-            "tag": "h2",
-            "text": "Thông Tin Liên Hệ",
-            "level": 2
-          }
-        ],
-        "headingHierarchyErrors": [],
-        "internalLinks": [
-          {
-            "href": "https://zyvavu.test/",
-            "text": ""
-          },
-          {
-            "href": "https://zyvavu.test/posts/bai-khong-prefetch",
-            "text": "Bài không prefetch"
-          },
-          {
-            "href": "https://zyvavu.test/about",
-            "text": "Liên hệ ngay"
-          },
-          {
-            "href": "https://zyvavu.test/about",
-            "text": "Khám phá giải pháp"
-          },
-          {
-            "href": "https://zyvavu.test/posts/renamed-slug-9c752682",
-            "text": "🖼️ Original Slug Post 9c752"
-          },
-          {
-            "href": "https://zyvavu.test/posts/renamed-slug-9c752682",
-            "text": "Original Slug Post 9c752682"
-          },
-          {
-            "href": "https://zyvavu.test/posts/renamed-slug-9c752682",
-            "text": "Xem chi tiết →"
-          },
-          {
-            "href": "https://zyvavu.test/posts/keep-post-9c752682",
-            "text": "🖼️ Keep Post 9c752682"
-          },
-          {
-            "href": "https://zyvavu.test/posts/keep-post-9c752682",
-            "text": "Keep Post 9c752682"
-          },
-          {
-            "href": "https://zyvavu.test/posts/keep-post-9c752682",
-            "text": "Xem chi tiết →"
-          },
-          {
-            "href": "https://zyvavu.test/posts/legacy-post-9c752682",
-            "text": "🖼️ Legacy Post Updated 9c75"
-          },
-          {
-            "href": "https://zyvavu.test/posts/legacy-post-9c752682",
-            "text": "Legacy Post Updated 9c752682"
-          },
-          {
-            "href": "https://zyvavu.test/posts/legacy-post-9c752682",
-            "text": "Xem chi tiết →"
-          },
-          {
-            "href": "https://zyvavu.test/posts/bai-khong-prefetch",
-            "text": "🖼️ Bài không prefetch"
-          },
-          {
-            "href": "https://zyvavu.test/posts/bai-khong-prefetch",
-            "text": "Bài không prefetch"
-          },
-          {
-            "href": "https://zyvavu.test/posts/bai-khong-prefetch",
-            "text": "Xem chi tiết →"
-          },
-          {
-            "href": "https://zyvavu.test/",
-            "text": ""
-          },
-          {
-            "href": "https://zyvavu.test/",
-            "text": "Zyvavu 0873aaba"
-          }
-        ],
-        "externalLinks": [],
-        "images": [
-          {
-            "src": "/api/media/file/logo.png",
-            "alt": "logo",
-            "hasAlt": true
-          },
-          {
-            "src": "/api/media/file/logo.png",
-            "alt": "logo",
-            "hasAlt": true
-          }
-        ],
-        "missingAltCount": 0,
-        "pagination": {
-          "hasPagination": false
-        },
-        "approximateWordCount": 1289
-      },
-      "structuredData": {
-        "url": "https://zyvavu.test/",
-        "scriptCount": 1,
-        "validJsonCount": 1,
-        "syntaxErrors": [],
-        "graphNodes": [
-          {
-            "@type": "Organization",
-            "@id": "https://zyvavu.test/#organization",
-            "name": "Zyvavu 0873aaba",
-            "url": "https://zyvavu.test/",
-            "logo": {
-              "@id": "https://zyvavu.test/#logo"
-            },
-            "image": {
-              "@id": "https://zyvavu.test/#logo"
-            }
-          },
-          {
-            "@type": "ImageObject",
-            "@id": "https://zyvavu.test/#logo",
-            "url": "https://zyvavu.test/api/media/file/logo.png",
-            "contentUrl": "https://zyvavu.test/api/media/file/logo.png",
-            "inLanguage": "vi",
-            "width": 1254,
-            "height": 1254,
-            "caption": "logo",
-            "encodingFormat": "image/png"
-          },
-          {
-            "@type": "WebSite",
-            "@id": "https://zyvavu.test/#website",
-            "url": "https://zyvavu.test/",
-            "name": "Zyvavu 0873aaba",
-            "inLanguage": "vi",
-            "publisher": {
-              "@id": "https://zyvavu.test/#organization"
-            },
-            "description": "Tagline from site-admin"
-          },
-          {
-            "@type": "CollectionPage",
-            "@id": "https://zyvavu.test/#webpage",
-            "url": "https://zyvavu.test/",
-            "name": "Zyvavu 0873aaba — Tagline from site-admin",
-            "isPartOf": {
-              "@id": "https://zyvavu.test/#website"
-            },
-            "inLanguage": "vi",
-            "description": "Tagline from site-admin",
-            "about": {
-              "@id": "https://zyvavu.test/#organization"
-            }
-          }
-        ],
-        "duplicateIds": [],
-        "hasOrganization": true,
-        "hasWebSite": true,
-        "hasWebPage": false,
-        "hasArticle": false,
-        "hasBreadcrumbList": false,
-        "organizationId": "https://zyvavu.test/#organization",
-        "webSiteId": "https://zyvavu.test/#website",
-        "relationshipErrors": [],
-        "dateValidationErrors": []
-      },
-      "findings": [
-        {
-          "id": "CANONICAL_VALID",
-          "category": "http",
-          "severity": "info",
-          "status": "pass",
-          "title": "Canonical URL is valid and self-referential",
-          "description": "Canonical tag correctly points to https://zyvavu.test.",
-          "affectedUrls": [
-            "https://zyvavu.test/"
-          ]
-        },
-        {
-          "id": "SEMANTIC_DESC_SHORT",
-          "category": "semantic",
-          "severity": "low",
-          "status": "warning",
-          "title": "Meta description is short (< 30 chars)",
-          "description": "Meta description is only 23 characters long.",
-          "affectedUrls": [
-            "https://zyvavu.test/"
-          ],
-          "evidence": "\"Tagline from site-admin\""
-        },
-        {
-          "id": "SEMANTIC_H1_MISSING",
-          "category": "semantic",
-          "severity": "high",
-          "status": "fail",
-          "title": "Missing primary <h1> heading",
-          "description": "The page has no <h1> heading rendered in SSR HTML.",
-          "affectedUrls": [
-            "https://zyvavu.test/"
-          ],
-          "recommendation": "Render the page or article title within a single semantic <h1>."
-        },
-        {
-          "id": "SCHEMA_GRAPH_VALID",
-          "category": "structured-data",
-          "severity": "info",
-          "status": "pass",
-          "title": "Schema @graph entities and relationships valid",
-          "description": "Parsed 4 entity node(s) successfully with consistent relationships.",
-          "affectedUrls": [
-            "https://zyvavu.test/"
-          ]
-        }
-      ]
-    },
-    {
-      "url": "https://zyvavu.test/feed",
-      "http": {
-        "url": "https://zyvavu.test/feed",
-        "statusCode": 200,
-        "statusText": "OK",
-        "finalUrl": "https://zyvavu.test/feed",
-        "redirectHops": [],
-        "isRedirectLoop": false,
-        "contentType": "application/rss+xml; charset=utf-8",
         "canonicalTag": null,
         "canonicalTagsCount": 0,
         "isCanonicalMatching": true,
         "robotsMeta": null,
         "xRobotsTag": null,
-        "isIndexable": true,
+        "isIndexable": false,
         "isSoft404": false,
         "originMatch": true,
-        "etag": "\"12d2487dff6b5b7877b02a672e78ae22\"",
-        "cacheControl": "public, max-age=0, must-revalidate"
-      },
-      "semantic": {
-        "url": "https://zyvavu.test/feed",
-        "title": "Zyvavu 0873aaba",
-        "titleLength": 15,
-        "metaDescription": null,
-        "descriptionLength": 0,
-        "hasMainTag": false,
-        "hasArticleTag": false,
-        "hasNavTag": false,
-        "hasHeaderTag": false,
-        "hasFooterTag": false,
-        "h1List": [],
-        "headings": [],
-        "headingHierarchyErrors": [],
-        "internalLinks": [],
-        "externalLinks": [],
-        "images": [],
-        "missingAltCount": 0,
-        "pagination": {
-          "hasPagination": false
-        },
-        "approximateWordCount": 69
-      },
-      "structuredData": {
-        "url": "https://zyvavu.test/feed",
-        "scriptCount": 0,
-        "validJsonCount": 0,
-        "syntaxErrors": [],
-        "graphNodes": [],
-        "duplicateIds": [],
-        "hasOrganization": false,
-        "hasWebSite": false,
-        "hasWebPage": false,
-        "hasArticle": false,
-        "hasBreadcrumbList": false,
-        "relationshipErrors": [],
-        "dateValidationErrors": []
+        "etag": "\"ciw57e0jyw686\"",
+        "cacheControl": "no-cache, must-revalidate"
       },
       "findings": [
         {
-          "id": "CANONICAL_MISSING",
+          "id": "HTTP_SERVER_ERROR",
           "category": "http",
           "severity": "high",
           "status": "fail",
-          "title": "Missing canonical URL link tag",
-          "description": "Published page does not declare a <link rel=\"canonical\"> element.",
+          "title": "HTTP 5xx Server Error (500)",
+          "description": "Server failed to render or respond to request.",
           "affectedUrls": [
-            "https://zyvavu.test/feed"
+            "https://zyvavu.test/"
           ],
-          "recommendation": "Emit <link rel=\"canonical\"> in server metadata."
-        },
-        {
-          "id": "SEMANTIC_DESC_MISSING",
-          "category": "semantic",
-          "severity": "medium",
-          "status": "warning",
-          "title": "Missing meta description",
-          "description": "No <meta name=\"description\"> found in SSR HTML.",
-          "affectedUrls": [
-            "https://zyvavu.test/feed"
-          ],
-          "recommendation": "Provide descriptive meta description from excerpt or content snippet."
-        },
-        {
-          "id": "SEMANTIC_H1_MISSING",
-          "category": "semantic",
-          "severity": "high",
-          "status": "fail",
-          "title": "Missing primary <h1> heading",
-          "description": "The page has no <h1> heading rendered in SSR HTML.",
-          "affectedUrls": [
-            "https://zyvavu.test/feed"
-          ],
-          "recommendation": "Render the page or article title within a single semantic <h1>."
-        },
-        {
-          "id": "SEMANTIC_MAIN_MISSING",
-          "category": "semantic",
-          "severity": "low",
-          "status": "warning",
-          "title": "Missing semantic <main> landmark",
-          "description": "Page structure does not contain a semantic <main> element.",
-          "affectedUrls": [
-            "https://zyvavu.test/feed"
-          ],
-          "recommendation": "Wrap the primary content area in <main>."
+          "evidence": "HTTP 500 Internal Server Error",
+          "recommendation": "Check server logs for unhandled runtime exceptions or database connectivity."
         }
       ]
     },
@@ -741,206 +262,73 @@
       "url": "https://zyvavu.test/gioi-thieu",
       "http": {
         "url": "https://zyvavu.test/gioi-thieu",
-        "statusCode": 200,
-        "statusText": "OK",
+        "statusCode": 500,
+        "statusText": "Internal Server Error",
         "finalUrl": "https://zyvavu.test/gioi-thieu",
         "redirectHops": [],
         "isRedirectLoop": false,
         "contentType": "text/html; charset=utf-8",
-        "canonicalTag": "https://zyvavu.test/gioi-thieu",
-        "canonicalTagsCount": 1,
+        "canonicalTag": null,
+        "canonicalTagsCount": 0,
         "isCanonicalMatching": true,
-        "robotsMeta": "index, follow",
+        "robotsMeta": null,
         "xRobotsTag": null,
-        "isIndexable": true,
+        "isIndexable": false,
         "isSoft404": false,
         "originMatch": true,
-        "etag": null,
+        "etag": "\"ciw57e0jyw686\"",
         "cacheControl": "no-cache, must-revalidate"
-      },
-      "semantic": {
-        "url": "https://zyvavu.test/gioi-thieu",
-        "title": "Giới thiệu — Zyvavu 0873aaba",
-        "titleLength": 28,
-        "metaDescription": "Trang thử nghiệm đã được sửa và xuất bản.",
-        "descriptionLength": 41,
-        "hasMainTag": true,
-        "hasArticleTag": false,
-        "hasNavTag": true,
-        "hasHeaderTag": true,
-        "hasFooterTag": true,
-        "h1List": [
-          "Giới thiệu"
-        ],
-        "headings": [
-          {
-            "tag": "h1",
-            "text": "Giới thiệu",
-            "level": 1
-          },
-          {
-            "tag": "h2",
-            "text": "Liên Kết Nhanh",
-            "level": 2
-          },
-          {
-            "tag": "h2",
-            "text": "Thông Tin Liên Hệ",
-            "level": 2
-          }
-        ],
-        "headingHierarchyErrors": [],
-        "internalLinks": [
-          {
-            "href": "https://zyvavu.test/",
-            "text": ""
-          },
-          {
-            "href": "https://zyvavu.test/posts/bai-khong-prefetch",
-            "text": "Bài không prefetch"
-          },
-          {
-            "href": "https://zyvavu.test/about",
-            "text": "Liên hệ ngay"
-          },
-          {
-            "href": "https://zyvavu.test/",
-            "text": ""
-          },
-          {
-            "href": "https://zyvavu.test/",
-            "text": "Zyvavu 0873aaba"
-          }
-        ],
-        "externalLinks": [],
-        "images": [
-          {
-            "src": "/api/media/file/logo.png",
-            "alt": "logo",
-            "hasAlt": true
-          },
-          {
-            "src": "/api/media/file/logo.png",
-            "alt": "logo",
-            "hasAlt": true
-          }
-        ],
-        "missingAltCount": 0,
-        "pagination": {
-          "hasPagination": false
-        },
-        "approximateWordCount": 869
-      },
-      "structuredData": {
-        "url": "https://zyvavu.test/gioi-thieu",
-        "scriptCount": 1,
-        "validJsonCount": 1,
-        "syntaxErrors": [],
-        "graphNodes": [
-          {
-            "@type": "Organization",
-            "@id": "https://zyvavu.test/#organization",
-            "name": "Zyvavu 0873aaba",
-            "url": "https://zyvavu.test/",
-            "logo": {
-              "@id": "https://zyvavu.test/#logo"
-            },
-            "image": {
-              "@id": "https://zyvavu.test/#logo"
-            }
-          },
-          {
-            "@type": "ImageObject",
-            "@id": "https://zyvavu.test/#logo",
-            "url": "https://zyvavu.test/api/media/file/logo.png",
-            "contentUrl": "https://zyvavu.test/api/media/file/logo.png",
-            "inLanguage": "vi",
-            "width": 1254,
-            "height": 1254,
-            "caption": "logo",
-            "encodingFormat": "image/png"
-          },
-          {
-            "@type": "WebSite",
-            "@id": "https://zyvavu.test/#website",
-            "url": "https://zyvavu.test/",
-            "name": "Zyvavu 0873aaba",
-            "inLanguage": "vi",
-            "publisher": {
-              "@id": "https://zyvavu.test/#organization"
-            },
-            "description": "Tagline from site-admin"
-          },
-          {
-            "@type": "WebPage",
-            "@id": "https://zyvavu.test/gioi-thieu#webpage",
-            "url": "https://zyvavu.test/gioi-thieu",
-            "name": "Giới thiệu — Zyvavu 0873aaba",
-            "isPartOf": {
-              "@id": "https://zyvavu.test/#website"
-            },
-            "inLanguage": "vi",
-            "description": "Trang thử nghiệm đã được sửa và xuất bản.",
-            "datePublished": "2026-10-13T05:39:07.591Z",
-            "dateModified": "2026-10-13T05:42:12.880Z",
-            "breadcrumb": {
-              "@id": "https://zyvavu.test/gioi-thieu#breadcrumb"
-            }
-          },
-          {
-            "@type": "BreadcrumbList",
-            "@id": "https://zyvavu.test/gioi-thieu#breadcrumb",
-            "itemListElement": [
-              {
-                "@type": "ListItem",
-                "position": 1,
-                "name": "Zyvavu 0873aaba",
-                "item": "https://zyvavu.test/"
-              },
-              {
-                "@type": "ListItem",
-                "position": 2,
-                "name": "Giới thiệu",
-                "item": "https://zyvavu.test/gioi-thieu"
-              }
-            ]
-          }
-        ],
-        "duplicateIds": [],
-        "hasOrganization": true,
-        "hasWebSite": true,
-        "hasWebPage": true,
-        "hasArticle": false,
-        "hasBreadcrumbList": true,
-        "organizationId": "https://zyvavu.test/#organization",
-        "webSiteId": "https://zyvavu.test/#website",
-        "webPageId": "https://zyvavu.test/gioi-thieu#webpage",
-        "breadcrumbListId": "https://zyvavu.test/gioi-thieu#breadcrumb",
-        "relationshipErrors": [],
-        "dateValidationErrors": []
       },
       "findings": [
         {
-          "id": "CANONICAL_VALID",
+          "id": "HTTP_SERVER_ERROR",
           "category": "http",
-          "severity": "info",
-          "status": "pass",
-          "title": "Canonical URL is valid and self-referential",
-          "description": "Canonical tag correctly points to https://zyvavu.test/gioi-thieu.",
+          "severity": "high",
+          "status": "fail",
+          "title": "HTTP 5xx Server Error (500)",
+          "description": "Server failed to render or respond to request.",
           "affectedUrls": [
             "https://zyvavu.test/gioi-thieu"
-          ]
-        },
+          ],
+          "evidence": "HTTP 500 Internal Server Error",
+          "recommendation": "Check server logs for unhandled runtime exceptions or database connectivity."
+        }
+      ]
+    },
+    {
+      "url": "https://zyvavu.test/to-0e5366b2",
+      "http": {
+        "url": "https://zyvavu.test/to-0e5366b2",
+        "statusCode": 500,
+        "statusText": "Internal Server Error",
+        "finalUrl": "https://zyvavu.test/to-0e5366b2",
+        "redirectHops": [],
+        "isRedirectLoop": false,
+        "contentType": "text/html; charset=utf-8",
+        "canonicalTag": null,
+        "canonicalTagsCount": 0,
+        "isCanonicalMatching": true,
+        "robotsMeta": null,
+        "xRobotsTag": null,
+        "isIndexable": false,
+        "isSoft404": false,
+        "originMatch": true,
+        "etag": "\"ciw57e0jyw686\"",
+        "cacheControl": "no-cache, must-revalidate"
+      },
+      "findings": [
         {
-          "id": "SCHEMA_GRAPH_VALID",
-          "category": "structured-data",
-          "severity": "info",
-          "status": "pass",
-          "title": "Schema @graph entities and relationships valid",
-          "description": "Parsed 5 entity node(s) successfully with consistent relationships.",
+          "id": "HTTP_SERVER_ERROR",
+          "category": "http",
+          "severity": "high",
+          "status": "fail",
+          "title": "HTTP 5xx Server Error (500)",
+          "description": "Server failed to render or respond to request.",
           "affectedUrls": [
-            "https://zyvavu.test/gioi-thieu"
-          ]
+            "https://zyvavu.test/to-0e5366b2"
+          ],
+          "evidence": "HTTP 500 Internal Server Error",
+          "recommendation": "Check server logs for unhandled runtime exceptions or database connectivity."
         }
       ]
     },
@@ -948,240 +336,36 @@
       "url": "https://zyvavu.test/posts/keep-post-9c752682",
       "http": {
         "url": "https://zyvavu.test/posts/keep-post-9c752682",
-        "statusCode": 200,
-        "statusText": "OK",
+        "statusCode": 500,
+        "statusText": "Internal Server Error",
         "finalUrl": "https://zyvavu.test/posts/keep-post-9c752682",
         "redirectHops": [],
         "isRedirectLoop": false,
         "contentType": "text/html; charset=utf-8",
-        "canonicalTag": "https://zyvavu.test/posts/keep-post-9c752682",
-        "canonicalTagsCount": 1,
+        "canonicalTag": null,
+        "canonicalTagsCount": 0,
         "isCanonicalMatching": true,
-        "robotsMeta": "index, follow",
+        "robotsMeta": null,
         "xRobotsTag": null,
-        "isIndexable": true,
+        "isIndexable": false,
         "isSoft404": false,
         "originMatch": true,
-        "etag": null,
+        "etag": "\"ciw57e0jyw686\"",
         "cacheControl": "no-cache, must-revalidate"
-      },
-      "semantic": {
-        "url": "https://zyvavu.test/posts/keep-post-9c752682",
-        "title": "Keep Post 9c752682 — Zyvavu 0873aaba",
-        "titleLength": 36,
-        "metaDescription": "Updated excerpt",
-        "descriptionLength": 15,
-        "hasMainTag": true,
-        "hasArticleTag": false,
-        "hasNavTag": true,
-        "hasHeaderTag": true,
-        "hasFooterTag": true,
-        "h1List": [
-          "Keep Post 9c752682"
-        ],
-        "headings": [
-          {
-            "tag": "h1",
-            "text": "Keep Post 9c752682",
-            "level": 1
-          },
-          {
-            "tag": "h2",
-            "text": "Liên Kết Nhanh",
-            "level": 2
-          },
-          {
-            "tag": "h2",
-            "text": "Thông Tin Liên Hệ",
-            "level": 2
-          }
-        ],
-        "headingHierarchyErrors": [],
-        "internalLinks": [
-          {
-            "href": "https://zyvavu.test/",
-            "text": ""
-          },
-          {
-            "href": "https://zyvavu.test/posts/bai-khong-prefetch",
-            "text": "Bài không prefetch"
-          },
-          {
-            "href": "https://zyvavu.test/about",
-            "text": "Liên hệ ngay"
-          },
-          {
-            "href": "https://zyvavu.test/",
-            "text": ""
-          },
-          {
-            "href": "https://zyvavu.test/",
-            "text": "Zyvavu 0873aaba"
-          }
-        ],
-        "externalLinks": [],
-        "images": [
-          {
-            "src": "/api/media/file/logo.png",
-            "alt": "logo",
-            "hasAlt": true
-          },
-          {
-            "src": "/api/media/file/logo.png",
-            "alt": "logo",
-            "hasAlt": true
-          }
-        ],
-        "missingAltCount": 0,
-        "pagination": {
-          "hasPagination": false
-        },
-        "approximateWordCount": 847
-      },
-      "structuredData": {
-        "url": "https://zyvavu.test/posts/keep-post-9c752682",
-        "scriptCount": 1,
-        "validJsonCount": 1,
-        "syntaxErrors": [],
-        "graphNodes": [
-          {
-            "@type": "Organization",
-            "@id": "https://zyvavu.test/#organization",
-            "name": "Zyvavu 0873aaba",
-            "url": "https://zyvavu.test/",
-            "logo": {
-              "@id": "https://zyvavu.test/#logo"
-            },
-            "image": {
-              "@id": "https://zyvavu.test/#logo"
-            }
-          },
-          {
-            "@type": "ImageObject",
-            "@id": "https://zyvavu.test/#logo",
-            "url": "https://zyvavu.test/api/media/file/logo.png",
-            "contentUrl": "https://zyvavu.test/api/media/file/logo.png",
-            "inLanguage": "vi",
-            "width": 1254,
-            "height": 1254,
-            "caption": "logo",
-            "encodingFormat": "image/png"
-          },
-          {
-            "@type": "WebSite",
-            "@id": "https://zyvavu.test/#website",
-            "url": "https://zyvavu.test/",
-            "name": "Zyvavu 0873aaba",
-            "inLanguage": "vi",
-            "publisher": {
-              "@id": "https://zyvavu.test/#organization"
-            },
-            "description": "Tagline from site-admin"
-          },
-          {
-            "@type": "WebPage",
-            "@id": "https://zyvavu.test/posts/keep-post-9c752682#webpage",
-            "url": "https://zyvavu.test/posts/keep-post-9c752682",
-            "name": "Keep Post 9c752682 — Zyvavu 0873aaba",
-            "isPartOf": {
-              "@id": "https://zyvavu.test/#website"
-            },
-            "inLanguage": "vi",
-            "description": "Updated excerpt",
-            "datePublished": "2026-10-15T08:33:10.643Z",
-            "dateModified": "2026-10-15T08:33:10.699Z",
-            "breadcrumb": {
-              "@id": "https://zyvavu.test/posts/keep-post-9c752682#breadcrumb"
-            }
-          },
-          {
-            "@type": "BreadcrumbList",
-            "@id": "https://zyvavu.test/posts/keep-post-9c752682#breadcrumb",
-            "itemListElement": [
-              {
-                "@type": "ListItem",
-                "position": 1,
-                "name": "Zyvavu 0873aaba",
-                "item": "https://zyvavu.test/"
-              },
-              {
-                "@type": "ListItem",
-                "position": 2,
-                "name": "Keep Post 9c752682",
-                "item": "https://zyvavu.test/posts/keep-post-9c752682"
-              }
-            ]
-          },
-          {
-            "@type": "BlogPosting",
-            "@id": "https://zyvavu.test/posts/keep-post-9c752682#article",
-            "url": "https://zyvavu.test/posts/keep-post-9c752682",
-            "headline": "Keep Post 9c752682",
-            "name": "Keep Post 9c752682",
-            "inLanguage": "vi",
-            "isPartOf": {
-              "@id": "https://zyvavu.test/posts/keep-post-9c752682#webpage"
-            },
-            "mainEntityOfPage": {
-              "@id": "https://zyvavu.test/posts/keep-post-9c752682#webpage"
-            },
-            "publisher": {
-              "@id": "https://zyvavu.test/#organization"
-            },
-            "description": "Updated excerpt",
-            "datePublished": "2026-10-15T08:33:10.643Z",
-            "dateModified": "2026-10-15T08:33:10.699Z",
-            "wordCount": 2
-          }
-        ],
-        "duplicateIds": [],
-        "hasOrganization": true,
-        "hasWebSite": true,
-        "hasWebPage": true,
-        "hasArticle": true,
-        "hasBreadcrumbList": true,
-        "organizationId": "https://zyvavu.test/#organization",
-        "webSiteId": "https://zyvavu.test/#website",
-        "webPageId": "https://zyvavu.test/posts/keep-post-9c752682#webpage",
-        "articleId": "https://zyvavu.test/posts/keep-post-9c752682#article",
-        "breadcrumbListId": "https://zyvavu.test/posts/keep-post-9c752682#breadcrumb",
-        "relationshipErrors": [],
-        "dateValidationErrors": []
       },
       "findings": [
         {
-          "id": "CANONICAL_VALID",
+          "id": "HTTP_SERVER_ERROR",
           "category": "http",
-          "severity": "info",
-          "status": "pass",
-          "title": "Canonical URL is valid and self-referential",
-          "description": "Canonical tag correctly points to https://zyvavu.test/posts/keep-post-9c752682.",
-          "affectedUrls": [
-            "https://zyvavu.test/posts/keep-post-9c752682"
-          ]
-        },
-        {
-          "id": "SEMANTIC_DESC_SHORT",
-          "category": "semantic",
-          "severity": "low",
-          "status": "warning",
-          "title": "Meta description is short (< 30 chars)",
-          "description": "Meta description is only 15 characters long.",
+          "severity": "high",
+          "status": "fail",
+          "title": "HTTP 5xx Server Error (500)",
+          "description": "Server failed to render or respond to request.",
           "affectedUrls": [
             "https://zyvavu.test/posts/keep-post-9c752682"
           ],
-          "evidence": "\"Updated excerpt\""
-        },
-        {
-          "id": "SCHEMA_GRAPH_VALID",
-          "category": "structured-data",
-          "severity": "info",
-          "status": "pass",
-          "title": "Schema @graph entities and relationships valid",
-          "description": "Parsed 6 entity node(s) successfully with consistent relationships.",
-          "affectedUrls": [
-            "https://zyvavu.test/posts/keep-post-9c752682"
-          ]
+          "evidence": "HTTP 500 Internal Server Error",
+          "recommendation": "Check server logs for unhandled runtime exceptions or database connectivity."
         }
       ]
     },
@@ -1189,239 +373,36 @@
       "url": "https://zyvavu.test/posts/renamed-slug-9c752682",
       "http": {
         "url": "https://zyvavu.test/posts/renamed-slug-9c752682",
-        "statusCode": 200,
-        "statusText": "OK",
+        "statusCode": 500,
+        "statusText": "Internal Server Error",
         "finalUrl": "https://zyvavu.test/posts/renamed-slug-9c752682",
         "redirectHops": [],
         "isRedirectLoop": false,
         "contentType": "text/html; charset=utf-8",
-        "canonicalTag": "https://zyvavu.test/posts/renamed-slug-9c752682",
-        "canonicalTagsCount": 1,
+        "canonicalTag": null,
+        "canonicalTagsCount": 0,
         "isCanonicalMatching": true,
-        "robotsMeta": "index, follow",
+        "robotsMeta": null,
         "xRobotsTag": null,
-        "isIndexable": true,
+        "isIndexable": false,
         "isSoft404": false,
         "originMatch": true,
-        "etag": null,
+        "etag": "\"ciw57e0jyw686\"",
         "cacheControl": "no-cache, must-revalidate"
-      },
-      "semantic": {
-        "url": "https://zyvavu.test/posts/renamed-slug-9c752682",
-        "title": "Original Slug Post 9c752682 — Zyvavu 0873aaba",
-        "titleLength": 45,
-        "metaDescription": "Tagline from site-admin",
-        "descriptionLength": 23,
-        "hasMainTag": true,
-        "hasArticleTag": false,
-        "hasNavTag": true,
-        "hasHeaderTag": true,
-        "hasFooterTag": true,
-        "h1List": [
-          "Original Slug Post 9c752682"
-        ],
-        "headings": [
-          {
-            "tag": "h1",
-            "text": "Original Slug Post 9c752682",
-            "level": 1
-          },
-          {
-            "tag": "h2",
-            "text": "Liên Kết Nhanh",
-            "level": 2
-          },
-          {
-            "tag": "h2",
-            "text": "Thông Tin Liên Hệ",
-            "level": 2
-          }
-        ],
-        "headingHierarchyErrors": [],
-        "internalLinks": [
-          {
-            "href": "https://zyvavu.test/",
-            "text": ""
-          },
-          {
-            "href": "https://zyvavu.test/posts/bai-khong-prefetch",
-            "text": "Bài không prefetch"
-          },
-          {
-            "href": "https://zyvavu.test/about",
-            "text": "Liên hệ ngay"
-          },
-          {
-            "href": "https://zyvavu.test/",
-            "text": ""
-          },
-          {
-            "href": "https://zyvavu.test/",
-            "text": "Zyvavu 0873aaba"
-          }
-        ],
-        "externalLinks": [],
-        "images": [
-          {
-            "src": "/api/media/file/logo.png",
-            "alt": "logo",
-            "hasAlt": true
-          },
-          {
-            "src": "/api/media/file/logo.png",
-            "alt": "logo",
-            "hasAlt": true
-          }
-        ],
-        "missingAltCount": 0,
-        "pagination": {
-          "hasPagination": false
-        },
-        "approximateWordCount": 874
-      },
-      "structuredData": {
-        "url": "https://zyvavu.test/posts/renamed-slug-9c752682",
-        "scriptCount": 1,
-        "validJsonCount": 1,
-        "syntaxErrors": [],
-        "graphNodes": [
-          {
-            "@type": "Organization",
-            "@id": "https://zyvavu.test/#organization",
-            "name": "Zyvavu 0873aaba",
-            "url": "https://zyvavu.test/",
-            "logo": {
-              "@id": "https://zyvavu.test/#logo"
-            },
-            "image": {
-              "@id": "https://zyvavu.test/#logo"
-            }
-          },
-          {
-            "@type": "ImageObject",
-            "@id": "https://zyvavu.test/#logo",
-            "url": "https://zyvavu.test/api/media/file/logo.png",
-            "contentUrl": "https://zyvavu.test/api/media/file/logo.png",
-            "inLanguage": "vi",
-            "width": 1254,
-            "height": 1254,
-            "caption": "logo",
-            "encodingFormat": "image/png"
-          },
-          {
-            "@type": "WebSite",
-            "@id": "https://zyvavu.test/#website",
-            "url": "https://zyvavu.test/",
-            "name": "Zyvavu 0873aaba",
-            "inLanguage": "vi",
-            "publisher": {
-              "@id": "https://zyvavu.test/#organization"
-            },
-            "description": "Tagline from site-admin"
-          },
-          {
-            "@type": "WebPage",
-            "@id": "https://zyvavu.test/posts/renamed-slug-9c752682#webpage",
-            "url": "https://zyvavu.test/posts/renamed-slug-9c752682",
-            "name": "Original Slug Post 9c752682 — Zyvavu 0873aaba",
-            "isPartOf": {
-              "@id": "https://zyvavu.test/#website"
-            },
-            "inLanguage": "vi",
-            "description": "Tagline from site-admin",
-            "datePublished": "2026-10-15T08:33:10.726Z",
-            "dateModified": "2026-10-15T08:33:10.766Z",
-            "breadcrumb": {
-              "@id": "https://zyvavu.test/posts/renamed-slug-9c752682#breadcrumb"
-            }
-          },
-          {
-            "@type": "BreadcrumbList",
-            "@id": "https://zyvavu.test/posts/renamed-slug-9c752682#breadcrumb",
-            "itemListElement": [
-              {
-                "@type": "ListItem",
-                "position": 1,
-                "name": "Zyvavu 0873aaba",
-                "item": "https://zyvavu.test/"
-              },
-              {
-                "@type": "ListItem",
-                "position": 2,
-                "name": "Original Slug Post 9c752682",
-                "item": "https://zyvavu.test/posts/renamed-slug-9c752682"
-              }
-            ]
-          },
-          {
-            "@type": "BlogPosting",
-            "@id": "https://zyvavu.test/posts/renamed-slug-9c752682#article",
-            "url": "https://zyvavu.test/posts/renamed-slug-9c752682",
-            "headline": "Original Slug Post 9c752682",
-            "name": "Original Slug Post 9c752682",
-            "inLanguage": "vi",
-            "isPartOf": {
-              "@id": "https://zyvavu.test/posts/renamed-slug-9c752682#webpage"
-            },
-            "mainEntityOfPage": {
-              "@id": "https://zyvavu.test/posts/renamed-slug-9c752682#webpage"
-            },
-            "publisher": {
-              "@id": "https://zyvavu.test/#organization"
-            },
-            "description": "Tagline from site-admin",
-            "datePublished": "2026-10-15T08:33:10.726Z",
-            "dateModified": "2026-10-15T08:33:10.766Z"
-          }
-        ],
-        "duplicateIds": [],
-        "hasOrganization": true,
-        "hasWebSite": true,
-        "hasWebPage": true,
-        "hasArticle": true,
-        "hasBreadcrumbList": true,
-        "organizationId": "https://zyvavu.test/#organization",
-        "webSiteId": "https://zyvavu.test/#website",
-        "webPageId": "https://zyvavu.test/posts/renamed-slug-9c752682#webpage",
-        "articleId": "https://zyvavu.test/posts/renamed-slug-9c752682#article",
-        "breadcrumbListId": "https://zyvavu.test/posts/renamed-slug-9c752682#breadcrumb",
-        "relationshipErrors": [],
-        "dateValidationErrors": []
       },
       "findings": [
         {
-          "id": "CANONICAL_VALID",
+          "id": "HTTP_SERVER_ERROR",
           "category": "http",
-          "severity": "info",
-          "status": "pass",
-          "title": "Canonical URL is valid and self-referential",
-          "description": "Canonical tag correctly points to https://zyvavu.test/posts/renamed-slug-9c752682.",
-          "affectedUrls": [
-            "https://zyvavu.test/posts/renamed-slug-9c752682"
-          ]
-        },
-        {
-          "id": "SEMANTIC_DESC_SHORT",
-          "category": "semantic",
-          "severity": "low",
-          "status": "warning",
-          "title": "Meta description is short (< 30 chars)",
-          "description": "Meta description is only 23 characters long.",
+          "severity": "high",
+          "status": "fail",
+          "title": "HTTP 5xx Server Error (500)",
+          "description": "Server failed to render or respond to request.",
           "affectedUrls": [
             "https://zyvavu.test/posts/renamed-slug-9c752682"
           ],
-          "evidence": "\"Tagline from site-admin\""
-        },
-        {
-          "id": "SCHEMA_GRAPH_VALID",
-          "category": "structured-data",
-          "severity": "info",
-          "status": "pass",
-          "title": "Schema @graph entities and relationships valid",
-          "description": "Parsed 6 entity node(s) successfully with consistent relationships.",
-          "affectedUrls": [
-            "https://zyvavu.test/posts/renamed-slug-9c752682"
-          ]
+          "evidence": "HTTP 500 Internal Server Error",
+          "recommendation": "Check server logs for unhandled runtime exceptions or database connectivity."
         }
       ]
     },
@@ -1429,238 +410,46 @@
       "url": "https://zyvavu.test/posts/bai-khong-prefetch",
       "http": {
         "url": "https://zyvavu.test/posts/bai-khong-prefetch",
-        "statusCode": 200,
-        "statusText": "OK",
+        "statusCode": 500,
+        "statusText": "Internal Server Error",
         "finalUrl": "https://zyvavu.test/posts/bai-khong-prefetch",
         "redirectHops": [],
         "isRedirectLoop": false,
         "contentType": "text/html; charset=utf-8",
-        "canonicalTag": "https://zyvavu.test/posts/bai-khong-prefetch",
-        "canonicalTagsCount": 1,
+        "canonicalTag": null,
+        "canonicalTagsCount": 0,
         "isCanonicalMatching": true,
-        "robotsMeta": "index, follow",
+        "robotsMeta": null,
         "xRobotsTag": null,
-        "isIndexable": true,
+        "isIndexable": false,
         "isSoft404": false,
         "originMatch": true,
-        "etag": null,
+        "etag": "\"ciw57e0jyw686\"",
         "cacheControl": "no-cache, must-revalidate"
-      },
-      "semantic": {
-        "url": "https://zyvavu.test/posts/bai-khong-prefetch",
-        "title": "Bài không prefetch — Zyvavu 0873aaba",
-        "titleLength": 36,
-        "metaDescription": "Post này không được đưa vào offline manifest.",
-        "descriptionLength": 45,
-        "hasMainTag": true,
-        "hasArticleTag": false,
-        "hasNavTag": true,
-        "hasHeaderTag": true,
-        "hasFooterTag": true,
-        "h1List": [
-          "Bài không prefetch"
-        ],
-        "headings": [
-          {
-            "tag": "h1",
-            "text": "Bài không prefetch",
-            "level": 1
-          },
-          {
-            "tag": "h2",
-            "text": "Liên Kết Nhanh",
-            "level": 2
-          },
-          {
-            "tag": "h2",
-            "text": "Thông Tin Liên Hệ",
-            "level": 2
-          }
-        ],
-        "headingHierarchyErrors": [],
-        "internalLinks": [
-          {
-            "href": "https://zyvavu.test/",
-            "text": ""
-          },
-          {
-            "href": "https://zyvavu.test/posts/bai-khong-prefetch",
-            "text": "Bài không prefetch"
-          },
-          {
-            "href": "https://zyvavu.test/about",
-            "text": "Liên hệ ngay"
-          },
-          {
-            "href": "https://zyvavu.test/",
-            "text": ""
-          },
-          {
-            "href": "https://zyvavu.test/",
-            "text": "Zyvavu 0873aaba"
-          }
-        ],
-        "externalLinks": [],
-        "images": [
-          {
-            "src": "/api/media/file/logo.png",
-            "alt": "logo",
-            "hasAlt": true
-          },
-          {
-            "src": "/api/media/file/logo.png",
-            "alt": "logo",
-            "hasAlt": true
-          }
-        ],
-        "missingAltCount": 0,
-        "pagination": {
-          "hasPagination": false
-        },
-        "approximateWordCount": 901
-      },
-      "structuredData": {
-        "url": "https://zyvavu.test/posts/bai-khong-prefetch",
-        "scriptCount": 1,
-        "validJsonCount": 1,
-        "syntaxErrors": [],
-        "graphNodes": [
-          {
-            "@type": "Organization",
-            "@id": "https://zyvavu.test/#organization",
-            "name": "Zyvavu 0873aaba",
-            "url": "https://zyvavu.test/",
-            "logo": {
-              "@id": "https://zyvavu.test/#logo"
-            },
-            "image": {
-              "@id": "https://zyvavu.test/#logo"
-            }
-          },
-          {
-            "@type": "ImageObject",
-            "@id": "https://zyvavu.test/#logo",
-            "url": "https://zyvavu.test/api/media/file/logo.png",
-            "contentUrl": "https://zyvavu.test/api/media/file/logo.png",
-            "inLanguage": "vi",
-            "width": 1254,
-            "height": 1254,
-            "caption": "logo",
-            "encodingFormat": "image/png"
-          },
-          {
-            "@type": "WebSite",
-            "@id": "https://zyvavu.test/#website",
-            "url": "https://zyvavu.test/",
-            "name": "Zyvavu 0873aaba",
-            "inLanguage": "vi",
-            "publisher": {
-              "@id": "https://zyvavu.test/#organization"
-            },
-            "description": "Tagline from site-admin"
-          },
-          {
-            "@type": "WebPage",
-            "@id": "https://zyvavu.test/posts/bai-khong-prefetch#webpage",
-            "url": "https://zyvavu.test/posts/bai-khong-prefetch",
-            "name": "Bài không prefetch — Zyvavu 0873aaba",
-            "isPartOf": {
-              "@id": "https://zyvavu.test/#website"
-            },
-            "inLanguage": "vi",
-            "description": "Post này không được đưa vào offline manifest.",
-            "datePublished": "2026-10-13T05:39:07.714Z",
-            "dateModified": "2026-10-13T05:39:07.714Z",
-            "breadcrumb": {
-              "@id": "https://zyvavu.test/posts/bai-khong-prefetch#breadcrumb"
-            }
-          },
-          {
-            "@type": "BreadcrumbList",
-            "@id": "https://zyvavu.test/posts/bai-khong-prefetch#breadcrumb",
-            "itemListElement": [
-              {
-                "@type": "ListItem",
-                "position": 1,
-                "name": "Zyvavu 0873aaba",
-                "item": "https://zyvavu.test/"
-              },
-              {
-                "@type": "ListItem",
-                "position": 2,
-                "name": "Bài không prefetch",
-                "item": "https://zyvavu.test/posts/bai-khong-prefetch"
-              }
-            ]
-          },
-          {
-            "@type": "BlogPosting",
-            "@id": "https://zyvavu.test/posts/bai-khong-prefetch#article",
-            "url": "https://zyvavu.test/posts/bai-khong-prefetch",
-            "headline": "Bài không prefetch",
-            "name": "Bài không prefetch",
-            "inLanguage": "vi",
-            "isPartOf": {
-              "@id": "https://zyvavu.test/posts/bai-khong-prefetch#webpage"
-            },
-            "mainEntityOfPage": {
-              "@id": "https://zyvavu.test/posts/bai-khong-prefetch#webpage"
-            },
-            "publisher": {
-              "@id": "https://zyvavu.test/#organization"
-            },
-            "description": "Post này không được đưa vào offline manifest.",
-            "datePublished": "2026-10-13T05:39:07.714Z",
-            "dateModified": "2026-10-13T05:39:07.714Z",
-            "wordCount": 8
-          }
-        ],
-        "duplicateIds": [],
-        "hasOrganization": true,
-        "hasWebSite": true,
-        "hasWebPage": true,
-        "hasArticle": true,
-        "hasBreadcrumbList": true,
-        "organizationId": "https://zyvavu.test/#organization",
-        "webSiteId": "https://zyvavu.test/#website",
-        "webPageId": "https://zyvavu.test/posts/bai-khong-prefetch#webpage",
-        "articleId": "https://zyvavu.test/posts/bai-khong-prefetch#article",
-        "breadcrumbListId": "https://zyvavu.test/posts/bai-khong-prefetch#breadcrumb",
-        "relationshipErrors": [],
-        "dateValidationErrors": []
       },
       "findings": [
         {
-          "id": "CANONICAL_VALID",
+          "id": "HTTP_SERVER_ERROR",
           "category": "http",
-          "severity": "info",
-          "status": "pass",
-          "title": "Canonical URL is valid and self-referential",
-          "description": "Canonical tag correctly points to https://zyvavu.test/posts/bai-khong-prefetch.",
+          "severity": "high",
+          "status": "fail",
+          "title": "HTTP 5xx Server Error (500)",
+          "description": "Server failed to render or respond to request.",
           "affectedUrls": [
             "https://zyvavu.test/posts/bai-khong-prefetch"
-          ]
-        },
-        {
-          "id": "SCHEMA_GRAPH_VALID",
-          "category": "structured-data",
-          "severity": "info",
-          "status": "pass",
-          "title": "Schema @graph entities and relationships valid",
-          "description": "Parsed 6 entity node(s) successfully with consistent relationships.",
-          "affectedUrls": [
-            "https://zyvavu.test/posts/bai-khong-prefetch"
-          ]
+          ],
+          "evidence": "HTTP 500 Internal Server Error",
+          "recommendation": "Check server logs for unhandled runtime exceptions or database connectivity."
         }
       ]
     },
     {
-      "url": "https://zyvavu.test/category/cong-nghe",
+      "url": "https://zyvavu.test/category/test",
       "http": {
-        "url": "https://zyvavu.test/category/cong-nghe",
-        "statusCode": 404,
-        "statusText": "Not Found",
-        "finalUrl": "https://zyvavu.test/category/cong-nghe",
+        "url": "https://zyvavu.test/category/test",
+        "statusCode": 500,
+        "statusText": "Internal Server Error",
+        "finalUrl": "https://zyvavu.test/category/test",
         "redirectHops": [],
         "isRedirectLoop": false,
         "contentType": "text/html; charset=utf-8",
@@ -1672,32 +461,32 @@
         "isIndexable": false,
         "isSoft404": false,
         "originMatch": true,
-        "etag": null,
+        "etag": "\"ciw57e0jyw686\"",
         "cacheControl": "no-cache, must-revalidate"
       },
       "findings": [
         {
-          "id": "HTTP_NOT_FOUND",
+          "id": "HTTP_SERVER_ERROR",
           "category": "http",
           "severity": "high",
           "status": "fail",
-          "title": "HTTP 404 Not Found for published route",
-          "description": "Published or expected URL returned HTTP 404.",
+          "title": "HTTP 5xx Server Error (500)",
+          "description": "Server failed to render or respond to request.",
           "affectedUrls": [
-            "https://zyvavu.test/category/cong-nghe"
+            "https://zyvavu.test/category/test"
           ],
-          "evidence": "HTTP 404 at https://zyvavu.test/category/cong-nghe",
-          "recommendation": "Verify URL Registry entry or route mapping for this resource."
+          "evidence": "HTTP 500 Internal Server Error",
+          "recommendation": "Check server logs for unhandled runtime exceptions or database connectivity."
         }
       ]
     },
     {
-      "url": "https://zyvavu.test/tag/typescript",
+      "url": "https://zyvavu.test/tag/fish",
       "http": {
-        "url": "https://zyvavu.test/tag/typescript",
-        "statusCode": 404,
-        "statusText": "Not Found",
-        "finalUrl": "https://zyvavu.test/tag/typescript",
+        "url": "https://zyvavu.test/tag/fish",
+        "statusCode": 500,
+        "statusText": "Internal Server Error",
+        "finalUrl": "https://zyvavu.test/tag/fish",
         "redirectHops": [],
         "isRedirectLoop": false,
         "contentType": "text/html; charset=utf-8",
@@ -1709,32 +498,32 @@
         "isIndexable": false,
         "isSoft404": false,
         "originMatch": true,
-        "etag": null,
+        "etag": "\"ciw57e0jyw686\"",
         "cacheControl": "no-cache, must-revalidate"
       },
       "findings": [
         {
-          "id": "HTTP_NOT_FOUND",
+          "id": "HTTP_SERVER_ERROR",
           "category": "http",
           "severity": "high",
           "status": "fail",
-          "title": "HTTP 404 Not Found for published route",
-          "description": "Published or expected URL returned HTTP 404.",
+          "title": "HTTP 5xx Server Error (500)",
+          "description": "Server failed to render or respond to request.",
           "affectedUrls": [
-            "https://zyvavu.test/tag/typescript"
+            "https://zyvavu.test/tag/fish"
           ],
-          "evidence": "HTTP 404 at https://zyvavu.test/tag/typescript",
-          "recommendation": "Verify URL Registry entry or route mapping for this resource."
+          "evidence": "HTTP 500 Internal Server Error",
+          "recommendation": "Check server logs for unhandled runtime exceptions or database connectivity."
         }
       ]
     },
     {
-      "url": "https://zyvavu.test/old-gioi-thieu",
+      "url": "https://zyvavu.test/from-0e5366b2",
       "http": {
-        "url": "https://zyvavu.test/old-gioi-thieu",
-        "statusCode": 404,
-        "statusText": "Not Found",
-        "finalUrl": "https://zyvavu.test/old-gioi-thieu",
+        "url": "https://zyvavu.test/from-0e5366b2",
+        "statusCode": 500,
+        "statusText": "Internal Server Error",
+        "finalUrl": "https://zyvavu.test/from-0e5366b2",
         "redirectHops": [],
         "isRedirectLoop": false,
         "contentType": "text/html; charset=utf-8",
@@ -1746,22 +535,59 @@
         "isIndexable": false,
         "isSoft404": false,
         "originMatch": true,
-        "etag": null,
+        "etag": "\"ciw57e0jyw686\"",
         "cacheControl": "no-cache, must-revalidate"
       },
       "findings": [
         {
-          "id": "HTTP_NOT_FOUND",
+          "id": "HTTP_SERVER_ERROR",
           "category": "http",
           "severity": "high",
           "status": "fail",
-          "title": "HTTP 404 Not Found for published route",
-          "description": "Published or expected URL returned HTTP 404.",
+          "title": "HTTP 5xx Server Error (500)",
+          "description": "Server failed to render or respond to request.",
           "affectedUrls": [
-            "https://zyvavu.test/old-gioi-thieu"
+            "https://zyvavu.test/from-0e5366b2"
           ],
-          "evidence": "HTTP 404 at https://zyvavu.test/old-gioi-thieu",
-          "recommendation": "Verify URL Registry entry or route mapping for this resource."
+          "evidence": "HTTP 500 Internal Server Error",
+          "recommendation": "Check server logs for unhandled runtime exceptions or database connectivity."
+        }
+      ]
+    },
+    {
+      "url": "https://zyvavu.test/posts/orig-slug-9c752682",
+      "http": {
+        "url": "https://zyvavu.test/posts/orig-slug-9c752682",
+        "statusCode": 500,
+        "statusText": "Internal Server Error",
+        "finalUrl": "https://zyvavu.test/posts/orig-slug-9c752682",
+        "redirectHops": [],
+        "isRedirectLoop": false,
+        "contentType": "text/html; charset=utf-8",
+        "canonicalTag": null,
+        "canonicalTagsCount": 0,
+        "isCanonicalMatching": true,
+        "robotsMeta": null,
+        "xRobotsTag": null,
+        "isIndexable": false,
+        "isSoft404": false,
+        "originMatch": true,
+        "etag": "\"ciw57e0jyw686\"",
+        "cacheControl": "no-cache, must-revalidate"
+      },
+      "findings": [
+        {
+          "id": "HTTP_SERVER_ERROR",
+          "category": "http",
+          "severity": "high",
+          "status": "fail",
+          "title": "HTTP 5xx Server Error (500)",
+          "description": "Server failed to render or respond to request.",
+          "affectedUrls": [
+            "https://zyvavu.test/posts/orig-slug-9c752682"
+          ],
+          "evidence": "HTTP 500 Internal Server Error",
+          "recommendation": "Check server logs for unhandled runtime exceptions or database connectivity."
         }
       ]
     },
@@ -1769,8 +595,8 @@
       "url": "https://zyvavu.test/non-existent-page-404-audit-test",
       "http": {
         "url": "https://zyvavu.test/non-existent-page-404-audit-test",
-        "statusCode": 404,
-        "statusText": "Not Found",
+        "statusCode": 500,
+        "statusText": "Internal Server Error",
         "finalUrl": "https://zyvavu.test/non-existent-page-404-audit-test",
         "redirectHops": [],
         "isRedirectLoop": false,
@@ -1783,130 +609,63 @@
         "isIndexable": false,
         "isSoft404": false,
         "originMatch": true,
-        "etag": null,
+        "etag": "\"ciw57e0jyw686\"",
         "cacheControl": "no-cache, must-revalidate"
       },
       "findings": [
         {
-          "id": "HTTP_404_VERIFIED",
+          "id": "HTTP_404_LEAK",
           "category": "http",
-          "severity": "info",
-          "status": "pass",
-          "title": "Nonexistent URL returns clean 404 status",
-          "description": "The requested nonexistent URL properly returned HTTP 404 Not Found without leaking soft-404.",
+          "severity": "high",
+          "status": "fail",
+          "title": "Nonexistent URL did not return 404",
+          "description": "Expected 404 for nonexistent route, but received HTTP 500.",
           "affectedUrls": [
             "https://zyvavu.test/non-existent-page-404-audit-test"
-          ]
+          ],
+          "evidence": "HTTP 500",
+          "recommendation": "Ensure missing content triggers notFound() and returns HTTP 404 status."
         }
       ]
     }
   ],
   "linkGraph": {
-    "inboundMap": {
-      "https://zyvavu.test/": [
-        "https://zyvavu.test/",
-        "https://zyvavu.test/posts/bai-khong-prefetch",
-        "https://zyvavu.test/posts/renamed-slug-9c752682",
-        "https://zyvavu.test/posts/keep-post-9c752682",
-        "https://zyvavu.test/posts/legacy-post-9c752682"
-      ],
-      "https://zyvavu.test/posts/bai-khong-prefetch": [
-        "https://zyvavu.test/",
-        "https://zyvavu.test/posts/bai-khong-prefetch",
-        "https://zyvavu.test/posts/renamed-slug-9c752682",
-        "https://zyvavu.test/posts/keep-post-9c752682",
-        "https://zyvavu.test/posts/legacy-post-9c752682"
-      ],
-      "https://zyvavu.test/about": [
-        "https://zyvavu.test/",
-        "https://zyvavu.test/posts/bai-khong-prefetch",
-        "https://zyvavu.test/posts/renamed-slug-9c752682",
-        "https://zyvavu.test/posts/keep-post-9c752682",
-        "https://zyvavu.test/posts/legacy-post-9c752682"
-      ],
-      "https://zyvavu.test/posts/renamed-slug-9c752682": [
-        "https://zyvavu.test/"
-      ],
-      "https://zyvavu.test/posts/keep-post-9c752682": [
-        "https://zyvavu.test/"
-      ],
-      "https://zyvavu.test/posts/legacy-post-9c752682": [
-        "https://zyvavu.test/"
-      ]
-    },
-    "outboundMap": {
-      "https://zyvavu.test/": [
-        "https://zyvavu.test/",
-        "https://zyvavu.test/posts/bai-khong-prefetch",
-        "https://zyvavu.test/about",
-        "https://zyvavu.test/posts/renamed-slug-9c752682",
-        "https://zyvavu.test/posts/keep-post-9c752682",
-        "https://zyvavu.test/posts/legacy-post-9c752682"
-      ],
-      "https://zyvavu.test/posts/bai-khong-prefetch": [
-        "https://zyvavu.test/",
-        "https://zyvavu.test/posts/bai-khong-prefetch",
-        "https://zyvavu.test/about"
-      ],
-      "https://zyvavu.test/posts/renamed-slug-9c752682": [
-        "https://zyvavu.test/",
-        "https://zyvavu.test/posts/bai-khong-prefetch",
-        "https://zyvavu.test/about"
-      ],
-      "https://zyvavu.test/posts/keep-post-9c752682": [
-        "https://zyvavu.test/",
-        "https://zyvavu.test/posts/bai-khong-prefetch",
-        "https://zyvavu.test/about"
-      ],
-      "https://zyvavu.test/posts/legacy-post-9c752682": [
-        "https://zyvavu.test/",
-        "https://zyvavu.test/posts/bai-khong-prefetch",
-        "https://zyvavu.test/about"
-      ]
-    },
+    "inboundMap": {},
+    "outboundMap": {},
     "crawlDepth": {
-      "https://zyvavu.test/": 0,
-      "https://zyvavu.test/posts/bai-khong-prefetch": 1,
-      "https://zyvavu.test/about": 1,
-      "https://zyvavu.test/posts/renamed-slug-9c752682": 1,
-      "https://zyvavu.test/posts/keep-post-9c752682": 1,
-      "https://zyvavu.test/posts/legacy-post-9c752682": 1
+      "https://zyvavu.test/": 0
     },
-    "brokenLinks": [
-      {
-        "fromUrl": "https://zyvavu.test/",
-        "targetUrl": "https://zyvavu.test/about",
-        "statusCode": 404,
-        "error": "Not Found"
-      }
-    ],
+    "brokenLinks": [],
     "redirectingLinks": [],
     "nonCanonicalLinks": [],
+    "inconclusiveTimeoutLinks": [],
     "orphanUrls": [],
+    "orphanStatus": "NOT_VERIFIED",
     "unreachableInventoryUrls": []
   },
   "discovery": {
-    "rssDiscoveryLink": "https://zyvavu.test/feed/",
+    "rssDiscoveryLink": null,
     "rssEndpoint": {
       "url": "https://zyvavu.test/feed",
-      "statusCode": 200,
-      "contentType": "application/rss+xml; charset=utf-8",
-      "isValidXml": true,
-      "itemCount": 4
+      "statusCode": 500,
+      "contentType": "text/html; charset=utf-8",
+      "isValidXml": false,
+      "itemCount": 0,
+      "error": "HTTP 500"
     },
     "robotsTxt": {
       "url": "https://zyvavu.test/robots.txt",
-      "statusCode": 404,
+      "statusCode": 500,
       "contentType": "text/html; charset=utf-8",
       "hasUserAgent": false,
       "hasSitemapDirective": false,
-      "error": "HTTP 404"
+      "error": "HTTP 500"
     },
     "sitemap": {
       "url": "https://zyvavu.test/sitemap.xml",
-      "statusCode": 404,
+      "statusCode": 500,
       "exists": false,
-      "note": "Sitemap endpoint not implemented (HTTP 404)"
+      "note": "Sitemap endpoint not implemented (HTTP 500)"
     }
   }
 }

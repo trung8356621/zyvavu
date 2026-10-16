@@ -2,10 +2,11 @@ import React from 'react'
 import type { ThemeDataContext } from '@/lib/theme-engine/types'
 import type { UniversalStyle } from '@/lib/style-engine/types'
 import { resolveSectionLayerStyles } from '@/lib/style-engine/serializer'
+import { usePageLayout } from '@/lib/theme-engine/page-settings'
 
 export interface SectionProps {
   id?: string
-  containerWidth?: 'containerWidth' | 'narrowWidth' | 'wideWidth' | 'full' | string
+  containerWidth?: 'inherit' | 'containerWidth' | 'narrowWidth' | 'wideWidth' | 'full' | string
   verticalPadding?: 'none' | 'xs' | 'sm' | 'md' | 'lg' | 'xl'
   minHeight?: 'auto' | 'screen' | 'sm' | 'md' | 'lg' | string
   style?: UniversalStyle
@@ -16,15 +17,22 @@ export interface SectionProps {
 
 export function SectionFrontend({
   id,
-  containerWidth = 'containerWidth',
+  containerWidth = 'inherit',
   verticalPadding = 'md',
   minHeight = 'auto',
   style,
   content,
   children,
+  dataContext,
 }: SectionProps) {
+  const pageLayout = usePageLayout()
+  const pageContainerWidth =
+    pageLayout?.effectiveContainerWidth ||
+    (dataContext as any)?.pageSettings?.layout?.containerWidth
+
   const layers = resolveSectionLayerStyles(style, {
     containerWidth,
+    pageContainerWidth,
     verticalPadding,
     minHeight,
   })

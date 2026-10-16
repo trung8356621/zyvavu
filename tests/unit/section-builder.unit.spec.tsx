@@ -21,8 +21,7 @@ describe('Theme Builder — Section Component & Universal Visual Styling', () =>
     })
 
     it('defines a slot for nested widgets and layout fields in editor config', () => {
-      expect(sectionEditor.fields).toBeDefined()
-      expect(sectionEditor.fields!.content).toEqual({ type: 'slot' })
+      expect(sectionEditor.fields!.content).toEqual({ type: 'slot', disallow: ['Section'] })
       expect(sectionEditor.fields!.containerWidth).toBeDefined()
       expect(sectionEditor.fields!.verticalPadding).toBeDefined()
       expect(sectionEditor.fields!.minHeight).toBeDefined()

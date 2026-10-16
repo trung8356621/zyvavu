@@ -6,51 +6,119 @@
   },
   "content": [
     {
-      "type": "TextBlock",
+      "type": "Section",
       "props": {
-        "id": "ind-hero-banner",
-        "title": "HỆ THỐNG SẢN XUẤT CÔNG NGHIỆP HIỆN ĐẠI",
-        "content": "Zyvavu Industrial cung cấp giải pháp gia công và chế tạo công nghiệp chuẩn xác cao, đáp ứng khắt khe các tiêu chuẩn kiểm định châu Âu và Bắc Mỹ.",
-        "align": "left",
-        "lock": {
-          "canDelete": false,
-          "canMove": true,
-          "canEditProps": true
+        "id": "ind-home-hero-section",
+        "containerWidth": "containerWidth",
+        "verticalPadding": "lg",
+        "minHeight": "auto",
+        "style": {
+          "background": {
+            "mode": "color",
+            "colorToken": "surface"
+          }
         }
       }
     },
     {
-      "type": "Columns",
+      "type": "Section",
       "props": {
-        "id": "ind-cols-features",
-        "distribution": "1:1:1",
-        "gap": "24px"
+        "id": "ind-home-features-section",
+        "containerWidth": "containerWidth",
+        "verticalPadding": "md",
+        "minHeight": "auto",
+        "style": {
+          "background": {
+            "mode": "color",
+            "colorToken": "background"
+          }
+        }
       }
     },
     {
-      "type": "Columns",
+      "type": "Section",
       "props": {
-        "id": "ind-cols-showcase",
-        "distribution": "2:1",
-        "gap": "32px"
+        "id": "ind-home-showcase-section",
+        "containerWidth": "containerWidth",
+        "verticalPadding": "lg",
+        "minHeight": "auto",
+        "style": {
+          "background": {
+            "mode": "color",
+            "colorToken": "surface"
+          }
+        }
       }
     },
     {
-      "type": "CollectionLoop",
+      "type": "Section",
       "props": {
-        "id": "ind-posts-loop",
-        "heading": "BẢN TIN DỰ ÁN & VẬN HÀNH NHÀ MÁY",
-        "mode": "dynamic",
-        "source": "posts",
-        "columns": 2,
-        "gap": "24px",
-        "limit": 4,
-        "categoryId": "",
-        "sort": "newest"
+        "id": "ind-home-news-section",
+        "containerWidth": "containerWidth",
+        "verticalPadding": "lg",
+        "minHeight": "auto",
+        "style": {
+          "background": {
+            "mode": "color",
+            "colorToken": "background"
+          }
+        }
       }
     }
   ],
   "zones": {
+    "ind-home-hero-section:content": [
+      {
+        "type": "TextBlock",
+        "props": {
+          "id": "ind-hero-banner",
+          "title": "HỆ THỐNG SẢN XUẤT CÔNG NGHIỆP HIỆN ĐẠI",
+          "content": "Zyvavu Industrial cung cấp giải pháp gia công và chế tạo công nghiệp chuẩn xác cao, đáp ứng khắt khe các tiêu chuẩn kiểm định châu Âu và Bắc Mỹ.",
+          "align": "left",
+          "lock": {
+            "canDelete": false,
+            "canMove": true,
+            "canEditProps": true
+          }
+        }
+      }
+    ],
+    "ind-home-features-section:content": [
+      {
+        "type": "Columns",
+        "props": {
+          "id": "ind-cols-features",
+          "distribution": "1:1:1",
+          "gap": "24px"
+        }
+      }
+    ],
+    "ind-home-showcase-section:content": [
+      {
+        "type": "Columns",
+        "props": {
+          "id": "ind-cols-showcase",
+          "distribution": "2:1",
+          "gap": "32px"
+        }
+      }
+    ],
+    "ind-home-news-section:content": [
+      {
+        "type": "CollectionLoop",
+        "props": {
+          "id": "ind-posts-loop",
+          "heading": "BẢN TIN DỰ ÁN & VẬN HÀNH NHÀ MÁY",
+          "mode": "dynamic",
+          "source": "posts",
+          "columns": 2,
+          "gap": "24px",
+          "limit": 4,
+          "categoryId": "",
+          "sort": "newest"
+        }
+      }
+    ],
     "ind-cols-features:column1": [
       {
         "type": "TextBlock",

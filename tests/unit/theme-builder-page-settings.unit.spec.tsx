@@ -46,24 +46,32 @@ describe('Theme Builder — Page Settings & Atomic Design System', () => {
     },
     content: [
       {
-        type: 'PostTitle',
-        props: {
-          id: 'title-1',
-          tag: 'h1',
-          style: {
-            typography: 'h1',
-            colorToken: 'primary',
-            align: 'center',
-          },
-        },
-      },
-      {
-        type: 'PostContent',
-        props: {
-          id: 'content-1',
-        },
+        type: 'Section',
+        props: { id: 'sec-1' },
       },
     ],
+    zones: {
+      'sec-1:content': [
+        {
+          type: 'PostTitle',
+          props: {
+            id: 'title-1',
+            tag: 'h1',
+            style: {
+              typography: 'h1',
+              colorToken: 'primary',
+              align: 'center',
+            },
+          },
+        },
+        {
+          type: 'PostContent',
+          props: {
+            id: 'content-1',
+          },
+        },
+      ],
+    },
   }
 
   describe('1. Page Settings Validation & Atomic Design Enforcement', () => {
@@ -82,14 +90,22 @@ describe('Theme Builder — Page Settings & Atomic Design System', () => {
         },
         content: [
           {
-            type: 'PostTitle',
-            props: { id: 'title-1' },
-          },
-          {
-            type: 'PostContent',
-            props: { id: 'content-1' },
+            type: 'Section',
+            props: { id: 'sec-legacy' },
           },
         ],
+        zones: {
+          'sec-legacy:content': [
+            {
+              type: 'PostTitle',
+              props: { id: 'title-1' },
+            },
+            {
+              type: 'PostContent',
+              props: { id: 'content-1' },
+            },
+          ],
+        },
       }
       const res = validateThemeTemplateDocument(legacyDoc, 'single')
       expect(res.valid).toBe(true)

@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useCallback, useMemo, useState } from 'react'
-import { Puck, ActionBar, type Config, type Data, type Plugin, type Viewport, usePuck } from '@puckeditor/core'
+import { Puck, ActionBar, type Config, type Data, type Plugin, type Viewport, createUsePuck } from '@puckeditor/core'
 import '@puckeditor/core/dist/index.css'
 import { Alert, Box, Button, Group, LoadingOverlay, Text } from '@mantine/core'
 import { Check, AlertCircle, Palette, Save, Sliders } from 'lucide-react'
@@ -9,8 +9,11 @@ import { Check, AlertCircle, Palette, Save, Sliders } from 'lucide-react'
 import { CURRENT_BUILDER_VERSION, validateBuilderDocument } from './document'
 import type { BuilderDocument } from './types'
 import type { ThemeConfig, WidgetSemanticStyle } from '@/lib/theme-engine/types'
+import { normalizeComponentType } from '@/lib/style-engine/capabilities'
 import { PageSettingsPanel } from '@/components/admin/theme-builder/PageSettingsPanel'
 import { WidgetStyleContextMenu, computeTranslatedAnchorPosition } from '@/components/admin/theme-builder/WidgetStyleContextMenu'
+
+const usePuck = createUsePuck()
 
 export const DESKTOP_ONLY_VIEWPORT: Viewport[] = [
   { width: '100%', height: 'auto', label: 'Desktop', icon: 'Monitor' },
@@ -36,7 +39,8 @@ function PuckBridge({
   children: React.ReactNode
   onRegisterApi: (api: PuckApi) => void
 }) {
-  const { appState, dispatch } = usePuck()
+  const appState = usePuck((s) => s.appState)
+  const dispatch = usePuck((s) => s.dispatch)
   const appStateRef = React.useRef(appState)
   appStateRef.current = appState
 
@@ -67,20 +71,38 @@ function PuckActionBarBridge({
     initialPosition: { x: number; y: number }
   }) => void
 }) {
-  const { appState } = usePuck()
+  const selectedItem = usePuck((s) => s.selectedItem)
+  const itemSelector = usePuck((s) => s.appState?.ui?.itemSelector)
+  const appData = usePuck((s) => s.appState?.data)
+  const getItemBySelector = usePuck((s) => (s as any).getItemBySelector)
 
-  const selectedItem = (appState as any).selectedItem || (() => {
-    const selector = appState.ui.itemSelector
-    if (!selector) return null
-    if (selector.zone) {
-      return appState.data.zones?.[selector.zone]?.[selector.index] || null
+  const resolvedItem = useMemo(() => {
+    if (selectedItem) return selectedItem
+    if (typeof getItemBySelector === 'function' && itemSelector) {
+      try {
+        const item = getItemBySelector(itemSelector)
+        if (item) return item
+      } catch {}
     }
-    return appState.data.content[selector.index] || null
-  })()
+    if (itemSelector && appData) {
+      const { index, zone } = itemSelector
+      if (!zone || zone === 'root' || zone === ':root') {
+        if (appData.content?.[index]) return appData.content[index]
+      }
+      if (zone && appData.zones?.[zone]?.[index]) {
+        return appData.zones[zone][index]
+      }
+      if (appData.content?.[index]) {
+        return appData.content[index]
+      }
+    }
+    return null
+  }, [selectedItem, itemSelector, appData, getItemBySelector])
 
-  const componentType = selectedItem?.type || ''
-  const componentId = selectedItem?.props?.id || ''
-  const currentStyle = (selectedItem?.props?.style as WidgetSemanticStyle) || {}
+  const rawType = resolvedItem?.type || label || ''
+  const componentType = normalizeComponentType(rawType)
+  const componentId = resolvedItem?.props?.id || resolvedItem?.id || ''
+  const currentStyle = (resolvedItem?.props?.style as WidgetSemanticStyle) || {}
 
   const handleEditStyleClick = (e: React.SyntheticEvent) => {
     e.stopPropagation()
@@ -202,9 +224,9 @@ export function PuckHost({
 
   const puckData: Data = useMemo(() => {
     return {
-      root: localDoc.root || { props: {} },
-      content: localDoc.content || [],
-      zones: localDoc.zones || {},
+      root: localDoc?.root || { props: {} },
+      content: localDoc?.content || [],
+      zones: localDoc?.zones || {},
     }
   }, [localDoc])
 
@@ -404,7 +426,7 @@ export function PuckHost({
         initialPos.y = Math.max(padding, window.innerHeight - height - padding)
       }
       initialPos.x = Math.max(padding, initialPos.x)
-      initialPos.y = Math.max(padding, initialPos.y)
+      initialPos.y = Math.max(68, initialPos.y)
 
       setActiveStyleMenu({
         opened: true,

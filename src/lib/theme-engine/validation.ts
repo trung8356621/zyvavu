@@ -2,6 +2,7 @@ import type { TemplateContext, ThemeComponentData, ThemeTemplateDocument, Valida
 import { getTemplatePolicy } from './policy'
 import { getWidgetManifest } from './widget-registry-manifests'
 import { validateUniversalStyle } from '@/lib/style-engine/validation'
+import { isPageContentContext } from './normalization'
 
 export function validateThemeTemplateDocument(
   doc: unknown,
@@ -88,6 +89,33 @@ export function validateThemeTemplateDocument(
 
   // Policy validation
   try {
+    // 0. Mandatory Section Architecture check for page-content templates
+    if (isPageContentContext(context)) {
+      for (let i = 0; i < candidate.content.length; i++) {
+        const item = candidate.content[i]
+        if (item && item.type !== 'Section') {
+          errors.push(
+            `Template "${context}" requires all root-level content to be Section containers. Found root widget "${item.type}" (${item.props?.id || i}).`,
+          )
+        }
+      }
+    }
+
+    // Disallow nested Sections inside zones (e.g. inside Section or Columns)
+    if (candidate.zones && typeof candidate.zones === 'object') {
+      for (const [zoneKey, zoneItems] of Object.entries(candidate.zones)) {
+        if (Array.isArray(zoneItems)) {
+          for (const item of zoneItems) {
+            if (item && item.type === 'Section') {
+              errors.push(
+                `Section widget "${item.props?.id || 'unknown'}" cannot be nested inside zone "${zoneKey}". Section-inside-Section is not permitted.`,
+              )
+            }
+          }
+        }
+      }
+    }
+
     const policy = getTemplatePolicy(context)
     const allowedSet = new Set(policy.allowedWidgets)
     if (context === 'header') allowedSet.add('Header')

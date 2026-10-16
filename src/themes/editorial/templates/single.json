@@ -6,52 +6,86 @@
   },
   "content": [
     {
-      "type": "PostTitle",
+      "type": "Section",
       "props": {
-        "id": "edit-single-title",
-        "tag": "h1",
-        "align": "center",
-        "lock": {
-          "canDelete": false,
-          "canMove": false,
-          "canEditProps": true
-        }
+        "id": "edit-single-header-section",
+        "containerWidth": "narrowWidth",
+        "verticalPadding": "md",
+        "minHeight": "auto"
       }
     },
     {
-      "type": "PostMeta",
+      "type": "Section",
       "props": {
-        "id": "edit-single-meta",
-        "showDate": true,
-        "showAuthor": true,
-        "showCategories": true,
-        "lock": {
-          "canDelete": false,
-          "canMove": true,
-          "canEditProps": true
-        }
+        "id": "edit-single-media-section",
+        "containerWidth": "containerWidth",
+        "verticalPadding": "sm",
+        "minHeight": "auto"
       }
     },
     {
-      "type": "FeaturedMedia",
+      "type": "Section",
       "props": {
-        "id": "edit-single-media",
-        "aspectRatio": "16:9",
-        "caption": "Hình ảnh minh họa chuyên mục nghiên cứu"
-      }
-    },
-    {
-      "type": "PostContent",
-      "props": {
-        "id": "edit-single-content",
-        "showExcerpt": false,
-        "lock": {
-          "canDelete": false,
-          "canMove": false,
-          "canEditProps": true
-        }
+        "id": "edit-single-body-section",
+        "containerWidth": "narrowWidth",
+        "verticalPadding": "lg",
+        "minHeight": "auto"
       }
     }
   ],
-  "zones": {}
+  "zones": {
+    "edit-single-header-section:content": [
+      {
+        "type": "PostTitle",
+        "props": {
+          "id": "edit-single-title",
+          "tag": "h1",
+          "align": "center",
+          "lock": {
+            "canDelete": false,
+            "canMove": false,
+            "canEditProps": true
+          }
+        }
+      },
+      {
+        "type": "PostMeta",
+        "props": {
+          "id": "edit-single-meta",
+          "showDate": true,
+          "showAuthor": true,
+          "showCategories": true,
+          "lock": {
+            "canDelete": false,
+            "canMove": true,
+            "canEditProps": true
+          }
+        }
+      }
+    ],
+    "edit-single-media-section:content": [
+      {
+        "type": "FeaturedMedia",
+        "props": {
+          "id": "edit-single-media",
+          "aspectRatio": "16:9",
+          "caption": "Hình ảnh minh họa chuyên mục nghiên cứu"
+        }
+      }
+    ],
+    "edit-single-body-section:content": [
+      {
+        "type": "PostContent",
+        "props": {
+          "id": "edit-single-content",
+          "showExcerpt": false,
+          "lock": {
+            "canDelete": false,
+            "canMove": false,
+            "canEditProps": true
+          }
+        }
+      }
+    ]
+  }
 }

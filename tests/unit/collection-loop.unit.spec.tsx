@@ -43,38 +43,44 @@ describe('Loop Item Engine V1 — Contracts & Rendering', () => {
       root: {},
       content: [
         {
-          type: 'CollectionLoop',
-          props: {
-            id: 'test-loop-1',
-            mode: 'manual',
-            heading: 'Các Dịch Vụ Nổi Bật',
-            columns: 3,
-            gap: '20px',
-            limit: 3,
-            manualItems: [
-              {
-                id: 'item-alpha',
-                title: 'Tư vấn Chuyển đổi số',
-                excerpt: 'Định hình chiến lược kiến trúc phần mềm cho tổ chức.',
-                url: '/services/consulting',
-              },
-              {
-                id: 'item-beta',
-                title: 'Gia công Cơ khí Chính xác',
-                excerpt: 'Sản xuất linh kiện tiêu chuẩn ISO 9001.',
-                url: '/services/manufacturing',
-              },
-              {
-                id: 'item-gamma',
-                title: 'Kiểm thử & Đảm bảo Chất lượng',
-                excerpt: 'Tự động hóa kiểm thử và kiểm định phòng LAB.',
-                url: '/services/qa',
-              },
-            ],
-          },
+          type: 'Section',
+          props: { id: 'sec-loop' },
         },
       ],
       zones: {
+        'sec-loop:content': [
+          {
+            type: 'CollectionLoop',
+            props: {
+              id: 'test-loop-1',
+              mode: 'manual',
+              heading: 'Các Dịch Vụ Nổi Bật',
+              columns: 3,
+              gap: '20px',
+              limit: 3,
+              manualItems: [
+                {
+                  id: 'item-alpha',
+                  title: 'Tư vấn Chuyển đổi số',
+                  excerpt: 'Định hình chiến lược kiến trúc phần mềm cho tổ chức.',
+                  url: '/services/consulting',
+                },
+                {
+                  id: 'item-beta',
+                  title: 'Gia công Cơ khí Chính xác',
+                  excerpt: 'Sản xuất linh kiện tiêu chuẩn ISO 9001.',
+                  url: '/services/manufacturing',
+                },
+                {
+                  id: 'item-gamma',
+                  title: 'Kiểm thử & Đảm bảo Chất lượng',
+                  excerpt: 'Tự động hóa kiểm thử và kiểm định phòng LAB.',
+                  url: '/services/qa',
+                },
+              ],
+            },
+          },
+        ],
         'test-loop-1:itemTemplate': [
           {
             type: 'ItemTitle',
@@ -150,7 +156,11 @@ describe('Loop Item Engine V1 — Contracts & Rendering', () => {
       expect(validation.valid).toBe(true)
 
       // Contains CollectionLoop widget
-      const loopWidget = doc.content.find((item) => item.type === 'CollectionLoop')
+      const allWidgets = [
+        ...doc.content,
+        ...Object.values(doc.zones || {}).flat(),
+      ]
+      const loopWidget = allWidgets.find((item) => item.type === 'CollectionLoop')
       expect(loopWidget).toBeDefined()
       const loopId = loopWidget!.props.id
 

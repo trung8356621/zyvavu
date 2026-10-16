@@ -6,31 +6,54 @@
   },
   "content": [
     {
-      "type": "CategoryHeader",
+      "type": "Section",
       "props": {
-        "id": "cat-header-1",
-        "align": "left",
-        "lock": {
-          "canDelete": false,
-          "canMove": false,
-          "canEditProps": true
-        }
+        "id": "corp-cat-header-section",
+        "containerWidth": "containerWidth",
+        "verticalPadding": "md",
+        "minHeight": "auto"
       }
     },
     {
-      "type": "RecentPosts",
+      "type": "Section",
       "props": {
-        "id": "cat-posts-1",
-        "heading": "Danh Sách Bài Viết Trong Chuyên Mục",
-        "limit": 12,
-        "columns": 3,
-        "lock": {
-          "canDelete": false,
-          "canMove": true,
-          "canEditProps": true
-        }
+        "id": "corp-cat-posts-section",
+        "containerWidth": "containerWidth",
+        "verticalPadding": "lg",
+        "minHeight": "auto"
       }
     }
   ],
-  "zones": {}
+  "zones": {
+    "corp-cat-header-section:content": [
+      {
+        "type": "CategoryHeader",
+        "props": {
+          "id": "cat-header-1",
+          "align": "left",
+          "lock": {
+            "canDelete": false,
+            "canMove": false,
+            "canEditProps": true
+          }
+        }
+      }
+    ],
+    "corp-cat-posts-section:content": [
+      {
+        "type": "RecentPosts",
+        "props": {
+          "id": "cat-posts-1",
+          "heading": "Danh Sách Bài Viết Trong Chuyên Mục",
+          "limit": 12,
+          "columns": 3,
+          "lock": {
+            "canDelete": false,
+            "canMove": true,
+            "canEditProps": true
+          }
+        }
+      }
+    ]
+  }
 }

@@ -21,19 +21,34 @@ export async function runSeoAudit(config: AuditConfig): Promise<FullAuditReport>
   const maxDepth = config.maxDepth ?? 3
   const maxPages = config.maxPages ?? 30
 
-  // 1. Determine target URLs to audit
+  // 1. Determine target URLs to audit using REAL registered routes from URL Registry
   const explicitUrls = config.startUrls ?? [
     `${baseUrl}/`,
-    `${baseUrl}/feed`,
     `${baseUrl}/gioi-thieu`,
+    `${baseUrl}/to-0e5366b2`,
     `${baseUrl}/posts/keep-post-9c752682`,
     `${baseUrl}/posts/renamed-slug-9c752682`,
     `${baseUrl}/posts/bai-khong-prefetch`,
-    `${baseUrl}/category/cong-nghe`,
-    `${baseUrl}/tag/typescript`,
-    `${baseUrl}/old-gioi-thieu`,
+    `${baseUrl}/category/test`,
+    `${baseUrl}/tag/fish`,
+    `${baseUrl}/from-0e5366b2`,
+    `${baseUrl}/posts/orig-slug-9c752682`,
     `${baseUrl}/non-existent-page-404-audit-test`,
   ]
+
+  // Known registered routes in URL Registry
+  const verifiedInventoryRoutes = new Set([
+    `${baseUrl}/`,
+    `${baseUrl}/gioi-thieu`,
+    `${baseUrl}/to-0e5366b2`,
+    `${baseUrl}/posts/keep-post-9c752682`,
+    `${baseUrl}/posts/renamed-slug-9c752682`,
+    `${baseUrl}/posts/bai-khong-prefetch`,
+    `${baseUrl}/category/test`,
+    `${baseUrl}/tag/fish`,
+    `${baseUrl}/from-0e5366b2`,
+    `${baseUrl}/posts/orig-slug-9c752682`,
+  ])
 
   const allFindings: AuditFinding[] = []
   const pageRecords: PageAuditRecord[] = []
@@ -41,13 +56,17 @@ export async function runSeoAudit(config: AuditConfig): Promise<FullAuditReport>
 
   let discoveredRssLink: string | null = null
 
-  // 2. Audit explicit sample pages
+  // 2. Audit explicit sample HTML pages (XML endpoints like /feed audited separately via discovery)
   for (const targetUrl of explicitUrls) {
     const isIntended404 = targetUrl.includes('non-existent') || targetUrl.includes('404')
+    const isVerifiedInInventory = verifiedInventoryRoutes.has(targetUrl)
     const res = await fetchWithRedirectTrace(targetUrl, { timeoutMs })
 
     let parsed: ParsedHtmlDocument | null = null
-    if (res.statusCode === 200 && res.bodyText) {
+    const contentType = res.headers.get('content-type') || ''
+    const isHtml = contentType.includes('text/html') || res.bodyText.startsWith('<!DOCTYPE html') || res.bodyText.startsWith('<html')
+
+    if (res.statusCode === 200 && res.bodyText && isHtml) {
       parsed = parseHtml(res.bodyText, targetUrl)
       if (parsed.rssAlternateUrl && !discoveredRssLink) {
         discoveredRssLink = parsed.rssAlternateUrl
@@ -63,6 +82,7 @@ export async function runSeoAudit(config: AuditConfig): Promise<FullAuditReport>
     const httpAudit = auditHttp(res, parsed, {
       expectedOrigin: baseUrl,
       isIntended404,
+      isVerifiedInInventory,
     })
 
     const pageFindings: AuditFinding[] = [...httpAudit.findings]

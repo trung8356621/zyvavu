@@ -618,12 +618,23 @@ export function generateThemeCss(themeConfig?: ThemeConfig): string {
   }
 
   // 2. Layout & Container
-  if (tokens?.layout?.containerWidth) {
-    cssVars.push(`--zyvavu-theme-container: ${tokens.layout.containerWidth};`)
-  }
-  if (tokens?.layout?.narrowWidth) {
-    cssVars.push(`--zyvavu-theme-container-narrow: ${tokens.layout.narrowWidth};`)
-  }
+  const containerW = tokens?.layout?.containerWidth || '1200px'
+  cssVars.push(`--zyvavu-theme-container: ${containerW};`)
+
+  const narrowW = tokens?.layout?.narrowWidth || '800px'
+  cssVars.push(`--zyvavu-theme-container-narrow: ${narrowW};`)
+
+  const wideW = tokens?.layout?.wideWidth || '1400px'
+  cssVars.push(`--zyvavu-theme-container-wide: ${wideW};`)
+
+  const contentAlign = tokens?.layout?.alignment || tokens?.layout?.contentAlignment || 'left'
+  cssVars.push(`--zyvavu-theme-alignment: ${contentAlign};`)
+
+  const pageSpacingToken = tokens?.layout?.pageSpacing || tokens?.layout?.spacing || 'md'
+  const resolvedPageSpacing =
+    tokens?.spacing?.[pageSpacingToken] ||
+    (pageSpacingToken.includes('px') || pageSpacingToken.includes('rem') ? pageSpacingToken : '16px')
+  cssVars.push(`--zyvavu-theme-page-spacing: ${resolvedPageSpacing};`)
 
   // 3. Spacing
   if (tokens?.spacing) {
@@ -758,13 +769,25 @@ h6 {
   max-width: var(--zyvavu-theme-container, 1200px);
   margin-left: auto;
   margin-right: auto;
-  padding-left: 24px;
-  padding-right: 24px;
+  padding-left: var(--zyvavu-theme-page-spacing, 24px);
+  padding-right: var(--zyvavu-theme-page-spacing, 24px);
   box-sizing: border-box;
 }
 
 .zyvavu-theme-container--narrow {
   max-width: var(--zyvavu-theme-container-narrow, 800px);
+}
+
+.zyvavu-theme-container--wide {
+  max-width: var(--zyvavu-theme-container-wide, 1400px);
+}
+
+.zyvavu-theme-container--full {
+  max-width: 100%;
+}
+
+.zyvavu-theme-root {
+  text-align: var(--zyvavu-theme-alignment, left);
 }
 
 .zyvavu-widget-section {

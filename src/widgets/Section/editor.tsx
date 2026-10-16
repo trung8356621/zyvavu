@@ -4,6 +4,7 @@ import React from 'react'
 import type { ComponentConfig } from '@puckeditor/core'
 import type { SectionProps } from './frontend'
 import { resolveSectionLayerStyles } from '@/lib/style-engine/serializer'
+import { usePageLayout } from '@/lib/theme-engine/page-settings'
 
 export const sectionEditor: ComponentConfig<SectionProps> = {
   label: 'Section Container',
@@ -12,6 +13,7 @@ export const sectionEditor: ComponentConfig<SectionProps> = {
       type: 'select',
       label: 'Container Width',
       options: [
+        { label: 'Inherit Page / Theme', value: 'inherit' },
         { label: 'Standard Container', value: 'containerWidth' },
         { label: 'Narrow Container', value: 'narrowWidth' },
         { label: 'Wide Container', value: 'wideWidth' },
@@ -41,23 +43,33 @@ export const sectionEditor: ComponentConfig<SectionProps> = {
         { label: 'Full Screen (100vh)', value: 'screen' },
       ],
     },
-    content: { type: 'slot' },
+    content: {
+      type: 'slot',
+      disallow: ['Section'],
+    },
   },
   defaultProps: {
-    containerWidth: 'containerWidth',
+    containerWidth: 'inherit',
     verticalPadding: 'md',
     minHeight: 'auto',
   },
   render: ({
     id,
-    containerWidth = 'containerWidth',
+    containerWidth = 'inherit',
     verticalPadding = 'md',
     minHeight = 'auto',
     style,
     content: Content,
+    puck,
   }: any) => {
+    const pageLayout = usePageLayout()
+    const pageContainerWidth =
+      pageLayout?.effectiveContainerWidth ||
+      puck?.appState?.data?.root?.props?.pageSettings?.layout?.containerWidth
+
     const layers = resolveSectionLayerStyles(style, {
       containerWidth,
+      pageContainerWidth,
       verticalPadding,
       minHeight,
     })

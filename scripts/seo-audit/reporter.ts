@@ -15,7 +15,9 @@ export function computeSummary(
 ): AuditSummary {
   let passCount = 0
   let failCount = 0
+  let confirmedFailCount = 0
   let warningCount = 0
+  let inconclusiveCount = 0
   let notTestedCount = 0
   let highCount = 0
   let mediumCount = 0
@@ -23,9 +25,16 @@ export function computeSummary(
 
   for (const f of findings) {
     if (f.status === 'pass') passCount++
-    if (f.status === 'fail') failCount++
+    if (f.status === 'fail') {
+      failCount++
+      if (f.severity === 'high') confirmedFailCount++
+    }
     if (f.status === 'warning') warningCount++
     if (f.status === 'not_tested') notTestedCount++
+
+    if (f.id.includes('INCONCLUSIVE') || f.id.includes('UNVERIFIED') || f.id.includes('TIMEOUT')) {
+      inconclusiveCount++
+    }
 
     if (f.severity === 'high') highCount++
     if (f.severity === 'medium') mediumCount++
@@ -37,7 +46,9 @@ export function computeSummary(
     crawledPages: crawledPagesCount,
     passCount,
     failCount,
+    confirmedFailCount,
     warningCount,
+    inconclusiveCount,
     notTestedCount,
     highCount,
     mediumCount,
@@ -60,16 +71,19 @@ export function formatMarkdownReport(report: FullAuditReport): string {
 
   lines.push(`## 1. EXECUTIVE SUMMARY`)
   lines.push(``)
-  lines.push(`| Metric | Value |`)
-  lines.push(`| :--- | :--- |`)
-  lines.push(`| Total Pages Audited | **${summary.totalAuditedUrls}** |`)
-  lines.push(`| Total URLs Crawled | **${summary.crawledPages}** |`)
-  lines.push(`| PASS Findings | **${summary.passCount}** |`)
-  lines.push(`| FAIL Findings (Action Required) | **${summary.failCount}** |`)
-  lines.push(`| WARNING Findings (Review Advised) | **${summary.warningCount}** |`)
-  lines.push(`| HIGH Severity Findings | **${summary.highCount}** |`)
-  lines.push(`| MEDIUM Severity Findings | **${summary.mediumCount}** |`)
-  lines.push(`| LOW Severity Findings | **${summary.lowCount}** |`)
+  lines.push(`| Metric | Value | Classification |`)
+  lines.push(`| :--- | :--- | :--- |`)
+  lines.push(`| Total Pages Audited | **${summary.totalAuditedUrls}** | Sample routes |`)
+  lines.push(`| Total URLs Crawled | **${summary.crawledPages}** | Bounded crawl |`)
+  lines.push(`| PASS Findings | **${summary.passCount}** | Verified |`)
+  lines.push(`| CONFIRMED FAIL Findings | **${summary.confirmedFailCount}** | Genuine action required |`)
+  lines.push(`| Total FAIL Findings | **${summary.failCount}** | All failures |`)
+  lines.push(`| WARNING Findings | **${summary.warningCount}** | Review advised |`)
+  lines.push(`| INCONCLUSIVE / TIMEOUT | **${summary.inconclusiveCount}** | Cold SSR/Dev compile |`)
+  lines.push(`| NOT TESTED | **${summary.notTestedCount}** | Insufficient coverage |`)
+  lines.push(`| HIGH Severity (Verified) | **${summary.highCount}** | Critical |`)
+  lines.push(`| MEDIUM Severity | **${summary.mediumCount}** | Secondary |`)
+  lines.push(`| LOW Severity | **${summary.lowCount}** | Minor |`)
   lines.push(``)
 
   // Findings Breakdown Table
@@ -174,19 +188,30 @@ export function formatMarkdownReport(report: FullAuditReport): string {
     lines.push(`  - \`${u}\`: Depth ${d} (Inbound: ${(linkGraph.inboundMap[u] || []).length}, Outbound: ${(linkGraph.outboundMap[u] || []).length})`)
   }
   lines.push(``)
-  lines.push(`- **Broken Internal Links Found**: ${linkGraph.brokenLinks.length}`)
+  lines.push(`- **Broken Internal Links Found (Confirmed Failures)**: ${linkGraph.brokenLinks.length}`)
   for (const bl of linkGraph.brokenLinks) {
     lines.push(`  - ❌ \`${bl.fromUrl}\` -> \`${bl.targetUrl}\` (HTTP ${bl.statusCode || 'ERR'}: ${bl.error})`)
   }
   lines.push(``)
+  if (linkGraph.inconclusiveTimeoutLinks && linkGraph.inconclusiveTimeoutLinks.length > 0) {
+    lines.push(`- **Inconclusive Timeout Links (Cold Dev SSR / Not Broken)**: ${linkGraph.inconclusiveTimeoutLinks.length}`)
+    for (const tl of linkGraph.inconclusiveTimeoutLinks) {
+      lines.push(`  - ⏳ \`${tl.fromUrl}\` -> \`${tl.targetUrl}\` (Timeout after ${tl.retryCount} attempt(s))`)
+    }
+    lines.push(``)
+  }
   lines.push(`- **Redirecting Internal Links Found**: ${linkGraph.redirectingLinks.length}`)
   for (const rl of linkGraph.redirectingLinks) {
     lines.push(`  - ⚠️ \`${rl.fromUrl}\` -> \`${rl.targetUrl}\` (HTTP ${rl.statusCode} -> \`${rl.finalUrl}\`)`)
   }
   lines.push(``)
-  lines.push(`- **Orphan URLs in Inventory**: ${linkGraph.orphanUrls.length}`)
-  for (const ou of linkGraph.orphanUrls) {
-    lines.push(`  - ⚠️ \`${ou}\` (0 inbound links found from crawl)`)
+  lines.push(`- **Orphan URLs in Inventory Status**: **${linkGraph.orphanStatus}**`)
+  if (linkGraph.orphanStatus === 'NOT_VERIFIED') {
+    lines.push(`  - ℹ️ _${linkGraph.orphanReason || 'Sample crawl coverage insufficient to confirm orphan pages.'}_`)
+  } else {
+    for (const ou of linkGraph.orphanUrls) {
+      lines.push(`  - ⚠️ \`${ou}\` (0 inbound HTML links found in complete crawl)`)
+    }
   }
   lines.push(``)
 

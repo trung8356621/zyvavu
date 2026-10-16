@@ -203,6 +203,7 @@ export function resolveSectionLayerStyles(
   style?: UniversalStyle,
   sectionProps?: {
     containerWidth?: string
+    pageContainerWidth?: string
     verticalPadding?: string
     minHeight?: string
   },
@@ -353,8 +354,11 @@ export function resolveSectionLayerStyles(
   }
 
   // 5. Container & Content Layer (zIndex 10)
+  const rawWidthToken = s.section?.containerWidth || sectionProps?.containerWidth
   const containerWidthToken =
-    s.section?.containerWidth || sectionProps?.containerWidth || 'containerWidth'
+    !rawWidthToken || rawWidthToken === 'inherit'
+      ? sectionProps?.pageContainerWidth || 'containerWidth'
+      : rawWidthToken
 
   const containerStyle: CSSProperties = {
     position: 'relative',
@@ -366,12 +370,12 @@ export function resolveSectionLayerStyles(
 
   if (containerWidthToken === 'full') {
     containerStyle.maxWidth = '100%'
-    containerStyle.paddingLeft = '24px'
-    containerStyle.paddingRight = '24px'
+    containerStyle.paddingLeft = 'var(--zyvavu-theme-page-spacing, 24px)'
+    containerStyle.paddingRight = 'var(--zyvavu-theme-page-spacing, 24px)'
   } else {
     containerStyle.maxWidth = resolveContainerWidth(containerWidthToken)
-    containerStyle.paddingLeft = '24px'
-    containerStyle.paddingRight = '24px'
+    containerStyle.paddingLeft = 'var(--zyvavu-theme-page-spacing, 24px)'
+    containerStyle.paddingRight = 'var(--zyvavu-theme-page-spacing, 24px)'
   }
 
   const contentStyle: CSSProperties = {

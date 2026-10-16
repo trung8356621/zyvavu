@@ -10,18 +10,30 @@
   },
   "content": [
     {
-      "type": "ProductHeader",
+      "type": "Section",
       "props": {
-        "id": "prod-header-1",
-        "showPrice": true,
-        "showAddToCart": true,
-        "lock": {
-          "canDelete": false,
-          "canMove": false,
-          "canEditProps": true
-        }
+        "id": "corp-prod-header-section",
+        "containerWidth": "containerWidth",
+        "verticalPadding": "lg",
+        "minHeight": "auto"
       }
     }
   ],
-  "zones": {}
+  "zones": {
+    "corp-prod-header-section:content": [
+      {
+        "type": "ProductHeader",
+        "props": {
+          "id": "prod-header-1",
+          "showPrice": true,
+          "showAddToCart": true,
+          "lock": {
+            "canDelete": false,
+            "canMove": false,
+            "canEditProps": true
+          }
+        }
+      }
+    ]
+  }
 }

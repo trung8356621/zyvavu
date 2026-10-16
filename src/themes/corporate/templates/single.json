@@ -6,48 +6,82 @@
   },
   "content": [
     {
-      "type": "PostTitle",
+      "type": "Section",
       "props": {
-        "id": "single-title-1",
-        "tag": "h1",
-        "align": "left",
-        "variant": "default",
-        "lock": {
-          "canDelete": false,
-          "canMove": true,
-          "canEditProps": true
-        }
+        "id": "corp-single-header-section",
+        "containerWidth": "narrowWidth",
+        "verticalPadding": "md",
+        "minHeight": "auto"
       }
     },
     {
-      "type": "PostMeta",
+      "type": "Section",
       "props": {
-        "id": "single-meta-1",
-        "showDate": true,
-        "showAuthor": true,
-        "showCategories": true
+        "id": "corp-single-media-section",
+        "containerWidth": "containerWidth",
+        "verticalPadding": "sm",
+        "minHeight": "auto"
       }
     },
     {
-      "type": "FeaturedMedia",
+      "type": "Section",
       "props": {
-        "id": "single-media-1",
-        "aspectRatio": "16:9",
-        "rounded": true
-      }
-    },
-    {
-      "type": "PostContent",
-      "props": {
-        "id": "single-content-1",
-        "showExcerptFirst": true,
-        "lock": {
-          "canDelete": false,
-          "canMove": false,
-          "canEditProps": true
-        }
+        "id": "corp-single-body-section",
+        "containerWidth": "narrowWidth",
+        "verticalPadding": "lg",
+        "minHeight": "auto"
       }
     }
   ],
-  "zones": {}
+  "zones": {
+    "corp-single-header-section:content": [
+      {
+        "type": "PostTitle",
+        "props": {
+          "id": "single-title-1",
+          "tag": "h1",
+          "align": "left",
+          "variant": "default",
+          "lock": {
+            "canDelete": false,
+            "canMove": true,
+            "canEditProps": true
+          }
+        }
+      },
+      {
+        "type": "PostMeta",
+        "props": {
+          "id": "single-meta-1",
+          "showDate": true,
+          "showAuthor": true,
+          "showCategories": true
+        }
+      }
+    ],
+    "corp-single-media-section:content": [
+      {
+        "type": "FeaturedMedia",
+        "props": {
+          "id": "single-media-1",
+          "aspectRatio": "16:9",
+          "rounded": true
+        }
+      }
+    ],
+    "corp-single-body-section:content": [
+      {
+        "type": "PostContent",
+        "props": {
+          "id": "single-content-1",
+          "showExcerptFirst": true,
+          "lock": {
+            "canDelete": false,
+            "canMove": false,
+            "canEditProps": true
+          }
+        }
+      }
+    ]
+  }
 }

@@ -2,7 +2,8 @@ import React from 'react'
 import type { ComponentConfig, Config } from '@puckeditor/core'
 import type { PageSettings, TemplateContext, ThemeConfig } from './types'
 import { getTemplatePolicy } from './policy'
-import { resolvePageSettingsStyles } from './page-settings'
+import { resolvePageSettingsStyles, resolveEffectivePageLayout, PageLayoutContext } from './page-settings'
+import { isPageContentContext } from './normalization'
 
 // Import manifests
 import { postTitleManifest } from '@/widgets/PostTitle/manifest'
@@ -160,31 +161,53 @@ export function getEditorConfigForContext(
     categories[catKey].components.push(id)
   }
 
+  const isPageContent = isPageContentContext(context)
   const isDocumentMode = context === 'single' || context === 'page'
-  const defaultContainerClass = isDocumentMode
-    ? 'zyvavu-theme-container zyvavu-theme-container--narrow site-section'
-    : context === 'header' || context === 'footer'
-      ? 'zyvavu-theme-part'
-      : 'zyvavu-theme-container site-section'
+  const defaultContainerClass = isPageContent
+    ? ''
+    : isDocumentMode
+      ? 'zyvavu-theme-container zyvavu-theme-container--narrow site-section'
+      : context === 'header' || context === 'footer'
+        ? 'zyvavu-theme-part'
+        : 'zyvavu-theme-container site-section'
 
   return {
     root: {
-      render: ({ children, pageSettings }: { children?: React.ReactNode; pageSettings?: PageSettings }) => {
-        const resolved = resolvePageSettingsStyles(pageSettings, themeConfig?.tokens, context)
+      render: ({ children, puck, pageSettings }: { children?: React.ReactNode; puck?: any; pageSettings?: PageSettings }) => {
+        const effectiveLayout = resolveEffectivePageLayout(pageSettings, themeConfig?.tokens)
+        const resolved = resolvePageSettingsStyles(pageSettings, themeConfig?.tokens, context, isPageContent)
         const styleTag = resolved.scopedCss
           ? React.createElement('style', {
               dangerouslySetInnerHTML: { __html: resolved.scopedCss },
             })
           : null
 
-        return React.createElement(
+        const contentNode = isPageContent && puck?.renderDropZone
+          ? puck.renderDropZone({ zone: 'default-zone', allow: ['Section'] })
+          : children
+
+        const innerRoot = React.createElement(
           'div',
           {
             className: `${defaultContainerClass} ${resolved.className}`.trim(),
             style: resolved.style,
           },
           styleTag,
-          children,
+          contentNode,
+        )
+
+        return React.createElement(
+          PageLayoutContext.Provider,
+          {
+            value: {
+              pageSettings,
+              themeTokens: themeConfig?.tokens,
+              effectiveContainerWidth: effectiveLayout.containerWidth,
+              effectiveAlignment: effectiveLayout.alignment,
+              effectiveSpacing: effectiveLayout.spacing,
+            },
+          },
+          innerRoot,
         )
       },
     },

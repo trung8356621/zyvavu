@@ -41,6 +41,7 @@ export async function auditLinkGraph(
   const brokenLinks: LinkGraphResult['brokenLinks'] = []
   const redirectingLinks: LinkGraphResult['redirectingLinks'] = []
   const nonCanonicalLinks: LinkGraphResult['nonCanonicalLinks'] = []
+  const inconclusiveTimeoutLinks: LinkGraphResult['inconclusiveTimeoutLinks'] = []
 
   // Pre-seed if initialParsedPages provided
   if (options.initialParsedPages) {
@@ -100,8 +101,15 @@ export async function auditLinkGraph(
         })
       }
 
-      // Check broken link
-      if (res.statusCode >= 400 && item.fromUrl) {
+      // FIX 2: Distinguish inconclusive timeout from confirmed broken link
+      if ((res.isInconclusiveTimeout || res.statusCode === 408) && item.fromUrl) {
+        inconclusiveTimeoutLinks.push({
+          fromUrl: item.fromUrl,
+          targetUrl: currentNormUrl,
+          retryCount: res.retriesPerformed || 1,
+          error: res.statusText,
+        })
+      } else if (res.statusCode >= 400 && item.fromUrl) {
         brokenLinks.push({
           fromUrl: item.fromUrl,
           targetUrl: currentNormUrl,
@@ -155,9 +163,15 @@ export async function auditLinkGraph(
     }
   }
 
-  // Orphan URLs: only evaluate against supplied inventory when inventory has items and crawl was substantial
+  // FIX 3: Orphan URLs evaluation
+  // Only evaluate against inventory when crawl coverage is sufficiently complete
   const orphanUrls: string[] = []
   const unreachableInventoryUrls: string[] = []
+  const isCrawlCoverageSufficient =
+    inventory.length > 0 && crawledNodes.size >= inventory.length && maxPages >= inventory.length
+
+  let orphanStatus: 'VERIFIED' | 'NOT_VERIFIED' = 'NOT_VERIFIED'
+  let orphanReason: string | undefined
 
   if (inventory.length > 0) {
     for (const invUrl of inventory) {
@@ -177,7 +191,7 @@ export async function auditLinkGraph(
   // Build findings
   const findings: AuditFinding[] = []
 
-  // 1. Broken internal links
+  // 1. Broken internal links (GENUINE 4xx/5xx only)
   if (brokenLinks.length > 0) {
     findings.push({
       id: 'LINK_BROKEN_INTERNAL',
@@ -185,13 +199,31 @@ export async function auditLinkGraph(
       severity: 'high',
       status: 'fail',
       title: 'Broken internal link(s) discovered in SSR HTML',
-      description: `Discovered ${brokenLinks.length} internal link(s) returning 4xx or 5xx status.`,
+      description: `Discovered ${brokenLinks.length} internal link(s) returning confirmed 4xx or 5xx status.`,
       affectedUrls: brokenLinks.map((b) => b.targetUrl),
       evidence: brokenLinks
         .map((b) => `${b.fromUrl} -> ${b.targetUrl} (HTTP ${b.statusCode || 'ERR'})`)
         .slice(0, 8)
         .join('; '),
       recommendation: 'Update or remove broken <a href> links from templates or menus.',
+    })
+  }
+
+  // 1b. Inconclusive timeouts
+  if (inconclusiveTimeoutLinks.length > 0) {
+    findings.push({
+      id: 'LINK_TIMEOUT_INCONCLUSIVE',
+      category: 'link-graph',
+      severity: 'medium',
+      status: 'warning',
+      title: 'Internal link check timed out during cold compilation (Inconclusive)',
+      description: `${inconclusiveTimeoutLinks.length} internal link(s) timed out during Next.js compilation after 1 retry. Not classified as broken.`,
+      affectedUrls: inconclusiveTimeoutLinks.map((i) => i.targetUrl),
+      evidence: inconclusiveTimeoutLinks
+        .map((i) => `${i.fromUrl} -> ${i.targetUrl} (Timeout)`)
+        .slice(0, 5)
+        .join('; '),
+      recommendation: 'Re-test on warm server to confirm availability.',
     })
   }
 
@@ -232,18 +264,35 @@ export async function auditLinkGraph(
   }
 
   // 4. Orphan URLs finding
-  if (inventory.length > 0 && orphanUrls.length > 0) {
-    findings.push({
-      id: 'LINK_ORPHAN_URLS',
-      category: 'link-graph',
-      severity: 'medium',
-      status: 'warning',
-      title: 'Orphan URLs detected in supplied inventory',
-      description: `Found ${orphanUrls.length} inventory URL(s) with 0 inbound internal links discovered in the crawl.`,
-      affectedUrls: orphanUrls,
-      evidence: orphanUrls.slice(0, 5).join(', '),
-      recommendation: 'Add contextual links or navigation menus leading to these pages.',
-    })
+  if (inventory.length > 0) {
+    if (!isCrawlCoverageSufficient) {
+      orphanStatus = 'NOT_VERIFIED'
+      orphanReason = `Sample crawl coverage (${crawledNodes.size} pages) is insufficient relative to inventory (${inventory.length} URLs) to reliably confirm orphans.`
+      findings.push({
+        id: 'LINK_ORPHAN_UNVERIFIED',
+        category: 'link-graph',
+        severity: 'info',
+        status: 'not_tested',
+        title: 'Orphan URL analysis NOT VERIFIED (Sample crawl coverage)',
+        description: orphanReason,
+        affectedUrls: inventory,
+      })
+    } else {
+      orphanStatus = 'VERIFIED'
+      if (orphanUrls.length > 0) {
+        findings.push({
+          id: 'LINK_ORPHAN_URLS',
+          category: 'link-graph',
+          severity: 'medium',
+          status: 'warning',
+          title: 'Orphan URLs detected in inventory',
+          description: `Found ${orphanUrls.length} inventory URL(s) with 0 inbound HTML links discovered in complete crawl.`,
+          affectedUrls: orphanUrls,
+          evidence: orphanUrls.slice(0, 5).join(', '),
+          recommendation: 'Add contextual links or navigation menus leading to these pages.',
+        })
+      }
+    }
   }
 
   if (brokenLinks.length === 0 && redirectingLinks.length === 0) {
@@ -265,7 +314,10 @@ export async function auditLinkGraph(
     brokenLinks,
     redirectingLinks,
     nonCanonicalLinks,
+    inconclusiveTimeoutLinks,
     orphanUrls,
+    orphanStatus,
+    orphanReason,
     unreachableInventoryUrls,
   }
 

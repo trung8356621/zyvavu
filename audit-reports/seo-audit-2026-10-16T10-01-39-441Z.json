@@ -1,0 +1,671 @@
+{
+  "timestamp": "2026-10-16T10:01:39.440Z",
+  "targetBaseUrl": "https://zyvavu.test",
+  "mode": "self",
+  "parityStatus": "NOT YET VERIFIED",
+  "summary": {
+    "totalAuditedUrls": 11,
+    "crawledPages": 1,
+    "passCount": 1,
+    "failCount": 11,
+    "confirmedFailCount": 11,
+    "warningCount": 4,
+    "inconclusiveCount": 0,
+    "notTestedCount": 0,
+    "highCount": 11,
+    "mediumCount": 3,
+    "lowCount": 1
+  },
+  "findings": [
+    {
+      "id": "HTTP_SERVER_ERROR",
+      "category": "http",
+      "severity": "high",
+      "status": "fail",
+      "title": "HTTP 5xx Server Error (500)",
+      "description": "Server failed to render or respond to request.",
+      "affectedUrls": [
+        "https://zyvavu.test/"
+      ],
+      "evidence": "HTTP 500 Internal Server Error",
+      "recommendation": "Check server logs for unhandled runtime exceptions or database connectivity."
+    },
+    {
+      "id": "HTTP_SERVER_ERROR",
+      "category": "http",
+      "severity": "high",
+      "status": "fail",
+      "title": "HTTP 5xx Server Error (500)",
+      "description": "Server failed to render or respond to request.",
+      "affectedUrls": [
+        "https://zyvavu.test/gioi-thieu"
+      ],
+      "evidence": "HTTP 500 Internal Server Error",
+      "recommendation": "Check server logs for unhandled runtime exceptions or database connectivity."
+    },
+    {
+      "id": "HTTP_SERVER_ERROR",
+      "category": "http",
+      "severity": "high",
+      "status": "fail",
+      "title": "HTTP 5xx Server Error (500)",
+      "description": "Server failed to render or respond to request.",
+      "affectedUrls": [
+        "https://zyvavu.test/to-0e5366b2"
+      ],
+      "evidence": "HTTP 500 Internal Server Error",
+      "recommendation": "Check server logs for unhandled runtime exceptions or database connectivity."
+    },
+    {
+      "id": "HTTP_SERVER_ERROR",
+      "category": "http",
+      "severity": "high",
+      "status": "fail",
+      "title": "HTTP 5xx Server Error (500)",
+      "description": "Server failed to render or respond to request.",
+      "affectedUrls": [
+        "https://zyvavu.test/posts/keep-post-9c752682"
+      ],
+      "evidence": "HTTP 500 Internal Server Error",
+      "recommendation": "Check server logs for unhandled runtime exceptions or database connectivity."
+    },
+    {
+      "id": "HTTP_SERVER_ERROR",
+      "category": "http",
+      "severity": "high",
+      "status": "fail",
+      "title": "HTTP 5xx Server Error (500)",
+      "description": "Server failed to render or respond to request.",
+      "affectedUrls": [
+        "https://zyvavu.test/posts/renamed-slug-9c752682"
+      ],
+      "evidence": "HTTP 500 Internal Server Error",
+      "recommendation": "Check server logs for unhandled runtime exceptions or database connectivity."
+    },
+    {
+      "id": "HTTP_SERVER_ERROR",
+      "category": "http",
+      "severity": "high",
+      "status": "fail",
+      "title": "HTTP 5xx Server Error (500)",
+      "description": "Server failed to render or respond to request.",
+      "affectedUrls": [
+        "https://zyvavu.test/posts/bai-khong-prefetch"
+      ],
+      "evidence": "HTTP 500 Internal Server Error",
+      "recommendation": "Check server logs for unhandled runtime exceptions or database connectivity."
+    },
+    {
+      "id": "HTTP_SERVER_ERROR",
+      "category": "http",
+      "severity": "high",
+      "status": "fail",
+      "title": "HTTP 5xx Server Error (500)",
+      "description": "Server failed to render or respond to request.",
+      "affectedUrls": [
+        "https://zyvavu.test/category/test"
+      ],
+      "evidence": "HTTP 500 Internal Server Error",
+      "recommendation": "Check server logs for unhandled runtime exceptions or database connectivity."
+    },
+    {
+      "id": "HTTP_SERVER_ERROR",
+      "category": "http",
+      "severity": "high",
+      "status": "fail",
+      "title": "HTTP 5xx Server Error (500)",
+      "description": "Server failed to render or respond to request.",
+      "affectedUrls": [
+        "https://zyvavu.test/tag/fish"
+      ],
+      "evidence": "HTTP 500 Internal Server Error",
+      "recommendation": "Check server logs for unhandled runtime exceptions or database connectivity."
+    },
+    {
+      "id": "HTTP_SERVER_ERROR",
+      "category": "http",
+      "severity": "high",
+      "status": "fail",
+      "title": "HTTP 5xx Server Error (500)",
+      "description": "Server failed to render or respond to request.",
+      "affectedUrls": [
+        "https://zyvavu.test/from-0e5366b2"
+      ],
+      "evidence": "HTTP 500 Internal Server Error",
+      "recommendation": "Check server logs for unhandled runtime exceptions or database connectivity."
+    },
+    {
+      "id": "HTTP_SERVER_ERROR",
+      "category": "http",
+      "severity": "high",
+      "status": "fail",
+      "title": "HTTP 5xx Server Error (500)",
+      "description": "Server failed to render or respond to request.",
+      "affectedUrls": [
+        "https://zyvavu.test/posts/orig-slug-9c752682"
+      ],
+      "evidence": "HTTP 500 Internal Server Error",
+      "recommendation": "Check server logs for unhandled runtime exceptions or database connectivity."
+    },
+    {
+      "id": "HTTP_404_LEAK",
+      "category": "http",
+      "severity": "high",
+      "status": "fail",
+      "title": "Nonexistent URL did not return 404",
+      "description": "Expected 404 for nonexistent route, but received HTTP 500.",
+      "affectedUrls": [
+        "https://zyvavu.test/non-existent-page-404-audit-test"
+      ],
+      "evidence": "HTTP 500",
+      "recommendation": "Ensure missing content triggers notFound() and returns HTTP 404 status."
+    },
+    {
+      "id": "DISCOVERY_RSS_LINK_MISSING",
+      "category": "discovery",
+      "severity": "low",
+      "status": "warning",
+      "title": "RSS feed auto-discovery link missing in head",
+      "description": "Homepage does not expose a <link rel=\"alternate\" type=\"application/rss+xml\"> tag.",
+      "affectedUrls": [
+        "https://zyvavu.test"
+      ],
+      "recommendation": "Add RSS auto-discovery link tag in root layout metadata."
+    },
+    {
+      "id": "DISCOVERY_RSS_FEED_MISSING",
+      "category": "discovery",
+      "severity": "medium",
+      "status": "warning",
+      "title": "RSS feed not found at /feed",
+      "description": "Request to https://zyvavu.test/feed returned HTTP 500.",
+      "affectedUrls": [
+        "https://zyvavu.test/feed"
+      ],
+      "recommendation": "Implement an RSS 2.0 feed route at /feed."
+    },
+    {
+      "id": "DISCOVERY_ROBOTS_TXT_MISSING",
+      "category": "discovery",
+      "severity": "medium",
+      "status": "warning",
+      "title": "robots.txt is missing (404)",
+      "description": "Request to https://zyvavu.test/robots.txt returned HTTP 500. Crawlers expect a standard robots.txt.",
+      "affectedUrls": [
+        "https://zyvavu.test/robots.txt"
+      ],
+      "recommendation": "Add a static or dynamic robots.txt route in Next.js (e.g. app/robots.ts)."
+    },
+    {
+      "id": "DISCOVERY_SITEMAP_MISSING",
+      "category": "discovery",
+      "severity": "medium",
+      "status": "warning",
+      "title": "XML Sitemap missing (not yet implemented)",
+      "description": "Request to https://zyvavu.test/sitemap.xml returned HTTP 500. Zyvavu does not currently expose /sitemap.xml.",
+      "affectedUrls": [
+        "https://zyvavu.test/sitemap.xml"
+      ],
+      "recommendation": "Implement dynamic sitemap.xml generation for published posts, pages, categories, and tags."
+    },
+    {
+      "id": "LINK_GRAPH_HEALTHY",
+      "category": "link-graph",
+      "severity": "info",
+      "status": "pass",
+      "title": "No broken or redirecting internal links found",
+      "description": "Crawled 1 pages without detecting broken internal links.",
+      "affectedUrls": [
+        "https://zyvavu.test/"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "url": "https://zyvavu.test/",
+      "http": {
+        "url": "https://zyvavu.test/",
+        "statusCode": 500,
+        "statusText": "Internal Server Error",
+        "finalUrl": "https://zyvavu.test/",
+        "redirectHops": [],
+        "isRedirectLoop": false,
+        "contentType": "text/html; charset=utf-8",
+        "canonicalTag": null,
+        "canonicalTagsCount": 0,
+        "isCanonicalMatching": true,
+        "robotsMeta": null,
+        "xRobotsTag": null,
+        "isIndexable": false,
+        "isSoft404": false,
+        "originMatch": true,
+        "etag": "\"ciw57e0jyw686\"",
+        "cacheControl": "no-cache, must-revalidate"
+      },
+      "findings": [
+        {
+          "id": "HTTP_SERVER_ERROR",
+          "category": "http",
+          "severity": "high",
+          "status": "fail",
+          "title": "HTTP 5xx Server Error (500)",
+          "description": "Server failed to render or respond to request.",
+          "affectedUrls": [
+            "https://zyvavu.test/"
+          ],
+          "evidence": "HTTP 500 Internal Server Error",
+          "recommendation": "Check server logs for unhandled runtime exceptions or database connectivity."
+        }
+      ]
+    },
+    {
+      "url": "https://zyvavu.test/gioi-thieu",
+      "http": {
+        "url": "https://zyvavu.test/gioi-thieu",
+        "statusCode": 500,
+        "statusText": "Internal Server Error",
+        "finalUrl": "https://zyvavu.test/gioi-thieu",
+        "redirectHops": [],
+        "isRedirectLoop": false,
+        "contentType": "text/html; charset=utf-8",
+        "canonicalTag": null,
+        "canonicalTagsCount": 0,
+        "isCanonicalMatching": true,
+        "robotsMeta": null,
+        "xRobotsTag": null,
+        "isIndexable": false,
+        "isSoft404": false,
+        "originMatch": true,
+        "etag": "\"ciw57e0jyw686\"",
+        "cacheControl": "no-cache, must-revalidate"
+      },
+      "findings": [
+        {
+          "id": "HTTP_SERVER_ERROR",
+          "category": "http",
+          "severity": "high",
+          "status": "fail",
+          "title": "HTTP 5xx Server Error (500)",
+          "description": "Server failed to render or respond to request.",
+          "affectedUrls": [
+            "https://zyvavu.test/gioi-thieu"
+          ],
+          "evidence": "HTTP 500 Internal Server Error",
+          "recommendation": "Check server logs for unhandled runtime exceptions or database connectivity."
+        }
+      ]
+    },
+    {
+      "url": "https://zyvavu.test/to-0e5366b2",
+      "http": {
+        "url": "https://zyvavu.test/to-0e5366b2",
+        "statusCode": 500,
+        "statusText": "Internal Server Error",
+        "finalUrl": "https://zyvavu.test/to-0e5366b2",
+        "redirectHops": [],
+        "isRedirectLoop": false,
+        "contentType": "text/html; charset=utf-8",
+        "canonicalTag": null,
+        "canonicalTagsCount": 0,
+        "isCanonicalMatching": true,
+        "robotsMeta": null,
+        "xRobotsTag": null,
+        "isIndexable": false,
+        "isSoft404": false,
+        "originMatch": true,
+        "etag": "\"ciw57e0jyw686\"",
+        "cacheControl": "no-cache, must-revalidate"
+      },
+      "findings": [
+        {
+          "id": "HTTP_SERVER_ERROR",
+          "category": "http",
+          "severity": "high",
+          "status": "fail",
+          "title": "HTTP 5xx Server Error (500)",
+          "description": "Server failed to render or respond to request.",
+          "affectedUrls": [
+            "https://zyvavu.test/to-0e5366b2"
+          ],
+          "evidence": "HTTP 500 Internal Server Error",
+          "recommendation": "Check server logs for unhandled runtime exceptions or database connectivity."
+        }
+      ]
+    },
+    {
+      "url": "https://zyvavu.test/posts/keep-post-9c752682",
+      "http": {
+        "url": "https://zyvavu.test/posts/keep-post-9c752682",
+        "statusCode": 500,
+        "statusText": "Internal Server Error",
+        "finalUrl": "https://zyvavu.test/posts/keep-post-9c752682",
+        "redirectHops": [],
+        "isRedirectLoop": false,
+        "contentType": "text/html; charset=utf-8",
+        "canonicalTag": null,
+        "canonicalTagsCount": 0,
+        "isCanonicalMatching": true,
+        "robotsMeta": null,
+        "xRobotsTag": null,
+        "isIndexable": false,
+        "isSoft404": false,
+        "originMatch": true,
+        "etag": "\"ciw57e0jyw686\"",
+        "cacheControl": "no-cache, must-revalidate"
+      },
+      "findings": [
+        {
+          "id": "HTTP_SERVER_ERROR",
+          "category": "http",
+          "severity": "high",
+          "status": "fail",
+          "title": "HTTP 5xx Server Error (500)",
+          "description": "Server failed to render or respond to request.",
+          "affectedUrls": [
+            "https://zyvavu.test/posts/keep-post-9c752682"
+          ],
+          "evidence": "HTTP 500 Internal Server Error",
+          "recommendation": "Check server logs for unhandled runtime exceptions or database connectivity."
+        }
+      ]
+    },
+    {
+      "url": "https://zyvavu.test/posts/renamed-slug-9c752682",
+      "http": {
+        "url": "https://zyvavu.test/posts/renamed-slug-9c752682",
+        "statusCode": 500,
+        "statusText": "Internal Server Error",
+        "finalUrl": "https://zyvavu.test/posts/renamed-slug-9c752682",
+        "redirectHops": [],
+        "isRedirectLoop": false,
+        "contentType": "text/html; charset=utf-8",
+        "canonicalTag": null,
+        "canonicalTagsCount": 0,
+        "isCanonicalMatching": true,
+        "robotsMeta": null,
+        "xRobotsTag": null,
+        "isIndexable": false,
+        "isSoft404": false,
+        "originMatch": true,
+        "etag": "\"ciw57e0jyw686\"",
+        "cacheControl": "no-cache, must-revalidate"
+      },
+      "findings": [
+        {
+          "id": "HTTP_SERVER_ERROR",
+          "category": "http",
+          "severity": "high",
+          "status": "fail",
+          "title": "HTTP 5xx Server Error (500)",
+          "description": "Server failed to render or respond to request.",
+          "affectedUrls": [
+            "https://zyvavu.test/posts/renamed-slug-9c752682"
+          ],
+          "evidence": "HTTP 500 Internal Server Error",
+          "recommendation": "Check server logs for unhandled runtime exceptions or database connectivity."
+        }
+      ]
+    },
+    {
+      "url": "https://zyvavu.test/posts/bai-khong-prefetch",
+      "http": {
+        "url": "https://zyvavu.test/posts/bai-khong-prefetch",
+        "statusCode": 500,
+        "statusText": "Internal Server Error",
+        "finalUrl": "https://zyvavu.test/posts/bai-khong-prefetch",
+        "redirectHops": [],
+        "isRedirectLoop": false,
+        "contentType": "text/html; charset=utf-8",
+        "canonicalTag": null,
+        "canonicalTagsCount": 0,
+        "isCanonicalMatching": true,
+        "robotsMeta": null,
+        "xRobotsTag": null,
+        "isIndexable": false,
+        "isSoft404": false,
+        "originMatch": true,
+        "etag": "\"ciw57e0jyw686\"",
+        "cacheControl": "no-cache, must-revalidate"
+      },
+      "findings": [
+        {
+          "id": "HTTP_SERVER_ERROR",
+          "category": "http",
+          "severity": "high",
+          "status": "fail",
+          "title": "HTTP 5xx Server Error (500)",
+          "description": "Server failed to render or respond to request.",
+          "affectedUrls": [
+            "https://zyvavu.test/posts/bai-khong-prefetch"
+          ],
+          "evidence": "HTTP 500 Internal Server Error",
+          "recommendation": "Check server logs for unhandled runtime exceptions or database connectivity."
+        }
+      ]
+    },
+    {
+      "url": "https://zyvavu.test/category/test",
+      "http": {
+        "url": "https://zyvavu.test/category/test",
+        "statusCode": 500,
+        "statusText": "Internal Server Error",
+        "finalUrl": "https://zyvavu.test/category/test",
+        "redirectHops": [],
+        "isRedirectLoop": false,
+        "contentType": "text/html; charset=utf-8",
+        "canonicalTag": null,
+        "canonicalTagsCount": 0,
+        "isCanonicalMatching": true,
+        "robotsMeta": null,
+        "xRobotsTag": null,
+        "isIndexable": false,
+        "isSoft404": false,
+        "originMatch": true,
+        "etag": "\"ciw57e0jyw686\"",
+        "cacheControl": "no-cache, must-revalidate"
+      },
+      "findings": [
+        {
+          "id": "HTTP_SERVER_ERROR",
+          "category": "http",
+          "severity": "high",
+          "status": "fail",
+          "title": "HTTP 5xx Server Error (500)",
+          "description": "Server failed to render or respond to request.",
+          "affectedUrls": [
+            "https://zyvavu.test/category/test"
+          ],
+          "evidence": "HTTP 500 Internal Server Error",
+          "recommendation": "Check server logs for unhandled runtime exceptions or database connectivity."
+        }
+      ]
+    },
+    {
+      "url": "https://zyvavu.test/tag/fish",
+      "http": {
+        "url": "https://zyvavu.test/tag/fish",
+        "statusCode": 500,
+        "statusText": "Internal Server Error",
+        "finalUrl": "https://zyvavu.test/tag/fish",
+        "redirectHops": [],
+        "isRedirectLoop": false,
+        "contentType": "text/html; charset=utf-8",
+        "canonicalTag": null,
+        "canonicalTagsCount": 0,
+        "isCanonicalMatching": true,
+        "robotsMeta": null,
+        "xRobotsTag": null,
+        "isIndexable": false,
+        "isSoft404": false,
+        "originMatch": true,
+        "etag": "\"ciw57e0jyw686\"",
+        "cacheControl": "no-cache, must-revalidate"
+      },
+      "findings": [
+        {
+          "id": "HTTP_SERVER_ERROR",
+          "category": "http",
+          "severity": "high",
+          "status": "fail",
+          "title": "HTTP 5xx Server Error (500)",
+          "description": "Server failed to render or respond to request.",
+          "affectedUrls": [
+            "https://zyvavu.test/tag/fish"
+          ],
+          "evidence": "HTTP 500 Internal Server Error",
+          "recommendation": "Check server logs for unhandled runtime exceptions or database connectivity."
+        }
+      ]
+    },
+    {
+      "url": "https://zyvavu.test/from-0e5366b2",
+      "http": {
+        "url": "https://zyvavu.test/from-0e5366b2",
+        "statusCode": 500,
+        "statusText": "Internal Server Error",
+        "finalUrl": "https://zyvavu.test/from-0e5366b2",
+        "redirectHops": [],
+        "isRedirectLoop": false,
+        "contentType": "text/html; charset=utf-8",
+        "canonicalTag": null,
+        "canonicalTagsCount": 0,
+        "isCanonicalMatching": true,
+        "robotsMeta": null,
+        "xRobotsTag": null,
+        "isIndexable": false,
+        "isSoft404": false,
+        "originMatch": true,
+        "etag": "\"ciw57e0jyw686\"",
+        "cacheControl": "no-cache, must-revalidate"
+      },
+      "findings": [
+        {
+          "id": "HTTP_SERVER_ERROR",
+          "category": "http",
+          "severity": "high",
+          "status": "fail",
+          "title": "HTTP 5xx Server Error (500)",
+          "description": "Server failed to render or respond to request.",
+          "affectedUrls": [
+            "https://zyvavu.test/from-0e5366b2"
+          ],
+          "evidence": "HTTP 500 Internal Server Error",
+          "recommendation": "Check server logs for unhandled runtime exceptions or database connectivity."
+        }
+      ]
+    },
+    {
+      "url": "https://zyvavu.test/posts/orig-slug-9c752682",
+      "http": {
+        "url": "https://zyvavu.test/posts/orig-slug-9c752682",
+        "statusCode": 500,
+        "statusText": "Internal Server Error",
+        "finalUrl": "https://zyvavu.test/posts/orig-slug-9c752682",
+        "redirectHops": [],
+        "isRedirectLoop": false,
+        "contentType": "text/html; charset=utf-8",
+        "canonicalTag": null,
+        "canonicalTagsCount": 0,
+        "isCanonicalMatching": true,
+        "robotsMeta": null,
+        "xRobotsTag": null,
+        "isIndexable": false,
+        "isSoft404": false,
+        "originMatch": true,
+        "etag": "\"ciw57e0jyw686\"",
+        "cacheControl": "no-cache, must-revalidate"
+      },
+      "findings": [
+        {
+          "id": "HTTP_SERVER_ERROR",
+          "category": "http",
+          "severity": "high",
+          "status": "fail",
+          "title": "HTTP 5xx Server Error (500)",
+          "description": "Server failed to render or respond to request.",
+          "affectedUrls": [
+            "https://zyvavu.test/posts/orig-slug-9c752682"
+          ],
+          "evidence": "HTTP 500 Internal Server Error",
+          "recommendation": "Check server logs for unhandled runtime exceptions or database connectivity."
+        }
+      ]
+    },
+    {
+      "url": "https://zyvavu.test/non-existent-page-404-audit-test",
+      "http": {
+        "url": "https://zyvavu.test/non-existent-page-404-audit-test",
+        "statusCode": 500,
+        "statusText": "Internal Server Error",
+        "finalUrl": "https://zyvavu.test/non-existent-page-404-audit-test",
+        "redirectHops": [],
+        "isRedirectLoop": false,
+        "contentType": "text/html; charset=utf-8",
+        "canonicalTag": null,
+        "canonicalTagsCount": 0,
+        "isCanonicalMatching": true,
+        "robotsMeta": null,
+        "xRobotsTag": null,
+        "isIndexable": false,
+        "isSoft404": false,
+        "originMatch": true,
+        "etag": "\"ciw57e0jyw686\"",
+        "cacheControl": "no-cache, must-revalidate"
+      },
+      "findings": [
+        {
+          "id": "HTTP_404_LEAK",
+          "category": "http",
+          "severity": "high",
+          "status": "fail",
+          "title": "Nonexistent URL did not return 404",
+          "description": "Expected 404 for nonexistent route, but received HTTP 500.",
+          "affectedUrls": [
+            "https://zyvavu.test/non-existent-page-404-audit-test"
+          ],
+          "evidence": "HTTP 500",
+          "recommendation": "Ensure missing content triggers notFound() and returns HTTP 404 status."
+        }
+      ]
+    }
+  ],
+  "linkGraph": {
+    "inboundMap": {},
+    "outboundMap": {},
+    "crawlDepth": {
+      "https://zyvavu.test/": 0
+    },
+    "brokenLinks": [],
+    "redirectingLinks": [],
+    "nonCanonicalLinks": [],
+    "inconclusiveTimeoutLinks": [],
+    "orphanUrls": [],
+    "orphanStatus": "NOT_VERIFIED",
+    "unreachableInventoryUrls": []
+  },
+  "discovery": {
+    "rssDiscoveryLink": null,
+    "rssEndpoint": {
+      "url": "https://zyvavu.test/feed",
+      "statusCode": 500,
+      "contentType": "text/html; charset=utf-8",
+      "isValidXml": false,
+      "itemCount": 0,
+      "error": "HTTP 500"
+    },
+    "robotsTxt": {
+      "url": "https://zyvavu.test/robots.txt",
+      "statusCode": 500,
+      "contentType": "text/html; charset=utf-8",
+      "hasUserAgent": false,
+      "hasSitemapDirective": false,
+      "error": "HTTP 500"
+    },
+    "sitemap": {
+      "url": "https://zyvavu.test/sitemap.xml",
+      "statusCode": 500,
+      "exists": false,
+      "note": "Sitemap endpoint not implemented (HTTP 500)"
+    }
+  }
+}

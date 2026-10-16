@@ -23,7 +23,10 @@ import type { ThemeConfig, WidgetSemanticStyle } from '@/lib/theme-engine/types'
 import { getWidgetManifest } from '@/lib/theme-engine/widget-registry-manifests'
 import { SharedDraggableModal } from '@/components/admin/shared/SharedDraggableModal'
 import { ThemeColorPaletteModal } from '@/components/admin/shared/ThemeColorPaletteModal'
-import { getComponentStyleCapabilities } from '@/lib/style-engine/capabilities'
+import {
+  getComponentStyleCapabilities,
+  normalizeComponentType,
+} from '@/lib/style-engine/capabilities'
 import type {
   BackgroundConfig,
   BorderConfig,
@@ -52,11 +55,12 @@ export function computeTranslatedAnchorPosition(
   if (typeof window === 'undefined') return { x: 340, y: 80 }
 
   const padding = 12
+  const minTopToolbarClearance = 68
 
   if (!anchor) {
     const defaultX = Math.min(336, Math.max(padding, window.innerWidth - width - padding))
-    const defaultY = Math.min(80, Math.max(padding, window.innerHeight - height - padding))
-    return { x: Math.max(padding, defaultX), y: Math.max(padding, defaultY) }
+    const defaultY = Math.min(80, Math.max(minTopToolbarClearance, window.innerHeight - height - padding))
+    return { x: Math.max(padding, defaultX), y: Math.max(minTopToolbarClearance, defaultY) }
   }
 
   const rawRect = anchor.getBoundingClientRect()
@@ -83,27 +87,58 @@ export function computeTranslatedAnchorPosition(
       width: rawRect.width,
       height: rawRect.height,
     }
+  } else if (win !== window) {
+    const previewFrame =
+      document.querySelector('iframe#preview-frame') ||
+      document.querySelector('iframe')
+    if (previewFrame) {
+      const iframeRect = previewFrame.getBoundingClientRect()
+      rect = {
+        left: iframeRect.left + rawRect.left,
+        right: iframeRect.left + rawRect.right,
+        top: iframeRect.top + rawRect.top,
+        bottom: iframeRect.top + rawRect.bottom,
+        width: rawRect.width,
+        height: rawRect.height,
+      }
+    }
   }
 
-  // Primary position: right side of anchor
+  // Primary horizontal position: right side of anchor
   let x = rect.right + padding
-  let y = rect.top
 
-  // If overflowing right viewport boundary, try placing to the left of anchor
+  // If overflowing right viewport boundary, try placing inward or to the left of anchor
   if (x + width > window.innerWidth - padding) {
+    const inwardCandidate = rect.right - width
     const leftCandidate = rect.left - width - padding
-    if (leftCandidate >= padding) {
+    if (inwardCandidate >= padding && inwardCandidate + width <= window.innerWidth - padding) {
+      x = inwardCandidate
+    } else if (leftCandidate >= padding) {
       x = leftCandidate
     } else {
       x = Math.max(padding, window.innerWidth - width - padding)
     }
   }
+  x = Math.max(padding, Math.min(x, window.innerWidth - width - padding))
+
+  // Vertical position:
+  let y = rect.top
+
+  // If anchor top is near or under the top toolbar, position below the anchor
+  if (rect.top < minTopToolbarClearance) {
+    y = Math.max(minTopToolbarClearance, rect.bottom + 8)
+  }
 
   // Vertical boundary clamping
   if (y + height > window.innerHeight - padding) {
-    y = Math.max(padding, window.innerHeight - height - padding)
+    const topCandidate = rect.top - height - 8
+    if (topCandidate >= minTopToolbarClearance) {
+      y = topCandidate
+    } else {
+      y = Math.max(minTopToolbarClearance, window.innerHeight - height - padding)
+    }
   }
-  y = Math.max(padding, y)
+  y = Math.max(minTopToolbarClearance, Math.min(y, window.innerHeight - height - padding))
 
   return { x, y }
 }
@@ -125,12 +160,13 @@ export function WidgetStyleContextMenu({
   onClose,
   anchorEl,
   initialPosition,
-  componentType,
+  componentType: rawComponentType,
   componentId,
   currentStyle = {},
   themeConfig,
   onUpdateStyle,
 }: WidgetStyleContextMenuProps) {
+  const componentType = normalizeComponentType(rawComponentType)
   // Color Modal Target: 'text' | 'background' | 'overlay' | 'border' | null
   const [colorModalTarget, setColorModalTarget] = useState<
     'text' | 'background' | 'overlay' | 'border' | null

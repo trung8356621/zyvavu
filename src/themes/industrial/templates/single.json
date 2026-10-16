@@ -6,15 +6,26 @@
   },
   "content": [
     {
-      "type": "Columns",
+      "type": "Section",
       "props": {
-        "id": "ind-single-layout",
-        "distribution": "2:1",
-        "gap": "36px"
+        "id": "ind-single-main-section",
+        "containerWidth": "containerWidth",
+        "verticalPadding": "lg",
+        "minHeight": "auto"
       }
     }
   ],
   "zones": {
+    "ind-single-main-section:content": [
+      {
+        "type": "Columns",
+        "props": {
+          "id": "ind-single-layout",
+          "distribution": "2:1",
+          "gap": "36px"
+        }
+      }
+    ],
     "ind-single-layout:column1": [
       {
         "type": "PostTitle",

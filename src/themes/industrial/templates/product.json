@@ -6,31 +6,55 @@
   },
   "content": [
     {
-      "type": "ProductHeader",
+      "type": "Section",
       "props": {
-        "id": "ind-product-header",
-        "showPrice": true,
-        "showVariants": true,
-        "showPurchase": true,
-        "lock": {
-          "canDelete": false,
-          "canMove": false,
-          "canEditProps": true
-        }
+        "id": "ind-product-header-section",
+        "containerWidth": "containerWidth",
+        "verticalPadding": "lg",
+        "minHeight": "auto"
       }
     },
     {
-      "type": "PostContent",
+      "type": "Section",
       "props": {
-        "id": "ind-product-specs",
-        "showExcerpt": false,
-        "lock": {
-          "canDelete": false,
-          "canMove": false,
-          "canEditProps": true
-        }
+        "id": "ind-product-specs-section",
+        "containerWidth": "narrowWidth",
+        "verticalPadding": "md",
+        "minHeight": "auto"
       }
     }
   ],
-  "zones": {}
+  "zones": {
+    "ind-product-header-section:content": [
+      {
+        "type": "ProductHeader",
+        "props": {
+          "id": "ind-product-header",
+          "showPrice": true,
+          "showVariants": true,
+          "showPurchase": true,
+          "lock": {
+            "canDelete": false,
+            "canMove": false,
+            "canEditProps": true
+          }
+        }
+      }
+    ],
+    "ind-product-specs-section:content": [
+      {
+        "type": "TextBlock",
+        "props": {
+          "id": "ind-product-specs",
+          "title": "THÔNG SỐ KỸ THUẬT TIÊU CHUẨN",
+          "content": "Sản phẩm được gia công cơ khí chính xác theo tiêu chuẩn ISO 9001:2015. Dung sai kích thước ±0.02mm, vật liệu thép hợp kim cao cấp.",
+          "lock": {
+            "canDelete": false,
+            "canMove": false,
+            "canEditProps": true
+          }
+        }
+      }
+    ]
+  }
 }

@@ -72,9 +72,11 @@ export type PageSettingsText = {
 }
 
 export type PageSettingsLayout = {
-  containerWidth?: 'containerWidth' | 'narrowWidth' | 'wideWidth' | 'full' | string
-  spacing?: 'none' | 'xs' | 'sm' | 'md' | 'lg' | 'xl' | string
-  alignment?: 'left' | 'center' | 'right'
+  inheritTheme?: boolean
+  containerWidth?: 'inherit' | 'containerWidth' | 'narrowWidth' | 'wideWidth' | 'full' | string
+  spacing?: 'inherit' | 'none' | 'xs' | 'sm' | 'md' | 'lg' | 'xl' | string
+  alignment?: 'inherit' | 'left' | 'center' | 'right'
+  isOverride?: boolean
 }
 
 export type PageSettings = {
@@ -166,6 +168,10 @@ export type ThemeTokens = {
     containerWidth: string
     narrowWidth?: string
     wideWidth?: string
+    alignment?: 'left' | 'center' | 'right'
+    contentAlignment?: 'left' | 'center' | 'right'
+    pageSpacing?: string
+    spacing?: string
     [key: string]: string | undefined
   }
   radius: {

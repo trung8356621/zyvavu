@@ -6,35 +6,90 @@
   },
   "content": [
     {
-      "type": "TextBlock",
+      "type": "Section",
       "props": {
-        "id": "home-hero-1",
-        "badge": "Single Theme Engine V1",
-        "title": "Nền tảng nội dung kiến trúc hiện đại",
-        "content": "Zyvavu CMS kết hợp sức mạnh của Next.js 16, Payload CMS 3 và visual theming linh hoạt cho doanh nghiệp.",
-        "align": "center",
-        "ctaLabel": "Khám phá giải pháp",
-        "ctaUrl": "/about"
+        "id": "corp-home-hero-section",
+        "containerWidth": "containerWidth",
+        "verticalPadding": "lg",
+        "minHeight": "auto",
+        "style": {
+          "background": {
+            "mode": "color",
+            "colorToken": "surface"
+          }
+        }
       }
     },
     {
-      "type": "Columns",
+      "type": "Section",
       "props": {
-        "id": "home-cols-1",
-        "distribution": "equal-2"
+        "id": "corp-home-features-section",
+        "containerWidth": "containerWidth",
+        "verticalPadding": "lg",
+        "minHeight": "auto",
+        "style": {
+          "background": {
+            "mode": "color",
+            "colorToken": "background"
+          }
+        }
       }
     },
     {
-      "type": "RecentPosts",
+      "type": "Section",
       "props": {
-        "id": "home-posts-1",
-        "heading": "Tin Tức & Hoạt Động Doanh Nghiệp",
-        "limit": 6,
-        "columns": 3
+        "id": "corp-home-news-section",
+        "containerWidth": "containerWidth",
+        "verticalPadding": "lg",
+        "minHeight": "auto",
+        "style": {
+          "background": {
+            "mode": "color",
+            "colorToken": "surface"
+          }
+        }
       }
     }
   ],
   "zones": {
+    "corp-home-hero-section:content": [
+      {
+        "type": "TextBlock",
+        "props": {
+          "id": "home-hero-1",
+          "badge": "Single Theme Engine V1",
+          "title": "Nền tảng nội dung kiến trúc hiện đại",
+          "content": "Zyvavu CMS kết hợp sức mạnh của Next.js 16, Payload CMS 3 và visual theming linh hoạt cho doanh nghiệp.",
+          "align": "center",
+          "ctaLabel": "Khám phá giải pháp",
+          "ctaUrl": "/about"
+        }
+      }
+    ],
+    "corp-home-features-section:content": [
+      {
+        "type": "Columns",
+        "props": {
+          "id": "home-cols-1",
+          "distribution": "equal-2"
+        }
+      }
+    ],
+    "corp-home-news-section:content": [
+      {
+        "type": "CollectionLoop",
+        "props": {
+          "id": "corp-posts-loop",
+          "heading": "Tin Tức & Hoạt Động Doanh Nghiệp",
+          "mode": "dynamic",
+          "source": "posts",
+          "columns": 3,
+          "gap": "24px",
+          "limit": 6,
+          "sort": "newest"
+        }
+      }
+    ],
     "home-cols-1:column1": [
       {
         "type": "TextBlock",
@@ -52,6 +107,40 @@
           "id": "home-col2-text",
           "title": "Tách bạch kiến trúc",
           "content": "Theme sở hữu cấu trúc JSON và Style Rules (theme.json). Widgets là các gói độc lập cho phép mở rộng linh hoạt."
+        }
+      }
+    ],
+    "corp-posts-loop:itemTemplate": [
+      {
+        "type": "ItemImage",
+        "props": {
+          "id": "corp-item-img",
+          "aspectRatio": "16:9",
+          "borderRadius": "6px",
+          "linkToPost": true
+        }
+      },
+      {
+        "type": "ItemTitle",
+        "props": {
+          "id": "corp-item-title",
+          "tag": "h3",
+          "linkToPost": true
+        }
+      },
+      {
+        "type": "ItemExcerpt",
+        "props": {
+          "id": "corp-item-excerpt",
+          "maxLines": 3
+        }
+      },
+      {
+        "type": "ItemLink",
+        "props": {
+          "id": "corp-item-link",
+          "label": "Xem chi tiết →",
+          "variant": "link"
         }
       }
     ]

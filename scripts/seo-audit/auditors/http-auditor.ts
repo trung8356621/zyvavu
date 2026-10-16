@@ -5,7 +5,7 @@ import type { ParsedHtmlDocument } from '../html-parser'
 export function auditHttp(
   res: HttpResponseData,
   parsed: ParsedHtmlDocument | null,
-  options: { expectedOrigin?: string; isIntended404?: boolean } = {}
+  options: { expectedOrigin?: string; isIntended404?: boolean; isVerifiedInInventory?: boolean } = {}
 ): { result: HttpAuditResult; findings: AuditFinding[] } {
   const findings: AuditFinding[] = []
   const url = res.url
@@ -80,6 +80,21 @@ export function auditHttp(
 
   // --- Findings evaluation ---
 
+  // FIX 2: Inconclusive timeout handling
+  if (res.isInconclusiveTimeout || statusCode === 408) {
+    findings.push({
+      id: 'HTTP_TIMEOUT_INCONCLUSIVE',
+      category: 'http',
+      severity: 'medium',
+      status: 'warning',
+      title: 'Request timed out during compilation/cold SSR (Inconclusive)',
+      description: 'Request reached timeout threshold after 1 bounded retry. Classified as inconclusive rather than a confirmed broken link.',
+      affectedUrls: [url],
+      evidence: `Status 408 / Timeout after ${res.retriesPerformed || 1} retry`,
+      recommendation: 'Re-test on warm server or verify server log for prolonged compile time.',
+    })
+  }
+
   // 1. Redirect loops
   if (res.isRedirectLoop) {
     findings.push({
@@ -135,7 +150,7 @@ export function auditHttp(
         recommendation: 'Ensure missing content triggers notFound() and returns HTTP 404 status.',
       })
     }
-  } else {
+  } else if (!res.isInconclusiveTimeout && statusCode !== 408) {
     if (statusCode >= 500) {
       findings.push({
         id: 'HTTP_SERVER_ERROR',
@@ -149,17 +164,32 @@ export function auditHttp(
         recommendation: 'Check server logs for unhandled runtime exceptions or database connectivity.',
       })
     } else if (statusCode === 404) {
-      findings.push({
-        id: 'HTTP_NOT_FOUND',
-        category: 'http',
-        severity: 'high',
-        status: 'fail',
-        title: 'HTTP 404 Not Found for published route',
-        description: `Published or expected URL returned HTTP 404.`,
-        affectedUrls: [url],
-        evidence: `HTTP 404 at ${url}`,
-        recommendation: 'Verify URL Registry entry or route mapping for this resource.',
-      })
+      if (options.isVerifiedInInventory) {
+        // Confirmed failure: Route exists in inventory/URL Registry but returned 404
+        findings.push({
+          id: 'HTTP_NOT_FOUND',
+          category: 'http',
+          severity: 'high',
+          status: 'fail',
+          title: 'HTTP 404 Not Found for verified registered route',
+          description: `Registered canonical or redirect URL returned HTTP 404.`,
+          affectedUrls: [url],
+          evidence: `HTTP 404 at ${url} (Verified in URL Registry)`,
+          recommendation: 'Verify route handler mapping for this registered resource in URL Registry.',
+        })
+      } else {
+        // Route was assumed, not confirmed in inventory
+        findings.push({
+          id: 'HTTP_UNVERIFIED_NOT_FOUND',
+          category: 'http',
+          severity: 'low',
+          status: 'warning',
+          title: 'HTTP 404 for unverified route',
+          description: `Requested path returned 404; route was not verified in the URL Registry inventory.`,
+          affectedUrls: [url],
+          evidence: `HTTP 404 at ${url} (Unverified path)`,
+        })
+      }
     } else if (isSoft404) {
       findings.push({
         id: 'HTTP_SOFT_404',

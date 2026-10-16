@@ -80,7 +80,8 @@ describe('multi-theme PostgreSQL persistence & activation hotfix', () => {
     // Resolved template is industrial
     const homeTemplate = await resolveThemeTemplate(payload, 'home')
     expect(homeTemplate.template).toBe('home')
-    expect(homeTemplate.content[0].props.title).toContain('HỆ THỐNG SẢN XUẤT CÔNG NGHIỆP')
+    const firstWidget = homeTemplate.zones?.[`${homeTemplate.content[0].props.id}:content`]?.[0] || homeTemplate.content[0]
+    expect(firstWidget.props.title).toContain('HỆ THỐNG SẢN XUẤT CÔNG NGHIỆP')
 
     // Resolved style tokens are industrial
     const themeConfig = await resolveActiveThemeConfig(payload)

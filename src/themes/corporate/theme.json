@@ -82,7 +82,9 @@
     "layout": {
       "containerWidth": "1200px",
       "narrowWidth": "800px",
-      "wideWidth": "1400px"
+      "wideWidth": "1400px",
+      "alignment": "left",
+      "pageSpacing": "md"
     },
     "radius": {
       "sm": "4px",

@@ -231,9 +231,8 @@ svg {
 }
 
 .site-section {
-  max-width: 72rem;
-  margin: 0 auto;
-  padding: 1.5rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 @media (max-width: 768px) {

@@ -5,27 +5,29 @@ import { MantineProvider } from '@mantine/core'
 
 vi.mock('@puckeditor/core', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@puckeditor/core')>()
-  return {
-    ...actual,
-    usePuck: () => ({
-      appState: {
-        data: {
-          root: {
-            props: {
-              pageSettings: {
-                background: { type: 'theme' },
-                text: {},
-                layout: {},
-                customCSS: '',
-                customJS: '',
-              },
+  const mockState = {
+    appState: {
+      data: {
+        root: {
+          props: {
+            pageSettings: {
+              background: { type: 'theme' },
+              text: {},
+              layout: {},
+              customCSS: '',
+              customJS: '',
             },
           },
-          content: [],
         },
+        content: [],
       },
-      dispatch: vi.fn(),
-    }),
+    },
+    dispatch: vi.fn(),
+  }
+  return {
+    ...actual,
+    usePuck: () => mockState,
+    createUsePuck: () => (selector?: (s: any) => any) => (selector ? selector(mockState) : mockState),
   }
 })
 
@@ -150,6 +152,28 @@ describe('Theme Builder Hotfix — Flat Accordion & Style Context Menu', () => {
       expect(pos.x + 340).toBeLessThanOrEqual(window.innerWidth)
       expect(pos.y + 400).toBeLessThanOrEqual(window.innerHeight)
     })
+
+    it('ensures minimum clearance below top toolbar and positions inward near right edge', () => {
+      const el = document.createElement('div')
+      vi.spyOn(el, 'getBoundingClientRect').mockReturnValue({
+        left: 900,
+        right: 980,
+        top: 20, // Near top toolbar
+        bottom: 50,
+        width: 80,
+        height: 30,
+        x: 900,
+        y: 20,
+        toJSON: () => {},
+      })
+
+      const pos = computeTranslatedAnchorPosition(el, 340, 480)
+      // Because top (20) < 68, y is placed below the anchor: bottom (50) + 8 = 58, clamped to min 68
+      expect(pos.y).toBeGreaterThanOrEqual(68)
+      // Because right (980) + 12 + 340 (1332) > innerWidth - 12 (1012),
+      // inward candidate (980 - 340 = 640) is chosen, extending inward
+      expect(pos.x).toBe(640)
+    })
   })
 
   describe('2. WidgetStyleContextMenu Stability & Capability Filtering', () => {
@@ -176,6 +200,30 @@ describe('Theme Builder Hotfix — Flat Accordion & Style Context Menu', () => {
       expect(screen.getByText('Type')).toBeDefined()
       expect(screen.getByText('Layout')).toBeDefined()
       expect(screen.queryByText('Backdrop')).toBeNull()
+    })
+
+    it('correctly maps friendly Puck label Document Title to PostTitle capabilities', () => {
+      const onUpdate = vi.fn()
+      const onClose = vi.fn()
+
+      render(
+        <MantineProvider>
+          <WidgetStyleContextMenu
+            opened={true}
+            onClose={onClose}
+            anchorEl={null}
+            initialPosition={{ x: 400, y: 150 }}
+            componentType="Document Title"
+            componentId="test-post-title"
+            currentStyle={{ typography: 'h1', align: 'center' }}
+            onUpdateStyle={onUpdate}
+          />
+        </MantineProvider>,
+      )
+
+      expect(screen.getByText(/Style:.*Title/i)).toBeDefined()
+      expect(screen.getByText('Type')).toBeDefined()
+      expect(screen.getByText('Layout')).toBeDefined()
     })
 
     it('filters out typography domain and selects background for Section widget', () => {

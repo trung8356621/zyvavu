@@ -89,7 +89,7 @@ export type ThemeCustomizerProps = {
   previewRoutes?: { label: string; value: string }[]
 }
 
-type PanelView = 'root' | 'colors' | 'typography' | 'background' | 'css-rules'
+type PanelView = 'root' | 'colors' | 'typography' | 'layout' | 'css-rules' | 'background'
 
 const WIDGET_FRIENDLY_LABELS: Record<string, { title: string; description: string }> = {
   Header: {
@@ -264,11 +264,9 @@ export function ThemeCustomizer({
       if (activeSubPanel === 'advanced') return 'Advanced Typography'
       return 'Text Theme'
     }
-    if (activePanel === 'background') {
-      if (activeSubPanel === 'page-bg') return 'Page Background'
-      if (activeSubPanel === 'content-width') return 'Content Width'
-      if (activeSubPanel === 'layout-options') return 'Layout Options'
-      return 'Background & Layout'
+    if (activePanel === 'layout') {
+      if (activeSubPanel === 'spacing-scale') return 'Spacing Scale'
+      return 'Layout & Spacing'
     }
     if (activePanel === 'css-rules') {
       if (activeSubPanel) {
@@ -897,42 +895,34 @@ export function ThemeCustomizer({
                 </Flex>
               </Card>
 
-              {/* Page Background Entry (Temporarily hidden from root navigation; preserved for future Editor Page Settings) */}
-              {false && (
-                <Card
-                  withBorder
-                  padding="sm"
-                  radius="sm"
-                  role="button"
-                  tabIndex={0}
-                  style={{ cursor: 'pointer', transition: 'border-color 0.15s ease' }}
-                  onClick={() => openPanel('background')}
-                  onKeyDown={(e) => handleCardKeyDown(e, () => openPanel('background'))}
-                >
-                  <Flex align="center" justify="space-between">
-                    <Group gap="xs">
-                      <Layout size={16} />
-                      <div>
-                        <Text size="sm" fw={600}>
-                          Page Background & Layout
-                        </Text>
-                        <Text size="xs" c="dimmed">
-                          Base background, container widths
-                        </Text>
-                      </div>
-                    </Group>
-                    <Box
-                      style={{
-                        width: 14,
-                        height: 14,
-                        borderRadius: 2,
-                        border: '1px solid #ccc',
-                        background: tokens.colors.background,
-                      }}
-                    />
-                  </Flex>
-                </Card>
-              )}
+              {/* Layout & Spacing Entry */}
+              <Card
+                withBorder
+                padding="sm"
+                radius="sm"
+                role="button"
+                tabIndex={0}
+                style={{ cursor: 'pointer', transition: 'border-color 0.15s ease' }}
+                onClick={() => openPanel('layout')}
+                onKeyDown={(e) => handleCardKeyDown(e, () => openPanel('layout'))}
+              >
+                <Flex align="center" justify="space-between">
+                  <Group gap="xs">
+                    <Layout size={16} color="var(--mantine-color-teal-7, #0e6b66)" />
+                    <div>
+                      <Text size="sm" fw={600}>
+                        Layout & Spacing
+                      </Text>
+                      <Text size="xs" c="dimmed">
+                        Container widths, alignment, spacing scale
+                      </Text>
+                    </div>
+                  </Group>
+                  <Badge variant="light" color="teal" size="xs">
+                    {tokens.layout?.containerWidth || '1200px'}
+                  </Badge>
+                </Flex>
+              </Card>
 
               {/* Theme CSS Rules Entry */}
               <Card
@@ -2052,96 +2042,294 @@ export function ThemeCustomizer({
           )}
 
           {/* ======================================================== */}
-          {/* 4. PAGE BACKGROUND & LAYOUT: LAYER 2 & LAYER 3           */}
+          {/* 4. LAYOUT & SPACING: GLOBAL CONTROLS                     */}
           {/* ======================================================== */}
-          {activePanel === 'background' && activeSubPanel === null && (
-            <Stack gap="xs">
-              <Text size="xs" c="dimmed" mb={4}>
-                Adjust page backdrops, container widths and layout spacing.
+          {activePanel === 'layout' && (
+            <Stack gap="md">
+              <Text size="xs" c="dimmed">
+                Configure site-wide container widths, content alignment, and spacing rhythm.
               </Text>
 
-              {/* Option 1: Page Background */}
-              <Card
-                withBorder
-                padding="sm"
-                radius="sm"
-                role="button"
-                tabIndex={0}
-                style={{ cursor: 'pointer' }}
-                onClick={() => setActiveSubPanel('page-bg')}
-                onKeyDown={(e) => handleCardKeyDown(e, () => setActiveSubPanel('page-bg'))}
-              >
-                <Flex align="center" justify="space-between">
-                  <Box style={{ flex: 1, minWidth: 0 }} pr="xs">
-                    <Text size="sm" fw={600}>
-                      Page Background
+              {/* 1. CONTAINER WIDTHS */}
+              <Paper withBorder p="sm" radius="sm">
+                <Stack gap="xs">
+                  <Text size="xs" fw={700} style={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Container Widths
+                  </Text>
+                  
+                  <TextInput
+                    size="xs"
+                    label="Default Container Width"
+                    description="Standard width for pages and general sections"
+                    value={tokens.layout?.containerWidth || '1200px'}
+                    onChange={(e) => {
+                      const updated = {
+                        ...tokens,
+                        layout: { ...tokens.layout, containerWidth: e.currentTarget.value },
+                      }
+                      setTokens(updated)
+                      pushStylesToPreview(updated, slots)
+                    }}
+                  />
+
+                  <TextInput
+                    size="xs"
+                    label="Narrow Container Width"
+                    description="Reading column width for article bodies and single posts"
+                    value={tokens.layout?.narrowWidth || '800px'}
+                    onChange={(e) => {
+                      const updated = {
+                        ...tokens,
+                        layout: { ...tokens.layout, narrowWidth: e.currentTarget.value },
+                      }
+                      setTokens(updated)
+                      pushStylesToPreview(updated, slots)
+                    }}
+                  />
+
+                  <TextInput
+                    size="xs"
+                    label="Wide Container Width"
+                    description="Spacious width for hero banners, galleries, and catalogs"
+                    value={tokens.layout?.wideWidth || '1400px'}
+                    onChange={(e) => {
+                      const updated = {
+                        ...tokens,
+                        layout: { ...tokens.layout, wideWidth: e.currentTarget.value },
+                      }
+                      setTokens(updated)
+                      pushStylesToPreview(updated, slots)
+                    }}
+                  />
+                </Stack>
+              </Paper>
+
+              {/* 2. DEFAULT ALIGNMENT & PAGE SPACING */}
+              <Paper withBorder p="sm" radius="sm">
+                <Stack gap="xs">
+                  <Text size="xs" fw={700} style={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Alignment & Page Spacing
+                  </Text>
+
+                  <Box>
+                    <Text size="xs" fw={500} mb={4}>
+                      Default Content Alignment
                     </Text>
-                    <Text size="xs" c="dimmed">
-                      Main page canvas and section surface colors
-                    </Text>
+                    <SegmentedControl
+                      size="xs"
+                      fullWidth
+                      value={tokens.layout?.alignment || tokens.layout?.contentAlignment || 'left'}
+                      onChange={(val) => {
+                        const updated = {
+                          ...tokens,
+                          layout: { ...tokens.layout, alignment: val as 'left' | 'center' | 'right' },
+                        }
+                        setTokens(updated)
+                        pushStylesToPreview(updated, slots)
+                      }}
+                      data={[
+                        { label: 'Left', value: 'left' },
+                        { label: 'Center', value: 'center' },
+                        { label: 'Right', value: 'right' },
+                      ]}
+                    />
                   </Box>
-                  <Group gap={6} wrap="nowrap">
-                    <Box
-                      style={{
-                        width: 18,
-                        height: 18,
-                        borderRadius: 4,
-                        background: tokens.colors.background,
-                        border: '1px solid rgba(0,0,0,0.15)',
+
+                  <Select
+                    size="xs"
+                    label="Default Page Spacing"
+                    description="Base horizontal gutter and layout rhythm token"
+                    value={tokens.layout?.pageSpacing || tokens.layout?.spacing || 'md'}
+                    onChange={(val) => {
+                      const updated = {
+                        ...tokens,
+                        layout: { ...tokens.layout, pageSpacing: val || 'md' },
+                      }
+                      setTokens(updated)
+                      pushStylesToPreview(updated, slots)
+                    }}
+                    data={[
+                      { value: 'none', label: 'None (0px)' },
+                      { value: 'xs', label: `Extra Small (${tokens.spacing?.xs || '4px'})` },
+                      { value: 'sm', label: `Small (${tokens.spacing?.sm || '8px'})` },
+                      { value: 'md', label: `Medium (${tokens.spacing?.md || '16px'})` },
+                      { value: 'lg', label: `Large (${tokens.spacing?.lg || '24px'})` },
+                      { value: 'xl', label: `Extra Large (${tokens.spacing?.xl || '40px'})` },
+                      { value: 'xxl', label: `Extra Extra Large (${tokens.spacing?.xxl || '64px'})` },
+                    ]}
+                  />
+                </Stack>
+              </Paper>
+
+              {/* 3. GLOBAL SPACING SCALE PRESETS */}
+              <Paper withBorder p="sm" radius="sm">
+                <Stack gap="xs">
+                  <Group justify="space-between" align="center">
+                    <Text size="xs" fw={700} style={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      Spacing Scale Presets
+                    </Text>
+                  </Group>
+
+                  <Group grow gap="xs">
+                    <Button
+                      size="xs"
+                      variant="light"
+                      color="teal"
+                      onClick={() => {
+                        const updated = {
+                          ...tokens,
+                          spacing: {
+                            xs: '4px',
+                            sm: '8px',
+                            md: '16px',
+                            lg: '24px',
+                            xl: '40px',
+                            xxl: '64px',
+                          },
+                        }
+                        setTokens(updated)
+                        pushStylesToPreview(updated, slots)
+                      }}
+                    >
+                      Default
+                    </Button>
+                    <Button
+                      size="xs"
+                      variant="light"
+                      color="blue"
+                      onClick={() => {
+                        const updated = {
+                          ...tokens,
+                          spacing: {
+                            xs: '2px',
+                            sm: '4px',
+                            md: '8px',
+                            lg: '16px',
+                            xl: '24px',
+                            xxl: '40px',
+                          },
+                        }
+                        setTokens(updated)
+                        pushStylesToPreview(updated, slots)
+                      }}
+                    >
+                      Compact
+                    </Button>
+                    <Button
+                      size="xs"
+                      variant="light"
+                      color="indigo"
+                      onClick={() => {
+                        const updated = {
+                          ...tokens,
+                          spacing: {
+                            xs: '6px',
+                            sm: '12px',
+                            md: '24px',
+                            lg: '36px',
+                            xl: '56px',
+                            xxl: '80px',
+                          },
+                        }
+                        setTokens(updated)
+                        pushStylesToPreview(updated, slots)
+                      }}
+                    >
+                      Spacious
+                    </Button>
+                  </Group>
+
+                  <Divider my={4} />
+
+                  <Text size="xs" c="dimmed">
+                    Fine-tune Spacing Scale:
+                  </Text>
+
+                  <Group grow gap="xs">
+                    <TextInput
+                      size="xs"
+                      label="XS"
+                      value={tokens.spacing?.xs || '4px'}
+                      onChange={(e) => {
+                        const updated = {
+                          ...tokens,
+                          spacing: { ...(tokens.spacing || {}), xs: e.currentTarget.value },
+                        }
+                        setTokens(updated)
+                        pushStylesToPreview(updated, slots)
                       }}
                     />
-                    <ChevronRight size={16} color="var(--mantine-color-dimmed)" />
+                    <TextInput
+                      size="xs"
+                      label="SM"
+                      value={tokens.spacing?.sm || '8px'}
+                      onChange={(e) => {
+                        const updated = {
+                          ...tokens,
+                          spacing: { ...(tokens.spacing || {}), sm: e.currentTarget.value },
+                        }
+                        setTokens(updated)
+                        pushStylesToPreview(updated, slots)
+                      }}
+                    />
+                    <TextInput
+                      size="xs"
+                      label="MD"
+                      value={tokens.spacing?.md || '16px'}
+                      onChange={(e) => {
+                        const updated = {
+                          ...tokens,
+                          spacing: { ...(tokens.spacing || {}), md: e.currentTarget.value },
+                        }
+                        setTokens(updated)
+                        pushStylesToPreview(updated, slots)
+                      }}
+                    />
                   </Group>
-                </Flex>
-              </Card>
 
-              {/* Option 2: Content Width */}
-              <Card
-                withBorder
-                padding="sm"
-                radius="sm"
-                role="button"
-                tabIndex={0}
-                style={{ cursor: 'pointer' }}
-                onClick={() => setActiveSubPanel('content-width')}
-                onKeyDown={(e) => handleCardKeyDown(e, () => setActiveSubPanel('content-width'))}
-              >
-                <Flex align="center" justify="space-between">
-                  <Box style={{ flex: 1, minWidth: 0 }} pr="xs">
-                    <Text size="sm" fw={600}>
-                      Content Width
-                    </Text>
-                    <Text size="xs" c="dimmed">
-                      Standard and reading container widths
-                    </Text>
-                  </Box>
-                  <ChevronRight size={16} color="var(--mantine-color-dimmed)" />
-                </Flex>
-              </Card>
-
-              {/* Option 3: Layout Options */}
-              <Card
-                withBorder
-                padding="sm"
-                radius="sm"
-                role="button"
-                tabIndex={0}
-                style={{ cursor: 'pointer' }}
-                onClick={() => setActiveSubPanel('layout-options')}
-                onKeyDown={(e) => handleCardKeyDown(e, () => setActiveSubPanel('layout-options'))}
-              >
-                <Flex align="center" justify="space-between">
-                  <Box style={{ flex: 1, minWidth: 0 }} pr="xs">
-                    <Text size="sm" fw={600}>
-                      Layout Options
-                    </Text>
-                    <Text size="xs" c="dimmed">
-                      Corner rounding and section spacing rhythm
-                    </Text>
-                  </Box>
-                  <ChevronRight size={16} color="var(--mantine-color-dimmed)" />
-                </Flex>
-              </Card>
+                  <Group grow gap="xs">
+                    <TextInput
+                      size="xs"
+                      label="LG"
+                      value={tokens.spacing?.lg || '24px'}
+                      onChange={(e) => {
+                        const updated = {
+                          ...tokens,
+                          spacing: { ...(tokens.spacing || {}), lg: e.currentTarget.value },
+                        }
+                        setTokens(updated)
+                        pushStylesToPreview(updated, slots)
+                      }}
+                    />
+                    <TextInput
+                      size="xs"
+                      label="XL"
+                      value={tokens.spacing?.xl || '40px'}
+                      onChange={(e) => {
+                        const updated = {
+                          ...tokens,
+                          spacing: { ...(tokens.spacing || {}), xl: e.currentTarget.value },
+                        }
+                        setTokens(updated)
+                        pushStylesToPreview(updated, slots)
+                      }}
+                    />
+                    <TextInput
+                      size="xs"
+                      label="XXL"
+                      value={tokens.spacing?.xxl || '64px'}
+                      onChange={(e) => {
+                        const updated = {
+                          ...tokens,
+                          spacing: { ...(tokens.spacing || {}), xxl: e.currentTarget.value },
+                        }
+                        setTokens(updated)
+                        pushStylesToPreview(updated, slots)
+                      }}
+                    />
+                  </Group>
+                </Stack>
+              </Paper>
             </Stack>
           )}
 

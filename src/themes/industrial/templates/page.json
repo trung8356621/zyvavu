@@ -6,30 +6,53 @@
   },
   "content": [
     {
-      "type": "PostTitle",
+      "type": "Section",
       "props": {
-        "id": "ind-page-title",
-        "tag": "h1",
-        "align": "left",
-        "lock": {
-          "canDelete": false,
-          "canMove": false,
-          "canEditProps": true
-        }
+        "id": "ind-page-header-section",
+        "containerWidth": "narrowWidth",
+        "verticalPadding": "md",
+        "minHeight": "auto"
       }
     },
     {
-      "type": "PostContent",
+      "type": "Section",
       "props": {
-        "id": "ind-page-content",
-        "showExcerpt": false,
-        "lock": {
-          "canDelete": false,
-          "canMove": false,
-          "canEditProps": true
-        }
+        "id": "ind-page-body-section",
+        "containerWidth": "narrowWidth",
+        "verticalPadding": "lg",
+        "minHeight": "auto"
       }
     }
   ],
-  "zones": {}
+  "zones": {
+    "ind-page-header-section:content": [
+      {
+        "type": "PostTitle",
+        "props": {
+          "id": "ind-page-title",
+          "tag": "h1",
+          "align": "left",
+          "lock": {
+            "canDelete": false,
+            "canMove": false,
+            "canEditProps": true
+          }
+        }
+      }
+    ],
+    "ind-page-body-section:content": [
+      {
+        "type": "PostContent",
+        "props": {
+          "id": "ind-page-content",
+          "showExcerpt": false,
+          "lock": {
+            "canDelete": false,
+            "canMove": false,
+            "canEditProps": true
+          }
+        }
+      }
+    ]
+  }
 }

@@ -15,10 +15,41 @@ export interface HttpResponseData {
   isRedirectLoop: boolean
   bodyText: string
   timedOut: boolean
+  isInconclusiveTimeout?: boolean
+  retriesPerformed?: number
   error?: string
 }
 
 export async function fetchWithRedirectTrace(
+  initialUrl: string,
+  options: {
+    timeoutMs?: number
+    maxRedirects?: number
+    customHeaders?: Record<string, string>
+    allowRetry?: boolean
+  } = {}
+): Promise<HttpResponseData> {
+  const allowRetry = options.allowRetry ?? true
+  const firstAttempt = await executeFetchTrace(initialUrl, options)
+
+  if (allowRetry && (firstAttempt.timedOut || firstAttempt.statusCode === 408)) {
+    // FIX 2: Bounded retry for cold dev server compilation timeout
+    await new Promise((r) => setTimeout(r, 1000))
+    const retryAttempt = await executeFetchTrace(initialUrl, { ...options, allowRetry: false })
+    if (retryAttempt.timedOut || retryAttempt.statusCode === 408) {
+      retryAttempt.isInconclusiveTimeout = true
+      retryAttempt.retriesPerformed = 1
+      retryAttempt.statusText = 'Inconclusive Timeout (Cold SSR/Dev Compile)'
+      return retryAttempt
+    }
+    retryAttempt.retriesPerformed = 1
+    return retryAttempt
+  }
+
+  return firstAttempt
+}
+
+async function executeFetchTrace(
   initialUrl: string,
   options: {
     timeoutMs?: number

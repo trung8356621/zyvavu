@@ -1,5 +1,5 @@
-import type { CSSProperties } from 'react'
-import type { PageSettings, TemplateContext, ThemeTokens } from './types'
+import React, { createContext, useContext, type CSSProperties } from 'react'
+import type { PageSettings, PageSettingsLayout, TemplateContext, ThemeTokens } from './types'
 
 export const DEFAULT_PAGE_SETTINGS: PageSettings = {
   background: {
@@ -10,10 +10,91 @@ export const DEFAULT_PAGE_SETTINGS: PageSettings = {
     colorToken: 'text',
   },
   layout: {
-    containerWidth: 'containerWidth',
-    spacing: 'md',
-    alignment: 'left',
+    containerWidth: 'inherit',
+    spacing: 'inherit',
+    alignment: 'inherit',
   },
+}
+
+export type PageLayoutContextType = {
+  pageSettings?: PageSettings
+  themeTokens?: ThemeTokens
+  effectiveContainerWidth?: string
+  effectiveAlignment?: 'left' | 'center' | 'right'
+  effectiveSpacing?: string
+}
+
+export const PageLayoutContext = createContext<PageLayoutContextType>({})
+
+export function usePageLayout(): PageLayoutContextType {
+  return useContext(PageLayoutContext)
+}
+
+/**
+ * Normalization helper: distinguishes between legacy system-generated boilerplate defaults
+ * and genuine user customizations.
+ *
+ * System defaults were automatically written as:
+ *   { containerWidth: 'containerWidth', spacing: 'md', alignment: 'left' }
+ * without an explicit isOverride flag.
+ */
+export function isLegacySystemDefaultLayout(layout?: PageSettingsLayout): boolean {
+  if (!layout) return true
+  if (layout.isOverride) return false
+  if (layout.inheritTheme !== undefined) return layout.inheritTheme
+
+  const isDefaultWidth = !layout.containerWidth || layout.containerWidth === 'inherit' || layout.containerWidth === 'containerWidth'
+  const isDefaultSpacing = !layout.spacing || layout.spacing === 'inherit' || layout.spacing === 'md'
+  const isDefaultAlign = !layout.alignment || layout.alignment === 'inherit' || layout.alignment === 'left'
+
+  return isDefaultWidth && isDefaultSpacing && isDefaultAlign
+}
+
+/**
+ * Resolves effective layout values through the inheritance hierarchy:
+ * Theme Configuration -> Page Settings (when overridden)
+ */
+export function resolveEffectivePageLayout(
+  pageSettings?: PageSettings,
+  themeTokens?: ThemeTokens,
+): {
+  containerWidth: string
+  alignment: 'left' | 'center' | 'right'
+  spacing: string
+  isOverridden: {
+    containerWidth: boolean
+    alignment: boolean
+    spacing: boolean
+  }
+} {
+  const layout = pageSettings?.layout
+  const isLegacy = isLegacySystemDefaultLayout(layout)
+
+  const hasContainerOverride =
+    !isLegacy &&
+    Boolean(layout?.containerWidth && layout.containerWidth !== 'inherit')
+
+  const hasAlignOverride =
+    !isLegacy &&
+    Boolean(layout?.alignment && layout.alignment !== 'inherit')
+
+  const hasSpacingOverride =
+    !isLegacy &&
+    Boolean(layout?.spacing && layout.spacing !== 'inherit')
+
+  const themeAlign = (themeTokens?.layout?.alignment || themeTokens?.layout?.contentAlignment || 'left') as 'left' | 'center' | 'right'
+  const themeSpacing = themeTokens?.layout?.pageSpacing || themeTokens?.layout?.spacing || 'md'
+
+  return {
+    containerWidth: hasContainerOverride ? (layout!.containerWidth as string) : 'containerWidth',
+    alignment: hasAlignOverride ? (layout!.alignment as 'left' | 'center' | 'right') : themeAlign,
+    spacing: hasSpacingOverride ? (layout!.spacing as string) : themeSpacing,
+    isOverridden: {
+      containerWidth: hasContainerOverride,
+      alignment: hasAlignOverride,
+      spacing: hasSpacingOverride,
+    },
+  }
 }
 
 /**
@@ -63,12 +144,25 @@ export function resolveColorToken(token?: string, fallback?: string): string | u
 
 /**
  * Resolves semantic layout container width token into CSS value.
+ * Dynamically incorporates theme tokens when provided instead of static fallbacks.
  */
-export function resolveContainerWidth(token?: string): string {
-  if (token === 'narrowWidth') return 'var(--zyvavu-theme-container-narrow, 800px)'
-  if (token === 'wideWidth') return 'var(--zyvavu-theme-container-wide, 1400px)'
+export function resolveContainerWidth(token?: string, themeTokens?: ThemeTokens): string {
+  if (token === 'narrowWidth') {
+    const fallback = themeTokens?.layout?.narrowWidth || '800px'
+    return `var(--zyvavu-theme-container-narrow, ${fallback})`
+  }
+  if (token === 'wideWidth') {
+    const fallback = themeTokens?.layout?.wideWidth || '1400px'
+    return `var(--zyvavu-theme-container-wide, ${fallback})`
+  }
   if (token === 'full') return '100%'
-  return 'var(--zyvavu-theme-container, 1200px)'
+
+  if (token && token !== 'containerWidth' && token !== 'inherit' && (token.includes('px') || token.includes('%') || token.includes('rem'))) {
+    return token
+  }
+
+  const fallback = themeTokens?.layout?.containerWidth || '1200px'
+  return `var(--zyvavu-theme-container, ${fallback})`
 }
 
 /**
@@ -165,11 +259,14 @@ export function resolvePageSettingsStyles(
   pageSettings?: PageSettings,
   themeTokens?: ThemeTokens,
   template?: TemplateContext,
+  hasSections: boolean = false,
 ): ResolvedPageStyles {
   const settings: PageSettings = {
     ...DEFAULT_PAGE_SETTINGS,
     ...(pageSettings || {}),
   }
+
+  const effectiveLayout = resolveEffectivePageLayout(pageSettings, themeTokens)
 
   const style: CSSProperties = {}
   const classNames: string[] = ['zyvavu-theme-root']
@@ -201,23 +298,28 @@ export function resolvePageSettingsStyles(
     }
   }
 
-  // 3. Layout
-  const layout = settings.layout
-  if (layout) {
-    if (layout.containerWidth) {
-      style.maxWidth = resolveContainerWidth(layout.containerWidth)
-      style.width = '100%'
-      style.marginLeft = 'auto'
-      style.marginRight = 'auto'
-      style.boxSizing = 'border-box'
-    }
-    if (layout.spacing) {
-      style.paddingLeft = resolveSpacingToken(layout.spacing)
-      style.paddingRight = resolveSpacingToken(layout.spacing)
-    }
-    if (layout.alignment) {
-      style.textAlign = layout.alignment
-    }
+  // 3. Layout & Spacing
+  style.textAlign = effectiveLayout.alignment
+
+  // Only apply maxWidth to root container if NOT in sectioned mode or if explicitly requested,
+  // preventing artificial max-width constraints on full-width sections.
+  if (effectiveLayout.isOverridden.containerWidth && !hasSections) {
+    style.maxWidth = resolveContainerWidth(effectiveLayout.containerWidth, themeTokens)
+    style.width = '100%'
+    style.marginLeft = 'auto'
+    style.marginRight = 'auto'
+    style.boxSizing = 'border-box'
+  } else if (!hasSections && settings.layout?.containerWidth && settings.layout.containerWidth !== 'inherit') {
+    style.maxWidth = resolveContainerWidth(settings.layout.containerWidth, themeTokens)
+    style.width = '100%'
+    style.marginLeft = 'auto'
+    style.marginRight = 'auto'
+    style.boxSizing = 'border-box'
+  }
+
+  if (effectiveLayout.isOverridden.spacing) {
+    style.paddingLeft = resolveSpacingToken(effectiveLayout.spacing)
+    style.paddingRight = resolveSpacingToken(effectiveLayout.spacing)
   }
 
   // 4. Custom CSS

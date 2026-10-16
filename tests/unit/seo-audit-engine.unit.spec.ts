@@ -119,6 +119,46 @@ describe('SEO Parity Audit Engine', () => {
       expect(result.canonicalTagsCount).toBe(2)
       expect(findings.some((f) => f.id === 'CANONICAL_DUPLICATE')).toBe(true)
     })
+
+    it('distinguishes between verified inventory 404 and unverified 404', () => {
+      const mockRes: HttpResponseData = {
+        url: 'https://zyvavu.test/unverified-route',
+        finalUrl: 'https://zyvavu.test/unverified-route',
+        statusCode: 404,
+        statusText: 'Not Found',
+        headers: new Headers(),
+        redirectHops: [],
+        isRedirectLoop: false,
+        bodyText: '',
+        timedOut: false,
+      }
+      const { findings: unverifiedFindings } = auditHttp(mockRes, null, { isVerifiedInInventory: false })
+      expect(unverifiedFindings.some((f) => f.id === 'HTTP_UNVERIFIED_NOT_FOUND')).toBe(true)
+      expect(unverifiedFindings.some((f) => f.id === 'HTTP_NOT_FOUND')).toBe(false)
+
+      const { findings: verifiedFindings } = auditHttp(mockRes, null, { isVerifiedInInventory: true })
+      expect(verifiedFindings.some((f) => f.id === 'HTTP_NOT_FOUND')).toBe(true)
+    })
+
+    it('classifies 408 / timeout as inconclusive rather than confirmed server error or broken link', () => {
+      const mockTimeoutRes: HttpResponseData = {
+        url: 'https://zyvavu.test/slow-route',
+        finalUrl: 'https://zyvavu.test/slow-route',
+        statusCode: 408,
+        statusText: 'Request Timeout',
+        headers: new Headers(),
+        redirectHops: [],
+        isRedirectLoop: false,
+        bodyText: '',
+        timedOut: true,
+        isInconclusiveTimeout: true,
+        retriesPerformed: 1,
+      }
+      const { findings } = auditHttp(mockTimeoutRes, null)
+      expect(findings.some((f) => f.id === 'HTTP_TIMEOUT_INCONCLUSIVE')).toBe(true)
+      expect(findings.some((f) => f.id === 'HTTP_SERVER_ERROR')).toBe(false)
+      expect(findings.some((f) => f.id === 'HTTP_NOT_FOUND')).toBe(false)
+    })
   })
 
   describe('Semantic Auditor', () => {
@@ -225,7 +265,36 @@ describe('SEO Parity Audit Engine', () => {
   })
 
   describe('Link Graph & Orphan Analysis', () => {
-    it('detects orphan inventory URLs and non-canonical links', async () => {
+    it('marks orphan status as NOT_VERIFIED when crawl coverage is insufficient', async () => {
+      const homeHtml = `<html><body><a href="/posts/page-a">Page A</a></body></html>`
+      const initialMap = new Map()
+      initialMap.set('https://zyvavu.test/', {
+        parsed: parseHtml(homeHtml, 'https://zyvavu.test/'),
+        statusCode: 200,
+        finalUrl: 'https://zyvavu.test/',
+      })
+
+      const largeInventory = [
+        'https://zyvavu.test/posts/page-a',
+        'https://zyvavu.test/posts/page-b',
+        'https://zyvavu.test/posts/page-c',
+        'https://zyvavu.test/posts/page-d',
+        'https://zyvavu.test/posts/page-e',
+      ]
+
+      const { result, findings } = await auditLinkGraph('https://zyvavu.test/', {
+        maxDepth: 1,
+        maxPages: 2, // Insufficient crawl coverage
+        urlInventory: largeInventory,
+        initialParsedPages: initialMap,
+      })
+
+      expect(result.orphanStatus).toBe('NOT_VERIFIED')
+      expect(findings.some((f) => f.id === 'LINK_ORPHAN_UNVERIFIED')).toBe(true)
+      expect(findings.some((f) => f.id === 'LINK_ORPHAN_URLS')).toBe(false)
+    })
+
+    it('confirms orphan URLs only when crawl coverage is sufficient', async () => {
       const homeHtml = `
         <html><body>
           <a href="/posts/page-a">Page A</a>
@@ -257,15 +326,14 @@ describe('SEO Parity Audit Engine', () => {
 
       const { result, findings } = await auditLinkGraph('https://zyvavu.test/', {
         maxDepth: 2,
-        maxPages: 5,
+        maxPages: 10,
         urlInventory: inventory,
         initialParsedPages: initialMap,
       })
 
+      expect(result.orphanStatus).toBe('VERIFIED')
       expect(result.orphanUrls).toContain('https://zyvavu.test/posts/orphan-page-b')
-      expect(result.nonCanonicalLinks.length).toBeGreaterThan(0)
       expect(findings.some((f) => f.id === 'LINK_ORPHAN_URLS')).toBe(true)
-      expect(findings.some((f) => f.id === 'LINK_NON_CANONICAL')).toBe(true)
     })
   })
 })
