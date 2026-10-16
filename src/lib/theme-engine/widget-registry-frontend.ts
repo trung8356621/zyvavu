@@ -91,6 +91,8 @@ const defaultFrontendRegistry: Record<string, FrontendWidgetEntry> = {
   ItemLink: { manifest: itemLinkManifest, component: ItemLinkFrontend },
 }
 
+import { registerWidgetManifest } from './widget-registry-manifests'
+
 // Runtime overrides for developers
 const customFrontendOverrides: Record<string, Partial<FrontendWidgetEntry>> = {}
 
@@ -102,6 +104,9 @@ export function registerFrontendWidget(
   customFrontendOverrides[id] = {
     component,
     manifest: manifest as WidgetManifest,
+  }
+  if (manifest) {
+    registerWidgetManifest(id, manifest)
   }
 }
 

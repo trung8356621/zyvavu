@@ -150,42 +150,38 @@ export const collectionLoopEditor: ComponentConfig<CollectionLoopProps> = {
     emptyText: 'Chưa có bài viết nào.',
     manualItems: [],
   },
-  render: ({
-    id = 'collection-loop',
-    heading,
-    mode = 'dynamic',
-    source = 'posts',
-    columns = 3,
-    gap = '24px',
-    manualItems = [],
-    itemTemplate: ItemTemplateSlot,
-  }: any) => {
-    // Resolve zone items for prototype from Puck appState
-    let templateItems: any[] = []
-    try {
-      // eslint-disable-next-line react-hooks/rules-of-hooks
-      const { appState } = usePuck()
-      const zoneKey = `${id}:itemTemplate`
-      templateItems = appState?.data?.zones?.[zoneKey] || []
-    } catch {
-      // If not rendered in active Puck context
-    }
+  render: (props: any) => <CollectionLoopEditorCanvas {...props} />,
+}
 
-    // Active records for preview
-    const activeRecords: LoopItemRecord[] =
-      mode === 'manual' && manualItems && manualItems.length > 0
-        ? manualItems.map((m: any, idx: number) => ({
-            id: `manual-${idx}`,
-            title: m.title || `Mục ${idx + 1}`,
-            excerpt: m.excerpt || '',
-            url: m.url || '#',
-          }))
-        : EDITOR_SAMPLE_RECORDS
+function CollectionLoopEditorCanvas({
+  id = 'collection-loop',
+  heading,
+  mode = 'dynamic',
+  source = 'posts',
+  columns = 3,
+  gap = '24px',
+  manualItems = [],
+  itemTemplate: ItemTemplateSlot,
+}: any) {
+  const { appState } = usePuck()
+  const zoneKey = `${id}:itemTemplate`
+  const templateItems: any[] = appState?.data?.zones?.[zoneKey] || []
 
-    const prototypeRecord = activeRecords[0]
-    const previewRecords = activeRecords.slice(1, Math.max(2, Number(columns)))
+  // Active records for preview
+  const activeRecords: LoopItemRecord[] =
+    mode === 'manual' && manualItems && manualItems.length > 0
+      ? manualItems.map((m: any, idx: number) => ({
+          id: `manual-${idx}`,
+          title: m.title || `Mục ${idx + 1}`,
+          excerpt: m.excerpt || '',
+          url: m.url || '#',
+        }))
+      : EDITOR_SAMPLE_RECORDS
 
-    return (
+  const prototypeRecord = activeRecords[0]
+  const previewRecords = activeRecords.slice(1, Math.max(2, Number(columns)))
+
+  return (
       <div
         className="zyvavu-widget-collection-loop zyvavu-widget-collection-loop--editor"
         style={{
@@ -383,5 +379,5 @@ export const collectionLoopEditor: ComponentConfig<CollectionLoopProps> = {
         </div>
       </div>
     )
-  },
 }
+

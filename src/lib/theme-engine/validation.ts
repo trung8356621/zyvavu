@@ -1,6 +1,6 @@
 import type { TemplateContext, ThemeComponentData, ThemeTemplateDocument, ValidationResult } from './types'
 import { getTemplatePolicy } from './policy'
-import { getFrontendWidget } from './widget-registry-frontend'
+import { getWidgetManifest } from './widget-registry-manifests'
 
 export function validateThemeTemplateDocument(
   doc: unknown,
@@ -105,9 +105,9 @@ export function validateThemeTemplateDocument(
       widgetCounts.set(widget.type, (widgetCounts.get(widget.type) || 0) + 1)
 
       // Capabilities
-      const entry = getFrontendWidget(widget.type)
-      if (entry?.manifest?.capabilities) {
-        for (const cap of entry.manifest.capabilities) {
+      const manifest = getWidgetManifest(widget.type)
+      if (manifest?.capabilities) {
+        for (const cap of manifest.capabilities) {
           capabilityCounts.set(cap, (capabilityCounts.get(cap) || 0) + 1)
         }
       }
