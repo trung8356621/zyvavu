@@ -1,7 +1,8 @@
 import React from 'react'
 import Link from 'next/link'
 import type { ThemeDataContext, WidgetSemanticStyle } from '@/lib/theme-engine/types'
-import { resolveColorToken, resolveRadiusToken, resolveSpacingToken } from '@/lib/theme-engine/page-settings'
+import { resolveWidgetStyles } from '@/lib/style-engine/serializer'
+import { resolveColorToken } from '@/lib/style-engine/token-resolver'
 
 export type TextBlockProps = {
   id?: string
@@ -28,20 +29,31 @@ export function TextBlockFrontend({
 }: TextBlockProps) {
   if (!title && !content && !badge) return null
 
-  const effectiveAlign = semanticStyle?.align || align
-  const titleColor = semanticStyle?.colorToken ? resolveColorToken(semanticStyle.colorToken) : 'var(--zyvavu-theme-text, inherit)'
-  const containerPadding = semanticStyle?.spacing ? resolveSpacingToken(semanticStyle.spacing) : '24px 0'
-  const containerRadius = semanticStyle?.radius ? resolveRadiusToken(semanticStyle.radius) : undefined
-  const containerBg = semanticStyle?.backgroundToken ? resolveColorToken(semanticStyle.backgroundToken) : undefined
+  const resolved = resolveWidgetStyles(semanticStyle)
+  const effectiveAlign = resolved.textAlign || semanticStyle?.align || align
+  const titleColor = resolved.color || (semanticStyle?.colorToken ? resolveColorToken(semanticStyle.colorToken) : 'var(--zyvavu-theme-text, inherit)')
+
+  const visualPreset =
+    (typeof semanticStyle?.typography === 'object'
+      ? semanticStyle.typography?.typography
+      : semanticStyle?.typography) || 'h2'
 
   return (
     <div
       className="zyvavu-widget-text"
       style={{
         textAlign: effectiveAlign,
-        padding: containerPadding,
-        borderRadius: containerRadius,
-        backgroundColor: containerBg,
+        padding: resolved.padding || '24px 0',
+        borderRadius: resolved.borderRadius,
+        backgroundColor: resolved.backgroundColor,
+        backgroundImage: resolved.backgroundImage,
+        backgroundPosition: resolved.backgroundPosition,
+        backgroundSize: resolved.backgroundSize,
+        backgroundRepeat: resolved.backgroundRepeat,
+        border: resolved.border,
+        boxShadow: resolved.boxShadow,
+        opacity: resolved.opacity,
+        backdropFilter: resolved.backdropFilter,
         boxSizing: 'border-box',
       }}
     >
@@ -68,12 +80,17 @@ export function TextBlockFrontend({
 
       {title ? (
         <h2
-          className="zyvavu-widget-text__title"
+          className={`zyvavu-widget-text__title zyvavu-typo-preset--${visualPreset}`}
           style={{
             margin: '0 0 16px 0',
-            fontSize: '2rem',
-            lineHeight: 1.3,
+            fontSize: `var(--zyvavu-theme-${visualPreset}-size, 2rem)`,
+            lineHeight: resolved.lineHeight || `var(--zyvavu-theme-${visualPreset}-line-height, 1.3)`,
+            fontWeight: `var(--zyvavu-theme-${visualPreset}-weight, 600)`,
+            letterSpacing: resolved.letterSpacing || `var(--zyvavu-theme-${visualPreset}-letter-spacing, normal)`,
             color: titleColor,
+            textShadow: resolved.textShadow,
+            WebkitTextStroke: (resolved as any).WebkitTextStroke,
+            writingMode: resolved.writingMode,
           }}
         >
           {title}

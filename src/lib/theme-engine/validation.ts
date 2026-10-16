@@ -1,6 +1,7 @@
 import type { TemplateContext, ThemeComponentData, ThemeTemplateDocument, ValidationResult } from './types'
 import { getTemplatePolicy } from './policy'
 import { getWidgetManifest } from './widget-registry-manifests'
+import { validateUniversalStyle } from '@/lib/style-engine/validation'
 
 export function validateThemeTemplateDocument(
   doc: unknown,
@@ -253,6 +254,13 @@ export function validateThemeTemplateDocument(
     for (const widget of placedWidgets) {
       const style = widget.props?.style
       if (style && typeof style === 'object') {
+        const styleValidation = validateUniversalStyle(style)
+        if (!styleValidation.valid) {
+          for (const err of styleValidation.errors) {
+            errors.push(`Widget "${widget.type}" (${widget.props.id}): ${err}`)
+          }
+        }
+
         if (style.fontSize || style.fontFamily) {
           errors.push(`Widget "${widget.type}" (${widget.props.id}) cannot define arbitrary fontSize or fontFamily. Use semantic typography presets.`)
         }

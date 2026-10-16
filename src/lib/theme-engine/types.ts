@@ -85,12 +85,14 @@ export type PageSettings = {
   customJS?: string
 }
 
-export type WidgetSemanticStyle = {
-  typography?: string
+import type { UniversalStyle } from '@/lib/style-engine/types'
+
+export type WidgetSemanticStyle = UniversalStyle & {
+  typography?: any
   colorToken?: string
-  align?: 'left' | 'center' | 'right'
-  spacing?: string
-  radius?: string
+  align?: any
+  spacing?: any
+  radius?: any
   backgroundToken?: string
 }
 

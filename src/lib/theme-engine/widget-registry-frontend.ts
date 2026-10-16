@@ -62,6 +62,9 @@ import { ItemExcerptFrontend } from '@/widgets/ItemExcerpt/frontend'
 import { itemLinkManifest } from '@/widgets/ItemLink/manifest'
 import { ItemLinkFrontend } from '@/widgets/ItemLink/frontend'
 
+import { sectionManifest } from '@/widgets/Section/manifest'
+import { SectionFrontend } from '@/widgets/Section/frontend'
+
 export type FrontendWidgetEntry = {
   manifest: WidgetManifest
   component: React.ComponentType<any>
@@ -69,6 +72,7 @@ export type FrontendWidgetEntry = {
 
 // Default built-in registry
 const defaultFrontendRegistry: Record<string, FrontendWidgetEntry> = {
+  Section: { manifest: sectionManifest, component: SectionFrontend },
   PostTitle: { manifest: postTitleManifest, component: PostTitleFrontend },
   PostContent: { manifest: postContentManifest, component: PostContentFrontend },
   PostMeta: { manifest: postMetaManifest, component: PostMetaFrontend },

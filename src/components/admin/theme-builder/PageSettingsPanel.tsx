@@ -2,11 +2,11 @@
 
 import React, { useMemo, useState } from 'react'
 import {
+  Accordion,
   Alert,
   Badge,
   Box,
   Button,
-  Divider,
   Group,
   Paper,
   SegmentedControl,
@@ -15,12 +15,11 @@ import {
   Text,
   Textarea,
   TextInput,
-  Tooltip,
 } from '@mantine/core'
-import { AlertTriangle, Code, Image as ImageIcon, Layout, Palette, Settings, Type } from 'lucide-react'
+import { AlertTriangle, Code, Layout, Palette, Settings, Type } from 'lucide-react'
 import { usePuck } from '@puckeditor/core'
 
-import type { PageSettings, ThemeConfig, ThemeTokens } from '@/lib/theme-engine/types'
+import type { PageSettings, ThemeConfig } from '@/lib/theme-engine/types'
 import { resolveColorToken } from '@/lib/theme-engine/page-settings'
 import { ThemeColorPaletteModal } from '@/components/admin/shared/ThemeColorPaletteModal'
 
@@ -89,9 +88,21 @@ export function PageSettingsPanel({ themeConfig, templateName }: PageSettingsPan
     : resolveColorToken('text', '#17201f')
 
   return (
-    <Box p="md" style={{ maxHeight: '100%', overflowY: 'auto' }}>
-      <Stack gap="md">
-        {/* Header */}
+    <Box
+      className="zyvavu-page-settings-panel"
+      p="sm"
+      style={{
+        height: '100%',
+        width: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        overflowY: 'auto',
+        overflowX: 'hidden',
+        boxSizing: 'border-box',
+      }}
+    >
+      {/* Header */}
+      <Stack gap="xs" mb="xs" style={{ flexShrink: 0 }}>
         <Group justify="space-between" align="center">
           <Group gap="xs">
             <Settings size={18} color="var(--mantine-color-teal-7, #0e6b66)" />
@@ -109,349 +120,402 @@ export function PageSettingsPanel({ themeConfig, templateName }: PageSettingsPan
         <Text size="xs" c="dimmed">
           System-level template defaults. Consumes published theme tokens.
         </Text>
-
-        <Divider />
-
-        {/* SECTION A: BACKGROUND */}
-        <Stack gap="xs">
-          <Group gap="xs">
-            <Palette size={15} color="var(--mantine-color-teal-7, #0e6b66)" />
-            <Text fw={600} size="xs">
-              Background
-            </Text>
-          </Group>
-
-          <SegmentedControl
-            size="xs"
-            value={background.type || 'theme'}
-            onChange={(val) =>
-              updateSettings({
-                background: {
-                  ...background,
-                  type: val as 'theme' | 'palette' | 'image',
-                  token: val === 'palette' ? background.token || 'background' : background.token,
-                },
-              })
-            }
-            data={[
-              { label: 'Inherit Theme', value: 'theme' },
-              { label: 'Color Token', value: 'palette' },
-              { label: 'Image', value: 'image' },
-            ]}
-          />
-
-          {background.type === 'theme' && (
-            <Paper p="xs" withBorder radius="xs" style={{ backgroundColor: 'var(--mantine-color-gray-0, #f8f9fa)' }}>
-              <Text size="xs" c="dimmed">
-                Inherits active theme default background (<code style={{ fontSize: 10 }}>--zyvavu-theme-background</code>).
-              </Text>
-            </Paper>
-          )}
-
-          {background.type === 'palette' && (
-            <Paper p="xs" withBorder radius="xs">
-              <Group justify="space-between" align="center">
-                <Group gap="xs">
-                  <Box
-                    style={{
-                      width: 22,
-                      height: 22,
-                      borderRadius: 4,
-                      backgroundColor: currentBgColor,
-                      border: '1px solid rgba(0,0,0,0.2)',
-                    }}
-                  />
-                  <Box>
-                    <Text size="xs" fw={600}>
-                      Token: {background.token || 'background'}
-                    </Text>
-                    <Text size="xs" c="dimmed" style={{ fontSize: 10 }}>
-                      Theme Palette Reference
-                    </Text>
-                  </Box>
-                </Group>
-                <Button
-                  size="xs"
-                  variant="light"
-                  color="teal"
-                  onClick={(e) => {
-                    setColorModalAnchor(e.currentTarget)
-                    setColorModalTarget('background')
-                  }}
-                >
-                  Change
-                </Button>
-              </Group>
-            </Paper>
-          )}
-
-          {background.type === 'image' && (
-            <Stack gap="xs">
-              <TextInput
-                label="Background Image URL"
-                placeholder="https://... or /media/..."
-                size="xs"
-                value={background.imageUrl || ''}
-                onChange={(e) =>
-                  updateSettings({
-                    background: {
-                      ...background,
-                      imageUrl: e.currentTarget.value,
-                    },
-                  })
-                }
-              />
-              <Group grow gap="xs">
-                <Select
-                  label="Position"
-                  size="xs"
-                  value={background.imagePosition || 'center'}
-                  onChange={(val) =>
-                    updateSettings({
-                      background: {
-                        ...background,
-                        imagePosition: (val as any) || 'center',
-                      },
-                    })
-                  }
-                  data={[
-                    { value: 'center', label: 'Center' },
-                    { value: 'top', label: 'Top' },
-                    { value: 'bottom', label: 'Bottom' },
-                    { value: 'left', label: 'Left' },
-                    { value: 'right', label: 'Right' },
-                  ]}
-                />
-                <Select
-                  label="Size"
-                  size="xs"
-                  value={background.imageSize || 'cover'}
-                  onChange={(val) =>
-                    updateSettings({
-                      background: {
-                        ...background,
-                        imageSize: (val as any) || 'cover',
-                      },
-                    })
-                  }
-                  data={[
-                    { value: 'cover', label: 'Cover' },
-                    { value: 'contain', label: 'Contain' },
-                    { value: 'auto', label: 'Auto' },
-                  ]}
-                />
-              </Group>
-              <Select
-                label="Repeat"
-                size="xs"
-                value={background.imageRepeat || 'no-repeat'}
-                onChange={(val) =>
-                  updateSettings({
-                    background: {
-                      ...background,
-                      imageRepeat: (val as any) || 'no-repeat',
-                    },
-                  })
-                }
-                data={[
-                  { value: 'no-repeat', label: 'No Repeat' },
-                  { value: 'repeat', label: 'Repeat' },
-                  { value: 'repeat-x', label: 'Repeat X' },
-                  { value: 'repeat-y', label: 'Repeat Y' },
-                ]}
-              />
-            </Stack>
-          )}
-        </Stack>
-
-        <Divider />
-
-        {/* SECTION B: DEFAULT TEXT */}
-        <Stack gap="xs">
-          <Group gap="xs">
-            <Type size={15} color="var(--mantine-color-teal-7, #0e6b66)" />
-            <Text fw={600} size="xs">
-              Default Typography & Color
-            </Text>
-          </Group>
-
-          <Select
-            label="Default Typography Preset"
-            size="xs"
-            value={text.typography || 'p1'}
-            onChange={(val) =>
-              updateSettings({
-                text: {
-                  ...text,
-                  typography: val || 'p1',
-                },
-              })
-            }
-            data={typographyOptions}
-          />
-
-          <Paper p="xs" withBorder radius="xs">
-            <Group justify="space-between" align="center">
-              <Group gap="xs">
-                <Box
-                  style={{
-                    width: 22,
-                    height: 22,
-                    borderRadius: 4,
-                    backgroundColor: currentTextColor,
-                    border: '1px solid rgba(0,0,0,0.2)',
-                  }}
-                />
-                <Box>
-                  <Text size="xs" fw={600}>
-                    Token: {text.colorToken || 'text'}
-                  </Text>
-                  <Text size="xs" c="dimmed" style={{ fontSize: 10 }}>
-                    Theme Palette Reference
-                  </Text>
-                </Box>
-              </Group>
-              <Button
-                size="xs"
-                variant="light"
-                color="teal"
-                onClick={(e) => {
-                  setColorModalAnchor(e.currentTarget)
-                  setColorModalTarget('text')
-                }}
-              >
-                Change
-              </Button>
-            </Group>
-          </Paper>
-        </Stack>
-
-        <Divider />
-
-        {/* SECTION C: LAYOUT */}
-        <Stack gap="xs">
-          <Group gap="xs">
-            <Layout size={15} color="var(--mantine-color-teal-7, #0e6b66)" />
-            <Text fw={600} size="xs">
-              Layout & Spacing
-            </Text>
-          </Group>
-
-          <Select
-            label="Container Width"
-            size="xs"
-            value={layout.containerWidth || 'containerWidth'}
-            onChange={(val) =>
-              updateSettings({
-                layout: {
-                  ...layout,
-                  containerWidth: val || 'containerWidth',
-                },
-              })
-            }
-            data={[
-              { value: 'containerWidth', label: 'Default Container (1200px)' },
-              { value: 'narrowWidth', label: 'Narrow Container (800px)' },
-              { value: 'wideWidth', label: 'Wide Container (1400px)' },
-              { value: 'full', label: 'Full Width (100%)' },
-            ]}
-          />
-
-          <Select
-            label="Spacing Preset"
-            size="xs"
-            value={layout.spacing || 'md'}
-            onChange={(val) =>
-              updateSettings({
-                layout: {
-                  ...layout,
-                  spacing: val || 'md',
-                },
-              })
-            }
-            data={[
-              { value: 'none', label: 'None (0px)' },
-              { value: 'xs', label: 'Extra Small (xs)' },
-              { value: 'sm', label: 'Small (sm)' },
-              { value: 'md', label: 'Medium (md)' },
-              { value: 'lg', label: 'Large (lg)' },
-              { value: 'xl', label: 'Extra Large (xl)' },
-            ]}
-          />
-
-          <Box>
-            <Text size="xs" fw={500} mb={4}>
-              Alignment
-            </Text>
-            <SegmentedControl
-              size="xs"
-              fullWidth
-              value={layout.alignment || 'left'}
-              onChange={(val) =>
-                updateSettings({
-                  layout: {
-                    ...layout,
-                    alignment: val as 'left' | 'center' | 'right',
-                  },
-                })
-              }
-              data={[
-                { label: 'Left', value: 'left' },
-                { label: 'Center', value: 'center' },
-                { label: 'Right', value: 'right' },
-              ]}
-            />
-          </Box>
-        </Stack>
-
-        <Divider />
-
-        {/* SECTION D: ADVANCED CUSTOM CSS & JS */}
-        <Stack gap="xs">
-          <Group gap="xs">
-            <Code size={15} color="var(--mantine-color-orange-7, #d9480f)" />
-            <Text fw={600} size="xs">
-              Advanced: Custom CSS & JS
-            </Text>
-          </Group>
-
-          <Alert
-            icon={<AlertTriangle size={15} />}
-            color="orange"
-            variant="light"
-            p="xs"
-            style={{ fontSize: 11 }}
-          >
-            Exceptions to Atomic Design System. Scoped only to this template root. JavaScript execution is disabled inside editor/admin.
-          </Alert>
-
-          <Textarea
-            label="Template Custom CSS"
-            description="Scoped automatically to .zyvavu-theme-root"
-            placeholder=".hero-heading { letter-spacing: 0.05em; }"
-            size="xs"
-            autosize
-            minRows={3}
-            maxRows={6}
-            styles={{ input: { fontFamily: 'var(--font-mono, monospace)', fontSize: 11 } }}
-            value={customCSS}
-            onChange={(e) => updateSettings({ customCSS: e.currentTarget.value })}
-          />
-
-          <Textarea
-            label="Template Custom JS"
-            description="Non-eval policy; retained non-executable in editor"
-            placeholder="// Template-specific analytics or hooks"
-            size="xs"
-            autosize
-            minRows={2}
-            maxRows={5}
-            styles={{ input: { fontFamily: 'var(--font-mono, monospace)', fontSize: 11 } }}
-            value={customJS}
-            onChange={(e) => updateSettings({ customJS: e.currentTarget.value })}
-          />
-        </Stack>
       </Stack>
+
+      {/* Accordion Sections with Multiple Expansion */}
+      <Box style={{ flex: 1, minHeight: 0 }}>
+        <Accordion
+          multiple
+          defaultValue={['background', 'typography', 'layout', 'advanced']}
+          variant="separated"
+          styles={{
+            root: {
+              width: '100%',
+            },
+            item: {
+              backgroundColor: 'var(--mantine-color-body, #ffffff)',
+              border: '1px solid var(--mantine-color-default-border, #dfe5e2)',
+              borderRadius: 6,
+              marginBottom: 8,
+              overflow: 'hidden',
+            },
+            control: {
+              padding: '8px 10px',
+            },
+            label: {
+              padding: 0,
+            },
+            content: {
+              padding: '8px 10px 14px 10px',
+            },
+          }}
+        >
+          {/* SECTION 1: BACKGROUND */}
+          <Accordion.Item value="background">
+            <Accordion.Control icon={<Palette size={15} color="var(--mantine-color-teal-7, #0e6b66)" />}>
+              <Text fw={600} size="xs">
+                Background
+              </Text>
+            </Accordion.Control>
+            <Accordion.Panel>
+              <Stack gap="xs">
+                <SegmentedControl
+                  size="xs"
+                  fullWidth
+                  value={background.type || 'theme'}
+                  onChange={(val) =>
+                    updateSettings({
+                      background: {
+                        ...background,
+                        type: val as 'theme' | 'palette' | 'image',
+                        token: val === 'palette' ? background.token || 'background' : background.token,
+                      },
+                    })
+                  }
+                  data={[
+                    { label: 'Inherit Theme', value: 'theme' },
+                    { label: 'Color Token', value: 'palette' },
+                    { label: 'Image', value: 'image' },
+                  ]}
+                />
+
+                {background.type === 'theme' && (
+                  <Paper p="xs" withBorder radius="xs" style={{ backgroundColor: 'var(--mantine-color-gray-0, #f8f9fa)' }}>
+                    <Text size="xs" c="dimmed">
+                      Inherits active theme default background (<code style={{ fontSize: 10 }}>--zyvavu-theme-background</code>).
+                    </Text>
+                  </Paper>
+                )}
+
+                {background.type === 'palette' && (
+                  <Paper p="xs" withBorder radius="xs">
+                    <Group justify="space-between" align="center">
+                      <Group gap="xs" style={{ minWidth: 0, flex: 1 }}>
+                        <Box
+                          style={{
+                            width: 20,
+                            height: 20,
+                            borderRadius: 4,
+                            backgroundColor: currentBgColor,
+                            border: '1px solid rgba(0,0,0,0.2)',
+                            flexShrink: 0,
+                          }}
+                        />
+                        <Box style={{ minWidth: 0, flex: 1 }}>
+                          <Text size="xs" fw={600} truncate>
+                            Token: {background.token || 'background'}
+                          </Text>
+                          <Text size="xs" c="dimmed" style={{ fontSize: 10 }}>
+                            Theme Palette Reference
+                          </Text>
+                        </Box>
+                      </Group>
+                      <Button
+                        size="xs"
+                        variant="light"
+                        color="teal"
+                        onClick={(e) => {
+                          setColorModalAnchor(e.currentTarget)
+                          setColorModalTarget('background')
+                        }}
+                      >
+                        Change
+                      </Button>
+                    </Group>
+                  </Paper>
+                )}
+
+                {background.type === 'image' && (
+                  <Stack gap="xs">
+                    <TextInput
+                      label="Background Image URL"
+                      placeholder="https://... or /media/..."
+                      size="xs"
+                      value={background.imageUrl || ''}
+                      onChange={(e) =>
+                        updateSettings({
+                          background: {
+                            ...background,
+                            imageUrl: e.currentTarget.value,
+                          },
+                        })
+                      }
+                    />
+                    <Group grow gap="xs">
+                      <Select
+                        label="Position"
+                        size="xs"
+                        value={background.imagePosition || 'center'}
+                        onChange={(val) =>
+                          updateSettings({
+                            background: {
+                              ...background,
+                              imagePosition: (val as any) || 'center',
+                            },
+                          })
+                        }
+                        data={[
+                          { value: 'center', label: 'Center' },
+                          { value: 'top', label: 'Top' },
+                          { value: 'bottom', label: 'Bottom' },
+                          { value: 'left', label: 'Left' },
+                          { value: 'right', label: 'Right' },
+                        ]}
+                      />
+                      <Select
+                        label="Size"
+                        size="xs"
+                        value={background.imageSize || 'cover'}
+                        onChange={(val) =>
+                          updateSettings({
+                            background: {
+                              ...background,
+                              imageSize: (val as any) || 'cover',
+                            },
+                          })
+                        }
+                        data={[
+                          { value: 'cover', label: 'Cover' },
+                          { value: 'contain', label: 'Contain' },
+                          { value: 'auto', label: 'Auto' },
+                        ]}
+                      />
+                    </Group>
+                    <Select
+                      label="Repeat"
+                      size="xs"
+                      value={background.imageRepeat || 'no-repeat'}
+                      onChange={(val) =>
+                        updateSettings({
+                          background: {
+                            ...background,
+                            imageRepeat: (val as any) || 'no-repeat',
+                          },
+                        })
+                      }
+                      data={[
+                        { value: 'no-repeat', label: 'No Repeat' },
+                        { value: 'repeat', label: 'Repeat' },
+                        { value: 'repeat-x', label: 'Repeat X' },
+                        { value: 'repeat-y', label: 'Repeat Y' },
+                      ]}
+                    />
+                  </Stack>
+                )}
+              </Stack>
+            </Accordion.Panel>
+          </Accordion.Item>
+
+          {/* SECTION 2: DEFAULT TYPOGRAPHY & COLOR */}
+          <Accordion.Item value="typography">
+            <Accordion.Control icon={<Type size={15} color="var(--mantine-color-teal-7, #0e6b66)" />}>
+              <Text fw={600} size="xs">
+                Default Typography & Color
+              </Text>
+            </Accordion.Control>
+            <Accordion.Panel>
+              <Stack gap="xs">
+                <Select
+                  label="Default Typography Preset"
+                  size="xs"
+                  value={text.typography || 'p1'}
+                  onChange={(val) =>
+                    updateSettings({
+                      text: {
+                        ...text,
+                        typography: val || 'p1',
+                      },
+                    })
+                  }
+                  data={typographyOptions}
+                />
+
+                <Paper p="xs" withBorder radius="xs">
+                  <Group justify="space-between" align="center">
+                    <Group gap="xs" style={{ minWidth: 0, flex: 1 }}>
+                      <Box
+                        style={{
+                          width: 20,
+                          height: 20,
+                          borderRadius: 4,
+                          backgroundColor: currentTextColor,
+                          border: '1px solid rgba(0,0,0,0.2)',
+                          flexShrink: 0,
+                        }}
+                      />
+                      <Box style={{ minWidth: 0, flex: 1 }}>
+                        <Text size="xs" fw={600} truncate>
+                          Token: {text.colorToken || 'text'}
+                        </Text>
+                        <Text size="xs" c="dimmed" style={{ fontSize: 10 }}>
+                          Theme Palette Reference
+                        </Text>
+                      </Box>
+                    </Group>
+                    <Button
+                      size="xs"
+                      variant="light"
+                      color="teal"
+                      onClick={(e) => {
+                        setColorModalAnchor(e.currentTarget)
+                        setColorModalTarget('text')
+                      }}
+                    >
+                      Change
+                    </Button>
+                  </Group>
+                </Paper>
+              </Stack>
+            </Accordion.Panel>
+          </Accordion.Item>
+
+          {/* SECTION 3: LAYOUT & SPACING */}
+          <Accordion.Item value="layout">
+            <Accordion.Control icon={<Layout size={15} color="var(--mantine-color-teal-7, #0e6b66)" />}>
+              <Text fw={600} size="xs">
+                Layout & Spacing
+              </Text>
+            </Accordion.Control>
+            <Accordion.Panel>
+              <Stack gap="xs">
+                <Select
+                  label="Container Width"
+                  size="xs"
+                  value={layout.containerWidth || 'containerWidth'}
+                  onChange={(val) =>
+                    updateSettings({
+                      layout: {
+                        ...layout,
+                        containerWidth: val || 'containerWidth',
+                      },
+                    })
+                  }
+                  data={[
+                    { value: 'containerWidth', label: 'Default Container (1200px)' },
+                    { value: 'narrowWidth', label: 'Narrow Container (800px)' },
+                    { value: 'wideWidth', label: 'Wide Container (1400px)' },
+                    { value: 'full', label: 'Full Width (100%)' },
+                  ]}
+                />
+
+                <Select
+                  label="Spacing Preset"
+                  size="xs"
+                  value={layout.spacing || 'md'}
+                  onChange={(val) =>
+                    updateSettings({
+                      layout: {
+                        ...layout,
+                        spacing: val || 'md',
+                      },
+                    })
+                  }
+                  data={[
+                    { value: 'none', label: 'None (0px)' },
+                    { value: 'xs', label: 'Extra Small (xs)' },
+                    { value: 'sm', label: 'Small (sm)' },
+                    { value: 'md', label: 'Medium (md)' },
+                    { value: 'lg', label: 'Large (lg)' },
+                    { value: 'xl', label: 'Extra Large (xl)' },
+                  ]}
+                />
+
+                <Box>
+                  <Text size="xs" fw={500} mb={4}>
+                    Alignment
+                  </Text>
+                  <SegmentedControl
+                    size="xs"
+                    fullWidth
+                    value={layout.alignment || 'left'}
+                    onChange={(val) =>
+                      updateSettings({
+                        layout: {
+                          ...layout,
+                          alignment: val as 'left' | 'center' | 'right',
+                        },
+                      })
+                    }
+                    data={[
+                      { label: 'Left', value: 'left' },
+                      { label: 'Center', value: 'center' },
+                      { label: 'Right', value: 'right' },
+                    ]}
+                  />
+                </Box>
+              </Stack>
+            </Accordion.Panel>
+          </Accordion.Item>
+
+          {/* SECTION 4: ADVANCED CUSTOM CSS & JS */}
+          <Accordion.Item value="advanced">
+            <Accordion.Control icon={<Code size={15} color="var(--mantine-color-orange-7, #d9480f)" />}>
+              <Text fw={600} size="xs">
+                Advanced: Custom CSS & JS
+              </Text>
+            </Accordion.Control>
+            <Accordion.Panel>
+              <Stack gap="xs">
+                <Alert
+                  icon={<AlertTriangle size={15} />}
+                  color="orange"
+                  variant="light"
+                  p="xs"
+                  style={{ fontSize: 11 }}
+                >
+                  Exceptions to Atomic Design System. Scoped only to this template root. JavaScript execution is disabled inside editor/admin.
+                </Alert>
+
+                <Textarea
+                  label="Template Custom CSS"
+                  description="Scoped automatically to .zyvavu-theme-root"
+                  placeholder=".hero-heading { letter-spacing: 0.05em; }"
+                  size="xs"
+                  minRows={8}
+                  maxRows={24}
+                  autosize={false}
+                  styles={{
+                    input: {
+                      fontFamily: 'var(--font-mono, monospace)',
+                      fontSize: 12,
+                      resize: 'vertical',
+                      lineHeight: 1.45,
+                      whiteSpace: 'pre',
+                      overflowWrap: 'normal',
+                      overflowX: 'auto',
+                    },
+                  }}
+                  value={customCSS}
+                  onChange={(e) => updateSettings({ customCSS: e.currentTarget.value })}
+                />
+
+                <Textarea
+                  label="Template Custom JS"
+                  description="Non-eval policy; retained non-executable in editor"
+                  placeholder="// Template-specific analytics or hooks"
+                  size="xs"
+                  minRows={6}
+                  maxRows={20}
+                  autosize={false}
+                  styles={{
+                    input: {
+                      fontFamily: 'var(--font-mono, monospace)',
+                      fontSize: 12,
+                      resize: 'vertical',
+                      lineHeight: 1.45,
+                      whiteSpace: 'pre',
+                      overflowWrap: 'normal',
+                      overflowX: 'auto',
+                    },
+                  }}
+                  value={customJS}
+                  onChange={(e) => updateSettings({ customJS: e.currentTarget.value })}
+                />
+              </Stack>
+            </Accordion.Panel>
+          </Accordion.Item>
+        </Accordion>
+      </Box>
 
       {/* Shared Palette Modal */}
       {colorModalTarget && (
@@ -490,3 +554,4 @@ export function PageSettingsPanel({ themeConfig, templateName }: PageSettingsPan
     </Box>
   )
 }
+

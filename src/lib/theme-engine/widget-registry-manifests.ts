@@ -20,8 +20,10 @@ import { itemTitleManifest } from '@/widgets/ItemTitle/manifest'
 import { itemImageManifest } from '@/widgets/ItemImage/manifest'
 import { itemExcerptManifest } from '@/widgets/ItemExcerpt/manifest'
 import { itemLinkManifest } from '@/widgets/ItemLink/manifest'
+import { sectionManifest } from '@/widgets/Section/manifest'
 
 const defaultManifestRegistry: Record<string, WidgetManifest> = {
+  Section: sectionManifest,
   PostTitle: postTitleManifest,
   PostContent: postContentManifest,
   PostMeta: postMetaManifest,

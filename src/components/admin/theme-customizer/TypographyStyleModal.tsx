@@ -93,7 +93,7 @@ export function TypographyStyleModal({
   const [currentLetterSpacing, setCurrentLetterSpacing] = useState(value.letterSpacing || 'normal')
   const [sampleLang, setSampleLang] = useState<'vi' | 'en'>('vi')
   const [isPaletteOpen, setIsPaletteOpen] = useState(false)
-  const colorTriggerRef = useRef<HTMLButtonElement | null>(null)
+  const colorTriggerRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     if (currentFont) {
@@ -229,6 +229,7 @@ export function TypographyStyleModal({
           value={currentFont}
           onChange={handleFontChange}
           size="sm"
+          zIndex={1200}
         />
 
         {/* Size Slider & Input */}
@@ -276,52 +277,57 @@ export function TypographyStyleModal({
               </Text>
             </Flex>
 
-            <UnstyledButton
+            <Paper
               ref={colorTriggerRef}
-              onClick={() => setIsPaletteOpen((prev) => !prev)}
+              withBorder
+              p="xs"
+              radius="sm"
+              role="button"
+              tabIndex={0}
               aria-label="Choose Text Color from Theme Palette"
-              style={{ width: '100%', display: 'block' }}
+              onClick={() => setIsPaletteOpen((prev) => !prev)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  setIsPaletteOpen((prev) => !prev)
+                }
+              }}
+              style={{
+                cursor: 'pointer',
+                borderColor: isPaletteOpen ? 'var(--mantine-color-primary, #0e6b66)' : undefined,
+                borderWidth: isPaletteOpen ? 2 : 1,
+                transition: 'border-color 0.15s ease',
+                backgroundColor: 'var(--mantine-color-gray-0, #f8f9fa)',
+                width: '100%',
+              }}
             >
-              <Paper
-                withBorder
-                p="xs"
-                radius="sm"
-                style={{
-                  cursor: 'pointer',
-                  borderColor: isPaletteOpen ? 'var(--mantine-color-primary, #0e6b66)' : undefined,
-                  borderWidth: isPaletteOpen ? 2 : 1,
-                  transition: 'border-color 0.15s ease',
-                  backgroundColor: 'var(--mantine-color-gray-0, #f8f9fa)',
-                }}
-              >
-                <Flex align="center" justify="space-between" gap="xs">
-                  <Group gap="xs" style={{ minWidth: 0, flex: 1 }}>
-                    <Box
-                      style={{
-                        width: 20,
-                        height: 20,
-                        borderRadius: 4,
-                        backgroundColor: currentColor,
-                        border: '1px solid rgba(0,0,0,0.2)',
-                        boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.2)',
-                        flexShrink: 0,
-                      }}
-                    />
-                    <Box style={{ minWidth: 0, flex: 1 }}>
-                      <Text size="xs" fw={600} truncate>
-                        {activeColorSwatch?.label || 'Selected Theme Color'}
-                      </Text>
-                      <Text size="xs" c="dimmed" style={{ fontSize: 10 }}>
-                        {currentColor.toUpperCase()}
-                      </Text>
-                    </Box>
-                  </Group>
-                  <Button size="compact-xs" variant="light" color="teal">
-                    Change
-                  </Button>
-                </Flex>
-              </Paper>
-            </UnstyledButton>
+              <Flex align="center" justify="space-between" gap="xs">
+                <Group gap="xs" style={{ minWidth: 0, flex: 1 }}>
+                  <Box
+                    style={{
+                      width: 20,
+                      height: 20,
+                      borderRadius: 4,
+                      backgroundColor: currentColor,
+                      border: '1px solid rgba(0,0,0,0.2)',
+                      boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.2)',
+                      flexShrink: 0,
+                    }}
+                  />
+                  <Box style={{ minWidth: 0, flex: 1 }}>
+                    <Text size="xs" fw={600} truncate>
+                      {activeColorSwatch?.label || 'Selected Theme Color'}
+                    </Text>
+                    <Text size="xs" c="dimmed" style={{ fontSize: 10 }}>
+                      {currentColor.toUpperCase()}
+                    </Text>
+                  </Box>
+                </Group>
+                <Button size="compact-xs" variant="light" color="teal" component="span" tabIndex={-1}>
+                  Change
+                </Button>
+              </Flex>
+            </Paper>
 
             <ThemeColorPaletteModal
               opened={isPaletteOpen}

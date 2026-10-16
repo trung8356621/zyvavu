@@ -1,26 +1,48 @@
 'use client'
 
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import {
   ActionIcon,
   Box,
   Button,
-  Divider,
   Group,
-  Paper,
-  Portal,
-  SegmentedControl,
-  Select,
   Stack,
+  Tabs,
   Text,
-  Tooltip,
 } from '@mantine/core'
-import { AlignCenter, AlignLeft, AlignRight, Palette, Sliders, Type, X } from 'lucide-react'
+import {
+  BoxSelect,
+  Layers,
+  Palette,
+  Sliders,
+  Type,
+  X,
+} from 'lucide-react'
 
 import type { ThemeConfig, WidgetSemanticStyle } from '@/lib/theme-engine/types'
-import { resolveColorToken } from '@/lib/theme-engine/page-settings'
 import { getWidgetManifest } from '@/lib/theme-engine/widget-registry-manifests'
+import { SharedDraggableModal } from '@/components/admin/shared/SharedDraggableModal'
 import { ThemeColorPaletteModal } from '@/components/admin/shared/ThemeColorPaletteModal'
+import { getComponentStyleCapabilities } from '@/lib/style-engine/capabilities'
+import type {
+  BackgroundConfig,
+  BorderConfig,
+  DimensionsConfig,
+  EffectsConfig,
+  GradientDef,
+  MeshDef,
+  RadiusConfig,
+  ShadowConfig,
+  SpacingConfig,
+  StyleDomain,
+  TypographyStyleConfig,
+  UniversalStyle,
+} from '@/lib/style-engine/types'
+
+import { TypographyStyleControl } from './style-controls/TypographyStyleControl'
+import { BackgroundStyleControl } from './style-controls/BackgroundStyleControl'
+import { SpacingDimensionsControl } from './style-controls/SpacingDimensionsControl'
+import { BordersEffectsControl } from './style-controls/BordersEffectsControl'
 
 export interface WidgetStyleContextMenuProps {
   opened: boolean
@@ -43,11 +65,12 @@ export function WidgetStyleContextMenu({
   themeConfig,
   onUpdateStyle,
 }: WidgetStyleContextMenuProps) {
-  const panelRef = useRef<HTMLDivElement>(null)
-  const [colorModalTarget, setColorModalTarget] = useState<'text' | 'background' | null>(null)
-  const [colorModalAnchor, setColorModalAnchor] = useState<HTMLElement | null>(null)
+  // Color Modal Target: 'text' | 'background' | 'overlay' | 'border' | null
+  const [colorModalTarget, setColorModalTarget] = useState<
+    'text' | 'background' | 'overlay' | 'border' | null
+  >(null)
 
-  // Widget capability check
+  // Manifest and Style Capability check
   const manifest = useMemo(() => {
     try {
       return getWidgetManifest(componentType)
@@ -56,296 +79,285 @@ export function WidgetStyleContextMenu({
     }
   }, [componentType])
 
-  const capabilities = manifest?.capabilities || []
-  const category = manifest?.category || ''
+  const capabilities: StyleDomain[] = useMemo(() => {
+    return getComponentStyleCapabilities(componentType, manifest || undefined)
+  }, [componentType, manifest])
 
-  const isTypographyWidget =
-    capabilities.some((c) =>
-      ['document.title', 'document.content', 'document.meta', 'layout.text'].includes(c),
-    ) ||
-    ['PostTitle', 'TextBlock', 'ItemTitle', 'ItemExcerpt', 'CategoryHeader'].includes(componentType)
+  const hasTypography = capabilities.includes('typography')
+  const hasBackground = capabilities.includes('background')
+  const hasSpacingOrDimensions =
+    capabilities.includes('spacing') ||
+    capabilities.includes('dimensions') ||
+    capabilities.includes('section')
+  const hasBorderOrEffects =
+    capabilities.includes('border') ||
+    capabilities.includes('shadow') ||
+    capabilities.includes('effects')
 
-  const isLayoutWidget =
-    category === 'layout' ||
-    capabilities.some((c) => ['layout.container', 'layout.columns'].includes(c)) ||
-    ['Columns', 'TextBlock', 'Header', 'Footer'].includes(componentType)
+  // Initial active tab
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    if (componentType === 'Section' && hasBackground) return 'background'
+    if (hasTypography) return 'typography'
+    if (hasBackground) return 'background'
+    if (hasSpacingOrDimensions) return 'spacing'
+    return 'borders'
+  })
 
-  // Typography preset options from theme tokens
-  const typographyPresets = useMemo(() => {
-    const typo = (themeConfig?.tokens?.typography || {}) as Record<string, any>
-    const knownKeys = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p1', 'p2', 'p3']
-    const keys = Array.from(new Set([...knownKeys, ...Object.keys(typo).filter((k) => typeof typo[k] === 'object')]))
-
-    return keys.map((k) => ({
-      value: k,
-      label: k.toUpperCase().startsWith('H') ? `${k.toUpperCase()} (Heading ${k.slice(1)})` : `${k.toUpperCase()} (Body ${k.slice(1)})`,
-    }))
-  }, [themeConfig])
-
-  // Viewport-safe position calculation
-  const [coords, setCoords] = useState<{ top: number; left: number }>({ top: 100, left: 100 })
-
-  useEffect(() => {
-    if (!opened || !anchorEl) return
-
-    const rect = anchorEl.getBoundingClientRect()
-    const panelWidth = 280
-    const panelHeight = 320
-
-    const top = Math.max(
-      16,
-      Math.min(window.innerHeight - panelHeight - 16, rect.bottom + 8),
-    )
-    const left = Math.max(
-      16,
-      Math.min(window.innerWidth - panelWidth - 16, rect.left),
-    )
-
-    setCoords({ top, left })
-  }, [opened, anchorEl])
-
-  // Close on Escape or click outside
-  useEffect(() => {
-    if (!opened) return
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !colorModalTarget) {
-        onClose()
-      }
+  // Normalize currentStyle into UniversalStyle
+  const normalizedStyle: UniversalStyle = useMemo(() => {
+    const s = currentStyle as UniversalStyle
+    return {
+      ...s,
+      typography: {
+        typography: s.typography?.typography || (typeof currentStyle.typography === 'string' ? currentStyle.typography : undefined),
+        colorToken: s.typography?.colorToken || currentStyle.colorToken,
+        align: s.typography?.align || currentStyle.align,
+        effectPreset: s.typography?.effectPreset,
+        letterSpacing: s.typography?.letterSpacing,
+        lineHeight: s.typography?.lineHeight,
+        verticalText: s.typography?.verticalText,
+      },
+      background: s.background || (currentStyle.backgroundToken ? { mode: 'color', colorToken: currentStyle.backgroundToken } : undefined),
+      spacing: s.spacing && typeof s.spacing === 'object' ? s.spacing : { padding: { token: typeof currentStyle.spacing === 'string' ? currentStyle.spacing : 'md' } },
+      radius: s.radius && typeof s.radius === 'object' ? s.radius : { radiusToken: typeof currentStyle.radius === 'string' ? currentStyle.radius : 'none' },
     }
+  }, [currentStyle])
 
-    const handleMouseDown = (e: MouseEvent) => {
-      // Don't close if color modal is opened
-      if (colorModalTarget) return
-
-      const target = e.target as Node
-      if (panelRef.current && !panelRef.current.contains(target) && anchorEl && !anchorEl.contains(target)) {
-        // Also ensure not clicking inside Mantine modal/portal
-        const portal = document.querySelector('.mantine-Modal-root')
-        if (portal && portal.contains(target)) return
-
-        onClose()
-      }
+  const update = (partial: Partial<UniversalStyle>) => {
+    const merged: WidgetSemanticStyle = {
+      ...currentStyle,
+      ...normalizedStyle,
+      ...partial,
+      // Maintain legacy top-level mirrors for backward compatibility
+      colorToken: partial.typography?.colorToken || normalizedStyle.typography?.colorToken || currentStyle.colorToken,
+      align: partial.typography?.align || normalizedStyle.typography?.align || currentStyle.align,
+      backgroundToken: partial.background?.colorToken || normalizedStyle.background?.colorToken || currentStyle.backgroundToken,
     }
-
-    window.addEventListener('keydown', handleKeyDown)
-    window.addEventListener('mousedown', handleMouseDown)
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-      window.removeEventListener('mousedown', handleMouseDown)
-    }
-  }, [opened, onClose, anchorEl, colorModalTarget])
+    onUpdateStyle(merged)
+  }
 
   if (!opened) return null
 
-  const currentColorToken = currentStyle.colorToken || 'text'
-  const currentTextColor = resolveColorToken(currentColorToken, '#17201f')
-  const currentBgToken = currentStyle.backgroundToken || 'surface'
-  const currentBgColor = resolveColorToken(currentBgToken, '#ffffff')
-
-  const update = (partial: Partial<WidgetSemanticStyle>) => {
-    onUpdateStyle({
-      ...currentStyle,
-      ...partial,
-    })
-  }
-
   return (
-    <Portal>
-      <Paper
-        ref={panelRef}
-        withBorder
-        shadow="md"
-        radius="sm"
-        p="xs"
-        style={{
-          position: 'fixed',
-          top: coords.top,
-          left: coords.left,
-          width: 280,
-          zIndex: 1050,
-          backgroundColor: 'var(--zyvavu-surface, #ffffff)',
-          border: '1px solid var(--zyvavu-border, #dfe5e2)',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-        }}
+    <>
+      <SharedDraggableModal
+        opened={opened}
+        onClose={onClose}
+        title={`Style: ${manifest?.label || componentType}`}
+        subtitle={`Configure presentation without handwritten CSS`}
+        headerExtra={<Sliders size={15} color="var(--mantine-color-teal-7, #0e6b66)" />}
+        width={340}
+        anchorEl={anchorEl}
+        mode="floating"
+        draggable={true}
+        showCloseButton={true}
+        closeOnClickOutside={false}
+        closeOnEscape={true}
+        zIndex={1050}
+        footer={
+          <Group justify="space-between" w="100%">
+            <Text size="xs" c="dimmed">
+              Prop: {componentId}
+            </Text>
+            <Button size="xs" color="teal" onClick={onClose}>
+              Done
+            </Button>
+          </Group>
+        }
       >
         <Stack gap="xs">
-          {/* Header */}
-          <Group justify="space-between" align="center">
-            <Group gap={6}>
-              <Sliders size={14} color="var(--mantine-color-teal-7, #0e6b66)" />
-              <Text fw={700} size="xs" c="var(--zyvavu-text, #17201f)">
-                Style: {componentType}
-              </Text>
-            </Group>
-            <ActionIcon size="xs" variant="subtle" color="gray" onClick={onClose}>
-              <X size={13} />
-            </ActionIcon>
-          </Group>
+          {/* Tab Navigation */}
+          <Tabs
+            value={activeTab}
+            onChange={(val) => setActiveTab(val || 'typography')}
+            variant="pills"
+            color="teal"
+          >
+            <Tabs.List grow mb="xs">
+              {hasTypography && (
+                <Tabs.Tab value="typography" leftSection={<Type size={12} />}>
+                  Type
+                </Tabs.Tab>
+              )}
+              {hasBackground && (
+                <Tabs.Tab value="background" leftSection={<Palette size={12} />}>
+                  Backdrop
+                </Tabs.Tab>
+              )}
+              {hasSpacingOrDimensions && (
+                <Tabs.Tab value="spacing" leftSection={<BoxSelect size={12} />}>
+                  Layout
+                </Tabs.Tab>
+              )}
+              {hasBorderOrEffects && (
+                <Tabs.Tab value="borders" leftSection={<Layers size={12} />}>
+                  Borders
+                </Tabs.Tab>
+              )}
+            </Tabs.List>
+          </Tabs>
 
-          <Divider />
-
-          {/* Typography Controls */}
-          {isTypographyWidget && (
-            <Stack gap={6}>
-              <Text size="xs" fw={600} c="dimmed" style={{ fontSize: 11 }}>
-                Typography & Color
-              </Text>
-
-              <Select
-                size="xs"
-                placeholder="Typography Preset"
-                value={currentStyle.typography || (componentType === 'PostTitle' ? 'h1' : 'p1')}
-                onChange={(val) => update({ typography: val || undefined })}
-                data={typographyPresets}
-              />
-
-              {/* Color Token Selector */}
-              <Paper p={6} withBorder radius="xs">
-                <Group justify="space-between" align="center">
-                  <Group gap={6}>
-                    <Box
-                      style={{
-                        width: 18,
-                        height: 18,
-                        borderRadius: 3,
-                        backgroundColor: currentTextColor,
-                        border: '1px solid rgba(0,0,0,0.2)',
-                      }}
-                    />
-                    <Text size="xs" fw={500} style={{ fontSize: 11 }}>
-                      {currentColorToken}
-                    </Text>
-                  </Group>
-                  <Button
-                    size="xs"
-                    variant="subtle"
-                    color="teal"
-                    onClick={(e) => {
-                      setColorModalAnchor(e.currentTarget)
-                      setColorModalTarget('text')
-                    }}
-                  >
-                    Change
-                  </Button>
-                </Group>
-              </Paper>
-
-              {/* Alignment */}
-              <Box>
-                <SegmentedControl
-                  size="xs"
-                  fullWidth
-                  value={currentStyle.align || 'left'}
-                  onChange={(val) => update({ align: val as 'left' | 'center' | 'right' })}
-                  data={[
-                    { label: <AlignLeft size={13} />, value: 'left' },
-                    { label: <AlignCenter size={13} />, value: 'center' },
-                    { label: <AlignRight size={13} />, value: 'right' },
-                  ]}
-                />
-              </Box>
-            </Stack>
+          {/* 1. TYPOGRAPHY DOMAIN */}
+          {activeTab === 'typography' && hasTypography && (
+            <TypographyStyleControl
+              value={normalizedStyle.typography}
+              themeConfig={themeConfig}
+              onChange={(typo) => update({ typography: typo })}
+              onOpenColorModal={() => setColorModalTarget('text')}
+            />
           )}
 
-          {/* Layout & Box Controls */}
-          {isLayoutWidget && (
-            <Stack gap={6}>
-              {isTypographyWidget && <Divider />}
-              <Text size="xs" fw={600} c="dimmed" style={{ fontSize: 11 }}>
-                Spacing & Radius
-              </Text>
+          {/* 2. BACKGROUND DOMAIN */}
+          {activeTab === 'background' && hasBackground && (
+            <BackgroundStyleControl
+              value={normalizedStyle.background}
+              themeConfig={themeConfig}
+              onChange={(bg) => update({ background: bg })}
+              onOpenColorModal={(target) =>
+                setColorModalTarget(target === 'background' ? 'background' : 'overlay')
+              }
+            />
+          )}
 
-              <Select
-                size="xs"
-                label="Padding Spacing"
-                placeholder="Spacing Scale"
-                value={currentStyle.spacing || 'md'}
-                onChange={(val) => update({ spacing: val || undefined })}
-                data={[
-                  { value: 'none', label: 'None (0px)' },
-                  { value: 'xs', label: 'Extra Small (xs)' },
-                  { value: 'sm', label: 'Small (sm)' },
-                  { value: 'md', label: 'Medium (md)' },
-                  { value: 'lg', label: 'Large (lg)' },
-                  { value: 'xl', label: 'Extra Large (xl)' },
-                ]}
-              />
+          {/* 3. SPACING & DIMENSIONS DOMAIN */}
+          {activeTab === 'spacing' && hasSpacingOrDimensions && (
+            <SpacingDimensionsControl
+              spacing={normalizedStyle.spacing}
+              dimensions={normalizedStyle.dimensions}
+              showDimensions={capabilities.includes('dimensions') || capabilities.includes('section')}
+              onChangeSpacing={(sp) => update({ spacing: sp })}
+              onChangeDimensions={(dim) => update({ dimensions: dim })}
+            />
+          )}
 
-              <Select
-                size="xs"
-                label="Border Radius"
-                placeholder="Radius Scale"
-                value={currentStyle.radius || 'sm'}
-                onChange={(val) => update({ radius: val || undefined })}
-                data={[
-                  { value: 'none', label: 'None (0px)' },
-                  { value: 'sm', label: 'Small (sm)' },
-                  { value: 'md', label: 'Medium (md)' },
-                  { value: 'lg', label: 'Large (lg)' },
-                  { value: 'pill', label: 'Pill / Rounded' },
-                ]}
-              />
-
-              {/* Background Token */}
-              <Paper p={6} withBorder radius="xs">
-                <Group justify="space-between" align="center">
-                  <Group gap={6}>
-                    <Box
-                      style={{
-                        width: 18,
-                        height: 18,
-                        borderRadius: 3,
-                        backgroundColor: currentBgColor,
-                        border: '1px solid rgba(0,0,0,0.2)',
-                      }}
-                    />
-                    <Text size="xs" fw={500} style={{ fontSize: 11 }}>
-                      Bg: {currentBgToken}
-                    </Text>
-                  </Group>
-                  <Button
-                    size="xs"
-                    variant="subtle"
-                    color="teal"
-                    onClick={(e) => {
-                      setColorModalAnchor(e.currentTarget)
-                      setColorModalTarget('background')
-                    }}
-                  >
-                    Change
-                  </Button>
-                </Group>
-              </Paper>
-            </Stack>
+          {/* 4. BORDERS & EFFECTS DOMAIN */}
+          {activeTab === 'borders' && hasBorderOrEffects && (
+            <BordersEffectsControl
+              border={normalizedStyle.border}
+              radius={normalizedStyle.radius}
+              shadow={normalizedStyle.shadow}
+              effects={normalizedStyle.effects}
+              onChangeBorder={(border) => update({ border })}
+              onChangeRadius={(radius) => update({ radius })}
+              onChangeShadow={(shadow) => update({ shadow })}
+              onChangeEffects={(effects) => update({ effects })}
+              onOpenColorModal={() => setColorModalTarget('border')}
+            />
           )}
         </Stack>
-      </Paper>
+      </SharedDraggableModal>
 
-      {/* Palette Modal */}
+      {/* Unified Color / Gradient / Mesh Modal */}
       {colorModalTarget && (
         <ThemeColorPaletteModal
           opened={Boolean(colorModalTarget)}
-          anchorEl={colorModalAnchor}
-          title={colorModalTarget === 'text' ? 'Widget Text Color Token' : 'Widget Background Token'}
-          subtitle="Select semantic theme color token"
-          value={colorModalTarget === 'text' ? currentColorToken : currentBgToken}
+          anchorEl={anchorEl}
+          title={
+            colorModalTarget === 'text'
+              ? 'Theme Typography Color'
+              : colorModalTarget === 'overlay'
+                ? 'Theme Overlay Color'
+                : colorModalTarget === 'border'
+                  ? 'Theme Border Color'
+                  : 'Theme Background & Palette'
+          }
+          subtitle="Select semantic theme tokens or custom gradients"
+          value={
+            colorModalTarget === 'text'
+              ? normalizedStyle.typography?.colorToken || 'text'
+              : colorModalTarget === 'overlay'
+                ? normalizedStyle.background?.image?.overlay?.colorToken || 'text'
+                : colorModalTarget === 'border'
+                  ? normalizedStyle.border?.colorToken || 'border'
+                  : normalizedStyle.background?.colorToken || 'surface'
+          }
           tokens={themeConfig?.tokens}
           zIndex={1150}
-          onClose={() => {
-            setColorModalTarget(null)
-            setColorModalAnchor(null)
-          }}
+          supportedModes={
+            colorModalTarget === 'background'
+              ? ['solid', 'gradient', 'mesh']
+              : ['solid']
+          }
+          gradientValue={normalizedStyle.background?.gradient}
+          meshValue={normalizedStyle.background?.mesh}
+          onClose={() => setColorModalTarget(null)}
           onApplyToken={(tokenId) => {
             if (colorModalTarget === 'text') {
-              update({ colorToken: tokenId })
+              update({
+                typography: {
+                  ...normalizedStyle.typography,
+                  colorToken: tokenId,
+                },
+              })
+            } else if (colorModalTarget === 'overlay') {
+              if (normalizedStyle.background?.mode === 'image') {
+                update({
+                  background: {
+                    ...normalizedStyle.background,
+                    image: {
+                      ...normalizedStyle.background?.image,
+                      overlay: {
+                        ...normalizedStyle.background?.image?.overlay,
+                        colorToken: tokenId,
+                      },
+                    },
+                  },
+                })
+              } else if (normalizedStyle.background?.mode === 'video') {
+                update({
+                  background: {
+                    ...normalizedStyle.background,
+                    video: {
+                      ...normalizedStyle.background?.video,
+                      overlay: {
+                        ...normalizedStyle.background?.video?.overlay,
+                        colorToken: tokenId,
+                      },
+                    },
+                  },
+                })
+              }
+            } else if (colorModalTarget === 'border') {
+              update({
+                border: {
+                  ...normalizedStyle.border,
+                  colorToken: tokenId,
+                },
+              })
             } else {
-              update({ backgroundToken: tokenId })
+              update({
+                background: {
+                  ...normalizedStyle.background,
+                  mode: 'color',
+                  colorToken: tokenId,
+                  gradient: undefined,
+                  mesh: undefined,
+                },
+              })
             }
+          }}
+          onApplyGradient={(gradient: GradientDef) => {
+            update({
+              background: {
+                ...normalizedStyle.background,
+                mode: 'color',
+                gradient,
+                mesh: undefined,
+              },
+            })
+          }}
+          onApplyMesh={(mesh: MeshDef) => {
+            update({
+              background: {
+                ...normalizedStyle.background,
+                mode: 'color',
+                mesh,
+                gradient: undefined,
+              },
+            })
           }}
         />
       )}
-    </Portal>
+    </>
   )
 }

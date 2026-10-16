@@ -65,12 +65,16 @@ import { itemExcerptEditor } from '@/widgets/ItemExcerpt/editor'
 import { itemLinkManifest } from '@/widgets/ItemLink/manifest'
 import { itemLinkEditor } from '@/widgets/ItemLink/editor'
 
+import { sectionManifest } from '@/widgets/Section/manifest'
+import { sectionEditor } from '@/widgets/Section/editor'
+
 export type EditorWidgetEntry = {
   manifest: any
   config: any
 }
 
 const defaultEditorRegistry: Record<string, EditorWidgetEntry> = {
+  Section: { manifest: sectionManifest, config: sectionEditor },
   PostTitle: { manifest: postTitleManifest, config: postTitleEditor },
   PostContent: { manifest: postContentManifest, config: postContentEditor },
   PostMeta: { manifest: postMetaManifest, config: postMetaEditor },

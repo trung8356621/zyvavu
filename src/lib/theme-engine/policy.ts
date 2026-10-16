@@ -6,6 +6,7 @@ export const TEMPLATE_POLICIES: Record<TemplateContext, TemplatePolicy> = {
     mode: 'document',
     description: 'Renders single blog posts with dynamic article content and metadata.',
     allowedWidgets: [
+      'Section',
       'PostTitle',
       'PostContent',
       'PostMeta',
@@ -26,6 +27,7 @@ export const TEMPLATE_POLICIES: Record<TemplateContext, TemplatePolicy> = {
     mode: 'document',
     description: 'Renders static and custom pages with content blocks or rich text.',
     allowedWidgets: [
+      'Section',
       'PostTitle',
       'PostContent',
       'FeaturedMedia',
@@ -45,6 +47,7 @@ export const TEMPLATE_POLICIES: Record<TemplateContext, TemplatePolicy> = {
     mode: 'free',
     description: 'Free layout builder for the site homepage.',
     allowedWidgets: [
+      'Section',
       'TextBlock',
       'Columns',
       'RecentPosts',
@@ -64,6 +67,7 @@ export const TEMPLATE_POLICIES: Record<TemplateContext, TemplatePolicy> = {
     mode: 'document',
     description: 'Archive template for category listings and paginated post grids.',
     allowedWidgets: [
+      'Section',
       'CategoryHeader',
       'RecentPosts',
       'TextBlock',
@@ -81,7 +85,7 @@ export const TEMPLATE_POLICIES: Record<TemplateContext, TemplatePolicy> = {
     context: 'product',
     mode: 'document',
     description: 'Contract-only product template policy. Pending real Products collection.',
-    allowedWidgets: ['ProductHeader', 'TextBlock', 'Columns'],
+    allowedWidgets: ['Section', 'ProductHeader', 'TextBlock', 'Columns'],
     requiredWidgets: ['ProductHeader'],
     uniqueWidgets: ['ProductHeader'],
   },

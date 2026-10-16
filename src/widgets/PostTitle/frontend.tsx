@@ -1,10 +1,11 @@
 import React from 'react'
 import type { ThemeDataContext, WidgetSemanticStyle } from '@/lib/theme-engine/types'
-import { resolveColorToken } from '@/lib/theme-engine/page-settings'
+import { resolveWidgetStyles } from '@/lib/style-engine/serializer'
+import { resolveColorToken } from '@/lib/style-engine/token-resolver'
 
 export type PostTitleProps = {
   id?: string
-  tag?: 'h1' | 'h2' | 'h3'
+  tag?: 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6'
   align?: 'left' | 'center' | 'right'
   variant?: 'default' | 'accent' | 'subtle'
   style?: WidgetSemanticStyle
@@ -13,7 +14,7 @@ export type PostTitleProps = {
 }
 
 export function PostTitleFrontend({
-  tag = 'h1',
+  tag,
   align = 'left',
   variant = 'default',
   style: semanticStyle,
@@ -21,13 +22,24 @@ export function PostTitleFrontend({
   dataContext,
 }: PostTitleProps) {
   const title = customTitle || dataContext?.document?.title || 'Untitled Document'
-  const effectiveTag = (semanticStyle?.typography?.startsWith('h') ? semanticStyle.typography : tag) as any
-  const HeadingTag = effectiveTag || 'h1'
-  const effectiveAlign = semanticStyle?.align || align
 
-  const colorStyle = semanticStyle?.colorToken
-    ? resolveColorToken(semanticStyle.colorToken)
-    : variant === 'accent'
+  // Visual typography preset from Style Engine
+  const visualPreset =
+    (typeof semanticStyle?.typography === 'object'
+      ? semanticStyle.typography?.typography
+      : semanticStyle?.typography) || 'h1'
+
+  // Independent Semantic HTML tag from Widget Settings (with fallback to visual heading preset or 'h1')
+  const HeadingTag = (
+    tag ||
+    (typeof visualPreset === 'string' && visualPreset.startsWith('h') ? visualPreset : 'h1')
+  ) as keyof React.JSX.IntrinsicElements
+
+  const resolved = resolveWidgetStyles(semanticStyle)
+  const effectiveAlign = resolved.textAlign || semanticStyle?.align || align
+
+  const defaultColor =
+    variant === 'accent'
       ? 'var(--zyvavu-theme-primary, var(--zyvavu-primary, #0e6b66))'
       : 'inherit'
 
@@ -40,11 +52,17 @@ export function PostTitleFrontend({
       }}
     >
       <HeadingTag
-        className="zyvavu-widget-post-title__heading"
+        className={`zyvavu-widget-post-title__heading zyvavu-typo-preset--${visualPreset}`}
         style={{
           margin: 0,
-          color: colorStyle,
-          letterSpacing: '-0.02em',
+          color: resolved.color || defaultColor,
+          fontSize: `var(--zyvavu-theme-${visualPreset}-size, var(--zyvavu-theme-h1-size, 44px))`,
+          lineHeight: resolved.lineHeight || `var(--zyvavu-theme-${visualPreset}-line-height, 1.2)`,
+          fontWeight: `var(--zyvavu-theme-${visualPreset}-weight, 700)`,
+          letterSpacing: resolved.letterSpacing || `var(--zyvavu-theme-${visualPreset}-letter-spacing, normal)`,
+          writingMode: resolved.writingMode,
+          textShadow: resolved.textShadow,
+          WebkitTextStroke: (resolved as any).WebkitTextStroke,
         }}
       >
         {title}

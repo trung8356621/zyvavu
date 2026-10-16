@@ -767,6 +767,18 @@ h6 {
   max-width: var(--zyvavu-theme-container-narrow, 800px);
 }
 
+.zyvavu-widget-section {
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .zyvavu-section__media--video video {
+    display: none !important;
+  }
+}
+
 ${slotRules.join('\n')}
 `.trim()
 }

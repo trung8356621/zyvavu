@@ -32,6 +32,7 @@ export interface WixFontPickerProps {
   placeholder?: string
   size?: 'xs' | 'sm' | 'md'
   lang?: string
+  zIndex?: number
 }
 
 const PREVIEW_SLICE_LIMIT = 50
@@ -44,6 +45,7 @@ export function WixFontPicker({
   placeholder = 'Select font...',
   size = 'xs',
   lang,
+  zIndex = 1200,
 }: WixFontPickerProps) {
   const [search, setSearch] = useState('')
   const [catalogFonts, setCatalogFonts] = useState<CatalogFontItem[]>(() => getCuratedCatalogFallback())
@@ -62,6 +64,7 @@ export function WixFontPicker({
       // Lazy-load preview CSS for top visible candidates when dropdown opens
       const visible = filteredFonts.slice(0, 25).map((f) => f.family)
       loadGoogleFontStyles(visible, [400, 600])
+      combobox.focusSearchInput()
     },
   })
 
@@ -180,6 +183,9 @@ export function WixFontPicker({
 
       <Combobox
         store={combobox}
+        zIndex={zIndex}
+        withinPortal={true}
+        portalProps={{ style: { zIndex } }}
         onOptionSubmit={(val) => {
           onChange(val)
           combobox.closeDropdown()
@@ -243,7 +249,7 @@ export function WixFontPicker({
           </InputBase>
         </Combobox.Target>
 
-        <Combobox.Dropdown>
+        <Combobox.Dropdown style={{ zIndex }}>
           <Combobox.Search
             value={search}
             onChange={(event) => setSearch(event.currentTarget.value)}
