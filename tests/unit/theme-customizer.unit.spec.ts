@@ -453,7 +453,17 @@ describe('Theme Style Customizer — Wix Typography & Vietnamese Font Support', 
     expect(css).toContain('--zyvavu-theme-h1-weight: 800;')
     expect(css).toContain('--zyvavu-theme-h1-line-height: 1.2;')
   })
+
+  it('exports reusable TypographyStyleModal and WixTypographyPanel components', async () => {
+    const modalModule = await import('@/components/admin/theme-customizer/TypographyStyleModal')
+    const panelModule = await import('@/components/admin/theme-customizer/WixTypographyPanel')
+
+    expect(typeof modalModule.TypographyStyleModal).toBe('function')
+    expect(typeof panelModule.WixTypographyPanel).toBe('function')
+    expect(typeof panelModule.TypographyStyleModal).toBe('function')
+  })
 })
+
 
 
 

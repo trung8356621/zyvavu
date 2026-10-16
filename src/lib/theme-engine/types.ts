@@ -101,15 +101,15 @@ export type ThemeTokens = {
     fontFamilyHeading?: string
     baseFontSize?: string
     baseLineHeight?: string
-    h1?: { size: string; lineHeight?: string; weight?: string; letterSpacing?: string }
-    h2?: { size: string; lineHeight?: string; weight?: string; letterSpacing?: string }
-    h3?: { size: string; lineHeight?: string; weight?: string; letterSpacing?: string }
-    h4?: { size: string; lineHeight?: string; weight?: string; letterSpacing?: string }
-    h5?: { size: string; lineHeight?: string; weight?: string; letterSpacing?: string }
-    h6?: { size: string; lineHeight?: string; weight?: string; letterSpacing?: string }
-    p1?: { size: string; lineHeight?: string; weight?: string; letterSpacing?: string }
-    p2?: { size: string; lineHeight?: string; weight?: string; letterSpacing?: string }
-    p3?: { size: string; lineHeight?: string; weight?: string; letterSpacing?: string }
+    h1?: { size: string; lineHeight?: string; weight?: string; letterSpacing?: string; color?: string }
+    h2?: { size: string; lineHeight?: string; weight?: string; letterSpacing?: string; color?: string }
+    h3?: { size: string; lineHeight?: string; weight?: string; letterSpacing?: string; color?: string }
+    h4?: { size: string; lineHeight?: string; weight?: string; letterSpacing?: string; color?: string }
+    h5?: { size: string; lineHeight?: string; weight?: string; letterSpacing?: string; color?: string }
+    h6?: { size: string; lineHeight?: string; weight?: string; letterSpacing?: string; color?: string }
+    p1?: { size: string; lineHeight?: string; weight?: string; letterSpacing?: string; color?: string }
+    p2?: { size: string; lineHeight?: string; weight?: string; letterSpacing?: string; color?: string }
+    p3?: { size: string; lineHeight?: string; weight?: string; letterSpacing?: string; color?: string }
     [key: string]: any
   }
   spacing: {

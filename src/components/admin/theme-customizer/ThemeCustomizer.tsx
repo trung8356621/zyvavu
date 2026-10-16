@@ -71,6 +71,7 @@ import { ThemeColorPalettePicker } from './ThemeColorPalettePicker'
 import { CoolorsImportModal } from './CoolorsImportModal'
 import { WixFontPicker } from './WixFontPicker'
 import { WixTypographyPanel } from './WixTypographyPanel'
+import { TypographyStyleModal, type TypographyStyleValue } from './TypographyStyleModal'
 
 export type ThemeCustomizerProps = {
   themeId?: string
@@ -372,7 +373,7 @@ export function ThemeCustomizer({
 
   const handleTypographyLiveChange = (
     tag: 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'p1' | 'p2' | 'p3',
-    style: { fontFamily?: string; size?: string; weight?: string; lineHeight?: string; letterSpacing?: string },
+    style: TypographyStyleValue,
   ) => {
     setTokens((prev) => {
       const isHead = tag.startsWith('h')
@@ -386,6 +387,7 @@ export function ThemeCustomizer({
             ...(prev.typography[tag] || {}),
             size: style.size,
             weight: style.weight,
+            color: style.color,
             lineHeight: style.lineHeight,
             letterSpacing: style.letterSpacing,
           },
@@ -406,7 +408,7 @@ export function ThemeCustomizer({
 
   const handleTypographyApply = (
     tag: 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'p1' | 'p2' | 'p3',
-    style: { fontFamily?: string; size?: string; weight?: string; lineHeight?: string; letterSpacing?: string },
+    style: TypographyStyleValue,
   ) => {
     handleTypographyLiveChange(tag, style)
     setEditingTypographyTag(null)
@@ -2485,9 +2487,9 @@ export function ThemeCustomizer({
         onImportSuccess={handleImportColorPreset}
       />
 
-      {/* Focused Floating Typography Panel */}
+      {/* Focused Floating Typography Style Modal */}
       {editingTypographyTag && (
-        <WixTypographyPanel
+        <TypographyStyleModal
           opened={editingTypographyTag !== null}
           onClose={() => setEditingTypographyTag(null)}
           title={
@@ -2500,21 +2502,23 @@ export function ThemeCustomizer({
             PARAGRAPH_FRIENDLY_LABELS[editingTypographyTag as keyof typeof PARAGRAPH_FRIENDLY_LABELS]
           }
           isHeading={editingTypographyTag.startsWith('h')}
+          paletteTokens={tokens}
           defaultFontFamily={
             editingTypographyTag.startsWith('h')
               ? tokens.typography.fontFamilyHeading || tokens.typography.fontFamily || 'Inter'
               : tokens.typography.fontFamily || 'Inter'
           }
-          initialStyle={{
+          value={{
             fontFamily: editingTypographyTag.startsWith('h')
               ? tokens.typography.fontFamilyHeading || tokens.typography.fontFamily
               : tokens.typography.fontFamily,
             size: tokens.typography[editingTypographyTag]?.size,
             weight: tokens.typography[editingTypographyTag]?.weight,
+            color: tokens.typography[editingTypographyTag]?.color || tokens.colors.text,
             lineHeight: tokens.typography[editingTypographyTag]?.lineHeight,
             letterSpacing: tokens.typography[editingTypographyTag]?.letterSpacing,
           }}
-          onLiveChange={(style) => handleTypographyLiveChange(editingTypographyTag, style)}
+          onChange={(style) => handleTypographyLiveChange(editingTypographyTag, style)}
           onApply={(style) => handleTypographyApply(editingTypographyTag, style)}
           onCancel={handleTypographyCancel}
         />
