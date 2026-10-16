@@ -151,6 +151,28 @@ export const SYSTEM_FONTS: FontItem[] = [
   },
 ]
 
+// Fonts verified to have full Vietnamese character and diacritic support
+export const VIETNAMESE_SUPPORTED_FONTS = new Set<string>([
+  'Inter',
+  'Roboto',
+  'Open Sans',
+  'Montserrat',
+  'Plus Jakarta Sans',
+  'Lora',
+  'Merriweather',
+  'Oswald',
+  'Fira Code',
+  'Manrope',
+  'System UI',
+  'Georgia (System Serif)',
+])
+
+export function hasVietnameseSupport(fontFamily: string): boolean {
+  if (!fontFamily) return false
+  const primary = extractPrimaryFontFamily(fontFamily)
+  return VIETNAMESE_SUPPORTED_FONTS.has(primary)
+}
+
 let cachedFontCatalog: FontItem[] = [...SYSTEM_FONTS, ...CURATED_FONTS]
 
 /**

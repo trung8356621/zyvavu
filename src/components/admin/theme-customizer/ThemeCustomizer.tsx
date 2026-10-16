@@ -69,6 +69,8 @@ import {
 import { WixColorPicker } from './WixColorPicker'
 import { ThemeColorPalettePicker } from './ThemeColorPalettePicker'
 import { CoolorsImportModal } from './CoolorsImportModal'
+import { WixFontPicker } from './WixFontPicker'
+import { WixTypographyPanel } from './WixTypographyPanel'
 
 export type ThemeCustomizerProps = {
   themeId?: string
@@ -188,6 +190,12 @@ export function ThemeCustomizer({
   // Custom preset & import state
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
   const [newTypoPresetName, setNewTypoPresetName] = useState('')
+
+  // Floating typography editor state
+  const [editingTypographyTag, setEditingTypographyTag] = useState<
+    'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'p1' | 'p2' | 'p3' | null
+  >(null)
+  const initialTypographySnapshotRef = useRef<ThemeTokens['typography'] | null>(null)
 
   // Preview iframe state
   const [previewRoute, setPreviewRoute] = useState<string>(previewRoutes[0]?.value || '/')
@@ -354,6 +362,54 @@ export function ThemeCustomizer({
         },
       }
     })
+  }
+
+  // Focused floating typography editor handlers
+  const handleOpenTypographyEditor = (tag: 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'p1' | 'p2' | 'p3') => {
+    initialTypographySnapshotRef.current = JSON.parse(JSON.stringify(tokens.typography))
+    setEditingTypographyTag(tag)
+  }
+
+  const handleTypographyLiveChange = (
+    tag: 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'p1' | 'p2' | 'p3',
+    style: { fontFamily?: string; size?: string; weight?: string; lineHeight?: string; letterSpacing?: string },
+  ) => {
+    setTokens((prev) => {
+      const isHead = tag.startsWith('h')
+      return {
+        ...prev,
+        typography: {
+          ...prev.typography,
+          ...(style.fontFamily && isHead ? { fontFamilyHeading: style.fontFamily } : {}),
+          ...(style.fontFamily && !isHead ? { fontFamily: style.fontFamily } : {}),
+          [tag]: {
+            ...(prev.typography[tag] || {}),
+            size: style.size,
+            weight: style.weight,
+            lineHeight: style.lineHeight,
+            letterSpacing: style.letterSpacing,
+          },
+        },
+      }
+    })
+  }
+
+  const handleTypographyCancel = () => {
+    if (initialTypographySnapshotRef.current) {
+      setTokens((prev) => ({
+        ...prev,
+        typography: initialTypographySnapshotRef.current!,
+      }))
+    }
+    setEditingTypographyTag(null)
+  }
+
+  const handleTypographyApply = (
+    tag: 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'p1' | 'p2' | 'p3',
+    style: { fontFamily?: string; size?: string; weight?: string; lineHeight?: string; letterSpacing?: string },
+  ) => {
+    handleTypographyLiveChange(tag, style)
+    setEditingTypographyTag(null)
   }
 
   // Preset Selection Handlers
@@ -1537,66 +1593,70 @@ export function ThemeCustomizer({
           {/* LAYER 3: TEXT THEME -> HEADINGS */}
           {activePanel === 'typography' && activeSubPanel === 'headings' && (
             <Stack gap="md">
-              <Select
-                size="sm"
+              <WixFontPicker
                 label="Heading Font"
-                description="Used for page titles and section headlines"
-                data={fontOptions}
+                description="Default font family for all page titles and headlines"
                 value={tokens.typography.fontFamilyHeading || 'Inter'}
-                onChange={(val) => val && handleFontChange('fontFamilyHeading', val)}
-                searchable
+                onChange={(val) => handleFontChange('fontFamilyHeading', val)}
+                size="sm"
               />
 
               <Divider />
 
               <Stack gap="xs">
                 <Text size="xs" fw={700} style={{ textTransform: 'uppercase' }}>
-                  Heading Sizes & Style
+                  Heading Styles
                 </Text>
-                {(['h1', 'h2', 'h3', 'h4', 'h5', 'h6'] as const).map((tag) => {
+                <Text size="xs" c="dimmed" style={{ fontSize: 11 }} mb={2}>
+                  Select any heading to customize font size, weight and spacing.
+                </Text>
+
+                {(['h1', 'h2', 'h3', 'h4', 'h5', 'h6'] as const).map((tag, idx) => {
                   const conf = tokens.typography[tag] || { size: '24px', lineHeight: '1.3', weight: '600' }
+                  const headingFont = tokens.typography.fontFamilyHeading || tokens.typography.fontFamily || 'Inter'
+                  const titleLabel = `Heading ${idx + 1}`
+                  const descLabel = HEADING_FRIENDLY_LABELS[tag]
+
                   return (
-                    <Paper key={tag} withBorder p="xs" radius="sm">
-                      <Stack gap="xs">
-                        <Text size="xs" fw={700}>
-                          {HEADING_FRIENDLY_LABELS[tag]}
-                        </Text>
-                        <Group grow gap="xs">
-                          <TextInput
-                            size="xs"
-                            label="Size"
-                            value={conf.size || ''}
-                            onChange={(e) => handleHeadingPropChange(tag, 'size', e.currentTarget.value)}
-                          />
-                          <Select
-                            size="xs"
-                            label="Weight"
-                            data={WEIGHT_OPTIONS}
-                            value={String(conf.weight || '600')}
-                            onChange={(val) => val && handleHeadingPropChange(tag, 'weight', val)}
-                          />
-                        </Group>
-                        <Box
-                          p="xs"
-                          style={{
-                            background: 'var(--mantine-color-gray-0, #f8f9fa)',
-                            borderRadius: 4,
-                            overflow: 'hidden',
-                          }}
-                        >
-                          <div
+                    <Card
+                      key={tag}
+                      withBorder
+                      padding="xs"
+                      radius="sm"
+                      role="button"
+                      tabIndex={0}
+                      style={{ cursor: 'pointer', transition: 'border-color 0.15s ease' }}
+                      onClick={() => handleOpenTypographyEditor(tag)}
+                      onKeyDown={(e) => handleCardKeyDown(e, () => handleOpenTypographyEditor(tag))}
+                    >
+                      <Flex align="center" justify="space-between">
+                        <Box style={{ flex: 1, minWidth: 0 }}>
+                          <Group gap={6} align="center" mb={2}>
+                            <Text size="xs" fw={700}>
+                              {titleLabel}
+                            </Text>
+                            <Badge size="xs" variant="light" color="gray" radius="xs" style={{ fontSize: 10 }}>
+                              {conf.size || '24px'}
+                            </Badge>
+                            <Badge size="xs" variant="subtle" color="teal" radius="xs" style={{ fontSize: 10 }}>
+                              {conf.weight || '600'}
+                            </Badge>
+                          </Group>
+                          <Text
+                            size="sm"
+                            truncate
                             style={{
-                              fontFamily: tokens.typography.fontFamilyHeading || tokens.typography.fontFamily,
-                              fontSize: conf.size,
-                              lineHeight: conf.lineHeight || '1.3',
+                              fontFamily: headingFont,
                               fontWeight: conf.weight || '600',
+                              color: 'var(--mantine-color-text)',
                             }}
                           >
-                            Sample Heading
-                          </div>
+                            {descLabel}
+                          </Text>
                         </Box>
-                      </Stack>
-                    </Paper>
+                        <ChevronRight size={14} color="var(--mantine-color-dimmed)" />
+                      </Flex>
+                    </Card>
                   )
                 })}
               </Stack>
@@ -1606,19 +1666,17 @@ export function ThemeCustomizer({
           {/* LAYER 3: TEXT THEME -> BODY TEXT */}
           {activePanel === 'typography' && activeSubPanel === 'body' && (
             <Stack gap="md">
-              <Select
-                size="sm"
+              <WixFontPicker
                 label="Body Font"
-                description="Used for articles, descriptions and general text"
-                data={fontOptions}
+                description="Default font family for paragraphs, articles and descriptions"
                 value={tokens.typography.fontFamily || 'Inter'}
-                onChange={(val) => val && handleFontChange('fontFamily', val)}
-                searchable
+                onChange={(val) => handleFontChange('fontFamily', val)}
+                size="sm"
               />
 
               <Group grow gap="xs">
                 <TextInput
-                  size="sm"
+                  size="xs"
                   label="Base Text Size"
                   value={tokens.typography.baseFontSize || '18px'}
                   onChange={(e) =>
@@ -1629,7 +1687,7 @@ export function ThemeCustomizer({
                   }
                 />
                 <TextInput
-                  size="sm"
+                  size="xs"
                   label="Line Spacing"
                   value={tokens.typography.baseLineHeight || '1.75'}
                   onChange={(e) =>
@@ -1647,50 +1705,56 @@ export function ThemeCustomizer({
                 <Text size="xs" fw={700} style={{ textTransform: 'uppercase' }}>
                   Paragraph Styles
                 </Text>
-                {(['p1', 'p2', 'p3'] as const).map((tag) => {
+                <Text size="xs" c="dimmed" style={{ fontSize: 11 }} mb={2}>
+                  Select a paragraph style to adjust font size and comfort.
+                </Text>
+
+                {(['p1', 'p2', 'p3'] as const).map((tag, idx) => {
                   const conf = tokens.typography[tag] || { size: '16px', lineHeight: '1.6', weight: '400' }
+                  const bodyFont = tokens.typography.fontFamily || 'Inter'
+                  const titleLabel = `Paragraph ${idx + 1}`
+                  const descLabel = PARAGRAPH_FRIENDLY_LABELS[tag]
+
                   return (
-                    <Paper key={tag} withBorder p="xs" radius="sm">
-                      <Stack gap="xs">
-                        <Text size="xs" fw={700}>
-                          {PARAGRAPH_FRIENDLY_LABELS[tag]}
-                        </Text>
-                        <Group grow gap="xs">
-                          <TextInput
+                    <Card
+                      key={tag}
+                      withBorder
+                      padding="xs"
+                      radius="sm"
+                      role="button"
+                      tabIndex={0}
+                      style={{ cursor: 'pointer', transition: 'border-color 0.15s ease' }}
+                      onClick={() => handleOpenTypographyEditor(tag)}
+                      onKeyDown={(e) => handleCardKeyDown(e, () => handleOpenTypographyEditor(tag))}
+                    >
+                      <Flex align="center" justify="space-between">
+                        <Box style={{ flex: 1, minWidth: 0 }}>
+                          <Group gap={6} align="center" mb={2}>
+                            <Text size="xs" fw={700}>
+                              {titleLabel}
+                            </Text>
+                            <Badge size="xs" variant="light" color="gray" radius="xs" style={{ fontSize: 10 }}>
+                              {conf.size || '16px'}
+                            </Badge>
+                            <Badge size="xs" variant="subtle" color="teal" radius="xs" style={{ fontSize: 10 }}>
+                              {conf.weight || '400'}
+                            </Badge>
+                          </Group>
+                          <Text
                             size="xs"
-                            label="Size"
-                            value={conf.size || ''}
-                            onChange={(e) => handleHeadingPropChange(tag, 'size', e.currentTarget.value)}
-                          />
-                          <Select
-                            size="xs"
-                            label="Weight"
-                            data={WEIGHT_OPTIONS}
-                            value={String(conf.weight || '400')}
-                            onChange={(val) => val && handleHeadingPropChange(tag, 'weight', val)}
-                          />
-                        </Group>
-                        <Box
-                          p="xs"
-                          style={{
-                            background: 'var(--mantine-color-gray-0, #f8f9fa)',
-                            borderRadius: 4,
-                            overflow: 'hidden',
-                          }}
-                        >
-                          <div
+                            truncate
                             style={{
-                              fontFamily: tokens.typography.fontFamily,
-                              fontSize: conf.size,
-                              lineHeight: conf.lineHeight || '1.6',
+                              fontFamily: bodyFont,
                               fontWeight: conf.weight || '400',
+                              color: 'var(--mantine-color-dimmed)',
                             }}
                           >
-                            The quick brown fox jumps over the lazy dog.
-                          </div>
+                            {descLabel}
+                          </Text>
                         </Box>
-                      </Stack>
-                    </Paper>
+                        <ChevronRight size={14} color="var(--mantine-color-dimmed)" />
+                      </Flex>
+                    </Card>
                   )
                 })}
               </Stack>
@@ -2420,6 +2484,41 @@ export function ThemeCustomizer({
         currentTokens={tokens}
         onImportSuccess={handleImportColorPreset}
       />
+
+      {/* Focused Floating Typography Panel */}
+      {editingTypographyTag && (
+        <WixTypographyPanel
+          opened={editingTypographyTag !== null}
+          onClose={() => setEditingTypographyTag(null)}
+          title={
+            editingTypographyTag.startsWith('h')
+              ? `Heading ${editingTypographyTag.replace('h', '')}`
+              : `Paragraph ${editingTypographyTag.replace('p', '')}`
+          }
+          subtitle={
+            HEADING_FRIENDLY_LABELS[editingTypographyTag as keyof typeof HEADING_FRIENDLY_LABELS] ||
+            PARAGRAPH_FRIENDLY_LABELS[editingTypographyTag as keyof typeof PARAGRAPH_FRIENDLY_LABELS]
+          }
+          isHeading={editingTypographyTag.startsWith('h')}
+          defaultFontFamily={
+            editingTypographyTag.startsWith('h')
+              ? tokens.typography.fontFamilyHeading || tokens.typography.fontFamily || 'Inter'
+              : tokens.typography.fontFamily || 'Inter'
+          }
+          initialStyle={{
+            fontFamily: editingTypographyTag.startsWith('h')
+              ? tokens.typography.fontFamilyHeading || tokens.typography.fontFamily
+              : tokens.typography.fontFamily,
+            size: tokens.typography[editingTypographyTag]?.size,
+            weight: tokens.typography[editingTypographyTag]?.weight,
+            lineHeight: tokens.typography[editingTypographyTag]?.lineHeight,
+            letterSpacing: tokens.typography[editingTypographyTag]?.letterSpacing,
+          }}
+          onLiveChange={(style) => handleTypographyLiveChange(editingTypographyTag, style)}
+          onApply={(style) => handleTypographyApply(editingTypographyTag, style)}
+          onCancel={handleTypographyCancel}
+        />
+      )}
     </Box>
   )
 }

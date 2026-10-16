@@ -400,4 +400,60 @@ describe('Theme Style Customizer — Coolors CSV Import & Mapping Engine', () =>
   })
 })
 
+describe('Theme Style Customizer — Wix Typography & Vietnamese Font Support', () => {
+  it('identifies fonts with verified Vietnamese character and diacritic support', async () => {
+    const { hasVietnameseSupport } = await import('@/lib/theme-engine/fonts')
+
+    // Verified fonts
+    expect(hasVietnameseSupport('Inter')).toBe(true)
+    expect(hasVietnameseSupport('Roboto')).toBe(true)
+    expect(hasVietnameseSupport('Montserrat')).toBe(true)
+    expect(hasVietnameseSupport('Lora')).toBe(true)
+    expect(hasVietnameseSupport('Plus Jakarta Sans')).toBe(true)
+    expect(hasVietnameseSupport('System UI')).toBe(true)
+
+    // Unverified or decorative fonts
+    expect(hasVietnameseSupport('Cinzel')).toBe(false)
+    expect(hasVietnameseSupport('Cormorant Garamond')).toBe(false)
+    expect(hasVietnameseSupport('')).toBe(false)
+  })
+
+  it('compiles granular heading and paragraph typography styles into theme CSS', () => {
+    const customConfig: ThemeConfig = {
+      name: 'typo-test',
+      version: 1,
+      tokens: {
+        colors: {
+          primary: '#0e6b66',
+          background: '#ffffff',
+          surface: '#f8faf9',
+          text: '#17201f',
+          border: '#dfe5e2',
+        },
+        typography: {
+          fontFamily: 'Inter, sans-serif',
+          fontFamilyHeading: 'Plus Jakarta Sans, sans-serif',
+          baseFontSize: '18px',
+          baseLineHeight: '1.7',
+          h1: { size: '48px', lineHeight: '1.2', weight: '800', letterSpacing: '-0.03em' },
+          h2: { size: '36px', lineHeight: '1.25', weight: '700' },
+          p1: { size: '20px', lineHeight: '1.6', weight: '400' },
+        },
+        spacing: { md: '16px' },
+        layout: { containerWidth: '1200px' },
+        radius: { md: '8px' },
+      },
+    }
+
+    const css = generateThemeCss(customConfig)
+
+    expect(css).toContain('--zyvavu-theme-font: Inter, sans-serif;')
+    expect(css).toContain('--zyvavu-theme-font-heading: Plus Jakarta Sans, sans-serif;')
+    expect(css).toContain('--zyvavu-theme-h1-size: 48px;')
+    expect(css).toContain('--zyvavu-theme-h1-weight: 800;')
+    expect(css).toContain('--zyvavu-theme-h1-line-height: 1.2;')
+  })
+})
+
+
 
