@@ -21,6 +21,7 @@ export interface WixTypographyPanelProps {
   defaultFontFamily?: string
   sampleText?: string
   isHeading?: boolean
+  anchorEl?: HTMLElement | null
   onChange?: (style: TypographyStyleData) => void
   onLiveChange?: (style: TypographyStyleData) => void
   onApply?: (style: TypographyStyleData) => void
@@ -38,6 +39,7 @@ export function WixTypographyPanel({
   defaultFontFamily = 'Inter',
   sampleText,
   isHeading = true,
+  anchorEl,
   onChange,
   onLiveChange,
   onApply,
@@ -57,6 +59,7 @@ export function WixTypographyPanel({
       defaultFontFamily={defaultFontFamily}
       sampleText={sampleText}
       isHeading={isHeading}
+      anchorEl={anchorEl}
       onChange={handleChange}
       onApply={onApply}
       onCancel={onCancel}

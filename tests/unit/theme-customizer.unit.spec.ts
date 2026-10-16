@@ -499,6 +499,64 @@ describe('Theme Style Customizer — Dynamic Shadow Color Calculation', () => {
   })
 })
 
+describe('Theme Style Customizer — SharedDraggableModal Infrastructure', () => {
+  it('exports SharedDraggableModal and computeAnchorPosition', async () => {
+    const modalModule = await import('@/components/admin/shared/SharedDraggableModal')
+    expect(typeof modalModule.SharedDraggableModal).toBe('function')
+    expect(typeof modalModule.computeAnchorPosition).toBe('function')
+  })
+
+  it('computes fallback coordinates within viewport when anchor is null', async () => {
+    const { computeAnchorPosition } = await import('@/components/admin/shared/SharedDraggableModal')
+    const pos = computeAnchorPosition(null, 280, 300)
+    expect(pos.x).toBeGreaterThanOrEqual(12)
+    expect(pos.y).toBeGreaterThanOrEqual(12)
+  })
+
+  it('computes coordinates to the right of the anchor element', async () => {
+    const { computeAnchorPosition } = await import('@/components/admin/shared/SharedDraggableModal')
+    const mockAnchor = {
+      getBoundingClientRect: () => ({
+        left: 50,
+        right: 150,
+        top: 100,
+        bottom: 140,
+        width: 100,
+        height: 40,
+      }),
+    } as unknown as HTMLElement
+
+    const pos = computeAnchorPosition(mockAnchor, 250, 200)
+    expect(pos.x).toBe(150 + 12)
+    expect(pos.y).toBe(100)
+  })
+
+  it('flips position to left when placing to the right overflows viewport', async () => {
+    const { computeAnchorPosition } = await import('@/components/admin/shared/SharedDraggableModal')
+    // Window width in jsdom is typically 1024 or can be mocked
+    const originalInnerWidth = window.innerWidth
+    Object.defineProperty(window, 'innerWidth', { value: 600, configurable: true })
+
+    const mockAnchor = {
+      getBoundingClientRect: () => ({
+        left: 350,
+        right: 450,
+        top: 120,
+        bottom: 160,
+        width: 100,
+        height: 40,
+      }),
+    } as unknown as HTMLElement
+
+    // width 200: right side 450 + 12 + 200 = 662 > 600 -> flips left: 350 - 200 - 12 = 138
+    const pos = computeAnchorPosition(mockAnchor, 200, 200)
+    expect(pos.x).toBe(138)
+
+    Object.defineProperty(window, 'innerWidth', { value: originalInnerWidth, configurable: true })
+  })
+})
+
+
 
 
 

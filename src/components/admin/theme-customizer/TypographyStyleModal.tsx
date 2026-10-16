@@ -7,7 +7,6 @@ import {
   Button,
   Flex,
   Group,
-  Modal,
   Paper,
   Select,
   Slider,
@@ -19,6 +18,7 @@ import { Sliders, Type } from 'lucide-react'
 import type { ThemeTokens } from '@/lib/theme-engine/types'
 import { WixFontPicker } from './WixFontPicker'
 import { ThemeColorPalettePicker } from './ThemeColorPalettePicker'
+import { SharedDraggableModal, type ModalPresentationMode } from '@/components/admin/shared/SharedDraggableModal'
 
 export interface TypographyStyleValue {
   fontFamily?: string
@@ -39,6 +39,8 @@ export interface TypographyStyleModalProps {
   defaultFontFamily?: string
   sampleText?: string
   isHeading?: boolean
+  anchorEl?: HTMLElement | null
+  mode?: ModalPresentationMode
   onChange?: (style: TypographyStyleValue) => void
   onApply?: (style: TypographyStyleValue) => void
   onCancel?: () => void
@@ -69,6 +71,8 @@ export function TypographyStyleModal({
   defaultFontFamily = 'Inter',
   sampleText,
   isHeading = true,
+  anchorEl,
+  mode = 'floating',
   onChange,
   onApply,
   onCancel,
@@ -171,26 +175,30 @@ export function TypographyStyleModal({
   }
 
   return (
-    <Modal
+    <SharedDraggableModal
       opened={opened}
       onClose={handleCancelClick}
-      title={
-        <Group gap={6}>
-          <Type size={18} color="var(--mantine-color-teal-7, #0e6b66)" />
-          <div>
-            <Text fw={700} size="sm">
-              {title}
-            </Text>
-            {subtitle && (
-              <Text size="xs" c="dimmed" style={{ fontSize: 11 }}>
-                {subtitle}
-              </Text>
-            )}
-          </div>
-        </Group>
+      title={title}
+      subtitle={subtitle}
+      headerExtra={<Type size={16} color="var(--mantine-color-teal-7, #0e6b66)" />}
+      width={460}
+      anchorEl={anchorEl}
+      mode={mode}
+      draggable={true}
+      showCloseButton={true}
+      closeOnClickOutside={false}
+      closeOnEscape={true}
+      zIndex={1000}
+      footer={
+        <Flex justify="flex-end" gap="xs">
+          <Button variant="default" size="xs" onClick={handleCancelClick}>
+            Cancel
+          </Button>
+          <Button color="teal" size="xs" onClick={handleApplyClick}>
+            Apply Changes
+          </Button>
+        </Flex>
       }
-      size="md"
-      centered
     >
       <Stack gap="md">
         {/* Font Family Selection */}
@@ -324,17 +332,7 @@ export function TypographyStyleModal({
                 : 'The quick brown fox jumps over the lazy dog. Comfortable reading across all devices.')}
           </div>
         </Paper>
-
-        {/* Action Buttons: Cancel and Apply */}
-        <Flex justify="flex-end" gap="xs" mt="xs">
-          <Button variant="default" size="xs" onClick={handleCancelClick}>
-            Cancel
-          </Button>
-          <Button color="teal" size="xs" onClick={handleApplyClick}>
-            Apply Changes
-          </Button>
-        </Flex>
       </Stack>
-    </Modal>
+    </SharedDraggableModal>
   )
 }

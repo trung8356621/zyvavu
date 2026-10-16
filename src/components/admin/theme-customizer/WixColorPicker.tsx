@@ -8,7 +8,6 @@ import {
   Flex,
   Group,
   Paper,
-  Popover,
   Slider,
   Stack,
   Text,
@@ -18,6 +17,7 @@ import {
 } from '@mantine/core'
 import { Check, ChevronDown, ChevronUp } from 'lucide-react'
 import { validateColorString } from '@/lib/theme-engine/presets'
+import { SharedDraggableModal } from '@/components/admin/shared/SharedDraggableModal'
 
 export type WixColorPickerVariant = 'row' | 'basic-swatch' | 'strip-segment' | 'accent-swatch'
 
@@ -154,6 +154,7 @@ export function WixColorPicker({
   // Stores the exact original color when the picker was opened so Cancel restores it
   const initialColorRef = useRef<string>(currentHex)
   const lastHueRef = useRef<number>(hexToHsv(currentHex).h)
+  const triggerRef = useRef<HTMLButtonElement | null>(null)
 
   useEffect(() => {
     const norm = normalizeHex(value)
@@ -239,6 +240,7 @@ export function WixColorPicker({
     if (variant === 'basic-swatch') {
       return (
         <UnstyledButton
+          ref={triggerRef}
           onClick={() => handleOpenChange(!opened)}
           aria-label={`Edit ${label}`}
           aria-expanded={opened}
@@ -291,6 +293,7 @@ export function WixColorPicker({
       return (
         <Tooltip label={label} position="top" withArrow>
           <UnstyledButton
+            ref={triggerRef}
             onClick={() => handleOpenChange(!opened)}
             aria-label={`Edit ${label}`}
             aria-expanded={opened}
@@ -319,6 +322,7 @@ export function WixColorPicker({
     if (variant === 'accent-swatch') {
       return (
         <UnstyledButton
+          ref={triggerRef}
           onClick={() => handleOpenChange(!opened)}
           aria-label={`Edit ${label}`}
           aria-expanded={opened}
@@ -365,6 +369,7 @@ export function WixColorPicker({
 
     return (
       <UnstyledButton
+        ref={triggerRef}
         onClick={() => handleOpenChange(!opened)}
         aria-label={`Edit ${label}`}
         aria-expanded={opened}
@@ -413,26 +418,24 @@ export function WixColorPicker({
   }
 
   return (
-    <Popover
-      opened={opened}
-      onChange={handleOpenChange}
-      position="right-start"
-      offset={12}
-      withArrow
-      shadow="md"
-      withinPortal
-      zIndex={1000}
-      clickOutsideEvents={['mousedown', 'touchstart']}
-      middlewares={{ flip: true, shift: { padding: 12 } }}
-    >
-      <Popover.Target>{renderTrigger()}</Popover.Target>
+    <>
+      {renderTrigger()}
 
-      <Popover.Dropdown p="sm" style={{ width: 268 }}>
+      <SharedDraggableModal
+        opened={opened}
+        onClose={handleCancel}
+        title={label}
+        subtitle={description}
+        width={272}
+        anchorEl={triggerRef.current}
+        mode="floating"
+        draggable={true}
+        showCloseButton={true}
+        closeOnClickOutside={false}
+        closeOnEscape={true}
+        zIndex={1000}
+      >
         <Stack gap="xs">
-          <Text size="xs" fw={700}>
-            {label}
-          </Text>
-
           <Box className="zyvavu-color-picker-surface" style={{ width: '100%' }}>
             <HexColorPicker
               color={currentHex}
@@ -521,7 +524,7 @@ export function WixColorPicker({
             </Button>
           </Group>
         </Stack>
-      </Popover.Dropdown>
-    </Popover>
+      </SharedDraggableModal>
+    </>
   )
 }
