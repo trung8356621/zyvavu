@@ -32,6 +32,7 @@ import {
   Code,
   ExternalLink,
   Layout,
+  Lock,
   Monitor,
   Palette,
   Plus,
@@ -43,6 +44,7 @@ import {
   Tablet,
   Trash2,
   Type,
+  Unlock,
   UploadCloud,
   X,
 } from 'lucide-react'
@@ -58,6 +60,7 @@ import {
   BUILTIN_COLOR_PRESETS,
   BUILTIN_TYPOGRAPHY_PRESETS,
   calculateContrastRatio,
+  calculateShadowColor,
 } from '@/lib/theme-engine/presets'
 import { CURATED_FONTS, SYSTEM_FONTS, getGoogleFontUrl } from '@/lib/theme-engine/fonts'
 import {
@@ -192,6 +195,19 @@ export function ThemeCustomizer({
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
   const [newTypoPresetName, setNewTypoPresetName] = useState('')
 
+  // Shadow color lock states (independent lock/unlock controls)
+  const [shadowLocks, setShadowLocks] = useState<{
+    shadowSoft: boolean
+    shadowMedium: boolean
+    shadowStrong: boolean
+  }>({
+    shadowSoft: false,
+    shadowMedium: false,
+    shadowStrong: false,
+  })
+  const shadowLocksRef = useRef(shadowLocks)
+  shadowLocksRef.current = shadowLocks
+
   // Floating typography editor state
   const [editingTypographyTag, setEditingTypographyTag] = useState<
     'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'p1' | 'p2' | 'p3' | null
@@ -322,15 +338,80 @@ export function ThemeCustomizer({
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
   }, [isDirty])
 
-  // Color modification handler
+  // Color modification handler with shadow sync & auto-lock
   const handleColorChange = (key: keyof ThemeTokens['colors'], value: string) => {
-    setTokens((prev) => ({
-      ...prev,
-      colors: {
+    setTokens((prev) => {
+      const nextColors = {
         ...prev.colors,
         [key]: value,
-      },
-    }))
+      }
+
+      // If page background changes, auto-recalculate any unlocked shadow colors
+      if (key === 'background') {
+        const shadowConfigs: Array<{
+          key: 'shadowSoft' | 'shadowMedium' | 'shadowStrong'
+          level: 'soft' | 'medium' | 'strong'
+        }> = [
+          { key: 'shadowSoft', level: 'soft' },
+          { key: 'shadowMedium', level: 'medium' },
+          { key: 'shadowStrong', level: 'strong' },
+        ]
+
+        for (const { key: shadowKey, level } of shadowConfigs) {
+          if (!shadowLocksRef.current[shadowKey]) {
+            nextColors[shadowKey] = calculateShadowColor(value, level)
+          }
+        }
+      }
+
+      return {
+        ...prev,
+        colors: nextColors,
+      }
+    })
+
+    // If a shadow color is manually edited, automatically lock it
+    if (key === 'shadowSoft' || key === 'shadowMedium' || key === 'shadowStrong') {
+      shadowLocksRef.current = {
+        ...shadowLocksRef.current,
+        [key]: true,
+      }
+      setShadowLocks((prev) => ({
+        ...prev,
+        [key]: true,
+      }))
+    }
+  }
+
+  // Toggle shadow lock/unlock
+  const handleToggleShadowLock = (
+    key: 'shadowSoft' | 'shadowMedium' | 'shadowStrong',
+    level: 'soft' | 'medium' | 'strong',
+  ) => {
+    const isCurrentlyLocked = shadowLocksRef.current[key]
+    if (isCurrentlyLocked) {
+      // Unlocking: set lock to false and immediately regenerate from tokens.colors.background
+      shadowLocksRef.current = {
+        ...shadowLocksRef.current,
+        [key]: false,
+      }
+      setShadowLocks((prev) => ({ ...prev, [key]: false }))
+      const recalculated = calculateShadowColor(tokens.colors.background || '#ffffff', level)
+      setTokens((prev) => ({
+        ...prev,
+        colors: {
+          ...prev.colors,
+          [key]: recalculated,
+        },
+      }))
+    } else {
+      // Locking: keep current color value, lock it
+      shadowLocksRef.current = {
+        ...shadowLocksRef.current,
+        [key]: true,
+      }
+      setShadowLocks((prev) => ({ ...prev, [key]: true }))
+    }
   }
 
   // Typography font family handler
@@ -814,40 +895,42 @@ export function ThemeCustomizer({
                 </Flex>
               </Card>
 
-              {/* Page Background Entry */}
-              <Card
-                withBorder
-                padding="sm"
-                radius="sm"
-                role="button"
-                tabIndex={0}
-                style={{ cursor: 'pointer', transition: 'border-color 0.15s ease' }}
-                onClick={() => openPanel('background')}
-                onKeyDown={(e) => handleCardKeyDown(e, () => openPanel('background'))}
-              >
-                <Flex align="center" justify="space-between">
-                  <Group gap="xs">
-                    <Layout size={16} />
-                    <div>
-                      <Text size="sm" fw={600}>
-                        Page Background & Layout
-                      </Text>
-                      <Text size="xs" c="dimmed">
-                        Base background, container widths
-                      </Text>
-                    </div>
-                  </Group>
-                  <Box
-                    style={{
-                      width: 14,
-                      height: 14,
-                      borderRadius: 2,
-                      border: '1px solid #ccc',
-                      background: tokens.colors.background,
-                    }}
-                  />
-                </Flex>
-              </Card>
+              {/* Page Background Entry (Temporarily hidden from root navigation; preserved for future Editor Page Settings) */}
+              {false && (
+                <Card
+                  withBorder
+                  padding="sm"
+                  radius="sm"
+                  role="button"
+                  tabIndex={0}
+                  style={{ cursor: 'pointer', transition: 'border-color 0.15s ease' }}
+                  onClick={() => openPanel('background')}
+                  onKeyDown={(e) => handleCardKeyDown(e, () => openPanel('background'))}
+                >
+                  <Flex align="center" justify="space-between">
+                    <Group gap="xs">
+                      <Layout size={16} />
+                      <div>
+                        <Text size="sm" fw={600}>
+                          Page Background & Layout
+                        </Text>
+                        <Text size="xs" c="dimmed">
+                          Base background, container widths
+                        </Text>
+                      </div>
+                    </Group>
+                    <Box
+                      style={{
+                        width: 14,
+                        height: 14,
+                        borderRadius: 2,
+                        border: '1px solid #ccc',
+                        background: tokens.colors.background,
+                      }}
+                    />
+                  </Flex>
+                </Card>
+              )}
 
               {/* Theme CSS Rules Entry */}
               <Card
@@ -938,6 +1021,13 @@ export function ThemeCustomizer({
                     value={tokens.colors.primary}
                     onChange={(val) => handleColorChange('primary', val)}
                   />
+                  <WixColorPicker
+                    variant="basic-swatch"
+                    label="Page Background"
+                    description="Site background"
+                    value={tokens.colors.background}
+                    onChange={(val) => handleColorChange('background', val)}
+                  />
                 </Group>
                 {!contrastCheck.isReadable && contrastCheck.warning && (
                   <Alert color="orange" variant="light" p="xs" mt="xs" icon={<AlertTriangle size={14} />}>
@@ -946,7 +1036,7 @@ export function ThemeCustomizer({
                 )}
               </Box>
 
-              {/* Shadow Colors: Horizontal three-color strip */}
+              {/* Shadow Colors: Horizontal three-color strip with independent lock/unlock controls */}
               <Box>
                 <Text size="xs" fw={700} mb={6}>
                   Shadow Colors
@@ -977,6 +1067,45 @@ export function ThemeCustomizer({
                       value={tokens.colors.shadowStrong || '#7a9692'}
                       onChange={(val) => handleColorChange('shadowStrong', val)}
                     />
+                  </Flex>
+
+                  {/* Independent Lock/Unlock Controls */}
+                  <Flex gap="xs" mt={6} pt={6} style={{ borderTop: '1px solid var(--mantine-color-default-border)' }}>
+                    {(
+                      [
+                        { key: 'shadowSoft', level: 'soft', label: 'Soft' },
+                        { key: 'shadowMedium', level: 'medium', label: 'Medium' },
+                        { key: 'shadowStrong', level: 'strong', label: 'Strong' },
+                      ] as const
+                    ).map(({ key, level, label }) => {
+                      const isLocked = shadowLocks[key]
+                      return (
+                        <Flex key={key} align="center" justify="center" gap={4} style={{ flex: 1 }}>
+                          <Tooltip
+                            label={
+                              isLocked
+                                ? `${label}: Locked (keeps manual color). Click to unlock & auto-generate from Page Background.`
+                                : `${label}: Auto (synced to Page Background). Click to lock.`
+                            }
+                            withArrow
+                            position="bottom"
+                          >
+                            <ActionIcon
+                              size="xs"
+                              variant={isLocked ? 'light' : 'subtle'}
+                              color={isLocked ? 'gray' : 'teal'}
+                              onClick={() => handleToggleShadowLock(key, level)}
+                              aria-label={`${isLocked ? 'Unlock' : 'Lock'} ${label} shadow`}
+                            >
+                              {isLocked ? <Lock size={12} /> : <Unlock size={12} />}
+                            </ActionIcon>
+                          </Tooltip>
+                          <Text size="xs" c="dimmed" style={{ fontSize: 10 }}>
+                            {isLocked ? 'Locked' : 'Auto'}
+                          </Text>
+                        </Flex>
+                      )
+                    })}
                   </Flex>
                 </Paper>
               </Box>

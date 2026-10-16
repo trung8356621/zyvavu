@@ -329,6 +329,41 @@ export function calculateContrastRatio(
 }
 
 /**
+ * Calculates a shadow color token ('shadowSoft' | 'shadowMedium' | 'shadowStrong')
+ * derived from a given background color.
+ * For light backgrounds: generates soft, medium, and strong dark tints.
+ * For dark backgrounds: generates appropriate dark depth tints.
+ */
+export function calculateShadowColor(
+  backgroundColor: string,
+  level: 'soft' | 'medium' | 'strong',
+): string {
+  const rgb = parseColorToRgb(backgroundColor)
+  if (!rgb) {
+    if (level === 'soft') return '#e6eceb'
+    if (level === 'medium') return '#bfd0cd'
+    return '#7a9692'
+  }
+
+  const lum = getRelativeLuminance(rgb)
+  const isLight = lum >= 0.5
+
+  let factor: number
+  if (isLight) {
+    factor = level === 'soft' ? 0.9 : level === 'medium' ? 0.76 : 0.52
+  } else {
+    factor = level === 'soft' ? 0.65 : level === 'medium' ? 0.35 : 0.08
+  }
+
+  const r = Math.min(255, Math.max(0, Math.round(rgb[0] * factor)))
+  const g = Math.min(255, Math.max(0, Math.round(rgb[1] * factor)))
+  const b = Math.min(255, Math.max(0, Math.round(rgb[2] * factor)))
+
+  const toHex = (n: number) => n.toString(16).padStart(2, '0')
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`
+}
+
+/**
  * Strict validator for Theme tokens payload before persistence.
  */
 export function validateThemeTokens(tokens: unknown): { valid: boolean; errors: string[] } {

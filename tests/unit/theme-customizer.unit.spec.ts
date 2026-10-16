@@ -4,6 +4,7 @@ import {
   BUILTIN_COLOR_PRESETS,
   BUILTIN_TYPOGRAPHY_PRESETS,
   calculateContrastRatio,
+  calculateShadowColor,
   parseColorToRgb,
   validateColorString,
   validateThemeTokens,
@@ -461,6 +462,40 @@ describe('Theme Style Customizer — Wix Typography & Vietnamese Font Support', 
     expect(typeof modalModule.TypographyStyleModal).toBe('function')
     expect(typeof panelModule.WixTypographyPanel).toBe('function')
     expect(typeof panelModule.TypographyStyleModal).toBe('function')
+  })
+})
+
+describe('Theme Style Customizer — Dynamic Shadow Color Calculation', () => {
+  it('calculates soft, medium, and strong shadow tints for light backgrounds', () => {
+    const soft = calculateShadowColor('#ffffff', 'soft')
+    const medium = calculateShadowColor('#ffffff', 'medium')
+    const strong = calculateShadowColor('#ffffff', 'strong')
+
+    expect(soft).toBe('#e6e6e6')
+    expect(medium).toBe('#c2c2c2')
+    expect(strong).toBe('#858585')
+  })
+
+  it('calculates appropriate deep shadow tints for dark backgrounds', () => {
+    const soft = calculateShadowColor('#0b0f19', 'soft')
+    const medium = calculateShadowColor('#0b0f19', 'medium')
+    const strong = calculateShadowColor('#0b0f19', 'strong')
+
+    expect(soft).toBe('#070a10')
+    expect(medium).toBe('#040509')
+    expect(strong).toBe('#010102')
+  })
+
+  it('returns safe fallback shadow colors when background color string is invalid', () => {
+    expect(calculateShadowColor('not-a-color', 'soft')).toBe('#e6eceb')
+    expect(calculateShadowColor('', 'medium')).toBe('#bfd0cd')
+    expect(calculateShadowColor('invalid', 'strong')).toBe('#7a9692')
+  })
+
+  it('handles edge case of pure black background', () => {
+    expect(calculateShadowColor('#000000', 'soft')).toBe('#000000')
+    expect(calculateShadowColor('#000000', 'medium')).toBe('#000000')
+    expect(calculateShadowColor('#000000', 'strong')).toBe('#000000')
   })
 })
 
