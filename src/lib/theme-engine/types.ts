@@ -57,11 +57,50 @@ export type ThemeComponentData = {
   }
 }
 
+export type PageSettingsBackground = {
+  type?: 'theme' | 'palette' | 'image'
+  token?: string
+  imageUrl?: string
+  imagePosition?: 'center' | 'top' | 'bottom' | 'left' | 'right'
+  imageSize?: 'cover' | 'contain' | 'auto'
+  imageRepeat?: 'no-repeat' | 'repeat' | 'repeat-x' | 'repeat-y'
+}
+
+export type PageSettingsText = {
+  typography?: string
+  colorToken?: string
+}
+
+export type PageSettingsLayout = {
+  containerWidth?: 'containerWidth' | 'narrowWidth' | 'wideWidth' | 'full' | string
+  spacing?: 'none' | 'xs' | 'sm' | 'md' | 'lg' | 'xl' | string
+  alignment?: 'left' | 'center' | 'right'
+}
+
+export type PageSettings = {
+  background?: PageSettingsBackground
+  text?: PageSettingsText
+  layout?: PageSettingsLayout
+  customCSS?: string
+  customJS?: string
+}
+
+export type WidgetSemanticStyle = {
+  typography?: string
+  colorToken?: string
+  align?: 'left' | 'center' | 'right'
+  spacing?: string
+  radius?: string
+  backgroundToken?: string
+}
+
 export type ThemeTemplateDocument = {
   version: number
   template: TemplateContext
   root?: {
-    props?: Record<string, any>
+    props?: Record<string, any> & {
+      pageSettings?: PageSettings
+    }
   }
   content: ThemeComponentData[]
   zones?: Record<string, ThemeComponentData[]>

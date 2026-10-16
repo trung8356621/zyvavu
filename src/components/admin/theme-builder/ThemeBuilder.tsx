@@ -20,11 +20,12 @@ import { AlertCircle, ArrowLeft, Check, Layers, Lock, Save } from 'lucide-react'
 
 import { PuckHost } from '@/components/builder/core/PuckHost'
 import type { BuilderDocument } from '@/components/builder/core/types'
-import type { TemplateContext, ThemeTemplateDocument } from '@/lib/theme-engine/types'
+import type { TemplateContext, ThemeConfig, ThemeTemplateDocument } from '@/lib/theme-engine/types'
 import { getTemplatePolicy } from '@/lib/theme-engine/policy'
 import { validateThemeTemplateDocument } from '@/lib/theme-engine/validation'
 import { getEditorConfigForContext } from '@/lib/theme-engine/widget-registry-editor'
 import { generateThemeCss } from '@/lib/theme-engine/styles'
+import { getGoogleFontUrl } from '@/lib/theme-engine/fonts'
 
 export type ThemeBuilderProps = {
   themeId?: string
@@ -32,6 +33,7 @@ export type ThemeBuilderProps = {
   installedThemes?: any[]
   initialTemplates: Record<TemplateContext, ThemeTemplateDocument>
   initialContext?: TemplateContext
+  themeConfig?: ThemeConfig
 }
 
 const TEMPLATE_OPTIONS: { label: string; value: TemplateContext; badge?: string }[] = [
@@ -50,6 +52,7 @@ export function ThemeBuilder({
   installedThemes = [],
   initialTemplates,
   initialContext = 'single',
+  themeConfig,
 }: ThemeBuilderProps) {
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateContext>(initialContext)
   const [templates, setTemplates] = useState<Record<TemplateContext, ThemeTemplateDocument>>(initialTemplates)
@@ -74,12 +77,21 @@ export function ThemeBuilder({
   }, [selectedTemplate])
 
   const puckConfig = useMemo(() => {
-    return getEditorConfigForContext(selectedTemplate)
-  }, [selectedTemplate])
+    return getEditorConfigForContext(selectedTemplate, themeConfig)
+  }, [selectedTemplate, themeConfig])
 
   const themeCss = useMemo(() => {
-    return generateThemeCss()
-  }, [])
+    return generateThemeCss(themeConfig)
+  }, [themeConfig])
+
+  const fontFamilies = useMemo(() => {
+    return [
+      themeConfig?.tokens?.typography?.fontFamily,
+      themeConfig?.tokens?.typography?.fontFamilyHeading,
+    ]
+  }, [themeConfig])
+
+  const fontUrl = useMemo(() => getGoogleFontUrl(fontFamilies), [fontFamilies])
 
   // Warn about unsaved changes before page unload
   useEffect(() => {
@@ -194,6 +206,7 @@ export function ThemeBuilder({
         overflow: 'hidden',
       }}
     >
+      {fontUrl && <link rel="stylesheet" href={fontUrl} />}
       <style dangerouslySetInnerHTML={{ __html: themeCss }} />
 
       {/* TOP WORKSPACE TOOLBAR */}
@@ -340,6 +353,8 @@ export function ThemeBuilder({
           isSaving={isSaving}
           hideTopBar={true}
           height="100%"
+          themeConfig={themeConfig}
+          templateContext={selectedTemplate}
         />
       </Box>
     </Box>

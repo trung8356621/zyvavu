@@ -11,6 +11,7 @@ import type { TemplateContext, ThemeTemplateDocument } from '@/lib/theme-engine/
 import {
   resolveThemeTemplate,
   resolveActiveThemeId,
+  resolveActiveThemeConfig,
   normalizeThemeId,
   getAllInstalledThemes,
 } from '@/lib/theme-engine'
@@ -101,6 +102,7 @@ export async function ThemeBuilderView(props: AdminViewServerProps) {
   ) as TemplateContext
 
   const installedThemes = getAllInstalledThemes()
+  const activeThemeConfig = await resolveActiveThemeConfig(payload, targetThemeId).catch(() => undefined)
 
   return (
     <div
@@ -124,6 +126,7 @@ export async function ThemeBuilderView(props: AdminViewServerProps) {
         installedThemes={installedThemes}
         initialTemplates={initialTemplates as Record<TemplateContext, ThemeTemplateDocument>}
         initialContext={initialContext}
+        themeConfig={activeThemeConfig}
       />
     </div>
   )

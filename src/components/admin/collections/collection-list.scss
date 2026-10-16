@@ -151,45 +151,38 @@
     }
 
     /* Anchored Popover Overlays for Filters & Columns */
-    &__where {
+    &__where,
+    &__columns {
       position: absolute;
-      top: 50px;
-      right: 0;
       z-index: 100;
-      width: 100%;
-      max-width: 640px;
       background: var(--theme-elevation-0, #ffffff);
       border: 1px solid var(--theme-elevation-200, #e4e4e7);
       border-radius: var(--style-radius-l, 10px);
       box-shadow: 0 10px 25px -5px rgb(0 0 0 / 12%), 0 8px 10px -6px rgb(0 0 0 / 8%);
       padding: 16px;
 
-      &[style*='height: 0px'],
-      &[style*='height: 0;'] {
-        border: none;
-        padding: 0;
-        box-shadow: none;
+      /* When closed, hide completely and avoid any floating border/padding/shadow */
+      &[aria-hidden='true'],
+      &:not(.rah-static--height-auto):not([class*='rah-animating']) {
+        display: none !important;
+        border: none !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        pointer-events: none !important;
       }
     }
 
+    &__where {
+      top: 50px;
+      right: 0;
+      width: 100%;
+      max-width: 640px;
+    }
+
     &__columns {
-      position: absolute;
       top: 92px;
       right: 0;
-      z-index: 100;
       width: 320px;
-      background: var(--theme-elevation-0, #ffffff);
-      border: 1px solid var(--theme-elevation-200, #e4e4e7);
-      border-radius: var(--style-radius-l, 10px);
-      box-shadow: 0 10px 25px -5px rgb(0 0 0 / 12%), 0 8px 10px -6px rgb(0 0 0 / 8%);
-      padding: 16px;
-
-      &[style*='height: 0px'],
-      &[style*='height: 0;'] {
-        border: none;
-        padding: 0;
-        box-shadow: none;
-      }
     }
   }
 

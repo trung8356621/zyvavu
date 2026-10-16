@@ -1,6 +1,7 @@
 import React from 'react'
 import Link from 'next/link'
-import type { ThemeDataContext } from '@/lib/theme-engine/types'
+import type { ThemeDataContext, WidgetSemanticStyle } from '@/lib/theme-engine/types'
+import { resolveColorToken, resolveRadiusToken, resolveSpacingToken } from '@/lib/theme-engine/page-settings'
 
 export type TextBlockProps = {
   id?: string
@@ -11,6 +12,7 @@ export type TextBlockProps = {
   ctaLabel?: string
   ctaUrl?: string
   ctaNewTab?: boolean
+  style?: WidgetSemanticStyle
   dataContext?: ThemeDataContext
 }
 
@@ -22,15 +24,24 @@ export function TextBlockFrontend({
   ctaLabel,
   ctaUrl,
   ctaNewTab = false,
+  style: semanticStyle,
 }: TextBlockProps) {
   if (!title && !content && !badge) return null
+
+  const effectiveAlign = semanticStyle?.align || align
+  const titleColor = semanticStyle?.colorToken ? resolveColorToken(semanticStyle.colorToken) : 'var(--zyvavu-theme-text, inherit)'
+  const containerPadding = semanticStyle?.spacing ? resolveSpacingToken(semanticStyle.spacing) : '24px 0'
+  const containerRadius = semanticStyle?.radius ? resolveRadiusToken(semanticStyle.radius) : undefined
+  const containerBg = semanticStyle?.backgroundToken ? resolveColorToken(semanticStyle.backgroundToken) : undefined
 
   return (
     <div
       className="zyvavu-widget-text"
       style={{
-        textAlign: align,
-        padding: '24px 0',
+        textAlign: effectiveAlign,
+        padding: containerPadding,
+        borderRadius: containerRadius,
+        backgroundColor: containerBg,
         boxSizing: 'border-box',
       }}
     >
@@ -62,7 +73,7 @@ export function TextBlockFrontend({
             margin: '0 0 16px 0',
             fontSize: '2rem',
             lineHeight: 1.3,
-            color: 'var(--zyvavu-theme-text, inherit)',
+            color: titleColor,
           }}
         >
           {title}

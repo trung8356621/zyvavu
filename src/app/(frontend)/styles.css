@@ -7,10 +7,10 @@
 }
 
 html {
-  font-size: 18px;
-  line-height: 32px;
+  font-size: var(--zyvavu-theme-font-size-base, 18px);
+  line-height: var(--zyvavu-theme-line-height-base, 1.75);
 
-  background: var(--zyvavu-background);
+  background: var(--zyvavu-theme-background, var(--zyvavu-background, #ffffff));
   -webkit-font-smoothing: antialiased;
 }
 
@@ -21,16 +21,17 @@ body,
 }
 
 body {
-  font-family: system-ui;
-  font-size: 18px;
-  line-height: 32px;
+  font-family: var(--zyvavu-theme-font, system-ui, -apple-system, sans-serif);
+  font-size: var(--zyvavu-theme-font-size-base, 18px);
+  line-height: var(--zyvavu-theme-line-height-base, 1.75);
 
   margin: 0;
-  color: var(--zyvavu-text);
+  color: var(--zyvavu-theme-text, var(--zyvavu-text, #17201f));
+  background-color: var(--zyvavu-theme-background, #ffffff);
 
   @media (max-width: 1024px) {
-    font-size: 15px;
-    line-height: 24px;
+    font-size: calc(var(--zyvavu-theme-font-size-base, 18px) * 0.85);
+    line-height: calc(var(--zyvavu-theme-line-height-base, 1.75) * 0.9);
   }
 }
 
@@ -42,24 +43,27 @@ img {
 
 h1 {
   margin: 40px 0;
-  font-size: 64px;
-  line-height: 70px;
-  font-weight: bold;
+  font-family: var(--zyvavu-theme-font-heading, var(--zyvavu-theme-font, inherit));
+  font-size: var(--zyvavu-theme-h1-size, 44px);
+  line-height: var(--zyvavu-theme-h1-line-height, 1.2);
+  font-weight: var(--zyvavu-theme-h1-weight, 700);
+  letter-spacing: var(--zyvavu-theme-h1-letter-spacing, normal);
+  color: var(--zyvavu-theme-text, inherit);
 
   @media (max-width: 1024px) {
     margin: 24px 0;
-    font-size: 42px;
-    line-height: 42px;
+    font-size: calc(var(--zyvavu-theme-h1-size, 44px) * 0.85);
+    line-height: calc(var(--zyvavu-theme-h1-line-height, 1.2) * 0.9);
   }
 
   @media (max-width: 768px) {
-    font-size: 38px;
-    line-height: 38px;
+    font-size: calc(var(--zyvavu-theme-h1-size, 44px) * 0.75);
+    line-height: calc(var(--zyvavu-theme-h1-line-height, 1.2) * 0.85);
   }
 
   @media (max-width: 400px) {
-    font-size: 32px;
-    line-height: 32px;
+    font-size: calc(var(--zyvavu-theme-h1-size, 44px) * 0.65);
+    line-height: 1.2;
   }
 }
 

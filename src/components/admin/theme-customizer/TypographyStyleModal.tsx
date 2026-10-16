@@ -17,6 +17,7 @@ import {
 } from '@mantine/core'
 import { Sliders, Type } from 'lucide-react'
 import type { ThemeTokens } from '@/lib/theme-engine/types'
+import { loadGoogleFontStyles, VIETNAMESE_SAMPLE_TEXT } from '@/lib/theme-engine/fonts'
 import { WixFontPicker } from './WixFontPicker'
 import { ThemeColorPalettePicker } from './ThemeColorPalettePicker'
 import { ThemeColorPaletteModal, getThemePaletteSwatches } from './ThemeColorPaletteModal'
@@ -90,8 +91,15 @@ export function TypographyStyleModal({
   const [currentColor, setCurrentColor] = useState(value.color || defaultColor)
   const [currentLineHeight, setCurrentLineHeight] = useState(value.lineHeight || (isHeading ? '1.25' : '1.6'))
   const [currentLetterSpacing, setCurrentLetterSpacing] = useState(value.letterSpacing || 'normal')
+  const [sampleLang, setSampleLang] = useState<'vi' | 'en'>('vi')
   const [isPaletteOpen, setIsPaletteOpen] = useState(false)
   const colorTriggerRef = useRef<HTMLButtonElement | null>(null)
+
+  useEffect(() => {
+    if (currentFont) {
+      loadGoogleFontStyles([currentFont], [400, 500, 600, 700, 800])
+    }
+  }, [currentFont])
 
   const paletteSwatches = useMemo(
     () => getThemePaletteSwatches(paletteTokens),
@@ -375,9 +383,29 @@ export function TypographyStyleModal({
             overflow: 'hidden',
           }}
         >
-          <Text size="xs" c="dimmed" mb={6} fw={600} style={{ textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-            Live Sample
-          </Text>
+          <Flex align="center" justify="space-between" mb={6}>
+            <Text size="xs" c="dimmed" fw={600} style={{ textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Live Sample
+            </Text>
+            <Group gap={4}>
+              <Button
+                size="compact-xs"
+                variant={sampleLang === 'vi' ? 'light' : 'subtle'}
+                color={sampleLang === 'vi' ? 'teal' : 'gray'}
+                onClick={() => setSampleLang('vi')}
+              >
+                Tiếng Việt (Dấu phụ)
+              </Button>
+              <Button
+                size="compact-xs"
+                variant={sampleLang === 'en' ? 'light' : 'subtle'}
+                color={sampleLang === 'en' ? 'teal' : 'gray'}
+                onClick={() => setSampleLang('en')}
+              >
+                English
+              </Button>
+            </Group>
+          </Flex>
           <div
             style={{
               fontFamily: currentFont,
@@ -390,9 +418,13 @@ export function TypographyStyleModal({
             }}
           >
             {sampleText ||
-              (isHeading
-                ? `${title} Sample Headline`
-                : 'The quick brown fox jumps over the lazy dog. Comfortable reading across all devices.')}
+              (sampleLang === 'vi'
+                ? isHeading
+                  ? `${title}: ${VIETNAMESE_SAMPLE_TEXT.heading}`
+                  : VIETNAMESE_SAMPLE_TEXT.body
+                : isHeading
+                  ? `${title} Sample Headline`
+                  : 'The quick brown fox jumps over the lazy dog. Comfortable reading across all devices.')}
           </div>
         </Paper>
       </Stack>

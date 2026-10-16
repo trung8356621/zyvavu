@@ -44,16 +44,34 @@ export const textBlockEditor: ComponentConfig<TextBlockProps> = {
     badge: '',
     ctaLabel: '',
     ctaUrl: '',
+    style: {
+      align: 'left',
+      colorToken: 'text',
+      spacing: 'md',
+      radius: 'sm',
+      backgroundToken: 'surface',
+    },
   },
-  render: ({ title, content, align = 'left', badge, ctaLabel }) => {
+  render: ({ title, content, align = 'left', badge, ctaLabel, style: semanticStyle }) => {
+    const effectiveAlign = semanticStyle?.align || align
+    const titleColor = semanticStyle?.colorToken
+      ? `var(--zyvavu-theme-color-${semanticStyle.colorToken.replace(/([a-z0-9]|(?=[A-Z]))([A-Z])/g, '$1-$2').toLowerCase()}, var(--zyvavu-theme-${semanticStyle.colorToken}, inherit))`
+      : 'inherit'
+    const paddingVal = semanticStyle?.spacing ? `var(--zyvavu-theme-spacing-${semanticStyle.spacing}, 16px)` : '16px'
+    const radiusVal = semanticStyle?.radius ? `var(--zyvavu-theme-radius-${semanticStyle.radius}, 8px)` : '8px'
+    const bgVal = semanticStyle?.backgroundToken
+      ? `var(--zyvavu-theme-color-${semanticStyle.backgroundToken.replace(/([a-z0-9]|(?=[A-Z]))([A-Z])/g, '$1-$2').toLowerCase()}, var(--zyvavu-theme-${semanticStyle.backgroundToken}, transparent))`
+      : 'transparent'
+
     return (
       <div
         className="zyvavu-widget-text"
         style={{
-          textAlign: align,
-          padding: '16px',
+          textAlign: effectiveAlign,
+          padding: paddingVal,
           border: '1px solid #e9ecef',
-          borderRadius: '8px',
+          borderRadius: radiusVal,
+          backgroundColor: bgVal,
           margin: '12px 0',
         }}
       >
@@ -73,7 +91,7 @@ export const textBlockEditor: ComponentConfig<TextBlockProps> = {
             {badge}
           </span>
         )}
-        {title && <h3 style={{ margin: '0 0 8px 0', fontSize: '1.4rem' }}>{title}</h3>}
+        {title && <h3 style={{ margin: '0 0 8px 0', fontSize: '1.4rem', color: titleColor }}>{title}</h3>}
         {content && <p style={{ margin: 0, color: '#666', lineHeight: 1.6 }}>{content}</p>}
         {ctaLabel && (
           <div style={{ marginTop: '12px' }}>

@@ -248,7 +248,7 @@ async function pointRedirectsAt(
   }
 }
 
-async function computeNextCanonicalPath(
+export async function computeNextCanonicalPath(
   payload: Payload,
   req: PayloadRequest | undefined,
   resourceType: ResourceType,
@@ -545,8 +545,26 @@ export function attachCanonicalPathHook(resourceType: ResourceType): CollectionA
       return doc
     }
     try {
+      const cacheKey = `${resourceType}:${doc.id}`
+      if (req?.context) {
+        if (!req.context._canonicalCache) {
+          req.context._canonicalCache = new Map<string, string | null>()
+        }
+        const cache = req.context._canonicalCache as Map<string, string | null>
+        if (cache.has(cacheKey)) {
+          doc.canonicalPath = cache.get(cacheKey) || null
+          return doc
+        }
+      }
+
       const canonical = await getCanonicalPath(req.payload, resourceType, doc.id, req)
-      doc.canonicalPath = canonical
+      const path =
+        canonical || (await computeNextCanonicalPath(req.payload, req, resourceType, doc as ResourceDoc)) || null
+
+      if (req?.context?._canonicalCache) {
+        ;(req.context._canonicalCache as Map<string, string | null>).set(cacheKey, path)
+      }
+      doc.canonicalPath = path
     } catch {
       doc.canonicalPath = null
     }

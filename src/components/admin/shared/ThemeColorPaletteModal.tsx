@@ -32,20 +32,32 @@ export interface ThemeColorPaletteModalProps {
   subtitle?: string
   anchorEl?: HTMLElement | null
   zIndex?: number
+  includeBackgroundTokens?: boolean
   onChange?: (colorHex: string) => void
   onApply?: (colorHex: string) => void
+  onSelectToken?: (token: string, colorHex: string) => void
+  onApplyToken?: (token: string, colorHex: string) => void
   onCancel?: () => void
 }
 
 /**
- * Helper to build the 9 standard palette swatches from ThemeTokens or raw colors map.
+ * Helper to build the standard palette swatches from ThemeTokens or raw colors map.
  */
 export function getThemePaletteSwatches(
   tokens?: ThemeTokens,
   colors?: Record<string, string>,
+  options?: { includeBackgroundTokens?: boolean },
 ): PaletteSwatchItem[] {
   const c = tokens?.colors || colors || {}
+  const bgSwatches = options?.includeBackgroundTokens
+    ? [
+        { id: 'background', label: 'Background', color: c.background || '#ffffff' },
+        { id: 'surface', label: 'Surface Card', color: c.surface || '#ffffff' },
+      ]
+    : []
+
   return [
+    ...bgSwatches,
     { id: 'text', label: 'Main Text', color: c.text || '#17201f' },
     { id: 'primary', label: 'Primary Brand', color: c.primary || '#0e6b66' },
     { id: 'accent', label: 'Accent Highlight', color: c.accent || c.primary || '#2ec4b6' },
@@ -80,33 +92,51 @@ export function ThemeColorPaletteModal({
   subtitle = 'Choose a coordinated theme color',
   anchorEl,
   zIndex = 1100, // Floats above underlying Typography Modal (1000)
+  includeBackgroundTokens = false,
   onChange,
   onApply,
+  onSelectToken,
+  onApplyToken,
   onCancel,
 }: ThemeColorPaletteModalProps) {
-  // Snapshot initial color on open so Cancel can restore exact original
-  const initialColorRef = useRef<string>(value || '#17201f')
-  const [selectedColor, setSelectedColor] = useState<string>(value || '#17201f')
+  const swatches = useMemo(
+    () => getThemePaletteSwatches(tokens, colors, { includeBackgroundTokens }),
+    [tokens, colors, includeBackgroundTokens],
+  )
 
-  const swatches = useMemo(() => getThemePaletteSwatches(tokens, colors), [tokens, colors])
+  // Resolve initial color from value if value is a token ID or hex
+  const resolveInitialColor = (val: string) => {
+    if (!val) return '#17201f'
+    const foundToken = swatches.find((s) => s.id === val)
+    if (foundToken) return foundToken.color
+    return val
+  }
+
+  // Snapshot initial color on open so Cancel can restore exact original
+  const initialColorRef = useRef<string>(resolveInitialColor(value))
+  const [selectedColor, setSelectedColor] = useState<string>(resolveInitialColor(value))
 
   useEffect(() => {
     if (opened) {
-      initialColorRef.current = value || '#17201f'
-      setSelectedColor(value || '#17201f')
+      const resolved = resolveInitialColor(value)
+      initialColorRef.current = resolved
+      setSelectedColor(resolved)
     }
-  }, [opened, value])
+  }, [opened, value, swatches])
 
   const normalizedSelected = (selectedColor || '').toLowerCase().trim()
 
-  // Match current color to known swatch label
+  // Match current color or value to known swatch label
   const activeSwatch = useMemo(() => {
+    const byToken = swatches.find((s) => s.id === value)
+    if (byToken) return byToken
     return swatches.find((s) => s.color.toLowerCase().trim() === normalizedSelected)
-  }, [swatches, normalizedSelected])
+  }, [swatches, value, normalizedSelected])
 
-  const handleSelectColor = (hex: string) => {
+  const handleSelectColor = (hex: string, tokenId: string) => {
     setSelectedColor(hex)
     onChange?.(hex)
+    onSelectToken?.(tokenId, hex)
   }
 
   const handleCancelClick = () => {
@@ -118,7 +148,9 @@ export function ThemeColorPaletteModal({
   }
 
   const handleApplyClick = () => {
+    const tokenId = activeSwatch?.id || 'primary'
     onApply?.(selectedColor)
+    onApplyToken?.(tokenId, selectedColor)
     onClose()
   }
 
@@ -207,7 +239,7 @@ export function ThemeColorPaletteModal({
                     type="button"
                     aria-label={`Select ${item.label}: ${item.color}`}
                     aria-pressed={isSelected}
-                    onClick={() => handleSelectColor(item.color)}
+                    onClick={() => handleSelectColor(item.color, item.id)}
                     style={{
                       width: 28,
                       height: 28,

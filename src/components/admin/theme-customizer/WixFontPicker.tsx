@@ -1,24 +1,27 @@
 'use client'
 
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Badge,
   Box,
+  Button,
   Combobox,
   Flex,
   Group,
   InputBase,
+  Loader,
   ScrollArea,
   Text,
   useCombobox,
 } from '@mantine/core'
-import { Check, ChevronDown, Search } from 'lucide-react'
+import { AlertCircle, Check, ChevronDown, RefreshCw, Search } from 'lucide-react'
 import {
-  CURATED_FONTS,
-  SYSTEM_FONTS,
+  type CatalogFontItem,
   extractPrimaryFontFamily,
-  getGoogleFontUrl,
+  getCuratedCatalogFallback,
   hasVietnameseSupport,
+  isSystemOrGenericFont,
+  loadGoogleFontStyles,
 } from '@/lib/theme-engine/fonts'
 
 export interface WixFontPickerProps {
@@ -28,7 +31,10 @@ export interface WixFontPickerProps {
   description?: string
   placeholder?: string
   size?: 'xs' | 'sm' | 'md'
+  lang?: string
 }
+
+const PREVIEW_SLICE_LIMIT = 50
 
 export function WixFontPicker({
   value,
@@ -37,63 +43,127 @@ export function WixFontPicker({
   description,
   placeholder = 'Select font...',
   size = 'xs',
+  lang,
 }: WixFontPickerProps) {
   const [search, setSearch] = useState('')
+  const [catalogFonts, setCatalogFonts] = useState<CatalogFontItem[]>(() => getCuratedCatalogFallback())
+  const [isLoading, setIsLoading] = useState(false)
+  const [apiError, setApiError] = useState<string | null>(null)
+  const [activeLang, setActiveLang] = useState<string>(lang || 'vi')
+
+  const abortControllerRef = useRef<AbortController | null>(null)
+
   const combobox = useCombobox({
     onDropdownClose: () => {
       combobox.resetSelectedOption()
       setSearch('')
     },
+    onDropdownOpen: () => {
+      // Lazy-load preview CSS for top visible candidates when dropdown opens
+      const visible = filteredFonts.slice(0, 25).map((f) => f.family)
+      loadGoogleFontStyles(visible, [400, 600])
+    },
   })
 
   const primaryCurrent = useMemo(() => extractPrimaryFontFamily(value) || value, [value])
 
-  // Combine and sort fonts: Vietnamese supported fonts first, then alphabetical
-  const allFonts = useMemo(() => {
-    const list = [...SYSTEM_FONTS, ...CURATED_FONTS]
-    const map = new Map<string, (typeof list)[0]>()
-    for (const item of list) {
-      if (!map.has(item.family)) {
-        map.set(item.family, item)
-      }
-    }
-    const unique = Array.from(map.values())
+  // Fetch language-aware catalog from /api/fonts
+  const fetchFonts = useCallback(async () => {
+    abortControllerRef.current?.abort()
+    const controller = new AbortController()
+    abortControllerRef.current = controller
 
-    return unique.sort((a, b) => {
-      const aVn = hasVietnameseSupport(a.family) ? 1 : 0
-      const bVn = hasVietnameseSupport(b.family) ? 1 : 0
-      if (aVn !== bVn) return bVn - aVn
-      return a.family.localeCompare(b.family)
-    })
-  }, [])
+    setIsLoading(true)
+    setApiError(null)
+
+    try {
+      const q = lang ? `?lang=${encodeURIComponent(lang)}` : ''
+      const res = await fetch(`/api/fonts${q}`, { signal: controller.signal })
+      if (!res.ok) {
+        throw new Error(`Catalog returned ${res.status}`)
+      }
+      const data = await res.json()
+      if (Array.isArray(data.fonts) && data.fonts.length > 0) {
+        setCatalogFonts(data.fonts)
+        if (data.language) {
+          setActiveLang(data.language)
+        }
+      }
+    } catch (err: any) {
+      if (err.name !== 'AbortError') {
+        setApiError(err.message || 'Network error')
+      }
+    } finally {
+      setIsLoading(false)
+    }
+  }, [lang])
+
+  useEffect(() => {
+    fetchFonts()
+    return () => {
+      abortControllerRef.current?.abort()
+    }
+  }, [fetchFonts])
+
+  // Always lazy-load full styles for currently selected font
+  useEffect(() => {
+    if (primaryCurrent && !isSystemOrGenericFont(primaryCurrent)) {
+      loadGoogleFontStyles([primaryCurrent], [400, 500, 600, 700, 800])
+    }
+  }, [primaryCurrent])
+
+  // Find or synthesize preserved current font if absent from catalog
+  const currentFontItem = useMemo(() => {
+    if (!primaryCurrent) return null
+    const lower = primaryCurrent.toLowerCase()
+    return catalogFonts.find((f) => f.family.toLowerCase() === lower) || null
+  }, [catalogFonts, primaryCurrent])
+
+  const isCurrentVietnamese = useMemo(() => {
+    if (!primaryCurrent) return false
+    return hasVietnameseSupport(primaryCurrent, currentFontItem || undefined)
+  }, [primaryCurrent, currentFontItem])
+
+  // Combine catalog fonts and preserve selected font even if absent
+  const allFonts = useMemo(() => {
+    const list: CatalogFontItem[] = [...catalogFonts]
+
+    if (primaryCurrent && !currentFontItem) {
+      // Synthesize preserved item for custom/unlisted font
+      list.unshift({
+        family: primaryCurrent,
+        category: 'other',
+        weights: [400, 700],
+        subsets: hasVietnameseSupport(primaryCurrent) ? ['vietnamese', 'latin'] : ['latin'],
+        variable: false,
+        isCustom: true,
+      })
+    }
+
+    return list
+  }, [catalogFonts, primaryCurrent, currentFontItem])
 
   // Filter fonts by search query
   const filteredFonts = useMemo(() => {
     const q = search.toLowerCase().trim()
     if (!q) return allFonts
-    return allFonts.filter((f) => f.family.toLowerCase().includes(q) || f.category.toLowerCase().includes(q))
+    return allFonts.filter(
+      (f) => f.family.toLowerCase().includes(q) || f.category.toLowerCase().includes(q),
+    )
   }, [allFonts, search])
 
-  // Inject Google Fonts stylesheet into document head for visual previews
+  // When search changes, lazy-load preview styles for matching slice
   useEffect(() => {
-    const familiesToLoad = allFonts
-      .map((f) => f.family)
-      .filter((fam) => !fam.toLowerCase().includes('system') && !fam.toLowerCase().includes('monospace'))
-
-    const url = getGoogleFontUrl(familiesToLoad)
-    if (!url) return
-
-    const existing = document.querySelector(`link[href*="fonts.googleapis.com/css2?family="]`)
-    if (existing) {
-      // already exists
-      return
+    if (search.trim()) {
+      const topMatches = filteredFonts.slice(0, 25).map((f) => f.family)
+      loadGoogleFontStyles(topMatches, [400, 600])
     }
+  }, [search, filteredFonts])
 
-    const link = document.createElement('link')
-    link.rel = 'stylesheet'
-    link.href = url
-    document.head.appendChild(link)
-  }, [allFonts])
+  // Sliced options for performance in DOM
+  const visibleOptions = useMemo(() => {
+    return filteredFonts.slice(0, PREVIEW_SLICE_LIMIT)
+  }, [filteredFonts])
 
   return (
     <Box>
@@ -121,7 +191,13 @@ export function WixFontPicker({
             component="button"
             type="button"
             pointer
-            rightSection={<ChevronDown size={14} color="var(--mantine-color-dimmed)" />}
+            rightSection={
+              isLoading ? (
+                <Loader size={12} color="teal" />
+              ) : (
+                <ChevronDown size={14} color="var(--mantine-color-dimmed)" />
+              )
+            }
             onClick={() => combobox.toggleDropdown()}
             rightSectionPointerEvents="none"
           >
@@ -136,10 +212,32 @@ export function WixFontPicker({
               >
                 {primaryCurrent || placeholder}
               </Text>
-              {hasVietnameseSupport(primaryCurrent) && (
-                <Badge size="xs" color="teal" variant="light" radius="xs" style={{ fontSize: 9, height: 16 }}>
-                  VN
-                </Badge>
+              {primaryCurrent && (
+                <Group gap={4}>
+                  {isCurrentVietnamese ? (
+                    <Badge
+                      size="xs"
+                      color="teal"
+                      variant="light"
+                      radius="xs"
+                      style={{ fontSize: 9, height: 16 }}
+                      title="Supported for Vietnamese"
+                    >
+                      VN
+                    </Badge>
+                  ) : activeLang === 'vi' ? (
+                    <Badge
+                      size="xs"
+                      color="orange"
+                      variant="light"
+                      radius="xs"
+                      style={{ fontSize: 9, height: 16 }}
+                      title="No native Vietnamese subset detected in catalog"
+                    >
+                      No VN
+                    </Badge>
+                  ) : null}
+                </Group>
               )}
             </Flex>
           </InputBase>
@@ -149,57 +247,134 @@ export function WixFontPicker({
           <Combobox.Search
             value={search}
             onChange={(event) => setSearch(event.currentTarget.value)}
-            placeholder="Search fonts..."
+            placeholder="Search fonts by name or category..."
             leftSection={<Search size={13} color="var(--mantine-color-dimmed)" />}
             size="xs"
           />
+
+          {apiError && (
+            <Flex
+              align="center"
+              justify="space-between"
+              px="xs"
+              py={4}
+              bg="var(--mantine-color-orange-0, #fff9db)"
+              style={{
+                borderBottom: '1px solid var(--mantine-color-orange-2, #ffe066)',
+              }}
+            >
+              <Group gap={4}>
+                <AlertCircle size={12} color="var(--mantine-color-orange-8, #d9480f)" />
+                <Text size="xs" c="orange.9" style={{ fontSize: 11 }}>
+                  Offline catalog active
+                </Text>
+              </Group>
+              <Button
+                variant="subtle"
+                color="orange"
+                size="compact-xs"
+                onClick={() => fetchFonts()}
+                leftSection={<RefreshCw size={10} />}
+              >
+                Retry
+              </Button>
+            </Flex>
+          )}
+
           <Combobox.Options>
             <ScrollArea.Autosize mah={220} type="scroll">
               {filteredFonts.length === 0 ? (
                 <Combobox.Empty>
                   <Text size="xs" c="dimmed" p="xs">
-                    No fonts found
+                    {isLoading ? 'Loading catalog...' : `No fonts found matching "${search}"`}
                   </Text>
                 </Combobox.Empty>
               ) : (
-                filteredFonts.map((font) => {
-                  const isSelected = primaryCurrent.toLowerCase() === font.family.toLowerCase()
-                  const isVn = hasVietnameseSupport(font.family)
+                <>
+                  {visibleOptions.map((font) => {
+                    const isSelected = primaryCurrent.toLowerCase() === font.family.toLowerCase()
+                    const isVn = hasVietnameseSupport(font.family, font)
 
-                  return (
-                    <Combobox.Option value={font.family} key={font.family}>
-                      <Flex align="center" justify="space-between" py={2}>
-                        <Group gap={6} style={{ minWidth: 0, flex: 1 }}>
-                          <Text
-                            size="xs"
-                            style={{
-                              fontFamily: font.family,
-                              fontSize: 13,
-                              fontWeight: isSelected ? 600 : 400,
-                            }}
-                            truncate
-                          >
-                            {font.family}
-                          </Text>
-                          {isVn && (
-                            <Badge
+                    return (
+                      <Combobox.Option value={font.family} key={font.family}>
+                        <Flex align="center" justify="space-between" py={2}>
+                          <Group gap={6} style={{ minWidth: 0, flex: 1 }}>
+                            <Text
                               size="xs"
-                              color="teal"
-                              variant="light"
-                              radius="xs"
-                              style={{ fontSize: 9, height: 15, padding: '0 4px' }}
+                              style={{
+                                fontFamily: font.family,
+                                fontSize: 13,
+                                fontWeight: isSelected ? 600 : 400,
+                              }}
+                              truncate
                             >
-                              VN
-                            </Badge>
+                              {font.family}
+                            </Text>
+                            {font.isSystem && (
+                              <Badge
+                                size="xs"
+                                color="gray"
+                                variant="outline"
+                                radius="xs"
+                                style={{ fontSize: 9, height: 14, padding: '0 3px' }}
+                              >
+                                system
+                              </Badge>
+                            )}
+                            {font.isCustom && (
+                              <Badge
+                                size="xs"
+                                color="yellow"
+                                variant="light"
+                                radius="xs"
+                                style={{ fontSize: 9, height: 14, padding: '0 3px' }}
+                              >
+                                custom
+                              </Badge>
+                            )}
+                            {isVn ? (
+                              <Badge
+                                size="xs"
+                                color="teal"
+                                variant="light"
+                                radius="xs"
+                                style={{ fontSize: 9, height: 15, padding: '0 4px' }}
+                                title="Vietnamese subset verified"
+                              >
+                                VN
+                              </Badge>
+                            ) : activeLang === 'vi' ? (
+                              <Badge
+                                size="xs"
+                                color="orange"
+                                variant="light"
+                                radius="xs"
+                                style={{ fontSize: 9, height: 15, padding: '0 4px' }}
+                                title="No dedicated Vietnamese subset"
+                              >
+                                No VN
+                              </Badge>
+                            ) : null}
+                          </Group>
+                          {isSelected && (
+                            <Check
+                              size={14}
+                              color="var(--mantine-color-primary, #0e6b66)"
+                              strokeWidth={2.5}
+                            />
                           )}
-                        </Group>
-                        {isSelected && (
-                          <Check size={14} color="var(--mantine-color-primary, #0e6b66)" strokeWidth={2.5} />
-                        )}
-                      </Flex>
-                    </Combobox.Option>
-                  )
-                })
+                        </Flex>
+                      </Combobox.Option>
+                    )
+                  })}
+                  {filteredFonts.length > PREVIEW_SLICE_LIMIT && (
+                    <Box px="xs" py={4} bg="var(--mantine-color-gray-0, #f8f9fa)">
+                      <Text size="xs" c="dimmed" style={{ fontSize: 11 }} ta="center">
+                        Showing top {PREVIEW_SLICE_LIMIT} of {filteredFonts.length} fonts. Type to search all.
+                      </Text>
+                    </Box>
+                  )}
+                </>
               )}
             </ScrollArea.Autosize>
           </Combobox.Options>

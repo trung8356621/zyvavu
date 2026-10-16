@@ -1,13 +1,16 @@
 'use client'
 
 import React, { useCallback, useMemo, useState } from 'react'
-import { Puck, type Config, type Data, type Viewport } from '@puckeditor/core'
+import { Puck, ActionBar, type Config, type Data, type Plugin, type Viewport, usePuck } from '@puckeditor/core'
 import '@puckeditor/core/dist/index.css'
 import { Alert, Box, Button, Group, LoadingOverlay, Text } from '@mantine/core'
-import { Check, AlertCircle, Save } from 'lucide-react'
+import { Check, AlertCircle, Palette, Save, Sliders } from 'lucide-react'
 
 import { CURRENT_BUILDER_VERSION, validateBuilderDocument } from './document'
 import type { BuilderDocument } from './types'
+import type { ThemeConfig, WidgetSemanticStyle } from '@/lib/theme-engine/types'
+import { PageSettingsPanel } from '@/components/admin/theme-builder/PageSettingsPanel'
+import { WidgetStyleContextMenu } from '@/components/admin/theme-builder/WidgetStyleContextMenu'
 
 export const DESKTOP_ONLY_VIEWPORT: Viewport[] = [
   { width: '100%', height: 'auto', label: 'Desktop', icon: 'Monitor' },
@@ -20,6 +23,104 @@ export const RESPONSIVE_VIEWPORTS: Viewport[] = [
 ]
 
 export const MEGA_MENU_VIEWPORTS = DESKTOP_ONLY_VIEWPORT
+
+function PuckActionBarBridge({
+  label,
+  children,
+  parentAction,
+  themeConfig,
+}: {
+  label?: string
+  children: React.ReactNode
+  parentAction?: React.ReactNode
+  themeConfig?: ThemeConfig
+}) {
+  const { appState, dispatch } = usePuck()
+  const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null)
+
+  const selectedItem = (appState as any).selectedItem || (() => {
+    const selector = appState.ui.itemSelector
+    if (!selector) return null
+    if (selector.zone) {
+      return appState.data.zones?.[selector.zone]?.[selector.index] || null
+    }
+    return appState.data.content[selector.index] || null
+  })()
+
+  const componentType = selectedItem?.type || ''
+  const componentId = selectedItem?.props?.id || ''
+  const currentStyle = (selectedItem?.props?.style as WidgetSemanticStyle) || {}
+
+  const handleUpdateStyle = (newStyle: WidgetSemanticStyle) => {
+    if (!selectedItem) return
+
+    dispatch({
+      type: 'setData',
+      data: (prev) => {
+        const updateItem = (item: any) => {
+          if (item?.props?.id === componentId) {
+            return {
+              ...item,
+              props: {
+                ...item.props,
+                style: newStyle,
+              },
+            }
+          }
+          return item
+        }
+
+        return {
+          ...prev,
+          content: prev.content.map(updateItem),
+          zones: Object.fromEntries(
+            Object.entries(prev.zones || {}).map(([zoneKey, items]) => [
+              zoneKey,
+              (items as any[]).map(updateItem),
+            ]),
+          ),
+        }
+      },
+    })
+  }
+
+  return (
+    <>
+      <ActionBar>
+        <ActionBar.Group>
+          {parentAction}
+          {label && <ActionBar.Label label={label} />}
+        </ActionBar.Group>
+        <ActionBar.Group>
+          <ActionBar.Action
+            label="Edit Style"
+            onClick={(e) => {
+              e.stopPropagation()
+              setMenuAnchor(e.currentTarget as HTMLElement)
+            }}
+          >
+            <Palette size={14} />
+          </ActionBar.Action>
+          <ActionBar.Separator />
+          {children}
+        </ActionBar.Group>
+      </ActionBar>
+
+      {menuAnchor && selectedItem && (
+        <WidgetStyleContextMenu
+          opened={Boolean(menuAnchor)}
+          onClose={() => setMenuAnchor(null)}
+          anchorEl={menuAnchor}
+          componentType={componentType}
+          componentId={componentId}
+          currentStyle={currentStyle}
+          themeConfig={themeConfig}
+          onUpdateStyle={handleUpdateStyle}
+        />
+      )}
+    </>
+  )
+}
 
 export type PuckHostProps = {
   config: Config
@@ -34,6 +135,8 @@ export type PuckHostProps = {
   height?: string | number
   viewports?: Viewport[]
   desktopOnly?: boolean
+  themeConfig?: ThemeConfig
+  templateContext?: string
 }
 
 export function PuckHost({
@@ -49,11 +152,22 @@ export function PuckHost({
   height,
   viewports,
   desktopOnly = false,
+  themeConfig,
+  templateContext,
 }: PuckHostProps) {
   const [localDoc, setLocalDoc] = useState<BuilderDocument>(document)
   const [validationError, setValidationError] = useState<string | null>(null)
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false)
   const latestDocRef = React.useRef<BuilderDocument>(localDoc)
+
+  const pageSettingsPlugin: Plugin = useMemo(() => {
+    return {
+      name: 'page-settings',
+      label: 'Page Settings',
+      icon: <Sliders size={16} />,
+      render: () => <PageSettingsPanel themeConfig={themeConfig} templateName={templateContext} />,
+    }
+  }, [themeConfig, templateContext])
 
   // Sync when initial document changes externally
   React.useEffect(() => {
@@ -218,6 +332,7 @@ export function PuckHost({
             <Puck
               config={config}
               data={puckData}
+              plugins={[pageSettingsPlugin]}
               viewports={activeViewports}
               ui={{
                 viewports: {
@@ -231,6 +346,7 @@ export function PuckHost({
               }}
               overrides={{
                 headerActions: () => <React.Fragment />,
+                actionBar: (props) => <PuckActionBarBridge {...props} themeConfig={themeConfig} />,
               }}
               onPublish={handlePublish}
               onChange={handlePuckChange}

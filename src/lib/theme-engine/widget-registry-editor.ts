@@ -1,8 +1,8 @@
-'use client'
-
+import React from 'react'
 import type { ComponentConfig, Config } from '@puckeditor/core'
-import type { TemplateContext } from './types'
+import type { PageSettings, TemplateContext, ThemeConfig } from './types'
 import { getTemplatePolicy } from './policy'
+import { resolvePageSettingsStyles } from './page-settings'
 
 // Import manifests
 import { postTitleManifest } from '@/widgets/PostTitle/manifest'
@@ -103,7 +103,10 @@ export function registerEditorWidget(id: string, config: any) {
  * Builds a scoped Puck Config for a specific Template Context based on its TemplatePolicy.
  * Only allowed widgets for that template are exposed to the user in the editor sidebar!
  */
-export function getEditorConfigForContext(context: TemplateContext): Config {
+export function getEditorConfigForContext(
+  context: TemplateContext,
+  themeConfig?: ThemeConfig,
+): Config {
   const policy = getTemplatePolicy(context)
   const allowedComponents: Record<string, any> = {}
 
@@ -153,7 +156,34 @@ export function getEditorConfigForContext(context: TemplateContext): Config {
     categories[catKey].components.push(id)
   }
 
+  const isDocumentMode = context === 'single' || context === 'page'
+  const defaultContainerClass = isDocumentMode
+    ? 'zyvavu-theme-container zyvavu-theme-container--narrow site-section'
+    : context === 'header' || context === 'footer'
+      ? 'zyvavu-theme-part'
+      : 'zyvavu-theme-container site-section'
+
   return {
+    root: {
+      render: ({ children, pageSettings }: { children?: React.ReactNode; pageSettings?: PageSettings }) => {
+        const resolved = resolvePageSettingsStyles(pageSettings, themeConfig?.tokens, context)
+        const styleTag = resolved.scopedCss
+          ? React.createElement('style', {
+              dangerouslySetInnerHTML: { __html: resolved.scopedCss },
+            })
+          : null
+
+        return React.createElement(
+          'div',
+          {
+            className: `${defaultContainerClass} ${resolved.className}`.trim(),
+            style: resolved.style,
+          },
+          styleTag,
+          children,
+        )
+      },
+    },
     components: allowedComponents,
     categories,
   }

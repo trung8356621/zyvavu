@@ -1,6 +1,7 @@
 import React from 'react'
 import type { ThemeDataContext, ThemeTemplateDocument } from './types'
 import { getFrontendWidget } from './widget-registry-frontend'
+import { resolvePageSettingsStyles } from './page-settings'
 
 export type ThemeRendererProps = {
   document: ThemeTemplateDocument
@@ -110,12 +111,18 @@ export function ThemeRenderer({
       ? 'zyvavu-theme-part'
       : 'zyvavu-theme-container site-section'
 
+  const pageSettings = document.root?.props?.pageSettings
+  const resolved = resolvePageSettingsStyles(pageSettings, undefined, document.template)
+
   if (isNested) {
     return <>{document.content.map((item, idx) => renderItem(item, idx))}</>
   }
 
   return (
-    <div className={`zyvavu-theme-root ${containerClass} ${className}`.trim()}>
+    <div className={`zyvavu-theme-root ${containerClass} ${resolved.className} ${className}`.trim()} style={resolved.style}>
+      {resolved.scopedCss && (
+        <style dangerouslySetInnerHTML={{ __html: resolved.scopedCss }} />
+      )}
       {document.content.map((item, idx) => renderItem(item, idx))}
     </div>
   )

@@ -5,8 +5,6 @@ import React from 'react'
 import { useRouter } from 'next/navigation'
 import { ConfirmationModal, Link, toast, useAuth, useConfig, useModal } from '@payloadcms/ui'
 
-import { canonicalPathFor } from '@/lib/url/paths'
-
 import './collection-title-cell.scss'
 
 export type CollectionTitleCellCustomProps = {
@@ -15,27 +13,17 @@ export type CollectionTitleCellCustomProps = {
   showSlug?: boolean
 }
 
-function resolvePublicUrl(collectionSlug: string, rowData: Record<string, unknown>): string | null {
-  // Only published items can resolve to public canonical URLs; never expose drafts
-  if (rowData._status !== 'published') return null
-
-  const slug = typeof rowData.slug === 'string' ? rowData.slug.trim() : null
-  if (!slug) return null
-
-  const publicPath = typeof rowData.publicPath === 'string' ? rowData.publicPath.trim() : null
-
-  try {
-    if (collectionSlug === 'pages') {
-      return canonicalPathFor('page', slug, publicPath)
-    }
-    if (collectionSlug === 'posts') {
-      return canonicalPathFor('post', slug, publicPath)
-    }
-  } catch {
-    return null
+function isPublicResource(collectionSlug: string, rowData: Record<string, unknown>): boolean {
+  if (collectionSlug === 'posts') {
+    return rowData?._status === 'published' && Boolean(rowData?.slug)
   }
-
-  return null
+  if (collectionSlug === 'pages') {
+    return rowData?._status === 'published' && rowData?.visibility !== 'private' && Boolean(rowData?.slug)
+  }
+  if (collectionSlug === 'categories' || collectionSlug === 'tags') {
+    return Boolean(rowData?.slug)
+  }
+  return true
 }
 
 export function CollectionTitleCell({
@@ -57,7 +45,6 @@ export function CollectionTitleCell({
 
   const configProps = (customCellProps as CollectionTitleCellCustomProps) || {}
   const showSlug = configProps.showSlug !== false
-  const enableView = configProps.enableView ?? (collectionSlug === 'posts' || collectionSlug === 'pages')
   const enableDelete = configProps.enableDelete !== false
 
   // Permission check for delete
@@ -70,15 +57,30 @@ export function CollectionTitleCell({
     collectionPerms?.delete === undefined // fallback if permissions not populated
 
   const title = typeof cellData === 'string' && cellData.trim() ? cellData : 'Untitled'
-  const slug = typeof rowData?.slug === 'string' && rowData.slug.trim() ? rowData.slug : null
-  const publicPath = typeof rowData?.publicPath === 'string' && rowData.publicPath.trim() ? rowData.publicPath : null
-  const displaySlug = publicPath || (slug ? `/${slug}` : null)
+  const isPublic = isPublicResource(collectionSlug, (rowData || {}) as Record<string, unknown>)
+
+  // Established canonical URL returned by URL Registry
+  const canonicalPath =
+    isPublic && typeof rowData?.canonicalPath === 'string' && rowData.canonicalPath.trim().startsWith('/')
+      ? rowData.canonicalPath.trim()
+      : null
+
+  // Path displayed under title: prefer resolved canonical public URL, fallback to publicPath/slug for drafts
+  const fallbackSlug =
+    typeof rowData?.publicPath === 'string' && rowData.publicPath.trim()
+      ? rowData.publicPath.trim()
+      : typeof rowData?.slug === 'string' && rowData.slug.trim()
+        ? `/${rowData.slug.trim()}`
+        : null
+  const displayPath = canonicalPath || fallbackSlug
+
+  // View action is enabled if allowed by config, resource is public, and a valid canonical route exists
+  const canView = configProps.enableView !== false && isPublic && Boolean(canonicalPath)
 
   // Robust edit URL resolution: use linkURL if provided by Payload, otherwise construct via verified admin route
   const editURL =
     linkURL || `${adminRoute}/collections/${collectionSlug}/${encodeURIComponent(String(rowData?.id))}`
 
-  const publicURL = enableView ? resolvePublicUrl(collectionSlug, (rowData || {}) as Record<string, unknown>) : null
   const modalSlug = `delete-${collectionSlug}-${rowData?.id}`
 
   const handleDelete = async () => {
@@ -115,7 +117,7 @@ export function CollectionTitleCell({
         <Link className="zyvavu-title-cell__link" href={editURL} prefetch={false}>
           <span className="zyvavu-title-cell__title">{title}</span>
         </Link>
-        {showSlug && displaySlug ? <span className="zyvavu-title-cell__slug">{displaySlug}</span> : null}
+        {showSlug && displayPath ? <span className="zyvavu-title-cell__slug">{displayPath}</span> : null}
       </div>
 
       <div aria-label="Row actions" className="zyvavu-row-actions">
@@ -123,14 +125,14 @@ export function CollectionTitleCell({
           Edit
         </Link>
 
-        {publicURL ? (
+        {canView && canonicalPath ? (
           <>
             <span aria-hidden="true" className="zyvavu-row-actions__sep">
               |
             </span>
             <a
               className="zyvavu-row-action zyvavu-row-action--view"
-              href={publicURL}
+              href={canonicalPath}
               rel="noopener noreferrer"
               target="_blank"
             >
