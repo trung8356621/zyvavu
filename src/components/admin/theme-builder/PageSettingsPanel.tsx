@@ -127,26 +127,31 @@ export function PageSettingsPanel({ themeConfig, templateName }: PageSettingsPan
         <Accordion
           multiple
           defaultValue={['background', 'typography', 'layout', 'advanced']}
-          variant="separated"
+          variant="default"
           styles={{
             root: {
               width: '100%',
             },
             item: {
-              backgroundColor: 'var(--mantine-color-body, #ffffff)',
-              border: '1px solid var(--mantine-color-default-border, #dfe5e2)',
-              borderRadius: 6,
-              marginBottom: 8,
+              backgroundColor: 'transparent',
+              border: 'none',
+              borderBottom: '1px solid var(--mantine-color-default-border, #dfe5e2)',
+              borderRadius: 0,
+              marginBottom: 0,
               overflow: 'hidden',
             },
             control: {
-              padding: '8px 10px',
+              padding: '10px 4px',
+              borderRadius: 0,
+              '&:hover': {
+                backgroundColor: 'transparent',
+              },
             },
             label: {
               padding: 0,
             },
             content: {
-              padding: '8px 10px 14px 10px',
+              padding: '6px 4px 14px 4px',
             },
           }}
         >

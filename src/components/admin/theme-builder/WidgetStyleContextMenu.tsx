@@ -44,10 +44,75 @@ import { BackgroundStyleControl } from './style-controls/BackgroundStyleControl'
 import { SpacingDimensionsControl } from './style-controls/SpacingDimensionsControl'
 import { BordersEffectsControl } from './style-controls/BordersEffectsControl'
 
+export function computeTranslatedAnchorPosition(
+  anchor: HTMLElement | null,
+  width = 340,
+  height = 480,
+): { x: number; y: number } {
+  if (typeof window === 'undefined') return { x: 340, y: 80 }
+
+  const padding = 12
+
+  if (!anchor) {
+    const defaultX = Math.min(336, Math.max(padding, window.innerWidth - width - padding))
+    const defaultY = Math.min(80, Math.max(padding, window.innerHeight - height - padding))
+    return { x: Math.max(padding, defaultX), y: Math.max(padding, defaultY) }
+  }
+
+  const rawRect = anchor.getBoundingClientRect()
+  const doc = anchor.ownerDocument || document
+  const win = doc.defaultView || window
+
+  let rect = {
+    left: rawRect.left,
+    right: rawRect.right,
+    top: rawRect.top,
+    bottom: rawRect.bottom,
+    width: rawRect.width,
+    height: rawRect.height,
+  }
+
+  // If anchor is inside an iframe, translate coordinates relative to parent window
+  if (win !== window && win.frameElement) {
+    const iframeRect = win.frameElement.getBoundingClientRect()
+    rect = {
+      left: iframeRect.left + rawRect.left,
+      right: iframeRect.left + rawRect.right,
+      top: iframeRect.top + rawRect.top,
+      bottom: iframeRect.top + rawRect.bottom,
+      width: rawRect.width,
+      height: rawRect.height,
+    }
+  }
+
+  // Primary position: right side of anchor
+  let x = rect.right + padding
+  let y = rect.top
+
+  // If overflowing right viewport boundary, try placing to the left of anchor
+  if (x + width > window.innerWidth - padding) {
+    const leftCandidate = rect.left - width - padding
+    if (leftCandidate >= padding) {
+      x = leftCandidate
+    } else {
+      x = Math.max(padding, window.innerWidth - width - padding)
+    }
+  }
+
+  // Vertical boundary clamping
+  if (y + height > window.innerHeight - padding) {
+    y = Math.max(padding, window.innerHeight - height - padding)
+  }
+  y = Math.max(padding, y)
+
+  return { x, y }
+}
+
 export interface WidgetStyleContextMenuProps {
   opened: boolean
   onClose: () => void
   anchorEl: HTMLElement | null
+  initialPosition?: { x: number; y: number }
   componentType: string
   componentId: string
   currentStyle?: WidgetSemanticStyle
@@ -59,6 +124,7 @@ export function WidgetStyleContextMenu({
   opened,
   onClose,
   anchorEl,
+  initialPosition,
   componentType,
   componentId,
   currentStyle = {},
@@ -102,6 +168,28 @@ export function WidgetStyleContextMenu({
     if (hasSpacingOrDimensions) return 'spacing'
     return 'borders'
   })
+
+  // Sync activeTab when component type or capabilities change
+  React.useEffect(() => {
+    if (componentType === 'Section' && hasBackground) {
+      setActiveTab('background')
+    } else if (hasTypography) {
+      setActiveTab('typography')
+    } else if (hasBackground) {
+      setActiveTab('background')
+    } else if (hasSpacingOrDimensions) {
+      setActiveTab('spacing')
+    } else {
+      setActiveTab('borders')
+    }
+  }, [componentType, hasTypography, hasBackground, hasSpacingOrDimensions])
+
+  // Resolve coordinate position translating iframe offsets if necessary
+  const resolvedPosition = useMemo(() => {
+    if (initialPosition) return initialPosition
+    if (anchorEl) return computeTranslatedAnchorPosition(anchorEl, 340, 480)
+    return undefined
+  }, [initialPosition, anchorEl])
 
   // Normalize currentStyle into UniversalStyle
   const normalizedStyle: UniversalStyle = useMemo(() => {
@@ -148,6 +236,7 @@ export function WidgetStyleContextMenu({
         headerExtra={<Sliders size={15} color="var(--mantine-color-teal-7, #0e6b66)" />}
         width={340}
         anchorEl={anchorEl}
+        initialPosition={resolvedPosition}
         mode="floating"
         draggable={true}
         showCloseButton={true}

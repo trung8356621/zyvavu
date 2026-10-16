@@ -10,7 +10,7 @@ import { CURRENT_BUILDER_VERSION, validateBuilderDocument } from './document'
 import type { BuilderDocument } from './types'
 import type { ThemeConfig, WidgetSemanticStyle } from '@/lib/theme-engine/types'
 import { PageSettingsPanel } from '@/components/admin/theme-builder/PageSettingsPanel'
-import { WidgetStyleContextMenu } from '@/components/admin/theme-builder/WidgetStyleContextMenu'
+import { WidgetStyleContextMenu, computeTranslatedAnchorPosition } from '@/components/admin/theme-builder/WidgetStyleContextMenu'
 
 export const DESKTOP_ONLY_VIEWPORT: Viewport[] = [
   { width: '100%', height: 'auto', label: 'Desktop', icon: 'Monitor' },
@@ -24,19 +24,50 @@ export const RESPONSIVE_VIEWPORTS: Viewport[] = [
 
 export const MEGA_MENU_VIEWPORTS = DESKTOP_ONLY_VIEWPORT
 
+interface PuckApi {
+  dispatch: (action: any) => void
+  getAppState: () => any
+}
+
+function PuckBridge({
+  children,
+  onRegisterApi,
+}: {
+  children: React.ReactNode
+  onRegisterApi: (api: PuckApi) => void
+}) {
+  const { appState, dispatch } = usePuck()
+  const appStateRef = React.useRef(appState)
+  appStateRef.current = appState
+
+  React.useEffect(() => {
+    onRegisterApi({
+      dispatch,
+      getAppState: () => appStateRef.current,
+    })
+  }, [dispatch, onRegisterApi])
+
+  return <>{children}</>
+}
+
 function PuckActionBarBridge({
   label,
   children,
   parentAction,
-  themeConfig,
+  onOpenStyleMenu,
 }: {
   label?: string
   children: React.ReactNode
   parentAction?: React.ReactNode
-  themeConfig?: ThemeConfig
+  onOpenStyleMenu: (payload: {
+    componentType: string
+    componentId: string
+    currentStyle: WidgetSemanticStyle
+    anchorEl: HTMLElement
+    initialPosition: { x: number; y: number }
+  }) => void
 }) {
-  const { appState, dispatch } = usePuck()
-  const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null)
+  const { appState } = usePuck()
 
   const selectedItem = (appState as any).selectedItem || (() => {
     const selector = appState.ui.itemSelector
@@ -51,75 +82,69 @@ function PuckActionBarBridge({
   const componentId = selectedItem?.props?.id || ''
   const currentStyle = (selectedItem?.props?.style as WidgetSemanticStyle) || {}
 
-  const handleUpdateStyle = (newStyle: WidgetSemanticStyle) => {
-    if (!selectedItem) return
-
-    dispatch({
-      type: 'setData',
-      data: (prev) => {
-        const updateItem = (item: any) => {
-          if (item?.props?.id === componentId) {
-            return {
-              ...item,
-              props: {
-                ...item.props,
-                style: newStyle,
-              },
-            }
-          }
-          return item
-        }
-
-        return {
-          ...prev,
-          content: prev.content.map(updateItem),
-          zones: Object.fromEntries(
-            Object.entries(prev.zones || {}).map(([zoneKey, items]) => [
-              zoneKey,
-              (items as any[]).map(updateItem),
-            ]),
-          ),
-        }
-      },
+  const handleEditStyleClick = (e: React.SyntheticEvent) => {
+    e.stopPropagation()
+    const anchor = e.currentTarget as HTMLElement
+    const initialPos = computeTranslatedAnchorPosition(anchor, 340, 480)
+    onOpenStyleMenu({
+      componentType,
+      componentId,
+      currentStyle,
+      anchorEl: anchor,
+      initialPosition: initialPos,
     })
   }
 
   return (
-    <>
-      <ActionBar>
-        <ActionBar.Group>
-          {parentAction}
-          {label && <ActionBar.Label label={label} />}
-        </ActionBar.Group>
-        <ActionBar.Group>
-          <ActionBar.Action
-            label="Edit Style"
-            onClick={(e) => {
-              e.stopPropagation()
-              setMenuAnchor(e.currentTarget as HTMLElement)
-            }}
-          >
-            <Palette size={14} />
-          </ActionBar.Action>
-          <ActionBar.Separator />
-          {children}
-        </ActionBar.Group>
-      </ActionBar>
-
-      {menuAnchor && selectedItem && (
-        <WidgetStyleContextMenu
-          opened={Boolean(menuAnchor)}
-          onClose={() => setMenuAnchor(null)}
-          anchorEl={menuAnchor}
-          componentType={componentType}
-          componentId={componentId}
-          currentStyle={currentStyle}
-          themeConfig={themeConfig}
-          onUpdateStyle={handleUpdateStyle}
-        />
-      )}
-    </>
+    <ActionBar>
+      <ActionBar.Group>
+        {parentAction}
+        {label && <ActionBar.Label label={label} />}
+      </ActionBar.Group>
+      <ActionBar.Group>
+        <ActionBar.Action
+          label="Edit Style"
+          onClick={handleEditStyleClick}
+        >
+          <Palette size={14} />
+        </ActionBar.Action>
+        <ActionBar.Separator />
+        {children}
+      </ActionBar.Group>
+    </ActionBar>
   )
+}
+
+function findItemAndSelector(
+  data: Data,
+  id: string,
+): { item: any; selector: { index: number; zone?: string } } | null {
+  if (!data) return null
+
+  const content = data.content || []
+  const contentIndex = content.findIndex(
+    (item: any) => item?.props?.id === id || item?._id === id || item?.id === id,
+  )
+  if (contentIndex !== -1) {
+    return {
+      item: content[contentIndex],
+      selector: { index: contentIndex },
+    }
+  }
+
+  for (const [zoneKey, items] of Object.entries(data.zones || {})) {
+    const zoneIndex = (items as any[]).findIndex(
+      (item: any) => item?.props?.id === id || item?._id === id || item?.id === id,
+    )
+    if (zoneIndex !== -1) {
+      return {
+        item: items[zoneIndex],
+        selector: { index: zoneIndex, zone: zoneKey },
+      }
+    }
+  }
+
+  return null
 }
 
 export type PuckHostProps = {
@@ -234,6 +259,216 @@ export function PuckHost({
     [localDoc, onSave],
   )
 
+  const [activeStyleMenu, setActiveStyleMenu] = useState<{
+    opened: boolean
+    componentType: string
+    componentId: string
+    currentStyle: WidgetSemanticStyle
+    anchorEl: HTMLElement | null
+    initialPosition?: { x: number; y: number }
+  } | null>(null)
+
+  const puckApiRef = React.useRef<PuckApi | null>(null)
+
+  const handleRegisterPuckApi = useCallback((api: PuckApi) => {
+    puckApiRef.current = api
+  }, [])
+
+  const handleOpenStyleMenu = useCallback(
+    ({
+      componentType,
+      componentId,
+      currentStyle,
+      anchorEl,
+      initialPosition,
+    }: {
+      componentType: string
+      componentId: string
+      currentStyle: WidgetSemanticStyle
+      anchorEl: HTMLElement | null
+      initialPosition?: { x: number; y: number }
+    }) => {
+      setActiveStyleMenu({
+        opened: true,
+        componentType,
+        componentId,
+        currentStyle,
+        anchorEl,
+        initialPosition,
+      })
+    },
+    [],
+  )
+
+  const handleCloseStyleMenu = useCallback(() => {
+    setActiveStyleMenu(null)
+  }, [])
+
+  const handleUpdateWidgetStyle = useCallback(
+    (newStyle: WidgetSemanticStyle) => {
+      if (!activeStyleMenu) return
+      const { componentId } = activeStyleMenu
+      const api = puckApiRef.current
+
+      if (api) {
+        api.dispatch({
+          type: 'setData',
+          data: (prev: Data) => {
+            const updateItem = (item: any) => {
+              if (item?.props?.id === componentId) {
+                return {
+                  ...item,
+                  props: {
+                    ...item.props,
+                    style: newStyle,
+                  },
+                }
+              }
+              return item
+            }
+
+            return {
+              ...prev,
+              content: (prev.content || []).map(updateItem),
+              zones: Object.fromEntries(
+                Object.entries(prev.zones || {}).map(([zoneKey, items]) => [
+                  zoneKey,
+                  (items as any[]).map(updateItem),
+                ]),
+              ),
+            }
+          },
+        })
+      }
+
+      setActiveStyleMenu((prev) => (prev ? { ...prev, currentStyle: newStyle } : null))
+    },
+    [activeStyleMenu],
+  )
+
+  // Native right-click on canvas widgets triggers the style context menu
+  React.useEffect(() => {
+    const handleContextMenu = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null
+      if (!target) return
+
+      // Find if right-click was on a Puck canvas component
+      const componentEl = target.closest('[data-puck-component]') as HTMLElement | null
+      if (!componentEl) return
+
+      const compId = componentEl.getAttribute('data-puck-component')
+      if (!compId) return
+
+      // Prevent native browser context menu ONLY for canvas components
+      e.preventDefault()
+      e.stopPropagation()
+
+      const api = puckApiRef.current
+      if (!api) return
+
+      const appState = api.getAppState()
+      const data = appState.data as Data
+
+      const found = findItemAndSelector(data, compId)
+      if (!found) return
+
+      const { item, selector } = found
+
+      // Select clicked component in Puck UI
+      api.dispatch({
+        type: 'setUi',
+        ui: {
+          itemSelector: selector,
+        },
+      })
+
+      // Calculate initial position in parent window coordinates
+      const win = componentEl.ownerDocument.defaultView || window
+      let initialPos = { x: e.clientX + 10, y: e.clientY + 10 }
+      if (win !== window && win.frameElement) {
+        const iframeRect = win.frameElement.getBoundingClientRect()
+        initialPos = {
+          x: iframeRect.left + e.clientX + 10,
+          y: iframeRect.top + e.clientY + 10,
+        }
+      }
+
+      // Viewport clamping
+      const width = 340
+      const height = 480
+      const padding = 12
+      if (initialPos.x + width > window.innerWidth - padding) {
+        initialPos.x = Math.max(padding, initialPos.x - width - 20)
+      }
+      if (initialPos.y + height > window.innerHeight - padding) {
+        initialPos.y = Math.max(padding, window.innerHeight - height - padding)
+      }
+      initialPos.x = Math.max(padding, initialPos.x)
+      initialPos.y = Math.max(padding, initialPos.y)
+
+      setActiveStyleMenu({
+        opened: true,
+        componentType: item.type,
+        componentId: item.props?.id || compId,
+        currentStyle: (item.props?.style as WidgetSemanticStyle) || {},
+        anchorEl: componentEl,
+        initialPosition: initialPos,
+      })
+    }
+
+    const viewportEl = typeof window !== 'undefined' ? window.document.querySelector('.zyvavu-puck-viewport') : null
+    if (viewportEl) {
+      viewportEl.addEventListener('contextmenu', handleContextMenu as EventListener)
+    }
+
+    const frameEl = typeof window !== 'undefined' ? (window.document.querySelector('#preview-frame') as HTMLIFrameElement | null) : null
+    let frameDoc: Document | null = null
+    const attachToFrame = () => {
+      try {
+        if (frameEl && frameEl.contentDocument) {
+          frameDoc = frameEl.contentDocument
+          frameDoc.addEventListener('contextmenu', handleContextMenu as EventListener)
+        }
+      } catch {
+        // Cross-origin or not mounted
+      }
+    }
+
+    if (frameEl) {
+      frameEl.addEventListener('load', attachToFrame)
+      attachToFrame()
+    }
+
+    return () => {
+      if (viewportEl) {
+        viewportEl.removeEventListener('contextmenu', handleContextMenu as EventListener)
+      }
+      if (frameEl) {
+        frameEl.removeEventListener('load', attachToFrame)
+      }
+      if (frameDoc) {
+        frameDoc.removeEventListener('contextmenu', handleContextMenu as EventListener)
+      }
+    }
+  }, [])
+
+  const puckOverrides = useMemo(() => {
+    return {
+      headerActions: () => <React.Fragment />,
+      puck: ({ children }: { children: React.ReactNode }) => (
+        <PuckBridge onRegisterApi={handleRegisterPuckApi}>
+          {children}
+        </PuckBridge>
+      ),
+      actionBar: (props: any) => (
+        <PuckActionBarBridge
+          {...props}
+          onOpenStyleMenu={handleOpenStyleMenu}
+        />
+      ),
+    }
+  }, [handleRegisterPuckApi, handleOpenStyleMenu])
+
   return (
     <Box
       className="zyvavu-puck-host-wrapper"
@@ -344,16 +579,28 @@ export function PuckHost({
                   controlsVisible: showControls,
                 },
               }}
-              overrides={{
-                headerActions: () => <React.Fragment />,
-                actionBar: (props) => <PuckActionBarBridge {...props} themeConfig={themeConfig} />,
-              }}
+              overrides={puckOverrides}
               onPublish={handlePublish}
               onChange={handlePuckChange}
             />
           )
         })()}
       </Box>
+
+      {/* Stable Floating Style Context Menu (Owned outside transient Puck ActionBar) */}
+      {activeStyleMenu?.opened && (
+        <WidgetStyleContextMenu
+          opened={activeStyleMenu.opened}
+          onClose={handleCloseStyleMenu}
+          anchorEl={activeStyleMenu.anchorEl}
+          initialPosition={activeStyleMenu.initialPosition}
+          componentType={activeStyleMenu.componentType}
+          componentId={activeStyleMenu.componentId}
+          currentStyle={activeStyleMenu.currentStyle}
+          themeConfig={themeConfig}
+          onUpdateStyle={handleUpdateWidgetStyle}
+        />
+      )}
     </Box>
   )
 }
