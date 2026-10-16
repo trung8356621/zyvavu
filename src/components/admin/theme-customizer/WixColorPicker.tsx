@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { HexColorPicker } from 'react-colorful'
 import {
   Box,
@@ -83,7 +83,7 @@ function hexToHsv(hex: string): { h: number; s: number; v: number } {
 }
 
 function hsvToHex(h: number, s: number, v: number): string {
-  const hNorm = ((h % 360) + 360) % 360 / 360
+  const hNorm = (((h % 360) + 360) % 360) / 360
   const sNorm = Math.max(0, Math.min(100, s)) / 100
   const vNorm = Math.max(0, Math.min(100, v)) / 100
 
@@ -146,71 +146,92 @@ export function WixColorPicker({
   variant = 'row',
   stripPosition = 'middle',
 }: WixColorPickerProps) {
-  const committedColor = normalizeHex(value)
+  const currentHex = normalizeHex(value)
   const [opened, setOpened] = useState(false)
-  const [tempColor, setTempColor] = useState<string>(committedColor)
-  const [hexInput, setHexInput] = useState<string>(committedColor)
+  const [hexInput, setHexInput] = useState<string>(currentHex)
   const [showAdvancedHex, setShowAdvancedHex] = useState(false)
 
-  useEffect(() => {
-    if (!opened) {
-      const norm = normalizeHex(value)
-      setTempColor(norm)
-      setHexInput(norm)
-    }
-  }, [value, opened])
+  // Stores the exact original color when the picker was opened so Cancel restores it
+  const initialColorRef = useRef<string>(currentHex)
+  const lastHueRef = useRef<number>(hexToHsv(currentHex).h)
 
-  const hsv = useMemo(() => hexToHsv(tempColor), [tempColor])
+  useEffect(() => {
+    const norm = normalizeHex(value)
+    setHexInput(norm)
+    const parsed = hexToHsv(norm)
+    if (parsed.s > 0 && parsed.v > 0) {
+      lastHueRef.current = parsed.h
+    }
+  }, [value])
+
+  const hsv = useMemo(() => {
+    const parsed = hexToHsv(currentHex)
+    return {
+      h: parsed.s > 0 && parsed.v > 0 ? parsed.h : lastHueRef.current,
+      s: parsed.s,
+      v: parsed.v,
+    }
+  }, [currentHex])
 
   const handleOpenChange = (nextOpened: boolean) => {
-    if (nextOpened) {
+    if (nextOpened && !opened) {
       const norm = normalizeHex(value)
-      setTempColor(norm)
+      initialColorRef.current = norm
       setHexInput(norm)
       setShowAdvancedHex(false)
     }
     setOpened(nextOpened)
   }
 
+  // Live direct editing: immediately updates sidebar swatch + iframe preview + contrast
   const handlePickerChange = (newHex: string) => {
-    setTempColor(newHex)
-    setHexInput(newHex)
+    const norm = normalizeHex(newHex, currentHex)
+    const parsed = hexToHsv(norm)
+    if (parsed.s > 0 && parsed.v > 0) {
+      lastHueRef.current = parsed.h
+    }
+    setHexInput(norm)
+    onChange(norm)
   }
 
   const handleSaturationChange = (nextS: number) => {
     const nextHex = hsvToHex(hsv.h, nextS, hsv.v)
-    setTempColor(nextHex)
     setHexInput(nextHex)
+    onChange(nextHex)
   }
 
   const handleBrightnessChange = (nextV: number) => {
     const nextHex = hsvToHex(hsv.h, hsv.s, nextV)
-    setTempColor(nextHex)
     setHexInput(nextHex)
+    onChange(nextHex)
   }
 
   const handleHexInputChange = (raw: string) => {
     setHexInput(raw)
     const formatted = raw.startsWith('#') ? raw.trim() : `#${raw.trim()}`
     if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(formatted)) {
-      setTempColor(normalizeHex(formatted, tempColor))
+      const norm = normalizeHex(formatted, currentHex)
+      onChange(norm)
     }
   }
 
+  // Cancel restores the exact original color before opening the picker
   const handleCancel = () => {
-    const norm = normalizeHex(value)
-    setTempColor(norm)
-    setHexInput(norm)
+    const original = initialColorRef.current
+    setHexInput(original)
+    onChange(original)
     setShowAdvancedHex(false)
     setOpened(false)
   }
 
+  // Apply retains the selected color in the current draft and closes the picker
   const handleApply = () => {
     const candidate = hexInput.startsWith('#') ? hexInput.trim() : `#${hexInput.trim()}`
     const finalColor = validateColorString(candidate)
-      ? normalizeHex(candidate, tempColor)
-      : tempColor
+      ? normalizeHex(candidate, currentHex)
+      : currentHex
     onChange(finalColor)
+    initialColorRef.current = finalColor
     setOpened(false)
   }
 
@@ -241,7 +262,7 @@ export function WixColorPicker({
                 width: '100%',
                 height: 36,
                 borderRadius: 4,
-                backgroundColor: committedColor,
+                backgroundColor: currentHex,
                 border: '1px solid rgba(0,0,0,0.12)',
                 marginBottom: 6,
               }}
@@ -278,7 +299,7 @@ export function WixColorPicker({
             <Box
               style={{
                 height: 34,
-                backgroundColor: committedColor,
+                backgroundColor: currentHex,
                 borderRadius,
                 border: opened
                   ? '2px solid var(--mantine-color-primary, #0e6b66)'
@@ -321,7 +342,7 @@ export function WixColorPicker({
                   width: 28,
                   height: 28,
                   borderRadius: 6,
-                  backgroundColor: committedColor,
+                  backgroundColor: currentHex,
                   border: '1px solid rgba(0,0,0,0.12)',
                   flexShrink: 0,
                 }}
@@ -379,7 +400,7 @@ export function WixColorPicker({
                 width: 28,
                 height: 28,
                 borderRadius: '50%',
-                backgroundColor: committedColor,
+                backgroundColor: currentHex,
                 border: '2px solid var(--mantine-color-default-border, #dfe5e2)',
                 boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.08)',
                 flexShrink: 0,
@@ -401,51 +422,20 @@ export function WixColorPicker({
       shadow="md"
       withinPortal
       zIndex={1000}
+      clickOutsideEvents={['mousedown', 'touchstart']}
       middlewares={{ flip: true, shift: { padding: 12 } }}
     >
       <Popover.Target>{renderTrigger()}</Popover.Target>
 
       <Popover.Dropdown p="sm" style={{ width: 268 }}>
         <Stack gap="xs">
-          <Flex align="center" justify="space-between">
-            <Text size="xs" fw={700}>
-              {label}
-            </Text>
-            <Group gap={6} align="center">
-              <Text size="xs" c="dimmed">
-                Preview:
-              </Text>
-              <Group gap={4} align="center">
-                <Box
-                  title="Current color"
-                  style={{
-                    width: 18,
-                    height: 18,
-                    borderRadius: 4,
-                    backgroundColor: committedColor,
-                    border: '1px solid rgba(0,0,0,0.15)',
-                  }}
-                />
-                <Text size="xs" c="dimmed">
-                  →
-                </Text>
-                <Box
-                  title="Selected color"
-                  style={{
-                    width: 22,
-                    height: 22,
-                    borderRadius: 4,
-                    backgroundColor: tempColor,
-                    border: '2px solid var(--mantine-color-primary, #0e6b66)',
-                  }}
-                />
-              </Group>
-            </Group>
-          </Flex>
+          <Text size="xs" fw={700}>
+            {label}
+          </Text>
 
           <Box className="zyvavu-color-picker-surface" style={{ width: '100%' }}>
             <HexColorPicker
-              color={tempColor}
+              color={currentHex}
               onChange={handlePickerChange}
               style={{ width: '100%', height: 155 }}
             />

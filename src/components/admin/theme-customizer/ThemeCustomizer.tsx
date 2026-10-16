@@ -60,8 +60,15 @@ import {
   calculateContrastRatio,
 } from '@/lib/theme-engine/presets'
 import { CURATED_FONTS, SYSTEM_FONTS, getGoogleFontUrl } from '@/lib/theme-engine/fonts'
-import { generateThemeCss } from '@/lib/theme-engine/styles'
+import {
+  generateThemeCss,
+  normalizeCustomColorPreset,
+  normalizeCustomPresetsStore,
+  normalizeCustomTypographyPreset,
+} from '@/lib/theme-engine/styles'
 import { WixColorPicker } from './WixColorPicker'
+import { ThemeColorPalettePicker } from './ThemeColorPalettePicker'
+import { CoolorsImportModal } from './CoolorsImportModal'
 
 export type ThemeCustomizerProps = {
   themeId?: string
@@ -153,15 +160,33 @@ export function ThemeCustomizer({
   // Theme tokens state
   const [tokens, setTokens] = useState<ThemeTokens>(draftConfig.tokens)
   const [slots, setSlots] = useState<Record<string, Record<string, string>>>(draftConfig.slots || {})
-  const [customPresets, setCustomPresets] = useState<CustomPresetsStore>(initialCustomPresets)
+  const [customPresets, setCustomPresets] = useState<CustomPresetsStore>(() =>
+    normalizeCustomPresetsStore(initialCustomPresets),
+  )
+
+  const validCustomColorPresets = useMemo(
+    () =>
+      (Array.isArray(customPresets?.colors) ? customPresets.colors : [])
+        .map((preset) => normalizeCustomColorPreset(preset))
+        .filter((preset): preset is ColorPreset => preset !== null),
+    [customPresets?.colors],
+  )
+
+  const validCustomTypographyPresets = useMemo(
+    () =>
+      (Array.isArray(customPresets?.typography) ? customPresets.typography : [])
+        .map((preset) => normalizeCustomTypographyPreset(preset))
+        .filter((preset): preset is TypographyPreset => preset !== null),
+    [customPresets?.typography],
+  )
 
   // Status & action state
   const [isSavingDraft, setIsSavingDraft] = useState(false)
   const [isPublishing, setIsPublishing] = useState(false)
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
-  // Custom preset creation inputs
-  const [newColorPresetName, setNewColorPresetName] = useState('')
+  // Custom preset & import state
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false)
   const [newTypoPresetName, setNewTypoPresetName] = useState('')
 
   // Preview iframe state
@@ -333,56 +358,39 @@ export function ThemeCustomizer({
 
   // Preset Selection Handlers
   const handleSelectColorPreset = (preset: ColorPreset) => {
+    const normalized = normalizeCustomColorPreset(preset)
+    if (!normalized) return
     setTokens((prev) => ({
       ...prev,
       colors: {
         ...prev.colors,
-        ...preset.colors,
+        ...normalized.colors,
       },
     }))
-    setFeedback({ type: 'success', message: `Color theme "${preset.name}" applied to draft.` })
+    setFeedback({ type: 'success', message: `Color theme "${normalized.name}" applied to draft.` })
   }
 
   const handleSelectTypographyPreset = (preset: TypographyPreset) => {
+    const normalized = normalizeCustomTypographyPreset(preset)
+    if (!normalized) return
     setTokens((prev) => ({
       ...prev,
       typography: {
         ...prev.typography,
-        ...preset.typography,
+        ...normalized.typography,
       },
     }))
-    setFeedback({ type: 'success', message: `Text theme "${preset.name}" applied to draft.` })
+    setFeedback({ type: 'success', message: `Text theme "${normalized.name}" applied to draft.` })
   }
 
-  // Save Custom Color Preset
-  const handleSaveCustomColorPreset = async () => {
-    if (!newColorPresetName.trim()) return
-    const newPreset: ColorPreset = {
-      id: `color-${Date.now()}`,
-      name: newColorPresetName.trim(),
-      isCustom: true,
-      colors: { ...tokens.colors },
-    }
-
-    try {
-      const res = await fetch('/api/theme-customizer/custom-preset', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'colors', preset: newPreset }),
-      })
-      if (res.ok) {
-        setCustomPresets((prev) => ({
-          ...prev,
-          colors: [...prev.colors, newPreset],
-        }))
-        setNewColorPresetName('')
-        setFeedback({ type: 'success', message: `Saved custom color preset "${newPreset.name}".` })
-      } else {
-        setFeedback({ type: 'error', message: 'Failed to save custom color preset.' })
-      }
-    } catch {
-      setFeedback({ type: 'error', message: 'Failed to save custom color preset.' })
-    }
+  // Handle Imported Color Preset from Coolors
+  const handleImportColorPreset = (newPreset: ColorPreset) => {
+    setCustomPresets((prev) => ({
+      ...prev,
+      colors: [newPreset, ...prev.colors],
+    }))
+    handleSelectColorPreset(newPreset)
+    setFeedback({ type: 'success', message: `Color theme "${newPreset.name}" imported and applied to draft.` })
   }
 
   // Delete Custom Color Preset
@@ -845,9 +853,18 @@ export function ThemeCustomizer({
 
               {/* Basic Colors: 1st = Main Text, 2nd = Primary Brand */}
               <Box>
-                <Text size="xs" fw={700} mb={6}>
-                  Basic Colors
-                </Text>
+                <Group justify="space-between" align="center" mb={6}>
+                  <Text size="xs" fw={700}>
+                    Basic Colors
+                  </Text>
+                  <Badge
+                    size="xs"
+                    color={contrastCheck.isReadable ? 'teal' : 'orange'}
+                    variant={contrastCheck.isReadable ? 'light' : 'filled'}
+                  >
+                    {contrastCheck.ratio}:1 {contrastCheck.isReadable ? 'AA Pass' : 'Low Contrast'}
+                  </Badge>
+                </Group>
                 <Group grow gap="xs" align="stretch">
                   <WixColorPicker
                     variant="basic-swatch"
@@ -864,6 +881,11 @@ export function ThemeCustomizer({
                     onChange={(val) => handleColorChange('primary', val)}
                   />
                 </Group>
+                {!contrastCheck.isReadable && contrastCheck.warning && (
+                  <Alert color="orange" variant="light" p="xs" mt="xs" icon={<AlertTriangle size={14} />}>
+                    <Text size="xs">{contrastCheck.warning}</Text>
+                  </Alert>
+                )}
               </Box>
 
               {/* Shadow Colors: Horizontal three-color strip */}
@@ -924,13 +946,6 @@ export function ThemeCustomizer({
                 </Stack>
               </Box>
 
-              {/* Simple nonintrusive contrast warning (Main Text vs Page Background only) */}
-              {!contrastCheck.isReadable && contrastCheck.warning && (
-                <Alert color="orange" p="xs" icon={<AlertTriangle size={14} />}>
-                  <Text size="xs">{contrastCheck.warning}</Text>
-                </Alert>
-              )}
-
               <Divider />
 
               {/* Advanced Settings entry */}
@@ -979,57 +994,97 @@ export function ThemeCustomizer({
             <Stack gap="md">
               <Box>
                 <Text size="xs" c="dimmed" mb="xs">
-                  Select a ready-made palette to update your theme colors.
+                  Select a ready-made palette or import from Coolors to update your theme colors.
+                </Text>
+
+                {/* Import Palette Action Button */}
+                <Button
+                  variant="light"
+                  color="teal"
+                  size="sm"
+                  fullWidth
+                  leftSection={<Sparkles size={15} />}
+                  onClick={() => setIsImportModalOpen(true)}
+                  mb="md"
+                >
+                  Import Palette from Coolors
+                </Button>
+
+                <Text size="xs" fw={700} style={{ textTransform: 'uppercase' }} mb={8}>
+                  Built-in Palettes
                 </Text>
                 <Stack gap="xs">
                   {BUILTIN_COLOR_PRESETS.map((preset) => {
                     const isSelected =
-                      tokens.colors.primary.toLowerCase() === preset.colors.primary.toLowerCase() &&
-                      tokens.colors.background.toLowerCase() === preset.colors.background.toLowerCase() &&
-                      (tokens.colors.accent || '').toLowerCase() === (preset.colors.accent || '').toLowerCase()
+                      (tokens.colors.primary || '').toLowerCase() === (preset.colors?.primary || '').toLowerCase() &&
+                      (tokens.colors.background || '').toLowerCase() ===
+                        (preset.colors?.background || '').toLowerCase() &&
+                      (tokens.colors.accent || '').toLowerCase() === (preset.colors?.accent || '').toLowerCase()
+
+                    const primary = preset.colors?.primary || '#0e6b66'
+                    const accent = preset.colors?.accent || preset.colors?.primary || '#2ec4b6'
+                    const surface = preset.colors?.surface || preset.colors?.background || '#f8fafc'
+                    const background = preset.colors?.background || '#ffffff'
+                    const text = preset.colors?.text || '#17201f'
 
                     return (
                       <Card
                         key={preset.id}
                         withBorder
-                        padding="xs"
+                        padding={0}
                         radius="sm"
                         role="button"
                         tabIndex={0}
                         style={{
                           cursor: 'pointer',
+                          overflow: 'hidden',
                           borderColor: isSelected ? 'var(--mantine-color-primary, #0e6b66)' : undefined,
                           borderWidth: isSelected ? 2 : 1,
+                          boxShadow: isSelected ? '0 0 0 1px var(--mantine-color-primary, #0e6b66)' : undefined,
+                          transition: 'transform 0.1s ease, border-color 0.15s ease',
                         }}
                         onClick={() => handleSelectColorPreset(preset)}
                         onKeyDown={(e) => handleCardKeyDown(e, () => handleSelectColorPreset(preset))}
                       >
-                        <Flex align="center" justify="space-between" mb={6}>
-                          <Text size="xs" fw={600}>
-                            {preset.name}
-                          </Text>
-                          {isSelected && <Check size={14} color="var(--mantine-color-primary, #0e6b66)" />}
-                        </Flex>
-                        <Group gap={6}>
-                          {[
-                            preset.colors.text,
-                            preset.colors.primary,
-                            preset.colors.accent || preset.colors.primary,
-                            preset.colors.background,
-                            preset.colors.surface,
-                          ].map((c, i) => (
+                        {/* Color Hunt style stacked color strips */}
+                        <Box style={{ width: '100%', display: 'flex', flexDirection: 'column' }}>
+                          <Box style={{ height: 38, backgroundColor: primary }} />
+                          <Box style={{ height: 26, backgroundColor: accent }} />
+                          <Box style={{ height: 20, backgroundColor: surface }} />
+                          <Box style={{ height: 18, backgroundColor: background }} />
+                        </Box>
+
+                        {/* Subtle Card Footer */}
+                        <Flex
+                          align="center"
+                          justify="space-between"
+                          px="xs"
+                          py={6}
+                          style={{ background: 'var(--mantine-color-body, #ffffff)' }}
+                        >
+                          <Group gap={6} style={{ minWidth: 0, flex: 1 }}>
                             <Box
-                              key={i}
                               style={{
-                                width: 24,
-                                height: 24,
-                                borderRadius: 6,
-                                background: c,
-                                border: '1px solid rgba(0,0,0,0.12)',
+                                width: 10,
+                                height: 10,
+                                borderRadius: '50%',
+                                backgroundColor: text,
+                                border: '1px solid rgba(0,0,0,0.15)',
+                                flexShrink: 0,
                               }}
                             />
-                          ))}
-                        </Group>
+                            <Text
+                              size="xs"
+                              fw={500}
+                              truncate
+                              c={isSelected ? 'teal' : 'dimmed'}
+                              style={{ fontSize: 11 }}
+                            >
+                              {preset.name}
+                            </Text>
+                          </Group>
+                          {isSelected && <Check size={14} color="var(--mantine-color-primary, #0e6b66)" strokeWidth={2.5} />}
+                        </Flex>
                       </Card>
                     )
                   })}
@@ -1038,98 +1093,103 @@ export function ThemeCustomizer({
 
               <Divider />
 
-              {/* Custom User Color Presets */}
+              {/* Custom / Imported Palettes */}
               <Box>
-                <Text size="xs" fw={700} style={{ textTransform: 'uppercase' }} mb={6}>
-                  My Saved Palettes
+                <Text size="xs" fw={700} style={{ textTransform: 'uppercase' }} mb={8}>
+                  Imported Palettes
                 </Text>
-                <Group gap="xs" mb="xs">
-                  <TextInput
-                    size="xs"
-                    placeholder="New palette name..."
-                    value={newColorPresetName}
-                    onChange={(e) => setNewColorPresetName(e.currentTarget.value)}
-                    style={{ flex: 1 }}
-                  />
-                  <Button
-                    size="xs"
-                    variant="light"
-                    leftSection={<Plus size={12} />}
-                    onClick={handleSaveCustomColorPreset}
-                    disabled={!newColorPresetName.trim()}
-                  >
-                    Save
-                  </Button>
-                </Group>
 
-                {customPresets.colors.length === 0 ? (
+                {validCustomColorPresets.length === 0 ? (
                   <Text size="xs" c="dimmed">
-                    No custom palettes saved yet.
+                    No custom palettes imported yet. Click &quot;Import Palette from Coolors&quot; above to import your first CSV palette.
                   </Text>
                 ) : (
                   <Stack gap="xs">
-                    {customPresets.colors.map((preset) => {
+                    {validCustomColorPresets.map((preset) => {
                       const isSelected =
-                        tokens.colors.primary.toLowerCase() === preset.colors.primary.toLowerCase() &&
-                        tokens.colors.background.toLowerCase() === preset.colors.background.toLowerCase()
+                        (tokens.colors.primary || '').toLowerCase() ===
+                          (preset.colors?.primary || '').toLowerCase() &&
+                        (tokens.colors.background || '').toLowerCase() ===
+                          (preset.colors?.background || '').toLowerCase()
+
+                      const primary = preset.colors?.primary || '#0e6b66'
+                      const accent = preset.colors?.accent || preset.colors?.primary || '#2ec4b6'
+                      const surface = preset.colors?.surface || preset.colors?.background || '#f8fafc'
+                      const background = preset.colors?.background || '#ffffff'
+                      const text = preset.colors?.text || '#17201f'
 
                       return (
                         <Card
                           key={preset.id}
                           withBorder
-                          padding="xs"
+                          padding={0}
                           radius="sm"
+                          role="button"
+                          tabIndex={0}
                           style={{
+                            cursor: 'pointer',
+                            overflow: 'hidden',
                             borderColor: isSelected ? 'var(--mantine-color-primary, #0e6b66)' : undefined,
                             borderWidth: isSelected ? 2 : 1,
+                            boxShadow: isSelected ? '0 0 0 1px var(--mantine-color-primary, #0e6b66)' : undefined,
+                            transition: 'transform 0.1s ease, border-color 0.15s ease',
                           }}
+                          onClick={() => handleSelectColorPreset(preset)}
+                          onKeyDown={(e) => handleCardKeyDown(e, () => handleSelectColorPreset(preset))}
                         >
-                          <Flex align="center" justify="space-between" mb={6}>
-                            <Group gap={6}>
-                              <Text size="xs" fw={600}>
+                          {/* Color Hunt style stacked color strips */}
+                          <Box style={{ width: '100%', display: 'flex', flexDirection: 'column' }}>
+                            <Box style={{ height: 38, backgroundColor: primary }} />
+                            <Box style={{ height: 26, backgroundColor: accent }} />
+                            <Box style={{ height: 20, backgroundColor: surface }} />
+                            <Box style={{ height: 18, backgroundColor: background }} />
+                          </Box>
+
+                          {/* Subtle Card Footer */}
+                          <Flex
+                            align="center"
+                            justify="space-between"
+                            px="xs"
+                            py={6}
+                            style={{ background: 'var(--mantine-color-body, #ffffff)' }}
+                          >
+                            <Group gap={6} style={{ minWidth: 0, flex: 1 }}>
+                              <Box
+                                style={{
+                                  width: 10,
+                                  height: 10,
+                                  borderRadius: '50%',
+                                  backgroundColor: text,
+                                  border: '1px solid rgba(0,0,0,0.15)',
+                                  flexShrink: 0,
+                                }}
+                              />
+                              <Text
+                                size="xs"
+                                fw={500}
+                                truncate
+                                c={isSelected ? 'teal' : 'dimmed'}
+                                style={{ fontSize: 11 }}
+                              >
                                 {preset.name}
                               </Text>
-                              {isSelected && <Check size={14} color="var(--mantine-color-primary, #0e6b66)" />}
                             </Group>
-                            <Group gap={4}>
-                              <Button
-                                size="compact-xs"
-                                variant="subtle"
-                                onClick={() => handleSelectColorPreset(preset)}
-                              >
-                                Apply
-                              </Button>
+                            <Group gap={4} wrap="nowrap">
+                              {isSelected && <Check size={14} color="var(--mantine-color-primary, #0e6b66)" strokeWidth={2.5} />}
                               <ActionIcon
                                 size="xs"
                                 color="red"
                                 variant="subtle"
                                 aria-label={`Delete ${preset.name}`}
-                                onClick={() => handleDeleteCustomColorPreset(preset.id)}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleDeleteCustomColorPreset(preset.id)
+                                }}
                               >
                                 <Trash2 size={12} />
                               </ActionIcon>
                             </Group>
                           </Flex>
-                          <Group gap={6}>
-                            {[
-                              preset.colors.text,
-                              preset.colors.primary,
-                              preset.colors.accent || preset.colors.primary,
-                              preset.colors.background,
-                              preset.colors.surface,
-                            ].map((c, i) => (
-                              <Box
-                                key={i}
-                                style={{
-                                  width: 20,
-                                  height: 20,
-                                  borderRadius: 4,
-                                  background: c,
-                                  border: '1px solid rgba(0,0,0,0.12)',
-                                }}
-                              />
-                            ))}
-                          </Group>
                         </Card>
                       )
                     })}
@@ -1390,16 +1450,16 @@ export function ThemeCustomizer({
                   </Button>
                 </Group>
 
-                {customPresets.typography.length === 0 ? (
+                {validCustomTypographyPresets.length === 0 ? (
                   <Text size="xs" c="dimmed">
                     No custom text themes saved yet.
                   </Text>
                 ) : (
                   <Stack gap="xs">
-                    {customPresets.typography.map((preset) => {
+                    {validCustomTypographyPresets.map((preset) => {
                       const isSelected =
-                        tokens.typography.fontFamily === preset.typography.fontFamily &&
-                        tokens.typography.fontFamilyHeading === preset.typography.fontFamilyHeading
+                        tokens.typography?.fontFamily === preset.typography?.fontFamily &&
+                        tokens.typography?.fontFamilyHeading === preset.typography?.fontFamilyHeading
 
                       return (
                         <Card
@@ -1447,7 +1507,7 @@ export function ThemeCustomizer({
                           >
                             <div
                               style={{
-                                fontFamily: preset.typography.fontFamilyHeading,
+                                fontFamily: preset.typography?.fontFamilyHeading || preset.typography?.fontFamily,
                                 fontSize: 14,
                                 fontWeight: 700,
                                 lineHeight: 1.25,
@@ -1457,7 +1517,7 @@ export function ThemeCustomizer({
                             </div>
                             <div
                               style={{
-                                fontFamily: preset.typography.fontFamily,
+                                fontFamily: preset.typography?.fontFamily,
                                 fontSize: 11,
                                 color: '#555',
                               }}
@@ -1867,22 +1927,121 @@ export function ThemeCustomizer({
 
           {/* LAYER 3: PAGE BACKGROUND & LAYOUT -> PAGE BACKGROUND */}
           {activePanel === 'background' && activeSubPanel === 'page-bg' && (
-            <Stack gap="sm">
+            <Stack gap="md">
               <Text size="xs" c="dimmed">
-                Choose the background colors for your website pages and content blocks.
+                Choose background colors for your website pages and content blocks.
               </Text>
-              <WixColorPicker
-                label="Page Background"
-                description="Overall website background color"
-                value={tokens.colors.background}
-                onChange={(val) => handleColorChange('background', val)}
-              />
-              <WixColorPicker
-                label="Surface Background"
-                description="Background for cards, headers and highlighted sections"
-                value={tokens.colors.surface}
-                onChange={(val) => handleColorChange('surface', val)}
-              />
+
+              {/* Page Background */}
+              <Paper withBorder p="xs" radius="sm">
+                <Stack gap="xs">
+                  <Group justify="space-between" align="center">
+                    <div>
+                      <Text size="xs" fw={700}>
+                        Page Background
+                      </Text>
+                      <Text size="xs" c="dimmed" style={{ fontSize: 11 }}>
+                        Main backdrop across all website pages
+                      </Text>
+                    </div>
+                    <Box
+                      style={{
+                        width: 20,
+                        height: 20,
+                        borderRadius: 4,
+                        backgroundColor: tokens.colors.background,
+                        border: '1px solid rgba(0,0,0,0.2)',
+                      }}
+                    />
+                  </Group>
+
+                  {/* Theme Color Palette Quick-Select */}
+                  <Box mt={2}>
+                    <Text size="xs" fw={600} mb={4} style={{ fontSize: 11 }}>
+                      Theme Colors:
+                    </Text>
+                    <ThemeColorPalettePicker
+                      tokens={tokens}
+                      value={tokens.colors.background}
+                      onChange={(val) => handleColorChange('background', val)}
+                    />
+                  </Box>
+
+                  {/* Advanced custom picker */}
+                  <WixColorPicker
+                    label="Custom Page Color"
+                    description="Adjust hue, saturation and brightness"
+                    value={tokens.colors.background}
+                    onChange={(val) => handleColorChange('background', val)}
+                  />
+                </Stack>
+              </Paper>
+
+              {/* Surface Background */}
+              <Paper withBorder p="xs" radius="sm">
+                <Stack gap="xs">
+                  <Group justify="space-between" align="center">
+                    <div>
+                      <Text size="xs" fw={700}>
+                        Surface Background
+                      </Text>
+                      <Text size="xs" c="dimmed" style={{ fontSize: 11 }}>
+                        Cards, header blocks and elevated content sections
+                      </Text>
+                    </div>
+                    <Box
+                      style={{
+                        width: 20,
+                        height: 20,
+                        borderRadius: 4,
+                        backgroundColor: tokens.colors.surface,
+                        border: '1px solid rgba(0,0,0,0.2)',
+                      }}
+                    />
+                  </Group>
+
+                  {/* Theme Color Palette Quick-Select */}
+                  <Box mt={2}>
+                    <Text size="xs" fw={600} mb={4} style={{ fontSize: 11 }}>
+                      Theme Colors:
+                    </Text>
+                    <ThemeColorPalettePicker
+                      tokens={tokens}
+                      value={tokens.colors.surface}
+                      onChange={(val) => handleColorChange('surface', val)}
+                    />
+                  </Box>
+
+                  {/* Advanced custom picker */}
+                  <WixColorPicker
+                    label="Custom Surface Color"
+                    description="Adjust hue, saturation and brightness"
+                    value={tokens.colors.surface}
+                    onChange={(val) => handleColorChange('surface', val)}
+                  />
+                </Stack>
+              </Paper>
+
+              {/* Live Contrast Verification for Text vs Background */}
+              <Paper withBorder p="xs" radius="sm">
+                <Group justify="space-between" align="center">
+                  <Text size="xs" fw={600}>
+                    Text vs Background Contrast:
+                  </Text>
+                  <Badge
+                    size="xs"
+                    color={contrastCheck.isReadable ? 'teal' : 'orange'}
+                    variant={contrastCheck.isReadable ? 'light' : 'filled'}
+                  >
+                    {contrastCheck.ratio}:1 {contrastCheck.isReadable ? 'AA Pass' : 'Low Contrast'}
+                  </Badge>
+                </Group>
+                {!contrastCheck.isReadable && contrastCheck.warning && (
+                  <Alert color="orange" variant="light" p="xs" mt="xs" icon={<AlertTriangle size={14} />}>
+                    <Text size="xs">{contrastCheck.warning}</Text>
+                  </Alert>
+                )}
+              </Paper>
             </Stack>
           )}
 
@@ -2253,6 +2412,14 @@ export function ThemeCustomizer({
           </Paper>
         </Box>
       </Box>
+
+      {/* Coolors CSV Import Modal */}
+      <CoolorsImportModal
+        opened={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        currentTokens={tokens}
+        onImportSuccess={handleImportColorPreset}
+      />
     </Box>
   )
 }

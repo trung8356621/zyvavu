@@ -5,7 +5,7 @@ import type {
   ThemeTokens,
   TypographyPreset,
 } from './types'
-import { validateThemeTokens } from './presets'
+import { validateColorString, validateThemeTokens } from './presets'
 import {
   DEFAULT_THEME_ID,
   getInstalledTheme,
@@ -238,6 +238,129 @@ export async function resolveDraftThemeConfig(
   return resolveActiveThemeConfig(payload, targetTheme)
 }
 
+const COLOR_TOKEN_KEYS = [
+  'primary',
+  'primaryHover',
+  'background',
+  'surface',
+  'text',
+  'textMuted',
+  'border',
+  'accent',
+  'shadowSoft',
+  'shadowMedium',
+  'shadowStrong',
+  'headerBackground',
+  'headerText',
+  'headerBorder',
+] as const
+
+/**
+ * Normalizes a raw custom color preset record (supporting both nested `colors`
+ * and legacy flat color properties) without inventing arbitrary fallback colors.
+ * Returns null if the record is malformed or lacks required color fields.
+ */
+export function normalizeCustomColorPreset(raw: unknown, index = 0): ColorPreset | null {
+  if (!raw || typeof raw !== 'object') return null
+  const obj = raw as Record<string, any>
+  const name = typeof obj.name === 'string' ? obj.name.trim() : ''
+  if (!name) return null
+
+  const sourceColors: Record<string, any> =
+    obj.colors && typeof obj.colors === 'object' && !Array.isArray(obj.colors)
+      ? obj.colors
+      : obj
+
+  const extracted: Record<string, string> = {}
+  for (const key of COLOR_TOKEN_KEYS) {
+    const val = sourceColors[key]
+    if (typeof val === 'string' && validateColorString(val)) {
+      extracted[key] = val.trim()
+    }
+  }
+
+  // Support legacy `secondary` key mapped to `accent` if `accent` is absent
+  if (!extracted.accent && typeof sourceColors.secondary === 'string' && validateColorString(sourceColors.secondary)) {
+    extracted.accent = sourceColors.secondary.trim()
+  }
+
+  // Require core colors (primary, background, text) to be present and valid
+  if (!extracted.primary || !extracted.background || !extracted.text) {
+    return null
+  }
+
+  const normalizedColors: ThemeTokens['colors'] = {
+    ...extracted,
+    primary: extracted.primary,
+    background: extracted.background,
+    surface: extracted.surface || extracted.background,
+    text: extracted.text,
+    border: extracted.border || extracted.surface || extracted.background,
+  }
+
+  return {
+    id: typeof obj.id === 'string' && obj.id.trim() ? obj.id.trim() : `custom-color-${index}`,
+    name,
+    ...(typeof obj.description === 'string' ? { description: obj.description } : {}),
+    isCustom: true,
+    colors: normalizedColors,
+  }
+}
+
+/**
+ * Normalizes a raw custom typography preset record.
+ * Returns null if the record is malformed or lacks a valid fontFamily.
+ */
+export function normalizeCustomTypographyPreset(raw: unknown, index = 0): TypographyPreset | null {
+  if (!raw || typeof raw !== 'object') return null
+  const obj = raw as Record<string, any>
+  const name = typeof obj.name === 'string' ? obj.name.trim() : ''
+  if (!name) return null
+
+  const sourceTypo: Record<string, any> =
+    obj.typography && typeof obj.typography === 'object' && !Array.isArray(obj.typography)
+      ? obj.typography
+      : obj
+
+  const fontFamily = typeof sourceTypo.fontFamily === 'string' ? sourceTypo.fontFamily.trim() : ''
+  if (!fontFamily || /[<>{}\\\/`$]/.test(fontFamily)) {
+    return null
+  }
+
+  return {
+    id: typeof obj.id === 'string' && obj.id.trim() ? obj.id.trim() : `custom-typo-${index}`,
+    name,
+    ...(typeof obj.description === 'string' ? { description: obj.description } : {}),
+    isCustom: true,
+    typography: {
+      ...sourceTypo,
+      fontFamily,
+      fontFamilyHeading:
+        typeof sourceTypo.fontFamilyHeading === 'string' && sourceTypo.fontFamilyHeading.trim()
+          ? sourceTypo.fontFamilyHeading.trim()
+          : fontFamily,
+    },
+  }
+}
+
+export function normalizeCustomPresetsStore(raw: unknown): CustomPresetsStore {
+  if (!raw || typeof raw !== 'object') {
+    return { colors: [], typography: [] }
+  }
+  const obj = raw as Record<string, any>
+  const rawColors = Array.isArray(obj.colors) ? obj.colors : []
+  const rawTypo = Array.isArray(obj.typography) ? obj.typography : []
+
+  return {
+    colors: rawColors
+      .map((item, idx) => normalizeCustomColorPreset(item, idx))
+      .filter((item): item is ColorPreset => item !== null),
+    typography: rawTypo
+      .map((item, idx) => normalizeCustomTypographyPreset(item, idx))
+      .filter((item): item is TypographyPreset => item !== null),
+  }
+}
+
 /**
  * Resolves saved custom user presets from storage.
  * User presets are site-wide and available across all themes.
@@ -257,10 +380,7 @@ export async function resolveCustomPresets(payload?: any): Promise<CustomPresets
 
     const presets = (settings as any)?.themeCustomPresets as CustomPresetsStore | undefined
     if (presets && typeof presets === 'object') {
-      return {
-        colors: Array.isArray(presets.colors) ? presets.colors : [],
-        typography: Array.isArray(presets.typography) ? presets.typography : [],
-      }
+      return normalizeCustomPresetsStore(presets)
     }
 
     // 2. Fallback to legacy payload-preferences
@@ -275,10 +395,7 @@ export async function resolveCustomPresets(payload?: any): Promise<CustomPresets
 
     const val = pref?.docs?.[0]?.value as CustomPresetsStore | undefined
     if (val && typeof val === 'object') {
-      return {
-        colors: Array.isArray(val.colors) ? val.colors : [],
-        typography: Array.isArray(val.typography) ? val.typography : [],
-      }
+      return normalizeCustomPresetsStore(val)
     }
   } catch {
     // safe fallback
@@ -367,21 +484,29 @@ export async function saveCustomPreset(
   }
 
   const id = preset.id || `custom-${Date.now()}`
-  const entry = { ...preset, id, isCustom: true }
+  const rawEntry = { ...preset, id, isCustom: true }
 
   if (type === 'colors') {
-    const idx = store.colors.findIndex((p) => p.id === id)
+    const normalized = normalizeCustomColorPreset(rawEntry, store.colors.length)
+    if (!normalized) {
+      return { success: false, errors: ['Invalid color preset data.'] }
+    }
+    const idx = store.colors.findIndex((p) => p.id === normalized.id)
     if (idx >= 0) {
-      store.colors[idx] = entry as ColorPreset
+      store.colors[idx] = normalized
     } else {
-      store.colors.push(entry as ColorPreset)
+      store.colors.push(normalized)
     }
   } else {
-    const idx = store.typography.findIndex((p) => p.id === id)
+    const normalized = normalizeCustomTypographyPreset(rawEntry, store.typography.length)
+    if (!normalized) {
+      return { success: false, errors: ['Invalid typography preset data.'] }
+    }
+    const idx = store.typography.findIndex((p) => p.id === normalized.id)
     if (idx >= 0) {
-      store.typography[idx] = entry as TypographyPreset
+      store.typography[idx] = normalized
     } else {
-      store.typography.push(entry as TypographyPreset)
+      store.typography.push(normalized)
     }
   }
 
@@ -416,6 +541,16 @@ export async function deleteCustomPreset(
   }
 
   try {
+    await payload
+      .updateGlobal({
+        slug: 'settings',
+        data: {
+          themeCustomPresets: store,
+        },
+        overrideAccess: true,
+      })
+      .catch(() => null)
+
     const existing = await payload
       .find({
         collection: 'payload-preferences',
@@ -430,12 +565,6 @@ export async function deleteCustomPreset(
         collection: 'payload-preferences',
         id: existing.docs[0].id,
         data: { value: store },
-        overrideAccess: true,
-      })
-    } else {
-      await payload.create({
-        collection: 'payload-preferences',
-        data: { key: THEME_CUSTOM_PRESETS_KEY, value: store },
         overrideAccess: true,
       })
     }

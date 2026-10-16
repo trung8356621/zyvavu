@@ -2,7 +2,8 @@ import { notFound, permanentRedirect } from 'next/navigation'
 import { getPayload } from 'payload'
 import React from 'react'
 
-import { attachCanonicalUrls, resolvePublicPath } from '@/lib/url/registry'
+import { buildEntityGraph, resolveSeoPageContext, SeoJsonLd } from '@/lib/seo'
+import { attachCanonicalUrls } from '@/lib/url/registry'
 import config from '@/payload.config'
 import { ThemeRenderer, resolveThemeTemplate } from '@/lib/theme-engine'
 
@@ -16,48 +17,43 @@ export async function PublicDocument({
   missing?: React.ReactNode
 }) {
   const payload = await getPayload({ config })
-  const resolved = await resolvePublicPath(payload, path)
-  if (!resolved) {
+  const seoContext = await resolveSeoPageContext(payload, path)
+
+  if (seoContext.status === 'not_found') {
     if (missing) return missing
     notFound()
   }
-  if (resolved.kind === 'redirect') permanentRedirect(resolved.target)
 
-  if (resolved.resourceType === 'page') {
-    const page = await payload.findByID({
-      collection: 'pages',
-      id: resolved.id,
-      depth: 2,
-      draft: false,
-      overrideAccess: true,
-      disableErrors: true,
-    })
-    if (!page || page._status !== 'published' || page.visibility !== 'public') notFound()
+  if (seoContext.status === 'redirect' && seoContext.redirectTarget) {
+    permanentRedirect(seoContext.redirectTarget)
+  }
+
+  const graph = buildEntityGraph(seoContext)
+
+  if (seoContext.resourceType === 'page' || (seoContext.resourceType === 'home' && seoContext.page)) {
+    const page = seoContext.document
+    if (!page) notFound()
 
     const templateDoc = await resolveThemeTemplate(payload, 'page')
     return (
-      <ThemeRenderer
-        document={templateDoc}
-        dataContext={{
-          type: 'page',
-          document: page,
-        }}
-      />
+      <>
+        <SeoJsonLd graph={graph} />
+        <ThemeRenderer
+          document={templateDoc}
+          dataContext={{
+            type: 'page',
+            document: page,
+          }}
+        />
+      </>
     )
   }
 
-  if (resolved.resourceType === 'category' || resolved.resourceType === 'tag') {
-    const collectionSlug = resolved.resourceType === 'category' ? 'categories' : 'tags'
-    const term = await payload.findByID({
-      collection: collectionSlug,
-      id: resolved.id,
-      depth: 1,
-      overrideAccess: true,
-      disableErrors: true,
-    })
+  if (seoContext.resourceType === 'category' || seoContext.resourceType === 'tag') {
+    const term = seoContext.document as { id: number; title: string; slug: string } | undefined
     if (!term || !term.slug) notFound()
 
-    const relationField = resolved.resourceType === 'category' ? 'categories' : 'tags'
+    const relationField = seoContext.resourceType === 'category' ? 'categories' : 'tags'
     const postsResult = await payload.find({
       collection: 'posts',
       where: {
@@ -77,42 +73,41 @@ export async function PublicDocument({
     const templateDoc = await resolveThemeTemplate(payload, 'category')
 
     return (
-      <ThemeRenderer
-        document={templateDoc}
-        dataContext={{
-          type: 'category',
-          document: term,
-          archive: {
-            taxonomyType: resolved.resourceType,
-            title: term.title,
-            posts: postsWithCanonical,
-            total: postsResult.totalDocs,
-            page: postsResult.page || 1,
-            totalPages: postsResult.totalPages || 1,
-          },
-        }}
-      />
+      <>
+        <SeoJsonLd graph={graph} />
+        <ThemeRenderer
+          document={templateDoc}
+          dataContext={{
+            type: 'category',
+            document: term,
+            archive: {
+              taxonomyType: seoContext.resourceType,
+              title: term.title,
+              posts: postsWithCanonical,
+              total: postsResult.totalDocs,
+              page: postsResult.page || 1,
+              totalPages: postsResult.totalPages || 1,
+            },
+          }}
+        />
+      </>
     )
   }
 
-  const post = await payload.findByID({
-    collection: 'posts',
-    id: resolved.id,
-    depth: 2,
-    draft: false,
-    overrideAccess: true,
-    disableErrors: true,
-  })
-  if (!post || post._status !== 'published') notFound()
+  const post = seoContext.document
+  if (!post) notFound()
 
   const templateDoc = await resolveThemeTemplate(payload, 'single')
   return (
-    <ThemeRenderer
-      document={templateDoc}
-      dataContext={{
-        type: 'single',
-        document: post,
-      }}
-    />
+    <>
+      <SeoJsonLd graph={graph} />
+      <ThemeRenderer
+        document={templateDoc}
+        dataContext={{
+          type: 'single',
+          document: post,
+        }}
+      />
+    </>
   )
 }

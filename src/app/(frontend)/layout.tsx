@@ -5,6 +5,7 @@ import { cookies, headers } from 'next/headers'
 
 import { RegisterServiceWorker } from '@/components/frontend/RegisterServiceWorker'
 import { SiteHeader } from '@/components/frontend/SiteHeader'
+import { buildRootLayoutMetadata } from '@/lib/seo'
 import { loadPublicSiteSettings } from '@/lib/site/settings'
 import { linksForMenu, resolveMenuHierarchy } from '@/lib/url/menu-links'
 import config from '@/payload.config'
@@ -27,15 +28,7 @@ import './styles.css'
 export async function generateMetadata() {
   const payload = await getPayload({ config })
   const settings = await loadPublicSiteSettings(payload)
-  return {
-    description: settings.tagline || settings.siteName,
-    title: settings.siteName,
-    metadataBase: new URL(settings.siteUrl),
-    manifest: settings.pwaEnabled ? '/manifest.webmanifest' : undefined,
-    icons: {
-      icon: settings.faviconUrl || '/icon.png',
-    },
-  }
+  return buildRootLayoutMetadata(settings)
 }
 
 export default async function RootLayout(props: { children: React.ReactNode }) {

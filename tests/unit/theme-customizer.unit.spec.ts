@@ -19,6 +19,8 @@ import {
   generateThemeCss,
   getActiveThemeConfig,
   mergeThemeConfig,
+  normalizeCustomColorPreset,
+  normalizeCustomPresetsStore,
 } from '@/lib/theme-engine/styles'
 import type { ThemeConfig, ThemeTokens } from '@/lib/theme-engine/types'
 
@@ -259,4 +261,143 @@ describe('Theme Style Customizer — CSS Generation & Live Preview Sync', () => 
     expect(css).not.toContain('<script')
     expect(css).not.toContain('</style')
   })
+
+  it('normalizes legacy flat custom presets and skips malformed records without crashing', () => {
+    const legacyFlatPreset = {
+      id: 'test-preset-1',
+      name: 'Custom Test Palette',
+      primary: '#112233',
+      secondary: '#445566',
+      surface: '#ffffff',
+      background: '#f8f9fa',
+      text: '#111827',
+    }
+
+    const normalizedLegacy = normalizeCustomColorPreset(legacyFlatPreset)
+    expect(normalizedLegacy).not.toBeNull()
+    expect(normalizedLegacy?.colors.primary).toBe('#112233')
+    expect(normalizedLegacy?.colors.accent).toBe('#445566')
+    expect(normalizedLegacy?.colors.background).toBe('#f8f9fa')
+    expect(normalizedLegacy?.colors.text).toBe('#111827')
+
+    // Malformed / incomplete preset returns null instead of crashing or inventing colors
+    expect(normalizeCustomColorPreset({ id: 'broken', name: 'Broken' })).toBeNull()
+    expect(normalizeCustomColorPreset(null)).toBeNull()
+
+    const store = normalizeCustomPresetsStore({
+      colors: [
+        legacyFlatPreset,
+        { id: 'broken', name: 'Broken' },
+        {
+          id: 'valid-nested',
+          name: 'Valid Nested',
+          colors: {
+            primary: '#0e6b66',
+            background: '#ffffff',
+            surface: '#f8faf9',
+            text: '#17201f',
+            border: '#dfe5e2',
+          },
+        },
+      ],
+      typography: [{ id: 'bad-typo', name: 'Missing Typography' }],
+    })
+
+    expect(store.colors).toHaveLength(2)
+    expect(store.colors[0].colors.primary).toBe('#112233')
+    expect(store.colors[1].colors.primary).toBe('#0e6b66')
+    expect(store.typography).toHaveLength(0)
+  })
+
+  it('returns 1:1 contrast ratio and warning when text and background colors are identical', () => {
+    const identical = calculateContrastRatio('#2563eb', '#2563eb')
+    expect(identical.ratio).toBe(1)
+    expect(identical.isReadable).toBe(false)
+    expect(identical.warning).toBeDefined()
+    expect(identical.warning).toContain('1:1')
+  })
 })
+
+describe('Theme Style Customizer — Coolors CSV Import & Mapping Engine', () => {
+  it('parses valid 5-color CSV strings with or without hash prefixes and extra spaces', async () => {
+    const { parseCoolorsCsv } = await import('@/lib/theme-engine/coolors')
+
+    // Standard Coolors CSV format: 93827f,f3f9d2,bdc4a7,2f2f2f,92b4a7
+    const result1 = parseCoolorsCsv('93827f,f3f9d2,bdc4a7,2f2f2f,92b4a7')
+    expect(result1.success).toBe(true)
+    expect(result1.colors).toEqual(['#93827f', '#f3f9d2', '#bdc4a7', '#2f2f2f', '#92b4a7'])
+
+    // With '#' prefixes and variable whitespace
+    const result2 = parseCoolorsCsv(' #93827f, #f3f9d2 ,  #bdc4a7, #2f2f2f , #92b4a7 ')
+    expect(result2.success).toBe(true)
+    expect(result2.colors).toEqual(['#93827f', '#f3f9d2', '#bdc4a7', '#2f2f2f', '#92b4a7'])
+
+    // 3-digit hex values expanded correctly
+    const result3 = parseCoolorsCsv('fff,000,abc,123,fed')
+    expect(result3.success).toBe(true)
+    expect(result3.colors).toEqual(['#ffffff', '#000000', '#aabbcc', '#112233', '#ffeedd'])
+  })
+
+  it('rejects malformed CSV inputs gracefully without crashing', async () => {
+    const { parseCoolorsCsv } = await import('@/lib/theme-engine/coolors')
+
+    // Empty or non-string
+    expect(parseCoolorsCsv('').success).toBe(false)
+    expect(parseCoolorsCsv('   ').success).toBe(false)
+
+    // Incorrect count (< 5 or > 5)
+    expect(parseCoolorsCsv('112233,445566,778899').success).toBe(false)
+    expect(parseCoolorsCsv('112233,445566,778899,aabbcc,ddeeff,001122').success).toBe(false)
+
+    // Malformed hex characters
+    const malformed = parseCoolorsCsv('93827f,f3f9d2,nothex,2f2f2f,92b4a7')
+    expect(malformed.success).toBe(false)
+    expect(malformed.error).toContain('Invalid HEX color')
+  })
+
+  it('deterministically maps 5 colors prioritizing highest contrast for text and background', async () => {
+    const { mapCoolorsPalette } = await import('@/lib/theme-engine/coolors')
+
+    // Input palette with dark (#2f2f2f) and light (#f3f9d2)
+    const fiveColors = ['#93827f', '#f3f9d2', '#bdc4a7', '#2f2f2f', '#92b4a7']
+    const existingTokens = {
+      colors: {
+        shadowSoft: '#custom-soft',
+        shadowMedium: '#custom-medium',
+        shadowStrong: '#custom-strong',
+      },
+    } as any
+
+    const mapped = mapCoolorsPalette(fiveColors, existingTokens)
+
+    // Text and background must be the highest contrast pair
+    expect(mapped.colors.text).toBe('#2f2f2f')
+    expect(mapped.colors.background).toBe('#f3f9d2')
+    expect(mapped.isReadable).toBe(true)
+    expect(mapped.contrastRatio).toBeGreaterThanOrEqual(4.5)
+
+    // Primary and accent should be mapped from the remaining colors
+    expect(mapped.colors.primary).toBeTruthy()
+    expect(mapped.colors.accent).toBeTruthy()
+    expect(mapped.colors.surface).toBeTruthy()
+
+    // Existing shadow tokens must be preserved
+    expect(mapped.colors.shadowSoft).toBe('#custom-soft')
+    expect(mapped.colors.shadowMedium).toBe('#custom-medium')
+    expect(mapped.colors.shadowStrong).toBe('#custom-strong')
+  })
+
+  it('detects low contrast combinations across all 10 pairs and sets isReadable=false', async () => {
+    const { mapCoolorsPalette } = await import('@/lib/theme-engine/coolors')
+
+    // 5 very light pastel colors where no pair achieves 4.5:1
+    const pastelPalette = ['#ffffff', '#fef3c7', '#fde68a', '#fef9c3', '#fef08a']
+    const mapped = mapCoolorsPalette(pastelPalette)
+
+    expect(mapped.isReadable).toBe(false)
+    expect(mapped.contrastRatio).toBeLessThan(4.5)
+    expect(mapped.warning).toBeDefined()
+  })
+})
+
+
