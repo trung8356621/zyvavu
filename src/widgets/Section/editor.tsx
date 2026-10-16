@@ -4,7 +4,7 @@ import React from 'react'
 import type { ComponentConfig } from '@puckeditor/core'
 import type { SectionProps } from './frontend'
 import { resolveSectionLayerStyles } from '@/lib/style-engine/serializer'
-import { usePageLayout } from '@/lib/theme-engine/page-settings'
+import { usePageLayout } from '@/lib/theme-engine/page-layout-context'
 
 export const sectionEditor: ComponentConfig<SectionProps> = {
   label: 'Section Container',

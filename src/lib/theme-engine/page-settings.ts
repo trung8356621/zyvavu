@@ -1,5 +1,6 @@
-import React, { createContext, useContext, type CSSProperties } from 'react'
+import type { CSSProperties } from 'react'
 import type { PageSettings, PageSettingsLayout, TemplateContext, ThemeTokens } from './types'
+export type { PageLayoutContextType } from './page-layout-context'
 
 export const DEFAULT_PAGE_SETTINGS: PageSettings = {
   background: {
@@ -14,20 +15,6 @@ export const DEFAULT_PAGE_SETTINGS: PageSettings = {
     spacing: 'inherit',
     alignment: 'inherit',
   },
-}
-
-export type PageLayoutContextType = {
-  pageSettings?: PageSettings
-  themeTokens?: ThemeTokens
-  effectiveContainerWidth?: string
-  effectiveAlignment?: 'left' | 'center' | 'right'
-  effectiveSpacing?: string
-}
-
-export const PageLayoutContext = createContext<PageLayoutContextType>({})
-
-export function usePageLayout(): PageLayoutContextType {
-  return useContext(PageLayoutContext)
 }
 
 /**

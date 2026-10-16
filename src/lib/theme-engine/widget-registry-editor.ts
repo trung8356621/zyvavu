@@ -2,7 +2,8 @@ import React from 'react'
 import type { ComponentConfig, Config } from '@puckeditor/core'
 import type { PageSettings, TemplateContext, ThemeConfig } from './types'
 import { getTemplatePolicy } from './policy'
-import { resolvePageSettingsStyles, resolveEffectivePageLayout, PageLayoutContext } from './page-settings'
+import { resolvePageSettingsStyles, resolveEffectivePageLayout } from './page-settings'
+import { PageLayoutProvider } from './page-layout-context'
 import { isPageContentContext } from './normalization'
 
 // Import manifests
@@ -197,7 +198,7 @@ export function getEditorConfigForContext(
         )
 
         return React.createElement(
-          PageLayoutContext.Provider,
+          PageLayoutProvider,
           {
             value: {
               pageSettings,

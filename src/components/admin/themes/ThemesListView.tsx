@@ -7,7 +7,8 @@ import { ArrowLeft } from 'lucide-react'
 
 import config from '@payload-config'
 import { isSiteStaff } from '@/access/roles'
-import { getAllInstalledThemes, resolveActiveThemeId } from '@/lib/theme-engine'
+import { getAllInstalledThemes } from '@/lib/theme-engine/themes'
+import { resolveActiveThemeId } from '@/lib/theme-engine/resolver'
 import { ThemesGallery } from './ThemesGallery'
 
 export async function ThemesListView(props: AdminViewServerProps) {

@@ -1,7 +1,8 @@
 import React from 'react'
 import type { ThemeDataContext, ThemeTemplateDocument } from './types'
 import { getFrontendWidget } from './widget-registry-frontend'
-import { resolvePageSettingsStyles, resolveEffectivePageLayout, PageLayoutContext } from './page-settings'
+import { resolvePageSettingsStyles, resolveEffectivePageLayout } from './page-settings'
+import { PageLayoutProvider } from './page-layout-context'
 import { normalizeThemeTemplateDocument } from './normalization'
 
 export type ThemeRendererProps = {
@@ -126,7 +127,7 @@ export function ThemeRenderer({
   }
 
   return (
-    <PageLayoutContext.Provider
+    <PageLayoutProvider
       value={{
         pageSettings,
         effectiveContainerWidth: effectiveLayout.containerWidth,
@@ -140,6 +141,6 @@ export function ThemeRenderer({
         )}
         {effectiveDoc.content.map((item, idx) => renderItem(item, idx))}
       </div>
-    </PageLayoutContext.Provider>
+    </PageLayoutProvider>
   )
 }

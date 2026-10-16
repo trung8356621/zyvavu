@@ -1,8 +1,10 @@
+'use client'
+
 import React from 'react'
 import type { ThemeDataContext } from '@/lib/theme-engine/types'
 import type { UniversalStyle } from '@/lib/style-engine/types'
 import { resolveSectionLayerStyles } from '@/lib/style-engine/serializer'
-import { usePageLayout } from '@/lib/theme-engine/page-settings'
+import { usePageLayout } from '@/lib/theme-engine/page-layout-context'
 
 export interface SectionProps {
   id?: string
