@@ -323,32 +323,32 @@ export function SharedDraggableModal({
           <Group gap={6} style={{ minWidth: 0, flex: 1 }}>
             {draggable && (
               <GripHorizontal
-                size={14}
+                size={16}
                 color="var(--mantine-color-dimmed, #868e96)"
                 style={{ flexShrink: 0 }}
               />
             )}
             <Box style={{ minWidth: 0, flex: 1 }}>
               {typeof title === 'string' ? (
-                <Text size="xs" fw={700} truncate>
+                <Text size="sm" fw={700} truncate style={{ fontSize: 13 }}>
                   {title}
                 </Text>
               ) : (
                 title
               )}
               {subtitle && (
-                <Text size="xs" c="dimmed" truncate style={{ fontSize: 10 }}>
+                <Text size="xs" c="dimmed" truncate style={{ fontSize: 12, color: 'var(--mantine-color-dimmed, #556068)' }}>
                   {subtitle}
                 </Text>
               )}
             </Box>
           </Group>
 
-          <Group gap={4} style={{ flexShrink: 0 }} data-no-drag>
+          <Group gap={6} style={{ flexShrink: 0 }} data-no-drag>
             {headerExtra}
             {showCloseButton && (
               <ActionIcon
-                size="xs"
+                size="sm"
                 variant="subtle"
                 color="gray"
                 onClick={(e) => {
@@ -357,7 +357,7 @@ export function SharedDraggableModal({
                 }}
                 aria-label="Close modal"
               >
-                <X size={13} />
+                <X size={15} />
               </ActionIcon>
             )}
           </Group>

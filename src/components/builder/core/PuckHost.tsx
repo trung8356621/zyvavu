@@ -332,40 +332,60 @@ export function PuckHost({
       const { componentId } = activeStyleMenu
       const api = puckApiRef.current
 
+      const updateItem = (item: any) => {
+        if (
+          item?.props?.id === componentId ||
+          item?.id === componentId ||
+          item?._id === componentId
+        ) {
+          return {
+            ...item,
+            props: {
+              ...item.props,
+              id: item.props?.id || componentId,
+              style: newStyle,
+            },
+          }
+        }
+        return item
+      }
+
       if (api) {
         api.dispatch({
           type: 'setData',
-          data: (prev: Data) => {
-            const updateItem = (item: any) => {
-              if (item?.props?.id === componentId) {
-                return {
-                  ...item,
-                  props: {
-                    ...item.props,
-                    style: newStyle,
-                  },
-                }
-              }
-              return item
-            }
-
-            return {
-              ...prev,
-              content: (prev.content || []).map(updateItem),
-              zones: Object.fromEntries(
-                Object.entries(prev.zones || {}).map(([zoneKey, items]) => [
-                  zoneKey,
-                  (items as any[]).map(updateItem),
-                ]),
-              ),
-            }
-          },
+          data: (prev: Data) => ({
+            ...prev,
+            content: (prev.content || []).map(updateItem),
+            zones: Object.fromEntries(
+              Object.entries(prev.zones || {}).map(([zoneKey, items]) => [
+                zoneKey,
+                (items as any[]).map(updateItem),
+              ]),
+            ),
+          }),
         })
+      }
+
+      const current = latestDocRef.current || localDoc
+      const updatedDoc: BuilderDocument = {
+        ...current,
+        content: (current.content || []).map(updateItem),
+        zones: Object.fromEntries(
+          Object.entries(current.zones || {}).map(([zoneKey, items]) => [
+            zoneKey,
+            (items as any[]).map(updateItem),
+          ]),
+        ),
+      }
+      latestDocRef.current = updatedDoc
+      setLocalDoc(updatedDoc)
+      if (onChange) {
+        onChange(updatedDoc)
       }
 
       setActiveStyleMenu((prev) => (prev ? { ...prev, currentStyle: newStyle } : null))
     },
-    [activeStyleMenu],
+    [activeStyleMenu, localDoc, onChange],
   )
 
   // Native right-click on canvas widgets triggers the style context menu

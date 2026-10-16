@@ -47,13 +47,13 @@ export function BordersEffectsControl({
 
   return (
     <Stack gap="xs">
-      <Text size="xs" fw={700} c="dimmed" style={{ fontSize: 11 }}>
+      <Text size="xs" fw={700} style={{ fontSize: 13, color: 'var(--mantine-color-text, #17201f)' }}>
         Borders & Radius
       </Text>
 
       <Group grow gap="xs">
         <Select
-          size="xs"
+          size="sm"
           label="Border Style"
           value={border.style || 'none'}
           onChange={(val) =>
@@ -71,7 +71,7 @@ export function BordersEffectsControl({
         />
 
         <Select
-          size="xs"
+          size="sm"
           label="Border Width"
           disabled={!border.style || border.style === 'none'}
           value={border.widthToken || 'thin'}
@@ -90,23 +90,23 @@ export function BordersEffectsControl({
       </Group>
 
       {border.style && border.style !== 'none' && (
-        <Paper p={6} withBorder radius="xs">
+        <Paper p="xs" withBorder radius="xs">
           <Group justify="space-between" align="center">
-            <Group gap={6}>
+            <Group gap="xs">
               <Box
                 style={{
-                  width: 18,
-                  height: 18,
-                  borderRadius: 3,
+                  width: 24,
+                  height: 24,
+                  borderRadius: 4,
                   backgroundColor: currentBorderColor,
                   border: '1px solid rgba(0,0,0,0.2)',
                 }}
               />
-              <Text size="xs" fw={500} style={{ fontSize: 11 }}>
+              <Text size="xs" fw={600} style={{ fontSize: 12 }}>
                 Border: {border.colorToken || 'border'}
               </Text>
             </Group>
-            <Button size="xs" variant="subtle" color="teal" onClick={onOpenColorModal}>
+            <Button size="xs" variant="light" color="teal" onClick={onOpenColorModal}>
               Change
             </Button>
           </Group>
@@ -114,7 +114,7 @@ export function BordersEffectsControl({
       )}
 
       <Select
-        size="xs"
+        size="sm"
         label="Border Radius"
         value={radius.radiusToken || 'none'}
         onChange={(val) =>
@@ -134,12 +134,12 @@ export function BordersEffectsControl({
 
       <Divider my={2} />
 
-      <Text size="xs" fw={700} c="dimmed" style={{ fontSize: 11 }}>
+      <Text size="xs" fw={700} style={{ fontSize: 13, color: 'var(--mantine-color-text, #17201f)' }}>
         Shadow & Effects
       </Text>
 
       <Select
-        size="xs"
+        size="sm"
         label="Elevation / Shadow"
         value={shadow.shadowToken || 'none'}
         onChange={(val) =>
@@ -158,15 +158,15 @@ export function BordersEffectsControl({
 
       <Box>
         <Group justify="space-between" mb={2}>
-          <Text size="xs" fw={500} style={{ fontSize: 11 }}>
+          <Text size="xs" fw={600} style={{ fontSize: 12, color: 'var(--mantine-color-text, #17201f)' }}>
             Opacity
           </Text>
-          <Text size="xs" c="dimmed">
+          <Text size="xs" c="dimmed" style={{ fontSize: 12 }}>
             {Math.round((effects.opacity ?? 1) * 100)}%
           </Text>
         </Group>
         <Slider
-          size="xs"
+          size="sm"
           color="teal"
           min={10}
           max={100}
@@ -181,7 +181,7 @@ export function BordersEffectsControl({
       </Box>
 
       <Select
-        size="xs"
+        size="sm"
         label="Backdrop Blur"
         value={effects.backdropBlur || 'none'}
         onChange={(val) =>

@@ -1,6 +1,6 @@
 import React from 'react'
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, cleanup } from '@testing-library/react'
+import { render, screen, cleanup, fireEvent } from '@testing-library/react'
 import { MantineProvider } from '@mantine/core'
 
 vi.mock('@puckeditor/core', async (importOriginal) => {
@@ -36,6 +36,8 @@ import {
   computeTranslatedAnchorPosition,
 } from '@/components/admin/theme-builder/WidgetStyleContextMenu'
 import { PageSettingsPanel } from '@/components/admin/theme-builder/PageSettingsPanel'
+import { ThemeColorPaletteModal } from '@/components/admin/shared/ThemeColorPaletteModal'
+import { BackgroundStyleControl } from '@/components/admin/theme-builder/style-controls/BackgroundStyleControl'
 
 beforeEach(() => {
   Object.defineProperty(window, 'matchMedia', {
@@ -274,4 +276,166 @@ describe('Theme Builder Hotfix — Flat Accordion & Style Context Menu', () => {
       expect(screen.getByText('Template Custom JS')).toBeDefined()
     })
   })
+
+  describe('4. ThemeColorPaletteModal Swatch Selection & Semantic Token Propagation', () => {
+    it('applies the newly selected color token instead of the initial token', () => {
+      const onApplyToken = vi.fn()
+      const onApply = vi.fn()
+      const onClose = vi.fn()
+
+      render(
+        <MantineProvider>
+          <ThemeColorPaletteModal
+            opened={true}
+            value="surface"
+            includeBackgroundTokens={true}
+            onClose={onClose}
+            onApplyToken={onApplyToken}
+            onApply={onApply}
+          />
+        </MantineProvider>,
+      )
+
+      // Find the Accent Highlight swatch button
+      const accentButton = screen.getByLabelText(/Select Accent Highlight/i)
+      expect(accentButton).toBeDefined()
+      fireEvent.click(accentButton)
+
+      // Click Apply
+      const applyBtn = screen.getByRole('button', { name: /^Apply$/i })
+      fireEvent.click(applyBtn)
+
+      // Must call onApplyToken with 'accent' (not 'surface')
+      expect(onApplyToken).toHaveBeenCalledWith('accent', expect.any(String))
+      expect(onClose).toHaveBeenCalled()
+    })
+
+    it('differentiates tokens that share identical hex color (#ffffff)', () => {
+      const onApplyToken = vi.fn()
+      const onClose = vi.fn()
+
+      render(
+        <MantineProvider>
+          <ThemeColorPaletteModal
+            opened={true}
+            value="surface"
+            includeBackgroundTokens={true}
+            onClose={onClose}
+            onApplyToken={onApplyToken}
+          />
+        </MantineProvider>,
+      )
+
+      // Both 'Background' and 'Surface Card' might have #ffffff. Click 'Background'.
+      const bgButton = screen.getByLabelText(/Select Background:/i)
+      expect(bgButton).toBeDefined()
+      fireEvent.click(bgButton)
+
+      const applyBtn = screen.getByRole('button', { name: /^Apply$/i })
+      fireEvent.click(applyBtn)
+
+      expect(onApplyToken).toHaveBeenCalledWith('background', expect.any(String))
+    })
+  })
+
+  describe('5. BackgroundStyleControl Wix-like Visual Preview & Configure Entry', () => {
+    it('renders prominent background visual preview with solid color and Configure action', () => {
+      const onChange = vi.fn()
+      const onOpenColorModal = vi.fn()
+
+      render(
+        <MantineProvider>
+          <BackgroundStyleControl
+            value={{ mode: 'color', colorToken: 'primary' }}
+            onChange={onChange}
+            onOpenColorModal={onOpenColorModal}
+          />
+        </MantineProvider>,
+      )
+
+      // Preview badges
+      expect(screen.getByText(/Color: primary/i)).toBeDefined()
+
+      // Configure / Thiết lập button exists and triggers color palette
+      const configBtn = screen.getByRole('button', { name: /Configure \/ Thiết lập/i })
+      expect(configBtn).toBeDefined()
+      fireEvent.click(configBtn)
+      expect(onOpenColorModal).toHaveBeenCalledWith('background')
+    })
+
+    it('renders prominent preview in image mode with overlay and fallback controls', () => {
+      const onChange = vi.fn()
+      const onOpenColorModal = vi.fn()
+
+      render(
+        <MantineProvider>
+          <BackgroundStyleControl
+            value={{
+              mode: 'image',
+              image: {
+                url: 'https://example.com/hero.jpg',
+                position: 'center center',
+                size: 'cover',
+                fallbackColorToken: 'surface',
+                overlay: {
+                  colorToken: 'primary',
+                  opacity: 0.6,
+                },
+                pattern: {
+                  preset: 'dots',
+                  opacity: 0.2,
+                },
+              },
+            }}
+            onChange={onChange}
+            onOpenColorModal={onOpenColorModal}
+          />
+        </MantineProvider>,
+      )
+
+      // Badges
+      expect(screen.getByText(/Image: cover/i)).toBeDefined()
+      expect(screen.getByText(/Overlay 60%/i)).toBeDefined()
+      expect(screen.getByText(/Pattern: dots/i)).toBeDefined()
+
+      // Fallback Color section exists with Change button calling 'fallback'
+      expect(screen.getByText('Fallback Color')).toBeDefined()
+      const changeButtons = screen.getAllByRole('button', { name: /^Change$/i })
+      expect(changeButtons.length).toBeGreaterThan(0)
+      fireEvent.click(changeButtons[0])
+      expect(onOpenColorModal).toHaveBeenCalledWith('fallback')
+    })
+
+    it('renders prominent preview in video mode with poster and video overlay controls', () => {
+      const onChange = vi.fn()
+      const onOpenColorModal = vi.fn()
+
+      render(
+        <MantineProvider>
+          <BackgroundStyleControl
+            value={{
+              mode: 'video',
+              video: {
+                url: 'https://example.com/bg.mp4',
+                posterUrl: 'https://example.com/poster.jpg',
+                fallbackColorToken: 'background',
+                loop: true,
+                overlay: {
+                  colorToken: 'text',
+                  opacity: 0.4,
+                },
+              },
+            }}
+            onChange={onChange}
+            onOpenColorModal={onOpenColorModal}
+          />
+        </MantineProvider>,
+      )
+
+      expect(screen.getByText(/Video backdrop/i)).toBeDefined()
+      expect(screen.getByText(/Overlay 40%/i)).toBeDefined()
+      expect(screen.getByLabelText(/Loop Video/i)).toBeDefined()
+    })
+  })
 })
+

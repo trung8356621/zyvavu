@@ -271,6 +271,8 @@ export function resolveSectionLayerStyles(
       if (grad) baseColorStyle.backgroundImage = grad
     } else if (bg.colorToken) {
       baseColorStyle.backgroundColor = resolveColorToken(bg.colorToken)
+    } else if (s.backgroundToken) {
+      baseColorStyle.backgroundColor = resolveColorToken(s.backgroundToken)
     }
   } else if (bg.mode === 'image' && bg.image?.fallbackColorToken) {
     baseColorStyle.backgroundColor = resolveColorToken(bg.image.fallbackColorToken)

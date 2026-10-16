@@ -132,9 +132,12 @@ export function ThemeColorPaletteModal({
   onApplyGradient,
   onApplyMesh,
 }: ThemeColorPaletteModalProps) {
+  const shouldIncludeBg =
+    includeBackgroundTokens || value === 'background' || value === 'surface'
+
   const swatches = useMemo(
-    () => getThemePaletteSwatches(tokens, colors, { includeBackgroundTokens }),
-    [tokens, colors, includeBackgroundTokens],
+    () => getThemePaletteSwatches(tokens, colors, { includeBackgroundTokens: shouldIncludeBg }),
+    [tokens, colors, shouldIncludeBg],
   )
 
   const resolveInitialColor = (val: string) => {
@@ -151,9 +154,11 @@ export function ThemeColorPaletteModal({
     return supportedModes.includes(initialMode) ? initialMode : supportedModes[0] || 'solid'
   })
 
-  // Solid State
+  // Solid State: Track both selectedToken and selectedColor
+  const [selectedToken, setSelectedToken] = useState<string>(() => value || 'surface')
+  const [selectedColor, setSelectedColor] = useState<string>(() => resolveInitialColor(value))
   const initialColorRef = useRef<string>(resolveInitialColor(value))
-  const [selectedColor, setSelectedColor] = useState<string>(resolveInitialColor(value))
+  const initialTokenRef = useRef<string>(value || 'surface')
 
   // Gradient State
   const [gradient, setGradient] = useState<GradientDef>(gradientValue || DEFAULT_GRADIENT)
@@ -165,7 +170,9 @@ export function ThemeColorPaletteModal({
     if (opened) {
       const resolved = resolveInitialColor(value)
       initialColorRef.current = resolved
+      initialTokenRef.current = value || 'surface'
       setSelectedColor(resolved)
+      setSelectedToken(value || 'surface')
       if (gradientValue) setGradient(gradientValue)
       if (meshValue) setMesh(meshValue)
     }
@@ -174,21 +181,26 @@ export function ThemeColorPaletteModal({
   const normalizedSelected = (selectedColor || '').toLowerCase().trim()
 
   const activeSwatch = useMemo(() => {
-    const byToken = swatches.find((s) => s.id === value)
-    if (byToken) return byToken
+    if (selectedToken) {
+      const byToken = swatches.find((s) => s.id === selectedToken)
+      if (byToken) return byToken
+    }
     return swatches.find((s) => s.color.toLowerCase().trim() === normalizedSelected)
-  }, [swatches, value, normalizedSelected])
+  }, [swatches, selectedToken, normalizedSelected])
 
   const handleSelectColor = (hex: string, tokenId: string) => {
+    setSelectedToken(tokenId)
     setSelectedColor(hex)
     onChange?.(hex)
     onSelectToken?.(tokenId, hex)
   }
 
   const handleCancelClick = () => {
-    const original = initialColorRef.current
-    setSelectedColor(original)
-    onChange?.(original)
+    const originalColor = initialColorRef.current
+    const originalToken = initialTokenRef.current
+    setSelectedColor(originalColor)
+    setSelectedToken(originalToken)
+    onChange?.(originalColor)
     onCancel?.()
     onClose()
   }
@@ -211,7 +223,7 @@ export function ThemeColorPaletteModal({
     }
 
     // Solid
-    const tokenId = activeSwatch?.id || 'primary'
+    const tokenId = selectedToken || activeSwatch?.id || 'primary'
     onApply?.(selectedColor)
     onApplyToken?.(tokenId, selectedColor)
     onClose()
@@ -289,8 +301,8 @@ export function ThemeColorPaletteModal({
       onClose={handleCancelClick}
       title={title}
       subtitle={subtitle}
-      headerExtra={<Palette size={15} color="var(--mantine-color-teal-7, #0e6b66)" />}
-      width={340}
+      headerExtra={<Palette size={16} color="var(--mantine-color-teal-7, #0e6b66)" />}
+      width={360}
       anchorEl={anchorEl}
       mode="floating"
       draggable={true}
@@ -300,10 +312,10 @@ export function ThemeColorPaletteModal({
       zIndex={zIndex}
       footer={
         <Group grow gap="xs">
-          <Button variant="default" size="xs" onClick={handleCancelClick}>
+          <Button variant="default" size="sm" onClick={handleCancelClick}>
             Cancel
           </Button>
-          <Button color="teal" size="xs" onClick={handleApplyClick}>
+          <Button color="teal" size="sm" onClick={handleApplyClick}>
             Apply
           </Button>
         </Group>
@@ -340,20 +352,20 @@ export function ThemeColorPaletteModal({
                 <Group gap="xs" style={{ minWidth: 0, flex: 1 }}>
                   <Box
                     style={{
-                      width: 24,
-                      height: 24,
-                      borderRadius: 4,
+                      width: 28,
+                      height: 28,
+                      borderRadius: 6,
                       backgroundColor: selectedColor,
                       border: '1px solid rgba(0,0,0,0.2)',
                       flexShrink: 0,
                     }}
                   />
                   <Box style={{ minWidth: 0, flex: 1 }}>
-                    <Text size="xs" fw={700} truncate>
+                    <Text size="sm" fw={700} truncate>
                       {activeSwatch?.label || 'Selected Color'}
                     </Text>
-                    <Text size="xs" c="dimmed" style={{ fontSize: 10 }}>
-                      {selectedColor.toUpperCase()}
+                    <Text size="xs" c="dimmed" style={{ fontSize: 12 }}>
+                      {selectedColor.toUpperCase()} ({selectedToken || 'custom'})
                     </Text>
                   </Box>
                 </Group>
@@ -361,12 +373,14 @@ export function ThemeColorPaletteModal({
             </Paper>
 
             <Box>
-              <Text size="xs" fw={600} mb={6} style={{ fontSize: 11 }}>
+              <Text size="xs" fw={600} mb={8} style={{ fontSize: 13, color: 'var(--mantine-color-text, #17201f)' }}>
                 Theme Swatches:
               </Text>
-              <Flex wrap="wrap" gap={6} align="center">
+              <Flex wrap="wrap" gap={8} align="center">
                 {swatches.map((item) => {
-                  const isSelected = normalizedSelected === item.color.toLowerCase().trim()
+                  const isSelected = selectedToken
+                    ? item.id === selectedToken
+                    : normalizedSelected === item.color.toLowerCase().trim()
                   const rgb = parseColorToRgb(item.color)
                   const isDark = rgb ? getRelativeLuminance(rgb) < 0.45 : false
                   const checkColor = isDark ? '#ffffff' : '#000000'
@@ -386,8 +400,8 @@ export function ThemeColorPaletteModal({
                         aria-pressed={isSelected}
                         onClick={() => handleSelectColor(item.color, item.id)}
                         style={{
-                          width: 28,
-                          height: 28,
+                          width: 32,
+                          height: 32,
                           borderRadius: 6,
                           backgroundColor: item.color,
                           border: isSelected
@@ -405,7 +419,7 @@ export function ThemeColorPaletteModal({
                           flexShrink: 0,
                         }}
                       >
-                        {isSelected && <Check size={14} color={checkColor} strokeWidth={3} />}
+                        {isSelected && <Check size={16} color={checkColor} strokeWidth={3} />}
                       </Box>
                     </Tooltip>
                   )
@@ -475,57 +489,58 @@ export function ThemeColorPaletteModal({
             <Divider my={2} />
 
             <Group justify="space-between">
-              <Text size="xs" fw={600} style={{ fontSize: 11 }}>
+              <Text size="xs" fw={600} style={{ fontSize: 13, color: 'var(--mantine-color-text, #17201f)' }}>
                 Color Stops ({gradient.stops.length}):
               </Text>
               <Button
                 size="xs"
                 variant="light"
                 color="teal"
-                leftSection={<Plus size={12} />}
+                leftSection={<Plus size={14} />}
                 onClick={handleAddStop}
               >
                 Add Stop
               </Button>
             </Group>
 
-            <Stack gap={6}>
+            <Stack gap="xs">
               {gradient.stops.map((stop, idx) => (
-                <Paper key={idx} p={6} withBorder radius="xs">
+                <Paper key={idx} p="xs" withBorder radius="xs">
                   <Group justify="space-between" gap="xs">
-                    <Group gap={6}>
-                      {/* Swatch dropdown or buttons */}
+                    <Group gap="xs">
+                      {/* Swatch buttons */}
                       <Flex gap={4}>
-                        {swatches.slice(0, 5).map((sw) => (
+                        {swatches.slice(0, 6).map((sw) => (
                           <Box
                             key={sw.id}
                             component="button"
                             type="button"
+                            title={sw.label}
                             onClick={() => handleUpdateStop(idx, { token: sw.id })}
                             style={{
-                              width: 16,
-                              height: 16,
-                              borderRadius: 3,
+                              width: 22,
+                              height: 22,
+                              borderRadius: 4,
                               backgroundColor: sw.color,
                               border:
                                 stop.token === sw.id
                                   ? '2px solid #0e6b66'
-                                  : '1px solid rgba(0,0,0,0.2)',
+                                  : '1px solid rgba(0,0,0,0.25)',
                               cursor: 'pointer',
                               padding: 0,
                             }}
                           />
                         ))}
                       </Flex>
-                      <Text size="xs" fw={500} style={{ fontSize: 11 }}>
+                      <Text size="xs" fw={600} style={{ fontSize: 12 }}>
                         {stop.token}
                       </Text>
                     </Group>
 
                     <Group gap="xs" style={{ flex: 1, justifyContent: 'flex-end' }}>
-                      <Box style={{ width: 80 }}>
+                      <Box style={{ width: 90 }}>
                         <Slider
-                          size="xs"
+                          size="sm"
                           color="teal"
                           min={0}
                           max={100}
@@ -533,18 +548,19 @@ export function ThemeColorPaletteModal({
                           onChange={(val) => handleUpdateStop(idx, { position: val })}
                         />
                       </Box>
-                      <Text size="xs" c="dimmed" style={{ width: 28, textAlign: 'right' }}>
+                      <Text size="xs" c="dimmed" style={{ width: 32, textAlign: 'right', fontSize: 12 }}>
                         {stop.position}%
                       </Text>
 
                       {gradient.stops.length > 2 && (
                         <ActionIcon
-                          size="xs"
+                          size="sm"
                           variant="subtle"
                           color="red"
                           onClick={() => handleRemoveStop(idx)}
+                          aria-label="Remove stop"
                         >
-                          <Trash2 size={12} />
+                          <Trash2 size={14} />
                         </ActionIcon>
                       )}
                     </Group>
@@ -561,7 +577,7 @@ export function ThemeColorPaletteModal({
             {/* Live Mesh Preview */}
             <Box
               style={{
-                height: 60,
+                height: 64,
                 borderRadius: 6,
                 backgroundImage: renderedMeshCss || 'none',
                 backgroundColor: 'var(--zyvavu-theme-background, #ffffff)',
@@ -571,7 +587,7 @@ export function ThemeColorPaletteModal({
             />
 
             <Group justify="space-between" align="center">
-              <Text size="xs" fw={600} style={{ fontSize: 11 }}>
+              <Text size="xs" fw={600} style={{ fontSize: 13, color: 'var(--mantine-color-text, #17201f)' }}>
                 Mesh Points ({mesh.points.length}):
               </Text>
               <Group gap="xs">
@@ -579,7 +595,7 @@ export function ThemeColorPaletteModal({
                   variant="subtle"
                   size="xs"
                   color="gray"
-                  leftSection={<RotateCcw size={12} />}
+                  leftSection={<RotateCcw size={13} />}
                   onClick={() => setMesh(DEFAULT_MESH)}
                 >
                   Reset
@@ -588,7 +604,7 @@ export function ThemeColorPaletteModal({
                   size="xs"
                   variant="light"
                   color="teal"
-                  leftSection={<Plus size={12} />}
+                  leftSection={<Plus size={14} />}
                   onClick={handleAddMeshPoint}
                   disabled={mesh.points.length >= 5}
                 >
@@ -597,55 +613,57 @@ export function ThemeColorPaletteModal({
               </Group>
             </Group>
 
-            <Stack gap={6}>
+            <Stack gap="xs">
               {mesh.points.map((pt) => (
-                <Paper key={pt.id} p={6} withBorder radius="xs">
-                  <Stack gap={4}>
+                <Paper key={pt.id} p="xs" withBorder radius="xs">
+                  <Stack gap="xs">
                     <Group justify="space-between">
                       <Flex gap={4}>
-                        {swatches.slice(0, 5).map((sw) => (
+                        {swatches.slice(0, 6).map((sw) => (
                           <Box
                             key={sw.id}
                             component="button"
                             type="button"
+                            title={sw.label}
                             onClick={() => handleUpdateMeshPoint(pt.id, { token: sw.id })}
                             style={{
-                              width: 16,
-                              height: 16,
-                              borderRadius: 3,
+                              width: 22,
+                              height: 22,
+                              borderRadius: 4,
                               backgroundColor: sw.color,
                               border:
                                 pt.token === sw.id
                                   ? '2px solid #0e6b66'
-                                  : '1px solid rgba(0,0,0,0.2)',
+                                  : '1px solid rgba(0,0,0,0.25)',
                               cursor: 'pointer',
                               padding: 0,
                             }}
                           />
                         ))}
                       </Flex>
-                      <Text size="xs" fw={500} style={{ fontSize: 11 }}>
+                      <Text size="xs" fw={600} style={{ fontSize: 12 }}>
                         {pt.token}
                       </Text>
                       {mesh.points.length > 2 && (
                         <ActionIcon
-                          size="xs"
+                          size="sm"
                           variant="subtle"
                           color="red"
                           onClick={() => handleRemoveMeshPoint(pt.id)}
+                          aria-label="Remove mesh point"
                         >
-                          <Trash2 size={12} />
+                          <Trash2 size={14} />
                         </ActionIcon>
                       )}
                     </Group>
 
                     <Group grow gap="xs">
                       <Box>
-                        <Text size="xs" c="dimmed" style={{ fontSize: 10 }}>
+                        <Text size="xs" c="dimmed" style={{ fontSize: 12 }}>
                           X: {pt.x}%
                         </Text>
                         <Slider
-                          size="xs"
+                          size="sm"
                           color="teal"
                           min={0}
                           max={100}
@@ -654,11 +672,11 @@ export function ThemeColorPaletteModal({
                         />
                       </Box>
                       <Box>
-                        <Text size="xs" c="dimmed" style={{ fontSize: 10 }}>
+                        <Text size="xs" c="dimmed" style={{ fontSize: 12 }}>
                           Y: {pt.y}%
                         </Text>
                         <Slider
-                          size="xs"
+                          size="sm"
                           color="teal"
                           min={0}
                           max={100}
@@ -667,11 +685,11 @@ export function ThemeColorPaletteModal({
                         />
                       </Box>
                       <Box>
-                        <Text size="xs" c="dimmed" style={{ fontSize: 10 }}>
+                        <Text size="xs" c="dimmed" style={{ fontSize: 12 }}>
                           Radius: {pt.radius || 50}%
                         </Text>
                         <Slider
-                          size="xs"
+                          size="sm"
                           color="teal"
                           min={20}
                           max={100}

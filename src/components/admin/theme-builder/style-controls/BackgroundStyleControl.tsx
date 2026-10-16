@@ -1,10 +1,12 @@
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
 import {
   ActionIcon,
+  Badge,
   Box,
   Button,
+  Collapse,
   Divider,
   Flex,
   Group,
@@ -23,6 +25,8 @@ import {
   Image as ImageIcon,
   Palette,
   RotateCcw,
+  Settings,
+  Sliders,
   Sparkles,
   Trash2,
 } from 'lucide-react'
@@ -32,7 +36,13 @@ import type {
   BackgroundMode,
   PatternPreset,
 } from '@/lib/style-engine/types'
-import { resolveColorToken } from '@/lib/style-engine/token-resolver'
+import {
+  resolveColorToken,
+  serializeGradientCss,
+  serializeMeshCss,
+  resolvePatternCss,
+  resolvePatternSize,
+} from '@/lib/style-engine/token-resolver'
 
 export interface BackgroundStyleControlProps {
   value?: BackgroundConfig
@@ -60,6 +70,8 @@ export function BackgroundStyleControl({
   onOpenColorModal,
 }: BackgroundStyleControlProps) {
   const mode = value.mode || 'color'
+  const [showImageSettings, setShowImageSettings] = useState<boolean>(true)
+  const [showVideoSettings, setShowVideoSettings] = useState<boolean>(true)
 
   const update = (partial: Partial<BackgroundConfig>) => {
     onChange({
@@ -71,6 +83,14 @@ export function BackgroundStyleControl({
   const currentColorToken = value.colorToken || 'surface'
   const currentBgColor = resolveColorToken(currentColorToken, '#ffffff')
 
+  const fallbackColorToken =
+    mode === 'image'
+      ? value.image?.fallbackColorToken || 'surface'
+      : mode === 'video'
+        ? value.video?.fallbackColorToken || 'surface'
+        : 'surface'
+  const fallbackColor = resolveColorToken(fallbackColorToken, '#ffffff')
+
   const overlayColorToken =
     mode === 'image'
       ? value.image?.overlay?.colorToken || 'text'
@@ -79,12 +99,224 @@ export function BackgroundStyleControl({
         : 'text'
 
   const overlayColor = resolveColorToken(overlayColorToken, '#000000')
+  const overlayOpacity =
+    mode === 'image'
+      ? value.image?.overlay?.opacity ?? 0.5
+      : mode === 'video'
+        ? value.video?.overlay?.opacity ?? 0.5
+        : 0
+
+  const hasOverlay =
+    mode === 'image'
+      ? Boolean(value.image?.overlay?.colorToken || value.image?.overlay?.opacity !== undefined)
+      : mode === 'video'
+        ? Boolean(value.video?.overlay?.colorToken || value.video?.overlay?.opacity !== undefined)
+        : false
+
+  const patternPreset = value.image?.pattern?.preset || 'none'
+  const hasPattern = mode === 'image' && patternPreset !== 'none'
+  const patternOpacity = value.image?.pattern?.opacity ?? 0.15
+
+  const gradientCss = value.gradient ? serializeGradientCss(value.gradient) : undefined
+  const meshCss = value.mesh ? serializeMeshCss(value.mesh) : undefined
+  const patternCss = hasPattern ? resolvePatternCss(patternPreset) : undefined
+  const patternSize = hasPattern ? resolvePatternSize(patternPreset) : undefined
+
+  const handleConfigureClick = () => {
+    if (mode === 'color') {
+      onOpenColorModal('background')
+    } else if (mode === 'image') {
+      setShowImageSettings((prev) => !prev)
+    } else if (mode === 'video') {
+      setShowVideoSettings((prev) => !prev)
+    }
+  }
 
   return (
-    <Stack gap="xs">
+    <Stack gap="sm">
+      {/* 0. PROMINENT BACKGROUND VISUAL PREVIEW (Wix-inspired) */}
+      <Box
+        style={{
+          width: '100%',
+          height: 115,
+          borderRadius: 8,
+          border: '1px solid var(--mantine-color-default-border, #dfe5e2)',
+          boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.05), 0 2px 6px rgba(0,0,0,0.08)',
+          position: 'relative',
+          overflow: 'hidden',
+          // Transparent checkerboard underlay
+          background: 'repeating-conic-gradient(#edf2f0 0% 25%, #ffffff 0% 50%) 50% / 14px 14px',
+        }}
+      >
+        {/* Layer 1: Base Color / Gradient / Mesh / Fallback */}
+        <Box
+          style={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 1,
+            backgroundColor:
+              mode === 'color'
+                ? (!meshCss && !gradientCss ? currentBgColor : undefined)
+                : fallbackColor,
+            backgroundImage:
+              mode === 'color'
+                ? (meshCss || gradientCss || undefined)
+                : undefined,
+          }}
+        />
+
+        {/* Layer 2: Image Media or Video Poster */}
+        {mode === 'image' && value.image?.url && (
+          <Box
+            style={{
+              position: 'absolute',
+              inset: 0,
+              zIndex: 2,
+              backgroundImage: `url("${value.image.url}")`,
+              backgroundPosition: value.image.position || 'center center',
+              backgroundSize: value.image.size || 'cover',
+              backgroundRepeat: value.image.repeat || 'no-repeat',
+            }}
+          />
+        )}
+
+        {mode === 'video' && (value.video?.posterUrl || value.video?.fallbackImageUrl) && (
+          <Box
+            style={{
+              position: 'absolute',
+              inset: 0,
+              zIndex: 2,
+              backgroundImage: `url("${value.video.posterUrl || value.video.fallbackImageUrl}")`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center center',
+            }}
+          />
+        )}
+
+        {/* Layer 3: Overlay */}
+        {hasOverlay && (mode === 'image' || mode === 'video') && (
+          <Box
+            style={{
+              position: 'absolute',
+              inset: 0,
+              zIndex: 3,
+              backgroundColor: overlayColor,
+              opacity: overlayOpacity,
+            }}
+          />
+        )}
+
+        {/* Layer 4: Pattern */}
+        {hasPattern && patternCss && (
+          <Box
+            style={{
+              position: 'absolute',
+              inset: 0,
+              zIndex: 4,
+              backgroundImage: patternCss,
+              backgroundSize: patternSize || 'auto',
+              opacity: patternOpacity,
+            }}
+          />
+        )}
+
+        {/* Layer 5: Preview Header Bar & Configure Action */}
+        <Box
+          style={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 10,
+            padding: 8,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            pointerEvents: 'none',
+          }}
+        >
+          {/* Top Info Badges */}
+          <Group justify="space-between" align="flex-start" gap={6} style={{ width: '100%' }}>
+            <Badge
+              size="sm"
+              variant="filled"
+              color="dark"
+              style={{
+                textTransform: 'none',
+                backdropFilter: 'blur(4px)',
+                backgroundColor: 'rgba(23, 32, 31, 0.82)',
+                fontSize: 11,
+                fontWeight: 600,
+              }}
+            >
+              {mode === 'color'
+                ? value.mesh
+                  ? `Mesh (${value.mesh.points?.length || 0} pts)`
+                  : value.gradient
+                    ? `Gradient (${value.gradient.type})`
+                    : `Color: ${currentColorToken}`
+                : mode === 'image'
+                  ? value.image?.url
+                    ? `Image: ${value.image.size || 'cover'}`
+                    : 'No media selected'
+                  : value.video?.url
+                    ? 'Video backdrop'
+                    : 'No video selected'}
+            </Badge>
+
+            <Group gap={4}>
+              {hasOverlay && (mode === 'image' || mode === 'video') && (
+                <Badge
+                  size="xs"
+                  variant="filled"
+                  color="gray"
+                  style={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.88)',
+                    color: '#17201f',
+                    fontSize: 10,
+                    fontWeight: 600,
+                  }}
+                >
+                  Overlay {Math.round(overlayOpacity * 100)}%
+                </Badge>
+              )}
+              {hasPattern && (
+                <Badge
+                  size="xs"
+                  variant="filled"
+                  color="teal"
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 600,
+                  }}
+                >
+                  Pattern: {patternPreset}
+                </Badge>
+              )}
+            </Group>
+          </Group>
+
+          {/* Bottom Action: Prominent Configure / Thiết lập button */}
+          <Group justify="flex-end" style={{ width: '100%', pointerEvents: 'auto' }}>
+            <Button
+              size="xs"
+              color="teal"
+              variant="filled"
+              leftSection={<Settings size={13} />}
+              onClick={handleConfigureClick}
+              style={{
+                boxShadow: '0 2px 6px rgba(0,0,0,0.25)',
+                fontWeight: 600,
+                fontSize: 12,
+              }}
+            >
+              Configure / Thiết lập
+            </Button>
+          </Group>
+        </Box>
+      </Box>
+
       {/* Mode Switcher */}
       <SegmentedControl
-        size="xs"
+        size="sm"
         fullWidth
         value={mode}
         onChange={(val) => update({ mode: val as BackgroundMode })}
@@ -98,7 +330,7 @@ export function BackgroundStyleControl({
       {/* 1. COLOR MODE */}
       {mode === 'color' && (
         <Stack gap="xs">
-          <Text size="xs" fw={600} style={{ fontSize: 11 }}>
+          <Text size="xs" fw={600} style={{ fontSize: 13, color: 'var(--mantine-color-text, #17201f)' }}>
             Theme Color / Gradient / Mesh
           </Text>
 
@@ -107,22 +339,23 @@ export function BackgroundStyleControl({
               <Group gap="xs">
                 <Box
                   style={{
-                    width: 24,
-                    height: 24,
-                    borderRadius: 4,
-                    backgroundColor: currentBgColor,
+                    width: 28,
+                    height: 28,
+                    borderRadius: 6,
+                    backgroundColor: !value.mesh && !value.gradient ? currentBgColor : undefined,
+                    backgroundImage: meshCss || gradientCss || undefined,
                     border: '1px solid rgba(0,0,0,0.2)',
                   }}
                 />
                 <Box>
-                  <Text size="xs" fw={600}>
+                  <Text size="sm" fw={600}>
                     {value.mesh ? 'Mesh Gradient' : value.gradient ? 'Theme Gradient' : currentColorToken}
                   </Text>
-                  <Text size="xs" c="dimmed" style={{ fontSize: 10 }}>
+                  <Text size="xs" c="dimmed" style={{ fontSize: 12 }}>
                     {value.mesh
                       ? `${value.mesh.points?.length || 0} color points`
                       : value.gradient
-                        ? `${value.gradient.type} gradient`
+                        ? `${value.gradient.type} gradient (${value.gradient.stops?.length || 0} stops)`
                         : 'Solid theme color'}
                   </Text>
                 </Box>
@@ -132,10 +365,10 @@ export function BackgroundStyleControl({
                 size="xs"
                 variant="light"
                 color="teal"
-                leftSection={<Palette size={12} />}
+                leftSection={<Palette size={14} />}
                 onClick={() => onOpenColorModal('background')}
               >
-                Configure
+                Change Palette
               </Button>
             </Group>
           </Paper>
@@ -146,7 +379,7 @@ export function BackgroundStyleControl({
       {mode === 'image' && (
         <Stack gap="xs">
           <TextInput
-            size="xs"
+            size="sm"
             label="Image URL or Media Path"
             placeholder="https://... or /media/..."
             value={value.image?.url || ''}
@@ -166,7 +399,7 @@ export function BackgroundStyleControl({
                 size="xs"
                 variant="subtle"
                 color="red"
-                leftSection={<Trash2 size={12} />}
+                leftSection={<Trash2 size={13} />}
                 onClick={() =>
                   update({
                     image: {
@@ -181,17 +414,51 @@ export function BackgroundStyleControl({
             </Group>
           )}
 
+          {/* Fallback Color Selection */}
+          <Paper p="xs" withBorder radius="xs">
+            <Group justify="space-between" align="center">
+              <Group gap="xs">
+                <Box
+                  style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: 4,
+                    backgroundColor: fallbackColor,
+                    border: '1px solid rgba(0,0,0,0.2)',
+                  }}
+                />
+                <Box>
+                  <Text size="xs" fw={600} style={{ fontSize: 12 }}>
+                    Fallback Color
+                  </Text>
+                  <Text size="xs" c="dimmed" style={{ fontSize: 11 }}>
+                    {fallbackColorToken}
+                  </Text>
+                </Box>
+              </Group>
+              <Button
+                size="xs"
+                variant="light"
+                color="teal"
+                leftSection={<Palette size={13} />}
+                onClick={() => onOpenColorModal('fallback')}
+              >
+                Change
+              </Button>
+            </Group>
+          </Paper>
+
           {/* 3x3 Position Selector */}
           <Box>
-            <Text size="xs" fw={500} mb={4} style={{ fontSize: 11 }}>
+            <Text size="xs" fw={600} mb={6} style={{ fontSize: 12, color: 'var(--mantine-color-text, #17201f)' }}>
               Focal Position (3x3 Grid)
             </Text>
             <Box
               style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(3, 1fr)',
-                gap: 4,
-                width: 120,
+                gap: 5,
+                width: 140,
               }}
             >
               {POSITION_3X3.map((pos) => {
@@ -202,7 +469,7 @@ export function BackgroundStyleControl({
                     size="compact-xs"
                     variant={isSelected ? 'filled' : 'default'}
                     color={isSelected ? 'teal' : 'gray'}
-                    style={{ fontSize: 9, padding: '2px 0', height: 24 }}
+                    style={{ fontSize: 11, fontWeight: 600, padding: '2px 0', height: 28 }}
                     onClick={() =>
                       update({
                         image: {
@@ -221,7 +488,7 @@ export function BackgroundStyleControl({
 
           <Group grow gap="xs">
             <Select
-              size="xs"
+              size="sm"
               label="Size"
               value={value.image?.size || 'cover'}
               onChange={(val) =>
@@ -240,7 +507,7 @@ export function BackgroundStyleControl({
             />
 
             <Select
-              size="xs"
+              size="sm"
               label="Repeat"
               value={value.image?.repeat || 'no-repeat'}
               onChange={(val) =>
@@ -264,8 +531,8 @@ export function BackgroundStyleControl({
 
           {/* Overlay Settings */}
           <Box>
-            <Group justify="space-between" mb={2}>
-              <Text size="xs" fw={600} style={{ fontSize: 11 }}>
+            <Group justify="space-between" mb={4}>
+              <Text size="xs" fw={600} style={{ fontSize: 12, color: 'var(--mantine-color-text, #17201f)' }}>
                 Overlay Color & Opacity
               </Text>
               <Button
@@ -281,16 +548,16 @@ export function BackgroundStyleControl({
             <Group gap="xs">
               <Box
                 style={{
-                  width: 18,
-                  height: 18,
-                  borderRadius: 3,
+                  width: 22,
+                  height: 22,
+                  borderRadius: 4,
                   backgroundColor: overlayColor,
                   border: '1px solid rgba(0,0,0,0.2)',
                 }}
               />
               <Box style={{ flex: 1 }}>
                 <Slider
-                  size="xs"
+                  size="sm"
                   color="teal"
                   min={0}
                   max={100}
@@ -309,7 +576,7 @@ export function BackgroundStyleControl({
                   }
                 />
               </Box>
-              <Text size="xs" c="dimmed" style={{ width: 32, textAlign: 'right' }}>
+              <Text size="xs" c="dimmed" style={{ width: 34, textAlign: 'right', fontSize: 12 }}>
                 {Math.round((value.image?.overlay?.opacity ?? 0.5) * 100)}%
               </Text>
             </Group>
@@ -318,7 +585,7 @@ export function BackgroundStyleControl({
           {/* Pattern Presets */}
           <Group grow gap="xs">
             <Select
-              size="xs"
+              size="sm"
               label="CSS Pattern Preset"
               value={value.image?.pattern?.preset || 'none'}
               onChange={(val) =>
@@ -344,11 +611,11 @@ export function BackgroundStyleControl({
 
             {value.image?.pattern?.preset && value.image.pattern.preset !== 'none' && (
               <Box>
-                <Text size="xs" fw={500} mb={2} style={{ fontSize: 11 }}>
+                <Text size="xs" fw={500} mb={2} style={{ fontSize: 12 }}>
                   Pattern Opacity
                 </Text>
                 <Slider
-                  size="xs"
+                  size="sm"
                   color="teal"
                   min={0}
                   max={100}
@@ -375,7 +642,7 @@ export function BackgroundStyleControl({
       {mode === 'video' && (
         <Stack gap="xs">
           <TextInput
-            size="xs"
+            size="sm"
             label="Video URL (MP4 / WebM)"
             placeholder="https://.../video.mp4"
             value={value.video?.url || ''}
@@ -390,7 +657,7 @@ export function BackgroundStyleControl({
           />
 
           <TextInput
-            size="xs"
+            size="sm"
             label="Poster Image URL (Preload & Mobile fallback)"
             placeholder="https://.../poster.jpg"
             value={value.video?.posterUrl || ''}
@@ -405,13 +672,47 @@ export function BackgroundStyleControl({
           />
 
           <Paper p="xs" withBorder radius="xs" style={{ backgroundColor: 'var(--mantine-color-gray-0, #f8f9fa)' }}>
-            <Text size="xs" c="dimmed">
+            <Text size="xs" c="dimmed" style={{ fontSize: 12 }}>
               Videos autoplay muted with loop enabled and automatically fall back to poster image when reduced-motion is requested.
             </Text>
           </Paper>
 
+          {/* Fallback Color Selection */}
+          <Paper p="xs" withBorder radius="xs">
+            <Group justify="space-between" align="center">
+              <Group gap="xs">
+                <Box
+                  style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: 4,
+                    backgroundColor: fallbackColor,
+                    border: '1px solid rgba(0,0,0,0.2)',
+                  }}
+                />
+                <Box>
+                  <Text size="xs" fw={600} style={{ fontSize: 12 }}>
+                    Fallback Color
+                  </Text>
+                  <Text size="xs" c="dimmed" style={{ fontSize: 11 }}>
+                    {fallbackColorToken}
+                  </Text>
+                </Box>
+              </Group>
+              <Button
+                size="xs"
+                variant="light"
+                color="teal"
+                leftSection={<Palette size={13} />}
+                onClick={() => onOpenColorModal('fallback')}
+              >
+                Change
+              </Button>
+            </Group>
+          </Paper>
+
           <Switch
-            size="xs"
+            size="sm"
             color="teal"
             label="Loop Video"
             checked={value.video?.loop !== false}
@@ -428,7 +729,7 @@ export function BackgroundStyleControl({
           {/* Video Overlay */}
           <Box>
             <Group justify="space-between" mb={2}>
-              <Text size="xs" fw={600} style={{ fontSize: 11 }}>
+              <Text size="xs" fw={600} style={{ fontSize: 12, color: 'var(--mantine-color-text, #17201f)' }}>
                 Video Overlay Opacity
               </Text>
               <Button
@@ -444,16 +745,16 @@ export function BackgroundStyleControl({
             <Group gap="xs">
               <Box
                 style={{
-                  width: 18,
-                  height: 18,
-                  borderRadius: 3,
+                  width: 22,
+                  height: 22,
+                  borderRadius: 4,
                   backgroundColor: overlayColor,
                   border: '1px solid rgba(0,0,0,0.2)',
                 }}
               />
               <Box style={{ flex: 1 }}>
                 <Slider
-                  size="xs"
+                  size="sm"
                   color="teal"
                   min={0}
                   max={100}
@@ -472,7 +773,7 @@ export function BackgroundStyleControl({
                   }
                 />
               </Box>
-              <Text size="xs" c="dimmed" style={{ width: 32, textAlign: 'right' }}>
+              <Text size="xs" c="dimmed" style={{ width: 34, textAlign: 'right', fontSize: 12 }}>
                 {Math.round((value.video?.overlay?.opacity ?? 0.5) * 100)}%
               </Text>
             </Group>

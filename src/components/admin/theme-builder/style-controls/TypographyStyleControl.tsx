@@ -91,14 +91,14 @@ export function TypographyStyleControl({
   return (
     <Stack gap="xs">
       <Group justify="space-between" align="center">
-        <Text size="xs" fw={700} c="dimmed" style={{ fontSize: 11 }}>
+        <Text size="xs" fw={700} style={{ fontSize: 13, color: 'var(--mantine-color-text, #17201f)' }}>
           Typography & Text Style
         </Text>
         <Button
           variant="subtle"
           color="gray"
           size="xs"
-          leftSection={<RotateCcw size={12} />}
+          leftSection={<RotateCcw size={13} />}
           onClick={handleReset}
         >
           Reset
@@ -107,7 +107,7 @@ export function TypographyStyleControl({
 
       {/* Preset Selector */}
       <Select
-        size="xs"
+        size="sm"
         label="Theme Typography Preset"
         placeholder="Select preset"
         value={value.typography || 'h1'}
@@ -117,26 +117,26 @@ export function TypographyStyleControl({
 
       {/* Color Token Selector */}
       <Box>
-        <Text size="xs" fw={500} mb={4} style={{ fontSize: 11 }}>
+        <Text size="xs" fw={600} mb={4} style={{ fontSize: 12, color: 'var(--mantine-color-text, #17201f)' }}>
           Color Token
         </Text>
-        <Paper p={6} withBorder radius="xs">
+        <Paper p="xs" withBorder radius="xs">
           <Group justify="space-between" align="center">
-            <Group gap={6}>
+            <Group gap="xs">
               <Box
                 style={{
-                  width: 18,
-                  height: 18,
-                  borderRadius: 3,
+                  width: 24,
+                  height: 24,
+                  borderRadius: 4,
                   backgroundColor: currentTextColor,
                   border: '1px solid rgba(0,0,0,0.2)',
                 }}
               />
-              <Text size="xs" fw={500} style={{ fontSize: 11 }}>
+              <Text size="xs" fw={600} style={{ fontSize: 12 }}>
                 {currentColorToken}
               </Text>
             </Group>
-            <Button size="xs" variant="subtle" color="teal" onClick={onOpenColorModal}>
+            <Button size="xs" variant="light" color="teal" onClick={onOpenColorModal}>
               Change
             </Button>
           </Group>
@@ -145,26 +145,26 @@ export function TypographyStyleControl({
 
       {/* Text Alignment */}
       <Box>
-        <Text size="xs" fw={500} mb={4} style={{ fontSize: 11 }}>
+        <Text size="xs" fw={600} mb={4} style={{ fontSize: 12, color: 'var(--mantine-color-text, #17201f)' }}>
           Alignment
         </Text>
         <SegmentedControl
-          size="xs"
+          size="sm"
           fullWidth
           value={value.align || 'left'}
           onChange={(val) => update({ align: val as TextAlign })}
           data={[
-            { label: <AlignLeft size={13} />, value: 'left' },
-            { label: <AlignCenter size={13} />, value: 'center' },
-            { label: <AlignRight size={13} />, value: 'right' },
-            { label: <AlignJustify size={13} />, value: 'justify' },
+            { label: <AlignLeft size={15} />, value: 'left' },
+            { label: <AlignCenter size={15} />, value: 'center' },
+            { label: <AlignRight size={15} />, value: 'right' },
+            { label: <AlignJustify size={15} />, value: 'justify' },
           ]}
         />
       </Box>
 
       {/* Text Effects */}
       <Select
-        size="xs"
+        size="sm"
         label="Text Effect"
         placeholder="Select effect"
         value={value.effectPreset || 'none'}
@@ -184,7 +184,7 @@ export function TypographyStyleControl({
       {/* Spacing & Line Height */}
       <Group grow gap="xs">
         <Select
-          size="xs"
+          size="sm"
           label="Letter Spacing"
           value={value.letterSpacing || 'normal'}
           onChange={(val) => update({ letterSpacing: (val as LetterSpacingPreset) || 'normal' })}
@@ -198,7 +198,7 @@ export function TypographyStyleControl({
         />
 
         <Select
-          size="xs"
+          size="sm"
           label="Line Spacing"
           value={value.lineHeight || 'normal'}
           onChange={(val) => update({ lineHeight: (val as LineHeightPreset) || 'normal' })}
@@ -213,7 +213,7 @@ export function TypographyStyleControl({
 
       {/* Vertical Text */}
       <Switch
-        size="xs"
+        size="sm"
         color="teal"
         label="Vertical Text (vertical-rl)"
         checked={value.verticalText || false}

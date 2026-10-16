@@ -49,8 +49,8 @@ import { BordersEffectsControl } from './style-controls/BordersEffectsControl'
 
 export function computeTranslatedAnchorPosition(
   anchor: HTMLElement | null,
-  width = 340,
-  height = 480,
+  width = 360,
+  height = 500,
 ): { x: number; y: number } {
   if (typeof window === 'undefined') return { x: 340, y: 80 }
 
@@ -167,9 +167,9 @@ export function WidgetStyleContextMenu({
   onUpdateStyle,
 }: WidgetStyleContextMenuProps) {
   const componentType = normalizeComponentType(rawComponentType)
-  // Color Modal Target: 'text' | 'background' | 'overlay' | 'border' | null
+  // Color Modal Target: 'text' | 'background' | 'overlay' | 'border' | 'fallback' | null
   const [colorModalTarget, setColorModalTarget] = useState<
-    'text' | 'background' | 'overlay' | 'border' | null
+    'text' | 'background' | 'overlay' | 'border' | 'fallback' | null
   >(null)
 
   // Manifest and Style Capability check
@@ -223,7 +223,7 @@ export function WidgetStyleContextMenu({
   // Resolve coordinate position translating iframe offsets if necessary
   const resolvedPosition = useMemo(() => {
     if (initialPosition) return initialPosition
-    if (anchorEl) return computeTranslatedAnchorPosition(anchorEl, 340, 480)
+    if (anchorEl) return computeTranslatedAnchorPosition(anchorEl, 360, 500)
     return undefined
   }, [initialPosition, anchorEl])
 
@@ -269,8 +269,8 @@ export function WidgetStyleContextMenu({
         onClose={onClose}
         title={`Style: ${manifest?.label || componentType}`}
         subtitle={`Configure presentation without handwritten CSS`}
-        headerExtra={<Sliders size={15} color="var(--mantine-color-teal-7, #0e6b66)" />}
-        width={340}
+        headerExtra={<Sliders size={16} color="var(--mantine-color-teal-7, #0e6b66)" />}
+        width={360}
         anchorEl={anchorEl}
         initialPosition={resolvedPosition}
         mode="floating"
@@ -281,7 +281,7 @@ export function WidgetStyleContextMenu({
         zIndex={1050}
         footer={
           <Group justify="space-between" w="100%">
-            <Text size="xs" c="dimmed">
+            <Text size="xs" c="dimmed" style={{ fontSize: 12 }}>
               Prop: {componentId}
             </Text>
             <Button size="xs" color="teal" onClick={onClose}>
@@ -300,22 +300,22 @@ export function WidgetStyleContextMenu({
           >
             <Tabs.List grow mb="xs">
               {hasTypography && (
-                <Tabs.Tab value="typography" leftSection={<Type size={12} />}>
+                <Tabs.Tab value="typography" leftSection={<Type size={14} />}>
                   Type
                 </Tabs.Tab>
               )}
               {hasBackground && (
-                <Tabs.Tab value="background" leftSection={<Palette size={12} />}>
+                <Tabs.Tab value="background" leftSection={<Palette size={14} />}>
                   Backdrop
                 </Tabs.Tab>
               )}
               {hasSpacingOrDimensions && (
-                <Tabs.Tab value="spacing" leftSection={<BoxSelect size={12} />}>
+                <Tabs.Tab value="spacing" leftSection={<BoxSelect size={14} />}>
                   Layout
                 </Tabs.Tab>
               )}
               {hasBorderOrEffects && (
-                <Tabs.Tab value="borders" leftSection={<Layers size={12} />}>
+                <Tabs.Tab value="borders" leftSection={<Layers size={14} />}>
                   Borders
                 </Tabs.Tab>
               )}
@@ -338,9 +338,7 @@ export function WidgetStyleContextMenu({
               value={normalizedStyle.background}
               themeConfig={themeConfig}
               onChange={(bg) => update({ background: bg })}
-              onOpenColorModal={(target) =>
-                setColorModalTarget(target === 'background' ? 'background' : 'overlay')
-              }
+              onOpenColorModal={(target) => setColorModalTarget(target)}
             />
           )}
 
@@ -384,20 +382,29 @@ export function WidgetStyleContextMenu({
                 ? 'Theme Overlay Color'
                 : colorModalTarget === 'border'
                   ? 'Theme Border Color'
-                  : 'Theme Background & Palette'
+                  : colorModalTarget === 'fallback'
+                    ? 'Theme Fallback Color'
+                    : 'Theme Background & Palette'
           }
           subtitle="Select semantic theme tokens or custom gradients"
           value={
             colorModalTarget === 'text'
               ? normalizedStyle.typography?.colorToken || 'text'
               : colorModalTarget === 'overlay'
-                ? normalizedStyle.background?.image?.overlay?.colorToken || 'text'
+                ? (normalizedStyle.background?.mode === 'image'
+                    ? normalizedStyle.background?.image?.overlay?.colorToken
+                    : normalizedStyle.background?.video?.overlay?.colorToken) || 'text'
                 : colorModalTarget === 'border'
                   ? normalizedStyle.border?.colorToken || 'border'
-                  : normalizedStyle.background?.colorToken || 'surface'
+                  : colorModalTarget === 'fallback'
+                    ? (normalizedStyle.background?.mode === 'image'
+                        ? normalizedStyle.background?.image?.fallbackColorToken
+                        : normalizedStyle.background?.video?.fallbackColorToken) || 'surface'
+                    : normalizedStyle.background?.colorToken || 'surface'
           }
           tokens={themeConfig?.tokens}
           zIndex={1150}
+          includeBackgroundTokens={true}
           supportedModes={
             colorModalTarget === 'background'
               ? ['solid', 'gradient', 'mesh']
@@ -438,6 +445,28 @@ export function WidgetStyleContextMenu({
                         ...normalizedStyle.background?.video?.overlay,
                         colorToken: tokenId,
                       },
+                    },
+                  },
+                })
+              }
+            } else if (colorModalTarget === 'fallback') {
+              if (normalizedStyle.background?.mode === 'image') {
+                update({
+                  background: {
+                    ...normalizedStyle.background,
+                    image: {
+                      ...normalizedStyle.background?.image,
+                      fallbackColorToken: tokenId,
+                    },
+                  },
+                })
+              } else if (normalizedStyle.background?.mode === 'video') {
+                update({
+                  background: {
+                    ...normalizedStyle.background,
+                    video: {
+                      ...normalizedStyle.background?.video,
+                      fallbackColorToken: tokenId,
                     },
                   },
                 })

@@ -48,13 +48,13 @@ export function SpacingDimensionsControl({
 
   return (
     <Stack gap="xs">
-      <Text size="xs" fw={700} c="dimmed" style={{ fontSize: 11 }}>
+      <Text size="xs" fw={700} style={{ fontSize: 13, color: 'var(--mantine-color-text, #17201f)' }}>
         Spacing & Layout Geometry
       </Text>
 
       <Group grow gap="xs">
         <Select
-          size="xs"
+          size="sm"
           label="Padding"
           placeholder="Select spacing"
           value={spacing.padding?.token || 'md'}
@@ -74,7 +74,7 @@ export function SpacingDimensionsControl({
         />
 
         <Select
-          size="xs"
+          size="sm"
           label="Margin"
           placeholder="Select margin"
           value={spacing.margin?.token || 'none'}
@@ -99,7 +99,7 @@ export function SpacingDimensionsControl({
 
           <Group grow gap="xs">
             <Select
-              size="xs"
+              size="sm"
               label="Container Width"
               value={dimensions.containerWidth || 'containerWidth'}
               onChange={(val) => updateDimensions({ containerWidth: val || 'containerWidth' })}
@@ -112,7 +112,7 @@ export function SpacingDimensionsControl({
             />
 
             <Select
-              size="xs"
+              size="sm"
               label="Minimum Height"
               value={dimensions.minHeight || 'auto'}
               onChange={(val) => updateDimensions({ minHeight: val || 'auto' })}
@@ -127,18 +127,18 @@ export function SpacingDimensionsControl({
           </Group>
 
           <Box>
-            <Text size="xs" fw={500} mb={4} style={{ fontSize: 11 }}>
+            <Text size="xs" fw={600} mb={4} style={{ fontSize: 12, color: 'var(--mantine-color-text, #17201f)' }}>
               Content Alignment
             </Text>
             <SegmentedControl
-              size="xs"
+              size="sm"
               fullWidth
               value={dimensions.align || 'left'}
               onChange={(val) => updateDimensions({ align: val as TextAlign })}
               data={[
-                { label: <AlignLeft size={13} />, value: 'left' },
-                { label: <AlignCenter size={13} />, value: 'center' },
-                { label: <AlignRight size={13} />, value: 'right' },
+                { label: <AlignLeft size={15} />, value: 'left' },
+                { label: <AlignCenter size={15} />, value: 'center' },
+                { label: <AlignRight size={15} />, value: 'right' },
               ]}
             />
           </Box>
