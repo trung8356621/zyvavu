@@ -117,8 +117,10 @@ export function SeoSettingsPanel({ snapshot }: { snapshot: SeoAdminSnapshot }) {
             </Text>
             <Text>
               Sitemap:{' '}
+              <Anchor href="/sitemap-view">View sitemap</Anchor>
+              {' · '}
               <Anchor href={snapshot.sitemap.url} target="_blank" rel="noreferrer">
-                {snapshot.sitemap.url}
+                Raw XML
               </Anchor>{' '}
               — {statusLabel(snapshot.sitemap.available, snapshot.sitemap.httpStatus)}
             </Text>

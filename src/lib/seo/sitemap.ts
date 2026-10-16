@@ -133,7 +133,7 @@ export async function buildResourceSitemap(
   group: string,
   page: number,
   options?: { chunkSize?: number },
-): Promise<{ xml: string; locs: string[]; pageCount: number } | null> {
+): Promise<{ xml: string; entries: SitemapUrlEntry[]; locs: string[]; pageCount: number } | null> {
   const resourceType = groupResourceType(group)
   if (!resourceType || !Number.isInteger(page) || page < 1) return null
 
@@ -197,6 +197,7 @@ export async function buildResourceSitemap(
 
   return {
     xml: renderUrlSet(entries),
+    entries,
     locs: entries.map((entry) => entry.loc),
     pageCount,
   }
