@@ -6,6 +6,7 @@ import * as migration_20261014_150000_settings_permalinks_multi_type from './202
 import * as migration_20261015_070000_mega_menu_foundation from './20261015_070000_mega_menu_foundation';
 import * as migration_20261015_110000_mega_menu_v4_per_item from './20261015_110000_mega_menu_v4_per_item';
 import * as migration_20261016_010000_theme_persistence from './20261016_010000_theme_persistence';
+import * as migration_20261016_103000_url_registry_taxonomies from './20261016_103000_url_registry_taxonomies';
 
 export const migrations = [
   {
@@ -47,5 +48,10 @@ export const migrations = [
     up: migration_20261016_010000_theme_persistence.up,
     down: migration_20261016_010000_theme_persistence.down,
     name: '20261016_010000_theme_persistence'
+  },
+  {
+    up: migration_20261016_103000_url_registry_taxonomies.up,
+    down: migration_20261016_103000_url_registry_taxonomies.down,
+    name: '20261016_103000_url_registry_taxonomies'
   },
 ];

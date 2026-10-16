@@ -16,13 +16,18 @@ export function RecentPostsFrontend({
   heading = 'Bài Viết Mới Nhất',
   dataContext,
 }: RecentPostsProps) {
+  const isTag = dataContext?.archive?.taxonomyType === 'tag'
+  const effectiveHeading =
+    isTag && heading
+      ? heading.replace(/CHUYÊN MỤC/g, 'THẺ').replace(/Chuyên Mục/g, 'Thẻ').replace(/chuyên mục/g, 'thẻ')
+      : heading
   const posts: any[] = dataContext?.archive?.posts || []
   const displayPosts = posts.slice(0, limit)
 
   if (!displayPosts.length) {
     return (
       <div className="zyvavu-widget-recent-posts" style={{ padding: '32px 0' }}>
-        {heading && <h2 style={{ marginBottom: '16px' }}>{heading}</h2>}
+        {effectiveHeading && <h2 style={{ marginBottom: '16px' }}>{effectiveHeading}</h2>}
         <p style={{ color: '#888' }}>Chưa có bài viết nào được đăng tải.</p>
       </div>
     )
@@ -32,7 +37,7 @@ export function RecentPostsFrontend({
 
   return (
     <div className="zyvavu-widget-recent-posts" style={{ padding: '32px 0' }}>
-      {heading && (
+      {effectiveHeading && (
         <h2
           className="zyvavu-widget-recent-posts__heading"
           style={{
@@ -41,7 +46,7 @@ export function RecentPostsFrontend({
             color: 'var(--zyvavu-theme-text, inherit)',
           }}
         >
-          {heading}
+          {effectiveHeading}
         </h2>
       )}
 
@@ -61,7 +66,7 @@ export function RecentPostsFrontend({
                 day: 'numeric',
               })
             : null
-          const postUrl = post.publicPath || `/posts/${post.slug || post.id}`
+          const postUrl = post.canonicalPath || post.canonicalUrl || post.url || post.publicPath || `/posts/${post.slug || post.id}`
 
           return (
             <article

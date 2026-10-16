@@ -46,24 +46,24 @@ describe('Multi-Type Permalinks Pure Contract & Validation', () => {
       expect(cfg.isFunctional).toBe(true)
     })
 
-    it('maps categories to categoryPermalinkStructure with %term% token (pending routing)', () => {
+    it('maps categories to categoryPermalinkStructure with %term% token', () => {
       const cfg = RESOURCE_CONFIGS.categories
       expect(cfg.field).toBe('categoryPermalinkStructure')
       expect(cfg.token).toBe('%term%')
       expect(cfg.supportedTokens).toEqual(['%term%'])
       expect(cfg.defaultStructure).toBe(DEFAULT_CATEGORY_PERMALINK_STRUCTURE)
-      expect(cfg.isFunctional).toBe(false)
-      expect(cfg.statusNote).toContain('pending backend implementation')
+      expect(cfg.isFunctional).toBe(true)
+      expect(canonicalPathFor('category', 'tin-tuc')).toBe('/category/tin-tuc')
     })
 
-    it('maps tags to tagPermalinkStructure with %term% token (pending routing)', () => {
+    it('maps tags to tagPermalinkStructure with %term% token', () => {
       const cfg = RESOURCE_CONFIGS.tags
       expect(cfg.field).toBe('tagPermalinkStructure')
       expect(cfg.token).toBe('%term%')
       expect(cfg.supportedTokens).toEqual(['%term%'])
       expect(cfg.defaultStructure).toBe(DEFAULT_TAG_PERMALINK_STRUCTURE)
-      expect(cfg.isFunctional).toBe(false)
-      expect(cfg.statusNote).toContain('pending backend implementation')
+      expect(cfg.isFunctional).toBe(true)
+      expect(canonicalPathFor('tag', 'noi-bat')).toBe('/tag/noi-bat')
     })
   })
 

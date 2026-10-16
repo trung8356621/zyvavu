@@ -45,15 +45,22 @@ export const preservePublishedPartialUpdate: CollectionBeforeChangeHook = async 
   if (!intent || intent.draft || intent.statusProvided) return data
   if (!originalDoc || originalDoc._status !== 'draft' || typeof originalDoc.id !== 'number') return data
 
-  const published = (await req.payload.findByID({
-    collection: collection.slug as 'pages',
-    id: originalDoc.id,
-    depth: 0,
-    draft: false,
-    overrideAccess: true,
-    disableErrors: true,
-    req,
-  })) as ({ _status?: string | null } & Record<string, unknown>) | null
+  const prevSkip = req.context?.skipCanonicalLookup
+  if (req.context) req.context.skipCanonicalLookup = true
+  let published: ({ _status?: string | null } & Record<string, unknown>) | null = null
+  try {
+    published = (await req.payload.findByID({
+      collection: collection.slug as 'pages',
+      id: originalDoc.id,
+      depth: 0,
+      draft: false,
+      overrideAccess: true,
+      disableErrors: true,
+      req,
+    })) as ({ _status?: string | null } & Record<string, unknown>) | null
+  } finally {
+    if (req.context) req.context.skipCanonicalLookup = prevSkip
+  }
   if (!published || published._status !== 'published') return data
 
   const submitted = new Set(intent.submittedKeys)

@@ -5,7 +5,7 @@ import { contentBlocks } from '@/blocks/contentBlocks'
 import { publicPathField } from '@/fields/publicPath'
 import { slugField } from '@/fields/slug'
 import { capturePublishWrite, preservePublishedPartialUpdate } from '@/lib/publish/write-contract'
-import { removeResourceRoutes, syncResourceRoute } from '@/lib/url/registry'
+import { attachCanonicalPathHook, removeResourceRoutes, syncResourceRoute } from '@/lib/url/registry'
 
 export const Pages: CollectionConfig = {
   slug: 'pages',
@@ -33,6 +33,7 @@ export const Pages: CollectionConfig = {
   hooks: {
     beforeOperation: [capturePublishWrite],
     beforeChange: [preservePublishedPartialUpdate],
+    afterRead: [attachCanonicalPathHook('page')],
     afterChange: [
       async ({ doc, req, previousDoc }) => {
         await syncResourceRoute(req, 'page', doc, previousDoc)

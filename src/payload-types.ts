@@ -400,9 +400,11 @@ export interface UrlRegistry {
   id: number;
   path: string;
   recordRole: 'canonical' | 'redirect';
-  resourceType: 'page' | 'post';
+  resourceType: 'page' | 'post' | 'category' | 'tag';
   page?: (number | null) | Page;
   post?: (number | null) | Post;
+  category?: (number | null) | Category;
+  tag?: (number | null) | Tag;
   targetPath?: string | null;
   /**
    * Reserved. Locale uniqueness is not decided.
@@ -701,6 +703,8 @@ export interface UrlRegistrySelect<T extends boolean = true> {
   resourceType?: T;
   page?: T;
   post?: T;
+  category?: T;
+  tag?: T;
   targetPath?: T;
   locale?: T;
   siteKey?: T;

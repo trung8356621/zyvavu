@@ -143,8 +143,7 @@ export const RESOURCE_CONFIGS: Record<PermalinkResourceType, ResourcePermalinkCo
         example: '',
       },
     ],
-    isFunctional: false,
-    statusNote: 'Taxonomy archive routing and URL Registry models are pending backend implementation. Settings are saved for future activation.',
+    isFunctional: true,
   },
   tags: {
     resource: 'tags',
@@ -169,8 +168,7 @@ export const RESOURCE_CONFIGS: Record<PermalinkResourceType, ResourcePermalinkCo
         example: '',
       },
     ],
-    isFunctional: false,
-    statusNote: 'Taxonomy archive routing and URL Registry models are pending backend implementation. Settings are saved for future activation.',
+    isFunctional: true,
   },
 }
 

@@ -15,7 +15,8 @@ export function CategoryHeaderFrontend({
   description: customDescription,
   dataContext,
 }: CategoryHeaderProps) {
-  const title = customTitle || dataContext?.archive?.title || 'Chuyên Mục'
+  const isTag = dataContext?.archive?.taxonomyType === 'tag'
+  const title = customTitle || dataContext?.archive?.title || (isTag ? 'Thẻ' : 'Chuyên Mục')
   const description = customDescription || dataContext?.archive?.description
 
   return (
@@ -29,7 +30,7 @@ export function CategoryHeaderFrontend({
       }}
     >
       <div style={{ fontSize: '13px', textTransform: 'uppercase', color: 'var(--zyvavu-theme-primary, #0e6b66)', fontWeight: 600, marginBottom: '6px' }}>
-        Chuyên mục
+        {isTag ? 'Thẻ' : 'Chuyên mục'}
       </div>
       <h1
         className="zyvavu-widget-category-header__title"

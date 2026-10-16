@@ -18,6 +18,8 @@ export type MenuItem = {
     newTab?: boolean | null
     page?: Relation
     post?: Relation
+    category?: Relation
+    tag?: Relation
   } | null
 }
 
@@ -63,6 +65,16 @@ export async function resolveItemHref(payload: Payload, link?: MenuItem['link'])
     const canonical = id == null ? null : await getCanonicalPath(payload, 'post', id)
     return canonical || '/'
   }
+  if (link.type === 'category') {
+    const id = relationId(link.category)
+    const canonical = id == null ? null : await getCanonicalPath(payload, 'category', id)
+    return canonical || '/'
+  }
+  if (link.type === 'tag') {
+    const id = relationId(link.tag)
+    const canonical = id == null ? null : await getCanonicalPath(payload, 'tag', id)
+    return canonical || '/'
+  }
   return '/'
 }
 
@@ -79,6 +91,12 @@ export async function linksForMenu(payload: Payload, items: MenuItem[]): Promise
     } else if (item.link.type === 'post') {
       const id = relationId(item.link.post)
       href = id == null ? null : await getCanonicalPath(payload, 'post', id)
+    } else if (item.link.type === 'category') {
+      const id = relationId(item.link.category)
+      href = id == null ? null : await getCanonicalPath(payload, 'category', id)
+    } else if (item.link.type === 'tag') {
+      const id = relationId(item.link.tag)
+      href = id == null ? null : await getCanonicalPath(payload, 'tag', id)
     }
     if (!href) continue
     links.push({

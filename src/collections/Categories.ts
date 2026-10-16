@@ -2,6 +2,7 @@ import type { CollectionConfig } from 'payload'
 
 import { siteStaffAccess } from '@/access/roles'
 import { slugField } from '@/fields/slug'
+import { attachCanonicalPathHook, removeResourceRoutes, syncResourceRoute } from '@/lib/url/registry'
 
 export const Categories: CollectionConfig = {
   slug: 'categories',
@@ -21,6 +22,20 @@ export const Categories: CollectionConfig = {
     read: () => true,
     update: siteStaffAccess,
     delete: siteStaffAccess,
+  },
+  hooks: {
+    afterRead: [attachCanonicalPathHook('category')],
+    afterChange: [
+      async ({ doc, req, previousDoc }) => {
+        await syncResourceRoute(req, 'category', doc, previousDoc)
+        return doc
+      },
+    ],
+    beforeDelete: [
+      async ({ id, req }) => {
+        if (typeof id === 'number') await removeResourceRoutes(req, 'category', id)
+      },
+    ],
   },
   fields: [
     {

@@ -5,29 +5,47 @@ import crypto from 'node:crypto'
 import { getPayload, type Payload } from 'payload'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
+import { renderToStaticMarkup } from 'react-dom/server'
+import { PublicDocument } from '@/components/frontend/PublicDocument'
 import {
+  DEFAULT_CATEGORY_PERMALINK_STRUCTURE,
   DEFAULT_POST_PERMALINK_STRUCTURE,
+  DEFAULT_TAG_PERMALINK_STRUCTURE,
   normalizePermalinkPattern,
   resolveEstablishedOrPattern,
   resolvePostPath,
   validatePermalinkPattern,
 } from '@/lib/permalinks'
-import { resolvePublicPath } from '@/lib/url/registry'
+import { getCanonicalPath, inspectAndRepairUrlRegistry, resolvePublicPath } from '@/lib/url/registry'
 import config from '@/payload.config'
 
 let payload: Payload
 const suffix = crypto.randomBytes(4).toString('hex')
 const createdPages: number[] = []
 const createdPosts: number[] = []
+const createdCategories: number[] = []
+const createdTags: number[] = []
 
 describe('permalinks & URL routing contract', () => {
   let originalStructure = DEFAULT_POST_PERMALINK_STRUCTURE
+  let originalCategoryStructure = DEFAULT_CATEGORY_PERMALINK_STRUCTURE
+  let originalTagStructure = DEFAULT_TAG_PERMALINK_STRUCTURE
+  let originalThemeId = 'corporate'
 
   beforeAll(async () => {
     payload = await getPayload({ config })
     const settings = await payload.findGlobal({ slug: 'settings', overrideAccess: true })
     if (settings?.postPermalinkStructure) {
       originalStructure = settings.postPermalinkStructure as string
+    }
+    if (settings?.categoryPermalinkStructure) {
+      originalCategoryStructure = settings.categoryPermalinkStructure as string
+    }
+    if (settings?.tagPermalinkStructure) {
+      originalTagStructure = settings.tagPermalinkStructure as string
+    }
+    if (settings?.activeThemeId) {
+      originalThemeId = settings.activeThemeId as string
     }
   })
 
@@ -39,6 +57,12 @@ describe('permalinks & URL routing contract', () => {
     for (const id of createdPages) {
       await payload.delete({ collection: 'pages', id, overrideAccess: true }).catch(() => undefined)
     }
+    for (const id of createdCategories) {
+      await payload.delete({ collection: 'categories', id, overrideAccess: true }).catch(() => undefined)
+    }
+    for (const id of createdTags) {
+      await payload.delete({ collection: 'tags', id, overrideAccess: true }).catch(() => undefined)
+    }
 
     // Restore original settings
     await payload.updateGlobal({
@@ -46,6 +70,9 @@ describe('permalinks & URL routing contract', () => {
       overrideAccess: true,
       data: {
         postPermalinkStructure: originalStructure,
+        categoryPermalinkStructure: originalCategoryStructure,
+        tagPermalinkStructure: originalTagStructure,
+        activeThemeId: originalThemeId,
       },
     }).catch(() => undefined)
   })
@@ -353,6 +380,325 @@ describe('permalinks & URL routing contract', () => {
           },
         }),
       ).rejects.toThrow(/reserved/i)
+    })
+
+    it('updates canonical URL and creates redirect when slug is renamed in a draft first and then published', async () => {
+      await payload.updateGlobal({
+        slug: 'settings',
+        overrideAccess: true,
+        data: { postPermalinkStructure: '/%postname%.html' },
+      })
+
+      const post = await payload.create({
+        collection: 'posts',
+        overrideAccess: true,
+        data: {
+          title: `Draft Rename Post ${suffix}`,
+          slug: `draft-orig-${suffix}`,
+          _status: 'published',
+        },
+      })
+      createdPosts.push(post.id)
+      expect((post as any).canonicalPath).toBe(`/draft-orig-${suffix}.html`)
+
+      // Step 1: Save draft with new slug
+      await payload.update({
+        collection: 'posts',
+        id: post.id,
+        draft: true,
+        overrideAccess: true,
+        data: {
+          slug: `draft-renamed-${suffix}`,
+        },
+      })
+
+      // Live canonical stays on old slug while draft is unpublished
+      expect(await resolvePublicPath(payload, `/draft-orig-${suffix}.html`)).toEqual({
+        kind: 'canonical',
+        resourceType: 'post',
+        id: post.id,
+      })
+      expect(await resolvePublicPath(payload, `/draft-renamed-${suffix}.html`)).toBeNull()
+
+      // Step 2: Publish the draft without changing slug again
+      const published = await payload.update({
+        collection: 'posts',
+        id: post.id,
+        overrideAccess: true,
+        data: {
+          slug: `draft-renamed-${suffix}`,
+          _status: 'published',
+        },
+      })
+      expect((published as any).canonicalPath).toBe(`/draft-renamed-${suffix}.html`)
+
+      expect(await resolvePublicPath(payload, `/draft-renamed-${suffix}.html`)).toEqual({
+        kind: 'canonical',
+        resourceType: 'post',
+        id: post.id,
+      })
+      expect(await resolvePublicPath(payload, `/draft-orig-${suffix}.html`)).toEqual({
+        kind: 'redirect',
+        target: `/draft-renamed-${suffix}.html`,
+      })
+    })
+
+    it('synchronizes Category and Tag routes across create, rename, custom structure, collision, and delete', async () => {
+      await payload.updateGlobal({
+        slug: 'settings',
+        overrideAccess: true,
+        data: {
+          categoryPermalinkStructure: DEFAULT_CATEGORY_PERMALINK_STRUCTURE,
+          tagPermalinkStructure: DEFAULT_TAG_PERMALINK_STRUCTURE,
+        },
+      })
+
+      const category = await payload.create({
+        collection: 'categories',
+        overrideAccess: true,
+        data: {
+          title: `Category ${suffix}`,
+          slug: `cat-${suffix}`,
+        },
+      })
+      createdCategories.push(category.id)
+      expect((category as any).canonicalPath).toBe(`/category/cat-${suffix}`)
+      expect(await resolvePublicPath(payload, `/category/cat-${suffix}`)).toEqual({
+        kind: 'canonical',
+        resourceType: 'category',
+        id: category.id,
+      })
+
+      const tag = await payload.create({
+        collection: 'tags',
+        overrideAccess: true,
+        data: {
+          title: `Tag ${suffix}`,
+          slug: `tag-${suffix}`,
+        },
+      })
+      createdTags.push(tag.id)
+      expect((tag as any).canonicalPath).toBe(`/tag/tag-${suffix}`)
+      expect(await resolvePublicPath(payload, `/tag/tag-${suffix}`)).toEqual({
+        kind: 'canonical',
+        resourceType: 'tag',
+        id: tag.id,
+      })
+
+      // Rename Category slug -> updates canonical and creates redirect
+      await payload.update({
+        collection: 'categories',
+        id: category.id,
+        overrideAccess: true,
+        data: { slug: `cat-renamed-${suffix}` },
+      })
+      expect(await resolvePublicPath(payload, `/category/cat-renamed-${suffix}`)).toEqual({
+        kind: 'canonical',
+        resourceType: 'category',
+        id: category.id,
+      })
+      expect(await resolvePublicPath(payload, `/category/cat-${suffix}`)).toEqual({
+        kind: 'redirect',
+        target: `/category/cat-renamed-${suffix}`,
+      })
+
+      // Rename Tag slug -> updates canonical and creates redirect
+      await payload.update({
+        collection: 'tags',
+        id: tag.id,
+        overrideAccess: true,
+        data: { slug: `tag-renamed-${suffix}` },
+      })
+      expect(await resolvePublicPath(payload, `/tag/tag-renamed-${suffix}`)).toEqual({
+        kind: 'canonical',
+        resourceType: 'tag',
+        id: tag.id,
+      })
+      expect(await resolvePublicPath(payload, `/tag/tag-${suffix}`)).toEqual({
+        kind: 'redirect',
+        target: `/tag/tag-renamed-${suffix}`,
+      })
+
+      // Custom configured category & tag patterns apply to newly created taxonomies
+      await payload.updateGlobal({
+        slug: 'settings',
+        overrideAccess: true,
+        data: {
+          categoryPermalinkStructure: '/chuyen-muc/%term%',
+          tagPermalinkStructure: '/the/%term%',
+        },
+      })
+
+      const customCat = await payload.create({
+        collection: 'categories',
+        overrideAccess: true,
+        data: {
+          title: `Custom Cat ${suffix}`,
+          slug: `custom-cat-${suffix}`,
+        },
+      })
+      createdCategories.push(customCat.id)
+      expect(await resolvePublicPath(payload, `/chuyen-muc/custom-cat-${suffix}`)).toEqual({
+        kind: 'canonical',
+        resourceType: 'category',
+        id: customCat.id,
+      })
+
+      // Collision between Page publicPath and Category canonical path is rejected
+      await expect(
+        payload.create({
+          collection: 'pages',
+          overrideAccess: true,
+          data: {
+            title: `Clash with Cat ${suffix}`,
+            slug: `clash-cat-page-${suffix}`,
+            publicPath: `/category/cat-renamed-${suffix}`,
+            visibility: 'public',
+            presentation: 'shared',
+            _status: 'published',
+          },
+        }),
+      ).rejects.toThrow(/already in use/i)
+
+      // Deleting customCat removes its canonical route
+      await payload.delete({
+        collection: 'categories',
+        id: customCat.id,
+        overrideAccess: true,
+      })
+      createdCategories.splice(createdCategories.indexOf(customCat.id), 1)
+      expect(await resolvePublicPath(payload, `/chuyen-muc/custom-cat-${suffix}`)).toBeNull()
+    })
+
+    it('renders Category and Tag public archives via PublicDocument across themes and repairs missing canonicals safely', async () => {
+      const cat = await payload.create({
+        collection: 'categories',
+        overrideAccess: true,
+        data: {
+          title: `Archive Cat ${suffix}`,
+          slug: `arch-cat-${suffix}`,
+        },
+      })
+      createdCategories.push(cat.id)
+
+      const emptyTag = await payload.create({
+        collection: 'tags',
+        overrideAccess: true,
+        data: {
+          title: `Empty Tag ${suffix}`,
+          slug: `empty-tag-${suffix}`,
+        },
+      })
+      createdTags.push(emptyTag.id)
+
+      const assignedTag = await payload.create({
+        collection: 'tags',
+        overrideAccess: true,
+        data: {
+          title: `Assigned Tag ${suffix}`,
+          slug: `assigned-tag-${suffix}`,
+        },
+      })
+      createdTags.push(assignedTag.id)
+
+      const publishedPost = await payload.create({
+        collection: 'posts',
+        overrideAccess: true,
+        data: {
+          title: `Archive Post Published ${suffix}`,
+          slug: `arch-post-pub-${suffix}`,
+          categories: [cat.id],
+          tags: [assignedTag.id],
+          _status: 'published',
+        },
+      })
+      createdPosts.push(publishedPost.id)
+
+      const draftPost = await payload.create({
+        collection: 'posts',
+        overrideAccess: true,
+        data: {
+          title: `Archive Post Draft ${suffix}`,
+          slug: `arch-post-draft-${suffix}`,
+          categories: [cat.id],
+          tags: [assignedTag.id],
+          _status: 'draft',
+        },
+      })
+      createdPosts.push(draftPost.id)
+
+      const catPath = (await getCanonicalPath(payload, 'category', cat.id)) as string
+      const assignedTagPath = (await getCanonicalPath(payload, 'tag', assignedTag.id)) as string
+      const emptyTagPath = (await getCanonicalPath(payload, 'tag', emptyTag.id)) as string
+      const pubPostPath = (await getCanonicalPath(payload, 'post', publishedPost.id)) as string
+
+      // Render Category archive: contains published post, excludes draft post, links to canonical post path
+      const catElement = await PublicDocument({ path: catPath })
+      const catHtml = renderToStaticMarkup(catElement as any)
+      expect(catHtml).toContain(`Archive Cat ${suffix}`)
+      expect(catHtml).toContain(`Archive Post Published ${suffix}`)
+      expect(catHtml).not.toContain(`Archive Post Draft ${suffix}`)
+      expect(catHtml).toContain(pubPostPath)
+
+      // Render Tag archive: adapts heading to distinguish Tag vs Category, contains published post
+      const tagElement = await PublicDocument({ path: assignedTagPath })
+      const tagHtml = renderToStaticMarkup(tagElement as any)
+      expect(tagHtml).toContain(`Assigned Tag ${suffix}`)
+      expect(tagHtml).toContain('Thẻ')
+      expect(tagHtml).toContain(`Archive Post Published ${suffix}`)
+      expect(tagHtml).not.toContain(`Archive Post Draft ${suffix}`)
+
+      // Render Empty Tag archive: displays empty state
+      const emptyTagElement = await PublicDocument({ path: emptyTagPath })
+      const emptyTagHtml = renderToStaticMarkup(emptyTagElement as any)
+      expect(emptyTagHtml).toContain(`Empty Tag ${suffix}`)
+      expect(emptyTagHtml).toContain('Chưa có bài viết nào')
+
+      // Switching active theme does not change routing resolution
+      for (const themeId of ['corporate', 'industrial', 'editorial']) {
+        await payload.updateGlobal({
+          slug: 'settings',
+          overrideAccess: true,
+          data: { activeThemeId: themeId },
+        })
+        expect(await resolvePublicPath(payload, catPath)).toEqual({
+          kind: 'canonical',
+          resourceType: 'category',
+          id: cat.id,
+        })
+        expect(await resolvePublicPath(payload, assignedTagPath)).toEqual({
+          kind: 'canonical',
+          resourceType: 'tag',
+          id: assignedTag.id,
+        })
+      }
+
+      // Simulate a missing canonical record and verify bounded idempotent repair
+      const routesToDelete = await payload.find({
+        collection: 'url-registry',
+        where: {
+          and: [
+            { recordRole: { equals: 'canonical' } },
+            { tag: { equals: emptyTag.id } },
+          ],
+        },
+        overrideAccess: true,
+      })
+      for (const r of routesToDelete.docs) {
+        await payload.delete({ collection: 'url-registry', id: r.id, overrideAccess: true })
+      }
+      expect(await resolvePublicPath(payload, emptyTagPath)).toBeNull()
+
+      const dryReport = await inspectAndRepairUrlRegistry(payload, { dryRun: true })
+      expect(dryReport.discrepancies.some((d) => d.resourceType === 'tag' && d.id === emptyTag.id)).toBe(true)
+
+      const repairReport = await inspectAndRepairUrlRegistry(payload, { dryRun: false })
+      expect(repairReport.repaired.some((d) => d.resourceType === 'tag' && d.id === emptyTag.id)).toBe(true)
+      expect(await resolvePublicPath(payload, emptyTagPath)).toEqual({
+        kind: 'canonical',
+        resourceType: 'tag',
+        id: emptyTag.id,
+      })
     })
   })
 })

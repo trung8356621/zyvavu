@@ -3,7 +3,7 @@ import { getPayload } from 'payload'
 
 import { PublicDocument } from '@/components/frontend/PublicDocument'
 import { ThemeRenderer, resolveThemeTemplate } from '@/lib/theme-engine'
-import { resolvePublicPath } from '@/lib/url/registry'
+import { attachCanonicalUrls, resolvePublicPath } from '@/lib/url/registry'
 import config from '@/payload.config'
 
 export default async function HomePage() {
@@ -24,6 +24,7 @@ export default async function HomePage() {
     })
     .catch(() => ({ docs: [] }))
 
+  const postsWithCanonical = await attachCanonicalUrls(payload, 'post', recentPosts.docs)
   const templateDoc = await resolveThemeTemplate(payload, 'home')
   return (
     <ThemeRenderer
@@ -31,7 +32,7 @@ export default async function HomePage() {
       dataContext={{
         type: 'home',
         archive: {
-          posts: recentPosts.docs,
+          posts: postsWithCanonical,
         },
       }}
     />

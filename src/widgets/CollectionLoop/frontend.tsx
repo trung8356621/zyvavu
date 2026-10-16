@@ -49,7 +49,7 @@ function mapDocToRecord(doc: any): LoopItemRecord {
     id: doc.id,
     title: doc.title,
     slug: doc.slug,
-    url: doc.publicPath || `/posts/${doc.slug || doc.id}`,
+    url: doc.canonicalPath || doc.canonicalUrl || doc.url || doc.publicPath || `/posts/${doc.slug || doc.id}`,
     excerpt: doc.excerpt || '',
     date: doc.publishedAt || doc.createdAt,
     category: firstCat ? firstCat.title || firstCat.name : undefined,

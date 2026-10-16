@@ -191,6 +191,7 @@ export type ThemeDataContext = {
   document?: Record<string, any>
   item?: LoopItemRecord
   archive?: {
+    taxonomyType?: 'category' | 'tag'
     title?: string
     description?: string
     posts?: any[]

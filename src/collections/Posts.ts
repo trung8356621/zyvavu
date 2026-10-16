@@ -6,7 +6,7 @@ import { publishedRead, siteStaffAccess } from '@/access/roles'
 import { publicPathField } from '@/fields/publicPath'
 import { slugField } from '@/fields/slug'
 import { capturePublishWrite, preservePublishedPartialUpdate } from '@/lib/publish/write-contract'
-import { removeResourceRoutes, syncResourceRoute } from '@/lib/url/registry'
+import { attachCanonicalPathHook, removeResourceRoutes, syncResourceRoute } from '@/lib/url/registry'
 
 export const Posts: CollectionConfig = {
   slug: 'posts',
@@ -34,6 +34,7 @@ export const Posts: CollectionConfig = {
   hooks: {
     beforeOperation: [capturePublishWrite],
     beforeChange: [preservePublishedPartialUpdate],
+    afterRead: [attachCanonicalPathHook('post')],
     afterChange: [
       async ({ doc, req, previousDoc }) => {
         await syncResourceRoute(req, 'post', doc, previousDoc)

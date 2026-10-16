@@ -39,10 +39,13 @@ export class PayloadPostDataSourceAdapter implements PostDataSourceAdapter {
 
     return docs.map((doc: any): PostItemData => {
       // Authoritative CMS URL resolution:
-      // 1. Explicit publicPath if configured
-      // 2. Default canonical /posts/[slug]
+      // 1. Canonical path from URL Registry (attached via afterRead)
+      // 2. Explicit publicPath if configured
+      // 3. Fallback /posts/[slug]
       let url = `/posts/${doc.slug || doc.id}`
-      if (typeof doc.publicPath === 'string' && doc.publicPath.trim()) {
+      if (typeof doc.canonicalPath === 'string' && doc.canonicalPath.trim()) {
+        url = doc.canonicalPath.startsWith('/') ? doc.canonicalPath : `/${doc.canonicalPath}`
+      } else if (typeof doc.publicPath === 'string' && doc.publicPath.trim()) {
         url = doc.publicPath.startsWith('/') ? doc.publicPath : `/${doc.publicPath}`
       }
 

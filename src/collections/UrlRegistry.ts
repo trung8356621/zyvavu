@@ -39,10 +39,14 @@ export const UrlRegistry: CollectionConfig = {
       options: [
         { label: 'Page', value: 'page' },
         { label: 'Post', value: 'post' },
+        { label: 'Category', value: 'category' },
+        { label: 'Tag', value: 'tag' },
       ],
     },
     { name: 'page', type: 'relationship', relationTo: 'pages' },
     { name: 'post', type: 'relationship', relationTo: 'posts' },
+    { name: 'category', type: 'relationship', relationTo: 'categories' },
+    { name: 'tag', type: 'relationship', relationTo: 'tags' },
     { name: 'targetPath', type: 'text' },
     {
       name: 'locale',
