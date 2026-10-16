@@ -36,14 +36,17 @@
       }
     },
     {
-      "type": "RecentPosts",
+      "type": "CollectionLoop",
       "props": {
-        "id": "ind-home-posts",
+        "id": "ind-posts-loop",
         "heading": "BẢN TIN DỰ ÁN & VẬN HÀNH NHÀ MÁY",
+        "mode": "dynamic",
+        "source": "posts",
+        "columns": 2,
+        "gap": "24px",
         "limit": 4,
-        "showDate": true,
-        "showExcerpt": true,
-        "layout": "grid"
+        "categoryId": "du-an",
+        "sort": "newest"
       }
     }
   ],
@@ -95,6 +98,40 @@
           "id": "ind-showcase-text",
           "title": "NĂNG LỰC DỰ ÁN LỚN",
           "content": "Với hơn 25,000m² mặt sàn sản xuất cùng đội ngũ kỹ sư 15+ năm kinh nghiệm, chúng tôi sẵn sàng đáp ứng các hợp đồng gia công quy mô lớn cho đối tác toàn cầu."
+        }
+      }
+    ],
+    "ind-posts-loop:itemTemplate": [
+      {
+        "type": "ItemTitle",
+        "props": {
+          "id": "ind-item-title",
+          "tag": "h3",
+          "linkToPost": true
+        }
+      },
+      {
+        "type": "ItemImage",
+        "props": {
+          "id": "ind-item-img",
+          "aspectRatio": "16:9",
+          "borderRadius": "2px",
+          "linkToPost": true
+        }
+      },
+      {
+        "type": "ItemExcerpt",
+        "props": {
+          "id": "ind-item-excerpt",
+          "maxLines": 2
+        }
+      },
+      {
+        "type": "ItemLink",
+        "props": {
+          "id": "ind-item-link",
+          "label": "XEM THÔNG SỐ DỰ ÁN →",
+          "variant": "outline"
         }
       }
     ]

@@ -22,14 +22,16 @@
       }
     },
     {
-      "type": "RecentPosts",
+      "type": "CollectionLoop",
       "props": {
-        "id": "edit-home-posts",
+        "id": "edit-posts-loop",
         "heading": "CÁC BÀI BÌNH LUẬN & NGHIÊN CỨU MỚI XUẤT BẢN",
-        "limit": 5,
-        "showDate": true,
-        "showExcerpt": true,
-        "layout": "grid"
+        "mode": "dynamic",
+        "source": "posts",
+        "columns": 3,
+        "gap": "32px",
+        "limit": 6,
+        "sort": "newest"
       }
     }
   ],
@@ -87,6 +89,40 @@
           "id": "edit-col-3",
           "title": "CÔNG NGHỆ SỐ",
           "content": "Đạo đức thuật toán và chiến lược ứng dụng học máy có trách nhiệm trong kinh doanh."
+        }
+      }
+    ],
+    "edit-posts-loop:itemTemplate": [
+      {
+        "type": "ItemImage",
+        "props": {
+          "id": "edit-item-img",
+          "aspectRatio": "4:3",
+          "borderRadius": "0px",
+          "linkToPost": true
+        }
+      },
+      {
+        "type": "ItemTitle",
+        "props": {
+          "id": "edit-item-title",
+          "tag": "h3",
+          "linkToPost": true
+        }
+      },
+      {
+        "type": "ItemExcerpt",
+        "props": {
+          "id": "edit-item-excerpt",
+          "maxLines": 4
+        }
+      },
+      {
+        "type": "ItemLink",
+        "props": {
+          "id": "edit-item-link",
+          "label": "Đọc bài luận →",
+          "variant": "link"
         }
       }
     ]

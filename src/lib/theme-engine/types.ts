@@ -172,6 +172,7 @@ export type ThemeCustomizerState = {
 export type ThemeDataContext = {
   type: TemplateContext
   document?: Record<string, any>
+  item?: import('./item-context').LoopItemRecord
   archive?: {
     title?: string
     description?: string

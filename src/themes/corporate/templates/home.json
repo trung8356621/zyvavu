@@ -25,12 +25,16 @@
       }
     },
     {
-      "type": "RecentPosts",
+      "type": "CollectionLoop",
       "props": {
-        "id": "home-posts-1",
+        "id": "corp-posts-loop",
         "heading": "Tin Tức & Hoạt Động Doanh Nghiệp",
+        "mode": "dynamic",
+        "source": "posts",
+        "columns": 3,
+        "gap": "24px",
         "limit": 6,
-        "columns": 3
+        "sort": "newest"
       }
     }
   ],
@@ -52,6 +56,40 @@
           "id": "home-col2-text",
           "title": "Tách bạch kiến trúc",
           "content": "Theme sở hữu cấu trúc JSON và Style Rules (theme.json). Widgets là các gói độc lập cho phép mở rộng linh hoạt."
+        }
+      }
+    ],
+    "corp-posts-loop:itemTemplate": [
+      {
+        "type": "ItemImage",
+        "props": {
+          "id": "corp-item-img",
+          "aspectRatio": "16:9",
+          "borderRadius": "6px",
+          "linkToPost": true
+        }
+      },
+      {
+        "type": "ItemTitle",
+        "props": {
+          "id": "corp-item-title",
+          "tag": "h3",
+          "linkToPost": true
+        }
+      },
+      {
+        "type": "ItemExcerpt",
+        "props": {
+          "id": "corp-item-excerpt",
+          "maxLines": 3
+        }
+      },
+      {
+        "type": "ItemLink",
+        "props": {
+          "id": "corp-item-link",
+          "label": "Xem chi tiết →",
+          "variant": "link"
         }
       }
     ]

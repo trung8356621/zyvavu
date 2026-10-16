@@ -50,6 +50,21 @@ import { headerTopBarTextEditor } from '@/widgets/HeaderTopBarText/editor'
 import { footerManifest } from '@/widgets/Footer/manifest'
 import { footerEditor } from '@/widgets/Footer/editor'
 
+import { collectionLoopManifest } from '@/widgets/CollectionLoop/manifest'
+import { collectionLoopEditor } from '@/widgets/CollectionLoop/editor'
+
+import { itemTitleManifest } from '@/widgets/ItemTitle/manifest'
+import { itemTitleEditor } from '@/widgets/ItemTitle/editor'
+
+import { itemImageManifest } from '@/widgets/ItemImage/manifest'
+import { itemImageEditor } from '@/widgets/ItemImage/editor'
+
+import { itemExcerptManifest } from '@/widgets/ItemExcerpt/manifest'
+import { itemExcerptEditor } from '@/widgets/ItemExcerpt/editor'
+
+import { itemLinkManifest } from '@/widgets/ItemLink/manifest'
+import { itemLinkEditor } from '@/widgets/ItemLink/editor'
+
 export type EditorWidgetEntry = {
   manifest: any
   config: any
@@ -71,6 +86,11 @@ const defaultEditorRegistry: Record<string, EditorWidgetEntry> = {
   HeaderAction: { manifest: headerActionManifest, config: headerActionEditor },
   HeaderTopBarText: { manifest: headerTopBarTextManifest, config: headerTopBarTextEditor },
   Footer: { manifest: footerManifest, config: footerEditor },
+  CollectionLoop: { manifest: collectionLoopManifest, config: collectionLoopEditor },
+  ItemTitle: { manifest: itemTitleManifest, config: itemTitleEditor },
+  ItemImage: { manifest: itemImageManifest, config: itemImageEditor },
+  ItemExcerpt: { manifest: itemExcerptManifest, config: itemExcerptEditor },
+  ItemLink: { manifest: itemLinkManifest, config: itemLinkEditor },
 }
 
 const customEditorOverrides: Record<string, any> = {}
