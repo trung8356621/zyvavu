@@ -1,10 +1,9 @@
 import type { Metadata } from 'next'
-import { getPayload } from 'payload'
+import { getInstalledPayload } from '@/lib/installation/payload'
 import React from 'react'
 
 import { PublicDocument } from '@/components/frontend/PublicDocument'
 import { generateRouteMetadata } from '@/lib/seo'
-import config from '@/payload.config'
 
 export async function generateMetadata({
   params,
@@ -12,7 +11,7 @@ export async function generateMetadata({
   params: Promise<{ path: string[] }>
 }): Promise<Metadata> {
   const { path } = await params
-  const payload = await getPayload({ config })
+  const payload = await getInstalledPayload()
   return generateRouteMetadata(payload, `/${path.join('/')}`)
 }
 

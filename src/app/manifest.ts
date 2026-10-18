@@ -1,13 +1,12 @@
 import type { MetadataRoute } from 'next'
-import { getPayload } from 'payload'
+import { getInstalledPayload } from '@/lib/installation/payload'
 
 import { loadPublicSiteSettings } from '@/lib/site/settings'
-import config from '@/payload.config'
 
 export const dynamic = 'force-dynamic'
 
 export default async function manifest(): Promise<MetadataRoute.Manifest> {
-  const payload = await getPayload({ config })
+  const payload = await getInstalledPayload()
   const settings = await loadPublicSiteSettings(payload)
   return {
     name: settings.siteName,

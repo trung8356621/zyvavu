@@ -2,11 +2,8 @@ import { normalizeSiteUrl } from '@/lib/site/origin'
 import { TIMEZONE_OPTIONS } from '@/lib/dateTime'
 import { getAllInstalledThemes } from '@/lib/theme-engine/themes'
 
-export type DatabaseInput = { host: string; port: string; database: string; username: string; password: string; ssl: string }
-export type WebsiteInput = { siteName: string; siteUrl: string; language: string; timezone: string; activeThemeId: string }
-export class SetupError extends Error {
-  constructor(public key: string, public status = 400) { super(key) }
-}
+import { SetupError, type DatabaseInput, type WebsiteInput } from './input'
+export { SetupError, validateAdmin, type DatabaseInput, type WebsiteInput } from './input'
 export function databaseURL(input: DatabaseInput): string {
   if (!input || typeof input.host !== 'string' || !/^[a-zA-Z0-9.:-]+$/.test(input.host) || input.host.length > 253 ||
     !/^\d+$/.test(input.port) || Number(input.port) < 1 || Number(input.port) > 65535 ||
@@ -15,18 +12,16 @@ export function databaseURL(input: DatabaseInput): string {
     throw new SetupError('validation')
   }
   const host = input.host.includes(':') ? `[${input.host}]` : input.host
-  return `postgresql://${encodeURIComponent(input.username)}:${encodeURIComponent(input.password)}@${host}:${input.port}/${encodeURIComponent(input.database)}?sslmode=${input.ssl}`
+  const encode = (value: string) => encodeURIComponent(value).replace(/[!'()*]/g, char => `%${char.charCodeAt(0).toString(16).toUpperCase()}`)
+  const url = `postgresql://${encode(input.username)}:${encode(input.password)}@${host}:${input.port}/${encode(input.database)}?sslmode=${input.ssl}`
+  try { new URL(url) } catch { throw new SetupError('validation') }
+  return url
 }
 export function validateWebsite(input: WebsiteInput): WebsiteInput {
   if (!input || typeof input.siteName !== 'string' || !input.siteName.trim() || input.siteName.length > 120 ||
     !normalizeSiteUrl(input.siteUrl) || !['vi', 'en'].includes(input.language) ||
     !TIMEZONE_OPTIONS.some(t => t.value === input.timezone) || !getAllInstalledThemes().some(t => t.id === input.activeThemeId)) throw new SetupError('validation')
-  return { ...input, siteName: input.siteName.trim(), siteUrl: normalizeSiteUrl(input.siteUrl)! }
-}
-export function validateAdmin(input: { email: string; password: string }) {
-  if (!input || typeof input.email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email) || input.email.length > 254 ||
-    typeof input.password !== 'string' || input.password.length < 12 || input.password.length > 128) throw new SetupError('adminValidation')
-  return { email: input.email.trim().toLowerCase(), password: input.password }
+  return { siteName: input.siteName.trim(), siteUrl: normalizeSiteUrl(input.siteUrl)!, language: input.language, timezone: input.timezone, activeThemeId: input.activeThemeId }
 }
 export function databaseError(error: unknown): SetupError {
   const code = (error as { code?: string })?.code

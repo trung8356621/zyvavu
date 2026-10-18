@@ -24,7 +24,7 @@ The canonical workspace is `D:\zyvavu`. Requirements are Node.js `>=20.18.1`, pn
 - Nginx config: `infra/nginx/zyvavu.test.conf`.
 - PostgreSQL: local port `5432`; `DATABASE_URL` provides connection details and stays private.
 
-Copy `.env.example` to `.env` and replace placeholders. Never commit `.env` or credentials.
+For a new installation, open `/setup` directly: no `.env`, Payload secret, PostgreSQL connection or terminal activation is needed to display the wizard. Temporarily restrict access to the whole application through hosting/firewall controls until installation completes. Follow [the first-run guide](docs/first-run-setup.md) and provision an empty PostgreSQL database separately before finishing. Preserve existing configuration; never commit credentials.
 
 ```powershell
 pnpm dev

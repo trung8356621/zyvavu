@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react'
 import React from 'react'
-import { getPayload } from 'payload'
+import { getInstalledPayload } from '@/lib/installation/payload'
 import { cookies, headers } from 'next/headers'
 
 import { RegisterServiceWorker } from '@/components/frontend/RegisterServiceWorker'
@@ -8,7 +8,6 @@ import { SiteHeader } from '@/components/frontend/SiteHeader'
 import { buildRootLayoutMetadata } from '@/lib/seo'
 import { loadPublicSiteSettings } from '@/lib/site/settings'
 import { linksForMenu, resolveMenuHierarchy } from '@/lib/url/menu-links'
-import config from '@/payload.config'
 import { themeVariables } from '@/theme/cssVariables'
 import { isSiteStaff } from '@/access/roles'
 import {
@@ -28,13 +27,13 @@ import './styles.css'
 export const dynamic = 'force-dynamic'
 
 export async function generateMetadata() {
-  const payload = await getPayload({ config })
+  const payload = await getInstalledPayload()
   const settings = await loadPublicSiteSettings(payload)
   return buildRootLayoutMetadata(settings)
 }
 
 export default async function RootLayout(props: { children: React.ReactNode }) {
-  const payload = await getPayload({ config })
+  const payload = await getInstalledPayload()
   const settings = await loadPublicSiteSettings(payload)
 
   // Verify staff status for preview override

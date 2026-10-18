@@ -4,11 +4,12 @@ import type { Setting } from '@/payload-types'
 import { migrations } from '@/migrations'
 import { connectDatabase, databaseInventory } from './database'
 import { persistEnvironment, saveRecord, type InstallationRecord } from './store'
-import { SetupError, validateAdmin } from './validation'
+import { SetupError, validateAdmin, validateWebsite } from './validation'
 
 export async function finishInstallation(record: InstallationRecord, adminInput: { email: string; password: string }) {
   const admin = validateAdmin(adminInput)
   if (!record.databaseUrl || !record.website) throw new SetupError('validation')
+  record.website = validateWebsite(record.website)
   if (process.env.PAYLOAD_DROP_DATABASE === 'true') throw new SetupError('unsafeEnvironment', 409)
   const client = await connectDatabase(record.databaseUrl)
   let payload: BasePayload | undefined
@@ -18,15 +19,13 @@ export async function finishInstallation(record: InstallationRecord, adminInput:
     const inventory = await databaseInventory(client)
     if (inventory === 'installed') {
       if (record.phase === 'provisioning') {
-        const completed = await client.query('SELECT 1 FROM public.settings WHERE setup_complete = true LIMIT 1')
-        if (completed.rowCount) {
-          record.phase = 'installed'
-          await saveRecord(record)
-          return { completed: true, restart: true }
-        }
+        record.phase = 'installed'
+        await saveRecord(record)
+        return { completed: true, restart: true }
       }
       throw new SetupError('installed', 409)
     }
+    if (inventory === 'initialized') throw new SetupError('installed', 409)
     if (inventory !== 'empty') throw new SetupError('existingDatabase', 409)
     await persistEnvironment(record)
     // All schema/data changes below share one transaction: crash recovery sees empty or fully installed DB.
@@ -40,7 +39,7 @@ export async function finishInstallation(record: InstallationRecord, adminInput:
         secret: record.secret,
         serverURL: record.website.siteUrl,
         db: {
-          ...postgresAdapter({ pool: { connectionString: record.databaseUrl, connectionTimeoutMillis: 5000 }, push: false, disableCreateDatabase: true, extensions: ['pg_trgm'] }),
+          ...postgresAdapter({ pool: { connectionString: record.databaseUrl, connectionTimeoutMillis: 5000 }, push: false, disableCreateDatabase: true, extensions: [] }),
           allowIDOnCreate: false,
           defaultIDType: 'number',
           name: 'postgres',
@@ -68,7 +67,7 @@ export async function finishInstallation(record: InstallationRecord, adminInput:
     await saveRecord(record)
     return { completed: true, restart: true }
   } finally {
-    if (payload) await payload.destroy()
-    await client.end()
+    try { if (payload) await payload.destroy() }
+    finally { await client.end() }
   }
 }

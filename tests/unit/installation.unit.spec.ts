@@ -1,11 +1,10 @@
 // @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { createHash } from 'node:crypto'
 import { databaseURL, databaseError, validateAdmin, validateWebsite } from '@/lib/installation/validation'
-import { authorize, readRecord, saveRecord, withInstallationLock, persistEnvironment, type InstallationRecord } from '@/lib/installation/store'
+import { assertNotInstalled, newInstallationRecord, readRecord, saveRecord, withInstallationLock, persistEnvironment, type InstallationRecord } from '@/lib/installation/store'
 import { setupMessages } from '@/lib/installation/messages'
 
 const website = { siteName: 'Demo', siteUrl: 'https://example.com', language: 'vi', timezone: 'Asia/Ho_Chi_Minh', activeThemeId: 'corporate' }
@@ -16,7 +15,7 @@ beforeEach(async () => {
   directory = await mkdtemp(path.join(tmpdir(), 'zyvavu-setup-unit-'))
   vi.stubEnv('SETUP_STATE_DIR', path.join(directory, 'state'))
   vi.spyOn(process, 'cwd').mockReturnValue(directory)
-  record = { tokenHash: createHash('sha256').update('private-token').digest('hex'), phase: 'started', secret: 'generated-secret', databaseUrl: databaseURL(database), website }
+  record = { phase: 'database', secret: 'generated-secret', databaseUrl: databaseURL(database), website }
 })
 afterEach(async () => { vi.restoreAllMocks(); vi.unstubAllEnvs(); await rm(directory, { recursive: true, force: true }) })
 
@@ -52,11 +51,15 @@ describe('setup validation and localization', () => {
   })
 })
 describe('private installation persistence', () => {
-  it('requires the operator token and permanently refuses installed-state reuse', () => {
-    expect(() => authorize(record, 'wrong-token')).toThrow('unauthorized')
-    expect(() => authorize(null, 'private-token')).toThrow('unauthorized')
-    expect(() => authorize(record, 'private-token')).not.toThrow()
-    expect(() => authorize({ ...record, phase: 'installed' }, 'private-token')).toThrow('installed')
+  it('allows first setup directly and permanently refuses installed-state reuse', () => {
+    expect(() => assertNotInstalled(null)).not.toThrow()
+    expect(() => assertNotInstalled(record)).not.toThrow()
+    expect(() => assertNotInstalled({ ...record, phase: 'installed' })).toThrow('installed')
+  })
+  it('generates independent cryptographically strong Payload secrets without activation', () => {
+    const first = newInstallationRecord()
+    expect(first.secret).toMatch(/^[a-f0-9]{96}$/)
+    expect(first.secret).not.toBe(newInstallationRecord().secret)
   })
   it('atomically saves and resumes progress without administrator passwords', async () => {
     await saveRecord(record)
@@ -75,6 +78,9 @@ describe('private installation persistence', () => {
   it('preserves existing env files and supports hosting variables', async () => {
     await writeFile(path.join(directory, '.env.local'), 'EXISTING=value\n')
     await expect(persistEnvironment(record)).rejects.toThrow('manualConfiguration')
+    const fallback = JSON.parse(await readFile(path.join(directory, 'state', 'hosting.json'), 'utf8'))
+    expect(fallback).toEqual({ DATABASE_URL: record.databaseUrl, PAYLOAD_SECRET: record.secret, NEXT_PUBLIC_SERVER_URL: website.siteUrl })
+    expect(await readFile(path.join(directory, '.env.local'), 'utf8')).toBe('EXISTING=value\n')
     vi.stubEnv('DATABASE_URL', record.databaseUrl!)
     vi.stubEnv('PAYLOAD_SECRET', record.secret)
     vi.stubEnv('NEXT_PUBLIC_SERVER_URL', website.siteUrl)
@@ -83,5 +89,8 @@ describe('private installation persistence', () => {
   it('writes a new configuration once and permits an identical retry', async () => {
     await persistEnvironment(record)
     await expect(persistEnvironment(record)).resolves.toBeUndefined()
+  })
+  it('does not serialize secrets that dotenv expansion could silently change', async () => {
+    await expect(persistEnvironment({ ...record, secret: 'private$hosting-secret' })).rejects.toThrow('manualConfiguration')
   })
 })

@@ -1,11 +1,10 @@
-import { randomBytes, createHash, timingSafeEqual } from 'node:crypto'
-import { mkdir, readFile, writeFile, rename, open, unlink } from 'node:fs/promises'
+import { randomBytes } from 'node:crypto'
+import { mkdir, readFile, open, unlink } from 'node:fs/promises'
 import path from 'node:path'
-import type { WebsiteInput } from './validation'
-import { SetupError } from './validation'
+import { SetupError, type WebsiteInput } from './input'
+import { writePrivateFile, environmentText as serializeEnvironment, environmentValues } from './files.mjs'
 
 export type InstallationRecord = {
-  tokenHash: string
   phase: 'started' | 'database' | 'website' | 'provisioning' | 'installed'
   secret: string
   databaseUrl?: string
@@ -19,16 +18,14 @@ export async function readRecord(): Promise<InstallationRecord | null> {
 export async function saveRecord(record: InstallationRecord) {
   const directory = stateDirectory()
   await mkdir(directory, { recursive: true, mode: 0o700 })
-  const temporary = path.join(directory, `${randomBytes(12).toString('hex')}.tmp`)
-  await writeFile(temporary, JSON.stringify(record), { mode: 0o600, flag: 'wx' })
-  await rename(temporary, path.join(directory, 'state.json'))
+  const { phase, secret, databaseUrl, website } = record
+  await writePrivateFile(path.join(directory, 'state.json'), JSON.stringify({ phase, secret, databaseUrl, website }))
 }
-export function authorize(record: InstallationRecord | null, token: string | null) {
-  if (!record || !token || token.length > 256) throw new SetupError('unauthorized', 403)
-  const actual = createHash('sha256').update(token).digest()
-  const expected = Buffer.from(record.tokenHash, 'hex')
-  if (expected.length !== actual.length || !timingSafeEqual(actual, expected)) throw new SetupError('unauthorized', 403)
-  if (record.phase === 'installed') throw new SetupError('installed', 409)
+export function assertNotInstalled(record: InstallationRecord | null) {
+  if (record?.phase === 'installed') throw new SetupError('installed', 409)
+}
+export function newInstallationRecord(): InstallationRecord {
+  return { phase: 'database', secret: randomBytes(48).toString('hex') }
 }
 // Exclusive lock across Node workers. A crashed worker requires explicit operator recovery.
 export async function withInstallationLock<T>(work: () => Promise<T>): Promise<T> {
@@ -42,17 +39,18 @@ export async function withInstallationLock<T>(work: () => Promise<T>): Promise<T
 }
 export function environmentText(record: InstallationRecord) {
   if (!record.databaseUrl || !record.website) throw new SetupError('validation')
-  // URL encoding prevents quotes/newlines in credentials from escaping dotenv values.
-  return `DATABASE_URL=${record.databaseUrl}\nPAYLOAD_SECRET=${record.secret}\nNEXT_PUBLIC_SERVER_URL=${record.website.siteUrl}\n`
+  try { return serializeEnvironment(record) }
+  catch { throw new SetupError('manualConfiguration', 409) }
 }
 export async function persistEnvironment(record: InstallationRecord) {
-  const values = { DATABASE_URL: record.databaseUrl, PAYLOAD_SECRET: record.secret, NEXT_PUBLIC_SERVER_URL: record.website?.siteUrl }
+  const values = environmentValues(record)
   if (Object.entries(values).every(([key, value]) => process.env[key] === value)) return
   const target = path.join(process.cwd(), '.env.local')
-  const contents = environmentText(record)
-  try { await writeFile(target, contents, { flag: 'wx', mode: 0o600 }) }
+  try { await writePrivateFile(target, environmentText(record), true) }
   catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'EEXIST' && await readFile(target, 'utf8') === contents) return
+    if ((error as NodeJS.ErrnoException).code === 'EEXIST' && await readFile(target, 'utf8') === environmentText(record)) return
+    await mkdir(stateDirectory(), { recursive: true, mode: 0o700 })
+    await writePrivateFile(path.join(stateDirectory(), 'hosting.json'), JSON.stringify(values, null, 2))
     throw new SetupError('manualConfiguration', 409)
   }
 }

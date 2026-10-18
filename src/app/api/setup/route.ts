@@ -1,8 +1,7 @@
 import type { NextRequest } from 'next/server'
-import { authorize, readRecord, saveRecord, withInstallationLock } from '@/lib/installation/store'
+import { assertNotInstalled, newInstallationRecord, readRecord, saveRecord, withInstallationLock } from '@/lib/installation/store'
 import { databaseURL, SetupError, validateWebsite } from '@/lib/installation/validation'
 import { requireFreshDatabase } from '@/lib/installation/database'
-import { finishInstallation } from '@/lib/installation/install'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -10,7 +9,8 @@ const response = (value: unknown, status = 200) => Response.json(value, { status
 export async function POST(request: NextRequest) {
   try {
     const origin = request.headers.get('origin')
-    if (!origin || new URL(origin).host !== request.headers.get('host') || request.headers.get('content-type') !== 'application/json') throw new SetupError('unauthorized', 403)
+    if (!origin || new URL(origin).host !== request.headers.get('host') || request.headers.get('content-type')?.split(';')[0].trim() !== 'application/json') throw new SetupError('unauthorized', 403)
+    assertNotInstalled(await readRecord())
     // Reject oversized/chunked payloads before JSON parsing without trusting Content-Length.
     const reader = request.body?.getReader()
     if (!reader) throw new SetupError('validation')
@@ -23,32 +23,40 @@ export async function POST(request: NextRequest) {
       if (length > 16384) { await reader.cancel(); throw new SetupError('validation', 413) }
       chunks.push(value)
     }
-    const body = JSON.parse(Buffer.concat(chunks).toString('utf8'))
-    authorize(await readRecord(), request.headers.get('x-setup-token'))
+    let body
+    try { body = JSON.parse(Buffer.concat(chunks).toString('utf8')) } catch { throw new SetupError('validation') }
+    if (!body || typeof body !== 'object' || Array.isArray(body)) throw new SetupError('validation')
     return await withInstallationLock(async () => {
       const record = await readRecord()
-      authorize(record, request.headers.get('x-setup-token'))
-      if (!record) throw new SetupError('unauthorized', 403)
-      if (body.action === 'resume') return response({ phase: record.phase, website: record.website, environmentAvailable: Boolean(process.env.DATABASE_URL) })
+      assertNotInstalled(record)
+      const configuredUrl = process.env.DATABASE_URL
       if (body.action === 'database') {
-        if (record.phase === 'provisioning') throw new SetupError('resumeProvisioning', 409)
-        const url = body.useEnvironment === true && process.env.DATABASE_URL ? process.env.DATABASE_URL : databaseURL(body.database)
-        if (process.env.DATABASE_URL && process.env.DATABASE_URL !== url) throw new SetupError('configurationConflict', 409)
+        const url = body.useEnvironment === true && configuredUrl ? configuredUrl : databaseURL(body.database)
+        // Once a database is verified, this installation stays bound to it across requests/refreshes.
+        if ((configuredUrl && configuredUrl !== url) || (record?.databaseUrl && record.databaseUrl !== url)) throw new SetupError('configurationConflict', 409)
         await requireFreshDatabase(url)
-        record.databaseUrl = url
-        record.secret = process.env.PAYLOAD_SECRET || record.secret
-        record.phase = 'database'
-        await saveRecord(record)
-        return response({ verified: true })
+        const next = record || newInstallationRecord()
+        next.databaseUrl = url
+        const existingSecret = process.env.PAYLOAD_SECRET?.trim()
+        if (existingSecret && existingSecret !== 'CHANGE_ME') next.secret = process.env.PAYLOAD_SECRET!
+        next.phase = 'database'
+        await saveRecord(next)
+        return response({ verified: true, website: next.website ? validateWebsite(next.website) : undefined })
       }
+      if (!record?.databaseUrl) throw new SetupError('validation')
+      if (configuredUrl && configuredUrl !== record.databaseUrl) throw new SetupError('configurationConflict', 409)
+      // Recheck the actual database before every privileged continuation, not just the first screen.
+      await requireFreshDatabase(record.databaseUrl)
       if (body.action === 'website') {
-        if (!record.databaseUrl || record.phase === 'provisioning') throw new SetupError('validation')
         record.website = validateWebsite(body.website)
         record.phase = 'website'
         await saveRecord(record)
         return response({ saved: true })
       }
-      if (body.action === 'finish') return response(await finishInstallation(record, body.admin))
+      if (body.action === 'finish') {
+        const { finishInstallation } = await import('@/lib/installation/install')
+        return response(await finishInstallation(record, body.admin))
+      }
       throw new SetupError('validation')
     })
   } catch (error) {

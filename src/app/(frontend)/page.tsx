@@ -1,5 +1,5 @@
 import React from 'react'
-import { getPayload } from 'payload'
+import { getInstalledPayload } from '@/lib/installation/payload'
 
 import { PublicDocument } from '@/components/frontend/PublicDocument'
 import {
@@ -10,15 +10,14 @@ import {
 } from '@/lib/seo'
 import { ThemeRenderer, resolveThemeTemplate } from '@/lib/theme-engine'
 import { attachCanonicalUrls, resolvePublicPath } from '@/lib/url/registry'
-import config from '@/payload.config'
 
 export async function generateMetadata() {
-  const payload = await getPayload({ config })
+  const payload = await getInstalledPayload()
   return generateRouteMetadata(payload, '/')
 }
 
 export default async function HomePage() {
-  const payload = await getPayload({ config })
+  const payload = await getInstalledPayload()
   const resolved = await resolvePublicPath(payload, '/')
   if (resolved) {
     return <PublicDocument path="/" />

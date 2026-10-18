@@ -1,10 +1,9 @@
 import { notFound, permanentRedirect } from 'next/navigation'
-import { getPayload } from 'payload'
+import { getInstalledPayload } from '@/lib/installation/payload'
 import React from 'react'
 
 import { buildEntityGraph, resolveSeoPageContext, SeoJsonLd } from '@/lib/seo'
 import { attachCanonicalUrls } from '@/lib/url/registry'
-import config from '@/payload.config'
 import { ThemeRenderer, resolveThemeTemplate } from '@/lib/theme-engine'
 
 const ARCHIVE_POSTS_LIMIT = 24
@@ -16,7 +15,7 @@ export async function PublicDocument({
   path: string
   missing?: React.ReactNode
 }) {
-  const payload = await getPayload({ config })
+  const payload = await getInstalledPayload()
   const seoContext = await resolveSeoPageContext(payload, path)
 
   if (seoContext.status === 'not_found') {

@@ -1,14 +1,13 @@
-import { getPayload } from 'payload'
+import { getInstalledPayload } from '@/lib/installation/payload'
 
 import { handleRssFeedRequest } from '@/lib/seo/feed'
-import config from '@/payload.config'
 
 export async function GET(request: Request): Promise<Response> {
-  const payload = await getPayload({ config })
+  const payload = await getInstalledPayload()
   return handleRssFeedRequest(request, payload)
 }
 
 export async function HEAD(request: Request): Promise<Response> {
-  const payload = await getPayload({ config })
+  const payload = await getInstalledPayload()
   return handleRssFeedRequest(request, payload)
 }

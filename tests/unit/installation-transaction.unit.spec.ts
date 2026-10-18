@@ -12,7 +12,7 @@ vi.mock('@/lib/installation/database', () => ({ connectDatabase: vi.fn(async () 
 vi.mock('@/lib/installation/store', () => ({ persistEnvironment: mocks.persist, saveRecord: mocks.save }))
 import { finishInstallation } from '@/lib/installation/install'
 import type { InstallationRecord } from '@/lib/installation/store'
-const makeRecord = (): InstallationRecord => ({ tokenHash: 'private', phase: 'website', secret: 'private', databaseUrl: 'private', website: { siteName: 'Demo', siteUrl: 'https://example.com', language: 'vi', timezone: 'UTC', activeThemeId: 'corporate' } })
+const makeRecord = (): InstallationRecord => ({ phase: 'website', secret: 'private', databaseUrl: 'private', website: { siteName: 'Demo', siteUrl: 'https://example.com', language: 'vi', timezone: 'UTC', activeThemeId: 'corporate' } })
 const admin = { email: 'owner@example.com', password: 'long-private-password' }
 beforeEach(() => {
   vi.resetAllMocks()
@@ -47,9 +47,9 @@ it('rolls back administrator creation if saving website settings fails', async (
   expect(mocks.payload.db.commitTransaction).not.toHaveBeenCalled()
 })
 it('rejects initialized or nonempty databases before configuration or Payload writes', async () => {
-  for (const inventory of ['installed', 'existing']) {
+  for (const inventory of ['installed', 'initialized', 'existing']) {
     mocks.inventory.mockResolvedValue(inventory)
-    await expect(finishInstallation(makeRecord(), admin)).rejects.toThrow(inventory === 'installed' ? 'installed' : 'existingDatabase')
+    await expect(finishInstallation(makeRecord(), admin)).rejects.toThrow(inventory === 'existing' ? 'existingDatabase' : 'installed')
   }
   expect(mocks.persist).not.toHaveBeenCalled()
   expect(mocks.payload.init).not.toHaveBeenCalled()
