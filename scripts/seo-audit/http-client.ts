@@ -35,7 +35,7 @@ export async function fetchWithRedirectTrace(
   if (allowRetry && (firstAttempt.timedOut || firstAttempt.statusCode === 408)) {
     // FIX 2: Bounded retry for cold dev server compilation timeout
     await new Promise((r) => setTimeout(r, 1000))
-    const retryAttempt = await executeFetchTrace(initialUrl, { ...options, allowRetry: false })
+    const retryAttempt = await executeFetchTrace(initialUrl, options)
     if (retryAttempt.timedOut || retryAttempt.statusCode === 408) {
       retryAttempt.isInconclusiveTimeout = true
       retryAttempt.retriesPerformed = 1
