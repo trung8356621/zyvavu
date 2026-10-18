@@ -1,0 +1,35 @@
+/* Small Puck integration bridge: keep its native actions, sizing and permissions. */
+.toolbar {
+  --puck-actionbar-color-bg: var(--zyvavu-surface);
+  --puck-actionbar-color-text: var(--zyvavu-text);
+  --puck-actionbar-color-separator: var(--zyvavu-border);
+  --puck-actionbar-color-action-hover: var(--zyvavu-primary);
+  --puck-actionbar-color-action-active: var(--zyvavu-primary);
+  --puck-actionbar-color-action-disabled: var(--zyvavu-text);
+  --puck-actionbar-opacity-text: 1;
+  --puck-actionbar-radius: var(--mantine-radius-default);
+  --puck-actionbar-font-size: var(--mantine-font-size-sm);
+  --puck-color-focus-ring: var(--zyvavu-primary);
+
+  color: var(--zyvavu-text);
+  background: var(--zyvavu-surface);
+  border: 1px solid var(--zyvavu-border);
+  border-radius: var(--mantine-radius-default);
+  box-shadow: var(--mantine-shadow-xs);
+}
+
+.toolbar button:not(:disabled):not([aria-disabled='true']):hover,
+.toolbar button:not(:disabled):not([aria-disabled='true']):active,
+.toolbar[data-style-open='true'] .styleTrigger button {
+  background: var(--zyvavu-background);
+  color: var(--zyvavu-primary);
+}
+
+.styleTrigger {
+  display: flex;
+}
+
+.toolbar button:focus-visible {
+  outline: 2px solid var(--zyvavu-primary);
+  outline-offset: -2px;
+}

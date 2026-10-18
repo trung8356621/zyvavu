@@ -13,6 +13,7 @@ import { normalizeComponentType } from '@/lib/style-engine/capabilities'
 import { PageSettingsPanel } from '@/components/admin/theme-builder/PageSettingsPanel'
 import { WidgetStyleContextMenu, computeTranslatedAnchorPosition } from '@/components/admin/theme-builder/WidgetStyleContextMenu'
 import { stylePreviewStore } from '@/lib/style-engine/preview-store'
+import actionBarStyles from './WidgetActionBar.module.css'
 
 const usePuck = createUsePuck()
 
@@ -60,10 +61,12 @@ function PuckActionBarBridge({
   children,
   parentAction,
   onOpenStyleMenu,
+  styleMenuComponentId,
 }: {
   label?: string
   children: React.ReactNode
   parentAction?: React.ReactNode
+  styleMenuComponentId?: string
   onOpenStyleMenu: (payload: {
     componentType: string
     componentId: string
@@ -119,22 +122,26 @@ function PuckActionBarBridge({
   }
 
   return (
-    <ActionBar>
-      <ActionBar.Group>
-        {parentAction}
-        {label && <ActionBar.Label label={label} />}
-      </ActionBar.Group>
-      <ActionBar.Group>
-        <ActionBar.Action
-          label="Edit Style"
-          onClick={handleEditStyleClick}
-        >
-          <Palette size={14} />
-        </ActionBar.Action>
-        <ActionBar.Separator />
-        {children}
-      </ActionBar.Group>
-    </ActionBar>
+    <div
+      className={actionBarStyles.toolbar}
+      data-style-open={Boolean(componentId && styleMenuComponentId === componentId)}
+    >
+      <ActionBar>
+        <ActionBar.Group>
+          {parentAction}
+          {label && <ActionBar.Label label={label} />}
+        </ActionBar.Group>
+        <ActionBar.Group>
+          <span className={actionBarStyles.styleTrigger}>
+            <ActionBar.Action label="Edit Style" onClick={handleEditStyleClick}>
+              <Palette size={14} />
+            </ActionBar.Action>
+          </span>
+          <ActionBar.Separator />
+          {children}
+        </ActionBar.Group>
+      </ActionBar>
+    </div>
   )
 }
 
@@ -510,10 +517,11 @@ export function PuckHost({
         <PuckActionBarBridge
           {...props}
           onOpenStyleMenu={handleOpenStyleMenu}
+          styleMenuComponentId={activeStyleMenu?.opened ? activeStyleMenu.componentId : undefined}
         />
       ),
     }
-  }, [handleRegisterPuckApi, handleOpenStyleMenu])
+  }, [handleRegisterPuckApi, handleOpenStyleMenu, activeStyleMenu?.opened, activeStyleMenu?.componentId])
 
   return (
     <Box
