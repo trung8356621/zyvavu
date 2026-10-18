@@ -40,7 +40,7 @@ type RegistryRow = {
   tag?: number | { id: number } | null
 }
 
-const XML_HEADER = '<?xml version="1.0" encoding="UTF-8"?>\n<?xml-stylesheet type="text/css" href="/sitemap-style.css"?>'
+const XML_HEADER = '<?xml version="1.0" encoding="UTF-8"?>'
 const SITEMAP_NS = 'http://www.sitemaps.org/schemas/sitemap/0.9'
 
 function groupResourceType(group: string): ResourceType | null {

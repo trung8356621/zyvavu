@@ -38,7 +38,6 @@ export function SeoSettingsView(props: AdminViewServerProps) {
                 SEO configuration will be available in a future implementation.
               </Text>
               <Group>
-                <Anchor href="/sitemap-view">Sitemap viewer</Anchor>
                 <Anchor href="/sitemap.xml">Raw XML</Anchor>
               </Group>
             </Stack>
@@ -59,7 +58,6 @@ export function SeoSettingsView(props: AdminViewServerProps) {
             SEO configuration will be available in a future implementation.
           </Text>
           <Group>
-            <Anchor href="/sitemap-view">Sitemap viewer</Anchor>
             <Anchor href="/sitemap.xml">Raw XML</Anchor>
           </Group>
         </Stack>
