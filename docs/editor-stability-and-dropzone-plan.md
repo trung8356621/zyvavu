@@ -35,15 +35,27 @@ The source-wide runtime search found one direct deprecated API call:
 - `src/lib/theme-engine/styles.ts`: selectors for `[data-puck-dropzone]` and the `_DropZone_wc2ks_1` class are styling compatibility references, not additional DropZone API calls.
 - Section content, Columns columns and CollectionLoop itemTemplate already declare slot fields. Legacy document normalization/SSR still supports `zones`, including `<section-id>:content`.
 
-The deprecated root call remains; reducing remounts should reduce repeated mounts/logging but does not eliminate the deprecation itself.
+The deprecated root API call remains. Its presence alone does not establish the source of browser warnings: installed Puck 0.23.0 excludes `root:default-zone` from the DropZones deprecation warning branch. Warning origin remains unverified until a browser stack trace identifies the emitting path.
 
-Future plan, requiring a separate approved compatibility change:
+### Owner-confirmed compatibility exception — 2026-10-18
+
+**Decision: retain the Page root `puck.renderDropZone({ zone: 'default-zone', allow: ['Section'] })` on Puck 0.23.0. Slots migration is deferred, not authorized for implementation now.** This is an intentional compatibility exception protecting Section-only root drag/drop.
+
+Section, Columns and CollectionLoop already use slot fields; keep their structures unchanged. Native root `children` preserves root `content`, but the installed public contract does not expose an equivalent Section-only constraint on that React node. Do not replace the root call at the cost of editor placement restrictions or invent a new root schema merely to remove a warning.
+
+Preserve root `content`, legacy `zones`, widget IDs/order, style props, dynamic bindings, and existing Section-root validation. This decision authorizes no runtime, database, published-template or template JSON changes, and no warning suppression.
+
+Reassess only when upgrading Puck or when an official API supports both root children and Section-only placement while preserving the existing data contract. A future implementation requires a separately approved compatibility change and owner browser acceptance. The checklist below is conditional future work, not a current migration plan:
 
 1. Confirm the installed Puck root-slot/children contract and document format. Prefer rendering the native root children with a supported Section-only placement policy if it retains root `content`; avoid moving root data unnecessarily.
 2. Build fixtures for existing root content, Section zones, Columns zones, CollectionLoop item templates, slot arrays, IDs, locks and dynamic bindings. Preserve the current mandatory Section-root validation at both editing and saving boundaries.
 3. Introduce an in-memory, versioned, idempotent reader adapter only where slot rendering requires it. Keep legacy zones readable; reject ambiguous duplicate slot/zone definitions instead of dropping nodes.
 4. Verify editor and SSR output equivalence, ordering, IDs, repeating contexts, save/reload round trips and undo/redo. No background migration, bulk DB writes or automatic rewrites of published templates.
 5. Remove the deprecated root call only after fixture equivalence and owner browser acceptance. Any persistent conversion must be separately reviewed and reversible.
+
+### Separate investigation backlog — browser warning origin
+
+Status: **NOT VERIFIED; no browser investigation executed.** Collect the full warning text, expanded JavaScript/component stack, editor route/template, triggering action and runtime Puck version from an owner-provided browser Console trace. Correlate the trace with the installed warning branch and actual zone/component before proposing a fix. Do not assume the Page root is responsible, suppress warnings, or modify runtime/data as part of this documentation decision. Browser automation remains prohibited by AGENTS.md; owner supplies the trace for a separate investigation task.
 
 ## State architecture going forward
 
