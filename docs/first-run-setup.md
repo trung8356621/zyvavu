@@ -25,17 +25,17 @@ The database password is cleared from page memory after verification. The admini
 | INSTALLED | Usable configuration, a real system administrator and `settings.setupComplete` are verified. The installer is locked server-side. |
 | DATABASE_UNAVAILABLE | Installed/potentially committed state cannot be verified, or existing configuration has unknown provenance and is unreachable. Show maintenance, never automatically reinstall. |
 
-Every request checks the durable completion marker. Database verification, website configuration and finalization check the actual database before proceeding. Existing application tables in any schema or existing users block installation. Once verified, setup stays bound to that database; another request cannot silently switch it. Missing `.env` alone cannot erase the installed marker or authorize overwriting populated databases.
+Installed state is determined from usable environment configuration and the database (system administrator plus `settings.setupComplete`), without requiring `.setup/state.json`. Database verification, website configuration and finalization check the actual database before proceeding. Existing application tables in any schema or existing users block installation. Once verified, setup stays bound to that database; another request cannot silently switch it. A database connection failure never authorizes installation; continuation requires a verified empty database.
 
 A filesystem lock serializes setup across Node workers; a PostgreSQL advisory lock serializes final installation. Finish runs the existing migration `up` functions and native migration records, creates the first administrator and updates Settings in one adapter transaction, including `pg_trgm`. There is no reset, schema push or down migration. The CLI migration wrapper is avoided because it exits the process on errors.
 
 ## Configuration persistence
 
-Progress and the generated secret are automatically saved in `.setup/state.json`, outside Git, only after database verification. Keep this directory private and durable across workers. POSIX modes are set; Windows operators must restrict its NTFS ACL. Never serve it publicly. For read-only application directories, set `SETUP_STATE_DIR` to an absolute private writable directory in the hosting service environment.
+Progress and the generated secret are automatically saved in `.setup/state.json`, outside Git, only after database verification. Keep this temporary directory private and durable across workers until installation succeeds. POSIX modes are set; Windows operators must restrict its NTFS ACL. Never serve it publicly. For read-only application directories, set `SETUP_STATE_DIR` to an absolute private writable directory in the hosting service environment.
 
 Finish publishes a fully written/fsynced `.env.local` atomically and exclusively. Existing files and unrelated configuration are preserved. Hosting environment variables retain precedence; an existing valid `PAYLOAD_SECRET` is retained. Node/Next loads `.env`, `.env.local` and hosting variables normally. Restart Node.js after completion; dev hot reload is not a production substitute.
 
-If automatic persistence is unavailable, a private `hosting.json` is automatically saved in the state directory. Using the hosting file manager, transfer its exact `DATABASE_URL`, `PAYLOAD_SECRET` and `NEXT_PUBLIC_SERVER_URL` values to hosting environment settings, or reconcile the existing `.env.local`. Do not publish the file. Restart Node.js, reopen `/setup`, verify the same connection, reenter administrator credentials and finish. A durable writable state directory remains necessary. Complex secrets that dotenv expansion could alter use this fallback too.
+If automatic persistence is unavailable, a private `hosting.json` is automatically saved in the state directory. Using the hosting file manager, transfer its exact `DATABASE_URL`, `PAYLOAD_SECRET` and `NEXT_PUBLIC_SERVER_URL` values to hosting environment settings, or reconcile the existing `.env.local`. Do not publish the file. Restart Node.js, reopen `/setup`, verify the same connection, reenter administrator credentials and finish. A durable writable state directory remains necessary until completion. Complex secrets that dotenv expansion could alter use this fallback too.
 
 ## Refresh or interrupted installation
 
@@ -45,4 +45,16 @@ After a process crashes while holding `.setup/lock`, stop all application worker
 
 ## Verification boundary
 
+Normal installed requests reuse a configuration/state-bound inventory verdict for at most 30 seconds per Node process. A small reused PostgreSQL pool probes `SELECT 1`, coalesced for one second, so outages still return maintenance without rescanning schema tables on every request. Changed URL, secret, public origin or local state invalidates the inventory verdict. Incomplete/error results are not retained as installed. Setup write endpoints always perform their own fresh/advisory-locked checks and never trust this navigation cache.
+
+If the database commits but the completion file cannot be persisted, a retry of Finish reaches its locked recovery branch and only repairs local state. After a worker restart, a verified installed database with matching provisioning configuration also finalizes recovery under the filesystem lock. Neither path reruns migrations or creates another administrator.
+
+Loopback PostgreSQL hosts default to SSL disabled for local convenience; remote hosts default to full certificate/hostname verification. An explicitly selected or supplied SSL mode is preserved across host edits and step navigation. No additional PostgreSQL SSL modes are introduced.
+
 Focused tests cover the direct four-step UI, languages, validation, request restrictions, installed-state replay protection, database checks, atomic file writes and transaction rollback using temporary files/mocks. Real installation, login/homepage and responsive visual acceptance require an isolated empty PostgreSQL database and manual owner inspection. No browser automation or laptop database access is used.
+
+## Temporary directory cleanup
+
+After the database transaction commits migrations, the system administrator and `settings.setupComplete`, the installer verifies configuration persistence and removes only its `hosting.json` and `state.json` while holding the filesystem lock. It releases the lock and removes the directory only if empty; unrelated files in a custom `SETUP_STATE_DIR` are preserved. No recursive deletion, database deletion or `.env.local` removal occurs. Failed installation/configuration persistence keeps recovery data. A verified completed installation retries cleanup on subsequent state verification if necessary.
+
+Between configuration publication and Node restart, a usable `.env.local` keeps the installer closed even if runtime variables have not reloaded. Restart Node to load it normally. After restart, valid environment plus database completion determines INSTALLED without `.setup`; an unreachable database returns DATABASE_UNAVAILABLE and never reopens setup. No persistent completion secret or additional marker is needed.

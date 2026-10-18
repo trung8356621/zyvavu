@@ -1,6 +1,23 @@
 import pg from 'pg'
 import { databaseError, SetupError } from './validation'
 
+let healthPool: { url: string; pool: pg.Pool } | undefined
+let healthCheck: { url: string; expires: number; result: Promise<boolean> } | undefined
+// Reuse connections and coalesce proxy/layout/API probes for one second. No inventory queries here.
+export function databaseReachable(url: string): Promise<boolean> {
+  if (healthCheck?.url === url && healthCheck.expires > Date.now()) return healthCheck.result
+  if (healthPool?.url !== url) {
+    void healthPool?.pool.end().catch(() => {})
+    healthPool = { url, pool: new pg.Pool({ connectionString: url, max: 2, idleTimeoutMillis: 10000, connectionTimeoutMillis: 5000, query_timeout: 5000, statement_timeout: 5000 }) }
+    healthPool.pool.on('error', () => { healthCheck = undefined })
+  }
+  const result = healthPool.pool.query('SELECT 1').then(() => true, () => false)
+  const entry = { url, expires: Infinity, result }
+  healthCheck = entry
+  void result.then(() => { if (healthCheck === entry) entry.expires = Date.now() + 1000 })
+  return result
+}
+
 // Node-only driver, shared with Payload. No module-resolution tricks in the proxy bundle.
 export async function connectDatabase(connectionString: string) {
   const client = new pg.Client({ connectionString, connectionTimeoutMillis: 5000, query_timeout: 8000, statement_timeout: 8000 })

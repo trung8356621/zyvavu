@@ -8,7 +8,7 @@ beforeEach(() => {
   HTMLElement.prototype.scrollIntoView = vi.fn()
 })
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); document.cookie = 'zyvavu-setup-language=; Max-Age=0; Path=/' })
-const mount = (language: 'vi' | 'en' = 'vi', initialDatabase?: { host?: string; port?: string }) => render(<MantineProvider env="test"><SetupWizard initialLanguage={language} initialDatabase={initialDatabase} /></MantineProvider>)
+const mount = (language: 'vi' | 'en' = 'vi', initialDatabase?: { host?: string; port?: string; ssl?: string }) => render(<MantineProvider env="test"><SetupWizard initialLanguage={language} initialDatabase={initialDatabase} /></MantineProvider>)
 const fillDatabase = () => {
   for (const [label, value] of [['PostgreSQL host', 'db.example.com'], ['Database name', 'unit'], ['Username', 'unit']]) fireEvent.change(screen.getByLabelText(new RegExp(`^${label}`)), { target: { value } })
 }
@@ -78,4 +78,27 @@ it('keeps edited connection values on Back and retains horizontal progress state
   fireEvent.click(screen.getByRole('button', { name: 'Back' }))
   expect((screen.getByLabelText(/^PostgreSQL host/) as HTMLInputElement).value).toBe('db.example.com')
   expect((screen.getByLabelText(/^Port/) as HTMLInputElement).value).toBe('6432')
+  expect((screen.getByRole('combobox', { name: 'SSL connection' }) as HTMLInputElement).value).toBe('SSL — verify certificate and hostname')
+})
+it('defaults loopback to local SSL and upgrades untouched defaults for remote hosts', () => {
+  mount('en')
+  const ssl = screen.getByRole('combobox', { name: 'SSL connection' }) as HTMLInputElement
+  expect(ssl.value).toBe('Disabled (trusted network)')
+  fireEvent.change(screen.getByLabelText(/^PostgreSQL host/), { target: { value: 'db.example.com' } })
+  expect(ssl.value).toBe('SSL — verify certificate and hostname')
+  fireEvent.change(screen.getByLabelText(/^PostgreSQL host/), { target: { value: 'localhost' } })
+  expect(ssl.value).toBe('Disabled (trusted network)')
+})
+it('never overwrites an explicitly selected SSL mode when editing the host', async () => {
+  mount('en')
+  const ssl = screen.getByRole('combobox', { name: 'SSL connection' }) as HTMLInputElement
+  fireEvent.click(ssl)
+  fireEvent.click(await screen.findByRole('option', { name: 'SSL — verify certificate and hostname' }))
+  fireEvent.change(screen.getByLabelText(/^PostgreSQL host/), { target: { value: 'localhost' } })
+  expect(ssl.value).toBe('SSL — verify certificate and hostname')
+})
+it('preserves saved SSL verification even for a loopback host', () => {
+  mount('en', { host: '127.0.0.1', ssl: 'verify-full' })
+  fireEvent.change(screen.getByLabelText(/^PostgreSQL host/), { target: { value: 'localhost' } })
+  expect((screen.getByRole('combobox', { name: 'SSL connection' }) as HTMLInputElement).value).toBe('SSL — verify certificate and hostname')
 })

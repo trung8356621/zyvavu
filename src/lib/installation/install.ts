@@ -19,6 +19,7 @@ export async function finishInstallation(record: InstallationRecord, adminInput:
     const inventory = await databaseInventory(client)
     if (inventory === 'installed') {
       if (record.phase === 'provisioning') {
+        await persistEnvironment(record)
         record.phase = 'installed'
         await saveRecord(record)
         return { completed: true, restart: true }

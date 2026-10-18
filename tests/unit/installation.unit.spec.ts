@@ -1,11 +1,12 @@
 // @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { databaseURL, databaseError, validateAdmin, validateWebsite } from '@/lib/installation/validation'
-import { assertNotInstalled, newInstallationRecord, readRecord, saveRecord, withInstallationLock, persistEnvironment, type InstallationRecord } from '@/lib/installation/store'
+import { assertNotInstalled, newInstallationRecord, readRecord, saveRecord, withInstallationLock, persistEnvironment, hasPersistedConfiguration, type InstallationRecord } from '@/lib/installation/store'
 import { setupMessages } from '@/lib/installation/messages'
+import { defaultDatabaseSSL } from '@/lib/installation/input'
 
 const website = { siteName: 'Demo', siteUrl: 'https://example.com', language: 'vi', timezone: 'Asia/Ho_Chi_Minh', activeThemeId: 'corporate' }
 const database = { host: 'db.example.com', port: '5432', database: 'cms', username: 'operator', password: 'a@b:#\n', ssl: 'verify-full' }
@@ -20,6 +21,10 @@ beforeEach(async () => {
 afterEach(async () => { vi.restoreAllMocks(); vi.unstubAllEnvs(); await rm(directory, { recursive: true, force: true }) })
 
 describe('setup validation and localization', () => {
+  it('uses local SSL defaults only for loopback hosts, with no new driver modes', () => {
+    for (const host of ['127.0.0.1', 'localhost', '::1', '[::1]']) expect(defaultDatabaseSSL(host)).toBe('disable')
+    for (const host of ['db.example.com', 'localhost.example.com', '192.168.1.10']) expect(defaultDatabaseSSL(host)).toBe('verify-full')
+  })
   it('encodes credentials and preserves remote host and verified TLS', () => {
     const url = new URL(databaseURL(database))
     expect(decodeURIComponent(url.password)).toBe(database.password)
@@ -92,5 +97,43 @@ describe('private installation persistence', () => {
   })
   it('does not serialize secrets that dotenv expansion could silently change', async () => {
     await expect(persistEnvironment({ ...record, secret: 'private$hosting-secret' })).rejects.toThrow('manualConfiguration')
+  })
+})
+
+describe('temporary setup directory lifecycle', () => {
+  it('removes completed progress only after configuration is safely persisted and the lock released', async () => {
+    await withInstallationLock(async () => {
+      await persistEnvironment(record)
+      await saveRecord({ ...record, phase: 'installed' })
+      expect(await readRecord()).not.toBeNull()
+    })
+    await expect(stat(path.join(directory, 'state'))).rejects.toMatchObject({ code: 'ENOENT' })
+    await expect(readFile(path.join(directory, 'state', 'state.json'))).rejects.toMatchObject({ code: 'ENOENT' })
+    await expect(readFile(path.join(directory, 'state', 'lock'))).rejects.toMatchObject({ code: 'ENOENT' })
+    expect(await hasPersistedConfiguration()).toBe(true)
+    expect(await readRecord()).toBeNull()
+  })
+  it('retains provisioning progress and configuration after a failed installation', async () => {
+    await expect(withInstallationLock(async () => {
+      await persistEnvironment(record)
+      await saveRecord({ ...record, phase: 'provisioning' })
+      throw new Error('interrupted')
+    })).rejects.toThrow('interrupted')
+    expect((await readRecord())?.phase).toBe('provisioning')
+    expect(await hasPersistedConfiguration()).toBe(true)
+  })
+  it('preserves unrelated files and never recursively deletes a custom state directory', async () => {
+    await saveRecord(record)
+    await writeFile(path.join(directory, 'state', 'keep.txt'), 'keep')
+    await withInstallationLock(async () => { await saveRecord({ ...record, phase: 'installed' }) })
+    expect(await readFile(path.join(directory, 'state', 'keep.txt'), 'utf8')).toBe('keep')
+    expect(await hasPersistedConfiguration()).toBe(true)
+    expect(await readRecord()).toBeNull()
+  })
+  it('keeps recovery state when configuration persistence fails', async () => {
+    await writeFile(path.join(directory, '.env.local'), 'EXISTING=value')
+    await expect(withInstallationLock(async () => { await saveRecord({ ...record, phase: 'installed' }) })).rejects.toThrow('manualConfiguration')
+    expect((await readRecord())?.phase).toBe('installed')
+    expect(await readFile(path.join(directory, '.env.local'), 'utf8')).toBe('EXISTING=value')
   })
 })

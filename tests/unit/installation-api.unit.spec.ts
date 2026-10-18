@@ -1,10 +1,10 @@
 // @vitest-environment node
 import { beforeEach, afterEach, expect, it, vi } from 'vitest'
 import { NextRequest } from 'next/server'
-const mocks = vi.hoisted(() => ({ readRecord: vi.fn(), save: vi.fn(), fresh: vi.fn(), finish: vi.fn() }))
+const mocks = vi.hoisted(() => ({ readRecord: vi.fn(), save: vi.fn(), fresh: vi.fn(), finish: vi.fn(), persisted: vi.fn() }))
 vi.mock('@/lib/installation/store', async importOriginal => ({
   ...await importOriginal<typeof import('@/lib/installation/store')>(),
-  readRecord: mocks.readRecord, saveRecord: mocks.save,
+  hasPersistedConfiguration: mocks.persisted, readRecord: mocks.readRecord, saveRecord: mocks.save,
   withInstallationLock: async (work: () => Promise<unknown>) => work(),
 }))
 vi.mock('@/lib/installation/database', () => ({ requireFreshDatabase: mocks.fresh }))
@@ -59,15 +59,24 @@ it('never claims an installed database when its local completion marker is absen
   expect(response.status).toBe(409)
   expect(mocks.save).not.toHaveBeenCalled()
 })
-it('reverifies the database before every website or administrator-finalization action', async () => {
+it('reverifies the database before website changes and delegates finalization to its locked verifier', async () => {
   mocks.readRecord.mockResolvedValue(makeRecord())
-  for (const action of ['website', 'finish']) {
-    mocks.fresh.mockRejectedValueOnce(new SetupError('existingDatabase', 409))
-    expect((await POST(request(JSON.stringify({ action })))).status).toBe(409)
-  }
-  expect(mocks.fresh).toHaveBeenCalledTimes(2)
+  mocks.fresh.mockRejectedValueOnce(new SetupError('existingDatabase', 409))
+  expect((await POST(request(JSON.stringify({ action: 'website' })))).status).toBe(409)
+  mocks.finish.mockRejectedValueOnce(new SetupError('installed', 409))
+  expect((await POST(request(JSON.stringify({ action: 'finish' })))).status).toBe(409)
+  expect(mocks.fresh).toHaveBeenCalledTimes(1)
   expect(mocks.save).not.toHaveBeenCalled()
-  expect(mocks.finish).not.toHaveBeenCalled()
+  expect(mocks.finish).toHaveBeenCalledTimes(1)
+})
+it('lets a committed provisioning request reach completion recovery without rejecting its nonempty database first', async () => {
+  mocks.readRecord.mockResolvedValue({ ...makeRecord(), phase: 'provisioning' })
+  mocks.fresh.mockRejectedValue(new SetupError('installed', 409))
+  mocks.finish.mockResolvedValueOnce({ completed: true, restart: true })
+  const response = await POST(request(JSON.stringify({ action: 'finish', admin: { email: 'owner@example.com', password: 'private-password' } })))
+  expect(response.status).toBe(200)
+  expect(mocks.fresh).not.toHaveBeenCalled()
+  expect(mocks.finish).toHaveBeenCalledTimes(1)
 })
 it('pins the verified database against conflicting concurrent clients', async () => {
   mocks.readRecord.mockResolvedValue(makeRecord())
@@ -81,4 +90,11 @@ it('restores only nonsecret website settings after fresh-database verification',
   const response = await POST(request(JSON.stringify({ action: 'database', database })))
   expect(await response.json()).toEqual({ verified: true, website })
   expect(mocks.fresh).toHaveBeenCalledWith(databaseURL(database))
+})
+
+it('blocks a new installation before restart when published config remains without setup state', async () => {
+  mocks.persisted.mockResolvedValue(true)
+  expect((await POST(request(JSON.stringify({ action: 'database', database })))).status).toBe(409)
+  expect(mocks.fresh).not.toHaveBeenCalled()
+  expect(mocks.save).not.toHaveBeenCalled()
 })

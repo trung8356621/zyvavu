@@ -31,6 +31,8 @@ it('commits migrations, native migration records, first privileged user, and set
   expect(mocks.payload.updateGlobal).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ setupComplete: true }), req: { transactionID: 'tx' } }))
   expect(mocks.payload.db.commitTransaction).toHaveBeenCalledWith('tx')
   expect(record.phase).toBe('installed')
+  expect(mocks.persist.mock.invocationCallOrder[0]).toBeLessThan(mocks.payload.db.commitTransaction.mock.invocationCallOrder[0])
+  expect(mocks.payload.db.commitTransaction.mock.invocationCallOrder[0]).toBeLessThan(mocks.save.mock.invocationCallOrder.at(-1)!)
 })
 it('rolls back the entire transaction if a migration fails', async () => {
   mocks.up.mockRejectedValueOnce(new Error('migration rejected'))
@@ -66,4 +68,22 @@ it('recovers the completion marker after a commit without creating a second user
   expect(await finishInstallation(record, admin)).toEqual({ completed: true, restart: true })
   expect(mocks.save).toHaveBeenCalledWith(expect.objectContaining({ phase: 'installed' }))
   expect(mocks.payload.create).not.toHaveBeenCalled()
+})
+it('recovers after DB commit followed by a failed completion write, including a simulated worker restart', async () => {
+  let disk: InstallationRecord | undefined
+  mocks.save.mockImplementation(async (value: InstallationRecord) => {
+    if (value.phase === 'installed') throw new Error('completion file unavailable')
+    disk = structuredClone(value)
+  })
+  await expect(finishInstallation(makeRecord(), admin)).rejects.toThrow('completion file unavailable')
+  expect(mocks.payload.db.commitTransaction).toHaveBeenCalledTimes(1)
+  expect(disk?.phase).toBe('provisioning')
+  const createsBeforeRestart = mocks.payload.create.mock.calls.length
+  mocks.inventory.mockResolvedValue('installed')
+  mocks.save.mockImplementation(async (value: InstallationRecord) => { disk = structuredClone(value) })
+  expect(await finishInstallation(structuredClone(disk!), admin)).toEqual({ completed: true, restart: true })
+  expect(disk?.phase).toBe('installed')
+  expect(mocks.payload.create).toHaveBeenCalledTimes(createsBeforeRestart)
+  expect(mocks.payload.init).toHaveBeenCalledTimes(1)
+  expect(mocks.payload.db.commitTransaction).toHaveBeenCalledTimes(1)
 })

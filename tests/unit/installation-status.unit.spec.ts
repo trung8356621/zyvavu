@@ -1,18 +1,22 @@
 // @vitest-environment node
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-const mocks = vi.hoisted(() => ({ readRecord: vi.fn(), connect: vi.fn(), inventory: vi.fn(), end: vi.fn() }))
-vi.mock('@/lib/installation/store', () => ({ readRecord: mocks.readRecord }))
-vi.mock('@/lib/installation/database', () => ({ connectDatabase: mocks.connect, databaseInventory: mocks.inventory }))
-import { installationStatus } from '@/lib/installation/status'
+const mocks = vi.hoisted(() => ({ readRecord: vi.fn(), connect: vi.fn(), inventory: vi.fn(), end: vi.fn(), health: vi.fn(), save: vi.fn(), persisted: vi.fn(), persist: vi.fn() }))
+vi.mock('@/lib/installation/store', () => ({ hasPersistedConfiguration: mocks.persisted, persistEnvironment: mocks.persist, readRecord: mocks.readRecord, saveRecord: mocks.save, withInstallationLock: async (work: () => Promise<unknown>) => work() }))
+vi.mock('@/lib/installation/database', () => ({ connectDatabase: mocks.connect, databaseInventory: mocks.inventory, databaseReachable: mocks.health }))
+let installationStatus: typeof import('@/lib/installation/status').installationStatus
 
-beforeEach(() => {
+beforeEach(async () => {
+  vi.resetModules()
+  vi.resetAllMocks()
+  installationStatus = (await import('@/lib/installation/status')).installationStatus
   vi.stubEnv('DATABASE_URL', '')
   vi.stubEnv('PAYLOAD_SECRET', '')
   mocks.readRecord.mockResolvedValue(null)
   mocks.connect.mockResolvedValue({ end: mocks.end })
   mocks.inventory.mockResolvedValue('empty')
+  mocks.health.mockResolvedValue(true)
 })
-afterEach(() => { vi.clearAllMocks(); vi.unstubAllEnvs() })
+afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs() })
 it('renders unconfigured setup without a database connection', async () => {
   expect(await installationStatus()).toBe('UNCONFIGURED')
   expect(mocks.connect).not.toHaveBeenCalled()
@@ -61,7 +65,7 @@ it('lets a verified incomplete first installation diagnose unreachable hosting c
   vi.stubEnv('PAYLOAD_SECRET', 'private')
   mocks.readRecord.mockResolvedValue({ phase: 'database' })
   mocks.connect.mockRejectedValueOnce(new Error('unreachable'))
-  expect(await installationStatus()).toBe('CONFIGURED_NOT_INSTALLED')
+  expect(await installationStatus()).toBe('DATABASE_UNAVAILABLE')
 })
 it('does not reopen a potentially committed installation after a crash or outage', async () => {
   mocks.readRecord.mockResolvedValue({ phase: 'provisioning' })
@@ -70,4 +74,72 @@ it('does not reopen a potentially committed installation after a crash or outage
   vi.stubEnv('PAYLOAD_SECRET', 'private')
   mocks.connect.mockRejectedValueOnce(new Error('unreachable'))
   expect(await installationStatus()).toBe('DATABASE_UNAVAILABLE')
+})
+it('reduces 101 installed requests to one inventory check and invalidates changed configuration', async () => {
+  vi.stubEnv('DATABASE_URL', 'postgresql://fixture.invalid/setup_unit')
+  vi.stubEnv('PAYLOAD_SECRET', 'private')
+  mocks.readRecord.mockResolvedValue({ phase: 'installed' })
+  mocks.inventory.mockResolvedValue('installed')
+  for (let index = 0; index < 101; index++) expect(await installationStatus()).toBe('INSTALLED')
+  expect(mocks.inventory).toHaveBeenCalledTimes(1)
+  expect(mocks.connect).toHaveBeenCalledTimes(1)
+  vi.stubEnv('DATABASE_URL', 'postgresql://changed.invalid/another')
+  mocks.inventory.mockResolvedValue('empty')
+  expect(await installationStatus()).toBe('DATABASE_UNAVAILABLE')
+  expect(mocks.inventory).toHaveBeenCalledTimes(2)
+})
+it('detects outages on the cached installed path without reopening setup or rewriting state', async () => {
+  vi.stubEnv('DATABASE_URL', 'postgresql://fixture.invalid/setup_unit')
+  vi.stubEnv('PAYLOAD_SECRET', 'private')
+  mocks.readRecord.mockResolvedValue({ phase: 'installed' })
+  mocks.inventory.mockResolvedValue('installed')
+  expect(await installationStatus()).toBe('INSTALLED')
+  mocks.health.mockResolvedValue(false)
+  expect(await installationStatus()).toBe('DATABASE_UNAVAILABLE')
+  expect(mocks.inventory).toHaveBeenCalledTimes(1)
+  expect(mocks.save).not.toHaveBeenCalled()
+})
+it('reverifies the installed database after the bounded inventory TTL', async () => {
+  vi.useFakeTimers()
+  vi.stubEnv('DATABASE_URL', 'postgresql://fixture.invalid/setup_unit')
+  vi.stubEnv('PAYLOAD_SECRET', 'private')
+  mocks.inventory.mockResolvedValue('installed')
+  expect(await installationStatus()).toBe('INSTALLED')
+  vi.advanceTimersByTime(30001)
+  mocks.inventory.mockResolvedValue('empty')
+  expect(await installationStatus()).toBe('CONFIGURED_NOT_INSTALLED')
+  expect(mocks.inventory).toHaveBeenCalledTimes(2)
+})
+it('repairs a provisioning marker after restart only when the bound database verifies installed', async () => {
+  const record = { phase: 'provisioning', databaseUrl: 'postgresql://fixture.invalid/setup_unit', secret: 'private' }
+  vi.stubEnv('DATABASE_URL', record.databaseUrl)
+  vi.stubEnv('PAYLOAD_SECRET', record.secret)
+  mocks.readRecord.mockResolvedValue(record)
+  mocks.inventory.mockResolvedValue('installed')
+  expect(await installationStatus()).toBe('INSTALLED')
+  expect(mocks.save).toHaveBeenCalledWith({ ...record, phase: 'installed' })
+})
+
+it('keeps setup closed before restart after temporary state was removed', async () => {
+  mocks.persisted.mockResolvedValue(true)
+  expect(await installationStatus()).toBe('DATABASE_UNAVAILABLE')
+  expect(mocks.connect).not.toHaveBeenCalled()
+})
+it('recognizes installation after restart without any setup state and fails closed on outage', async () => {
+  vi.stubEnv('DATABASE_URL', 'postgresql://fixture.invalid/setup_unit')
+  vi.stubEnv('PAYLOAD_SECRET', 'private')
+  mocks.inventory.mockResolvedValue('installed')
+  expect(await installationStatus()).toBe('INSTALLED')
+  vi.resetModules()
+  mocks.connect.mockRejectedValue(new Error('offline'))
+  const restarted = await import('@/lib/installation/status')
+  expect(await restarted.installationStatus()).toBe('DATABASE_UNAVAILABLE')
+})
+
+it('does not depend on readable temporary state to recognize an installed database', async () => {
+  vi.stubEnv('DATABASE_URL', 'postgresql://fixture.invalid/setup_unit')
+  vi.stubEnv('PAYLOAD_SECRET', 'private')
+  mocks.readRecord.mockRejectedValue(new Error('corrupt temporary state'))
+  mocks.inventory.mockResolvedValue('installed')
+  expect(await installationStatus()).toBe('INSTALLED')
 })

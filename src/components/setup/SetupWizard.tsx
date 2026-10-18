@@ -3,11 +3,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { Alert, Button, Checkbox, Container, Fieldset, Group, Paper, PasswordInput, Select, Stack, Stepper, Text, TextInput, Title } from '@mantine/core'
 import { setupMessages, type SetupLanguage } from '@/lib/installation/messages'
-import { validateAdmin, type DatabaseInput, type WebsiteInput } from '@/lib/installation/input'
+import { defaultDatabaseSSL, validateAdmin, type DatabaseInput, type WebsiteInput } from '@/lib/installation/input'
 import { TIMEZONE_OPTIONS } from '@/lib/dateTime'
 import styles from './SetupWizard.module.css'
 
-export function SetupWizard({ locked = false, maintenance = false, availableThemes = [], initialLanguage = 'vi', initialSiteUrl = '', environmentAvailable = false, initialDatabase }: { locked?: boolean; maintenance?: boolean; availableThemes?: { value: string; label: string }[]; initialLanguage?: SetupLanguage; initialSiteUrl?: string; environmentAvailable?: boolean; initialDatabase?: Partial<Pick<DatabaseInput, 'host' | 'port'>> }) {
+export function SetupWizard({ locked = false, maintenance = false, availableThemes = [], initialLanguage = 'vi', initialSiteUrl = '', environmentAvailable = false, initialDatabase }: { locked?: boolean; maintenance?: boolean; availableThemes?: { value: string; label: string }[]; initialLanguage?: SetupLanguage; initialSiteUrl?: string; environmentAvailable?: boolean; initialDatabase?: Partial<Pick<DatabaseInput, 'host' | 'port' | 'ssl'>> }) {
   const [language, setLanguage] = useState<SetupLanguage>(initialLanguage)
   const [step, setStep] = useState(0)
   const [busy, setBusy] = useState(false)
@@ -16,7 +16,8 @@ export function SetupWizard({ locked = false, maintenance = false, availableThem
   const [notice, setNotice] = useState('')
   const [completed, setCompleted] = useState(false)
   const [useEnvironment, setUseEnvironment] = useState(environmentAvailable)
-  const [database, setDatabase] = useState<DatabaseInput>({ host: initialDatabase?.host ?? '127.0.0.1', port: initialDatabase?.port ?? '5432', database: '', username: '', password: '', ssl: 'verify-full' })
+  const sslChosen = useRef(initialDatabase?.ssl !== undefined)
+  const [database, setDatabase] = useState<DatabaseInput>({ host: initialDatabase?.host ?? '127.0.0.1', port: initialDatabase?.port ?? '5432', database: '', username: '', password: '', ssl: initialDatabase?.ssl ?? defaultDatabaseSSL(initialDatabase?.host ?? '127.0.0.1') })
   const [admin, setAdmin] = useState({ email: '', password: '' })
   const [website, setWebsite] = useState<WebsiteInput>({ siteName: '', siteUrl: initialSiteUrl, language: 'vi', timezone: 'Asia/Ho_Chi_Minh', activeThemeId: 'corporate' })
   const t = setupMessages[language]
@@ -77,9 +78,9 @@ export function SetupWizard({ locked = false, maintenance = false, availableThem
                 {step === 0 && <>
                   {environmentAvailable && <Checkbox label={t.useEnvironment} checked={useEnvironment} onChange={event => setUseEnvironment(event.currentTarget.checked)} />}
                   {!useEnvironment && <>
-                  {(['host', 'port', 'database', 'username'] as const).map(field => <TextInput key={field} required label={field === 'database' ? t.databaseName : t[field]} value={database[field]} onChange={event => setDatabase({ ...database, [field]: event.currentTarget.value })} inputMode={field === 'port' ? 'numeric' : undefined} />)}
+                  {(['host', 'port', 'database', 'username'] as const).map(field => <TextInput key={field} required label={field === 'database' ? t.databaseName : t[field]} value={database[field]} onChange={event => { const value = event.currentTarget.value; setDatabase(previous => ({ ...previous, [field]: value, ssl: field === 'host' && !sslChosen.current ? defaultDatabaseSSL(value) : previous.ssl })) }} inputMode={field === 'port' ? 'numeric' : undefined} />)}
                   <PasswordInput label={t.password} value={database.password} onChange={event => setDatabase({ ...database, password: event.currentTarget.value })} visibilityToggleButtonProps={{ 'aria-label': t.passwordToggle }} />
-                  <Select label={t.ssl} description={t.sslHelp} value={database.ssl} allowDeselect={false} data={[{ value: 'verify-full', label: t.sslVerify }, { value: 'disable', label: t.sslDisable }]} onChange={value => setDatabase({ ...database, ssl: value || 'verify-full' })} />
+                  <Select label={t.ssl} description={t.sslHelp} value={database.ssl} allowDeselect={false} data={[{ value: 'verify-full', label: t.sslVerify }, { value: 'disable', label: t.sslDisable }]} onChange={value => { if (value) { sslChosen.current = true; setDatabase(previous => ({ ...previous, ssl: value })) } }} />
                   </>}
                 </>}
                 {step === 1 && <>

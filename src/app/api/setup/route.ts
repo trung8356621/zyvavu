@@ -1,5 +1,5 @@
 import type { NextRequest } from 'next/server'
-import { assertNotInstalled, newInstallationRecord, readRecord, saveRecord, withInstallationLock } from '@/lib/installation/store'
+import { assertNotInstalled, hasPersistedConfiguration, newInstallationRecord, readRecord, saveRecord, withInstallationLock } from '@/lib/installation/store'
 import { databaseURL, SetupError, validateWebsite } from '@/lib/installation/validation'
 import { requireFreshDatabase } from '@/lib/installation/database'
 
@@ -30,6 +30,7 @@ export async function POST(request: NextRequest) {
       const record = await readRecord()
       assertNotInstalled(record)
       const configuredUrl = process.env.DATABASE_URL
+      if (!record && !configuredUrl && await hasPersistedConfiguration()) throw new SetupError('configurationConflict', 409)
       if (body.action === 'database') {
         const url = body.useEnvironment === true && configuredUrl ? configuredUrl : databaseURL(body.database)
         // Once a database is verified, this installation stays bound to it across requests/refreshes.
@@ -45,17 +46,17 @@ export async function POST(request: NextRequest) {
       }
       if (!record?.databaseUrl) throw new SetupError('validation')
       if (configuredUrl && configuredUrl !== record.databaseUrl) throw new SetupError('configurationConflict', 409)
-      // Recheck the actual database before every privileged continuation, not just the first screen.
+      // Finish owns an advisory-locked inventory check, including recovery after a successful commit.
+      if (body.action === 'finish') {
+        const { finishInstallation } = await import('@/lib/installation/install')
+        return response(await finishInstallation(record, body.admin))
+      }
       await requireFreshDatabase(record.databaseUrl)
       if (body.action === 'website') {
         record.website = validateWebsite(body.website)
         record.phase = 'website'
         await saveRecord(record)
         return response({ saved: true })
-      }
-      if (body.action === 'finish') {
-        const { finishInstallation } = await import('@/lib/installation/install')
-        return response(await finishInstallation(record, body.admin))
       }
       throw new SetupError('validation')
     })

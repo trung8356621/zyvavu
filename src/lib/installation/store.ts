@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto'
-import { mkdir, readFile, open, unlink } from 'node:fs/promises'
+import { mkdir, readFile, open, unlink, rmdir } from 'node:fs/promises'
+import { parse } from 'dotenv'
 import path from 'node:path'
 import { SetupError, type WebsiteInput } from './input'
 import { writePrivateFile, environmentText as serializeEnvironment, environmentValues } from './files.mjs'
@@ -11,6 +12,17 @@ export type InstallationRecord = {
   website?: WebsiteInput
 }
 export const stateDirectory = () => path.resolve(process.env.SETUP_STATE_DIR || path.join(process.cwd(), '.setup'))
+// Before restart, Next may not have loaded the environment just published by Finish.
+export async function hasPersistedConfiguration(): Promise<boolean> {
+  try {
+    const values = parse(await readFile(path.join(process.cwd(), '.env.local'), 'utf8'))
+    const url = new URL(values.DATABASE_URL || '')
+    return Boolean(values.PAYLOAD_SECRET && values.PAYLOAD_SECRET !== 'CHANGE_ME' && ['postgres:', 'postgresql:'].includes(url.protocol) && url.hostname && url.pathname.length > 1)
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT' || error instanceof TypeError) return false
+    throw error
+  }
+}
 export async function readRecord(): Promise<InstallationRecord | null> {
   try { return JSON.parse(await readFile(path.join(stateDirectory(), 'state.json'), 'utf8')) }
   catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null; throw error }
@@ -34,8 +46,25 @@ export async function withInstallationLock<T>(work: () => Promise<T>): Promise<T
   let handle
   try { handle = await open(file, 'wx', 0o600) }
   catch (error) { if ((error as NodeJS.ErrnoException).code === 'EEXIST') throw new SetupError('busy', 409); throw error }
-  try { return await work() }
-  finally { await handle.close(); await unlink(file) }
+  try {
+    const result = await work()
+    const record = await readRecord()
+    if (record?.phase === 'installed') {
+      // Completion is written only after commit. Recheck configuration persistence before cleanup.
+      await persistEnvironment(record)
+      for (const name of ['hosting.json', 'state.json']) {
+        try { await unlink(path.join(stateDirectory(), name)) }
+        catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error }
+      }
+    }
+    return result
+  } finally {
+    await handle.close()
+    await unlink(file)
+    // Never recursively remove an operator-supplied directory or unrelated files.
+    try { await rmdir(stateDirectory()) }
+    catch (error) { if (!['ENOENT', 'ENOTEMPTY', 'EEXIST'].includes((error as NodeJS.ErrnoException).code || '')) throw error }
+  }
 }
 export function environmentText(record: InstallationRecord) {
   if (!record.databaseUrl || !record.website) throw new SetupError('validation')
