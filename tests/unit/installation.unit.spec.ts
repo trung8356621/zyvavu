@@ -1,0 +1,87 @@
+// @vitest-environment node
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
+import { createHash } from 'node:crypto'
+import { databaseURL, databaseError, validateAdmin, validateWebsite } from '@/lib/installation/validation'
+import { authorize, readRecord, saveRecord, withInstallationLock, persistEnvironment, type InstallationRecord } from '@/lib/installation/store'
+import { setupMessages } from '@/lib/installation/messages'
+
+const website = { siteName: 'Demo', siteUrl: 'https://example.com', language: 'vi', timezone: 'Asia/Ho_Chi_Minh', activeThemeId: 'corporate' }
+const database = { host: 'db.example.com', port: '5432', database: 'cms', username: 'operator', password: 'a@b:#\n', ssl: 'verify-full' }
+let directory: string
+let record: InstallationRecord
+beforeEach(async () => {
+  directory = await mkdtemp(path.join(tmpdir(), 'zyvavu-setup-unit-'))
+  vi.stubEnv('SETUP_STATE_DIR', path.join(directory, 'state'))
+  vi.spyOn(process, 'cwd').mockReturnValue(directory)
+  record = { tokenHash: createHash('sha256').update('private-token').digest('hex'), phase: 'started', secret: 'generated-secret', databaseUrl: databaseURL(database), website }
+})
+afterEach(async () => { vi.restoreAllMocks(); vi.unstubAllEnvs(); await rm(directory, { recursive: true, force: true }) })
+
+describe('setup validation and localization', () => {
+  it('encodes credentials and preserves remote host and verified TLS', () => {
+    const url = new URL(databaseURL(database))
+    expect(decodeURIComponent(url.password)).toBe(database.password)
+    expect(url.hostname).toBe('db.example.com')
+    expect(url.searchParams.get('sslmode')).toBe('verify-full')
+    expect(databaseURL(database)).not.toContain('\n')
+  })
+  it('rejects invalid ports, host injection and insecure unsupported TLS modes', () => {
+    for (const input of [{ port: '0' }, { port: '65536' }, { host: 'host/path' }, { ssl: 'no-verify' }]) expect(() => databaseURL({ ...database, ...input })).toThrow('validation')
+  })
+  it('accepts only supported site settings and strong administrator credentials', () => {
+    expect(validateWebsite(website).siteUrl).toBe('https://example.com')
+    for (const input of [{ siteUrl: 'https://example.com/path' }, { timezone: 'Invalid' }, { language: 'fr' }, { activeThemeId: '__proto__' }]) expect(() => validateWebsite({ ...website, ...input })).toThrow('validation')
+    expect(() => validateAdmin({ email: 'owner@example.com', password: 'short' })).toThrow('adminValidation')
+    expect(validateAdmin({ email: 'OWNER@example.com', password: 'long-private-password' }).email).toBe('owner@example.com')
+  })
+  it('maps PostgreSQL errors without leaking diagnostic text', () => {
+    for (const [code, key] of [['28P01', 'authentication'], ['3D000', 'missingDatabase'], ['42501', 'databasePermission'], ['ECONNREFUSED', 'connection']]) {
+      expect(databaseError({ code, message: 'private connection data' }).key).toBe(key)
+    }
+  })
+  it('has nonempty Vietnamese and English translations for every key and error', () => {
+    expect(Object.keys(setupMessages.vi)).toEqual(Object.keys(setupMessages.en))
+    expect(Object.keys(setupMessages.vi.errors)).toEqual(Object.keys(setupMessages.en.errors))
+    for (const language of Object.values(setupMessages)) for (const value of Object.values(language)) {
+      if (typeof value === 'string') expect(value.length).toBeGreaterThan(0)
+      else for (const error of Object.values(value)) expect(error.length).toBeGreaterThan(0)
+    }
+  })
+})
+describe('private installation persistence', () => {
+  it('requires the operator token and permanently refuses installed-state reuse', () => {
+    expect(() => authorize(record, 'wrong-token')).toThrow('unauthorized')
+    expect(() => authorize(null, 'private-token')).toThrow('unauthorized')
+    expect(() => authorize(record, 'private-token')).not.toThrow()
+    expect(() => authorize({ ...record, phase: 'installed' }, 'private-token')).toThrow('installed')
+  })
+  it('atomically saves and resumes progress without administrator passwords', async () => {
+    await saveRecord(record)
+    expect(await readRecord()).toEqual(record)
+    await saveRecord({ ...record, phase: 'website' })
+    expect((await readRecord())?.phase).toBe('website')
+    expect(await readRecord()).not.toHaveProperty('password')
+  })
+  it('serializes competing workers and releases the lock on failure', async () => {
+    await expect(withInstallationLock(async () => {
+      await expect(withInstallationLock(async () => true)).rejects.toThrow('busy')
+      throw new Error('failure')
+    })).rejects.toThrow('failure')
+    expect(await withInstallationLock(async () => true)).toBe(true)
+  })
+  it('preserves existing env files and supports hosting variables', async () => {
+    await writeFile(path.join(directory, '.env.local'), 'EXISTING=value\n')
+    await expect(persistEnvironment(record)).rejects.toThrow('manualConfiguration')
+    vi.stubEnv('DATABASE_URL', record.databaseUrl!)
+    vi.stubEnv('PAYLOAD_SECRET', record.secret)
+    vi.stubEnv('NEXT_PUBLIC_SERVER_URL', website.siteUrl)
+    await expect(persistEnvironment(record)).resolves.toBeUndefined()
+  })
+  it('writes a new configuration once and permits an identical retry', async () => {
+    await persistEnvironment(record)
+    await expect(persistEnvironment(record)).resolves.toBeUndefined()
+  })
+})

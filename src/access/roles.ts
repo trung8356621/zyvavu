@@ -43,6 +43,7 @@ export async function noUsersExist(req: PayloadRequest): Promise<boolean> {
   const { totalDocs } = await req.payload.count({
     collection: 'users',
     overrideAccess: true,
+    req,
   })
   return totalDocs === 0
 }

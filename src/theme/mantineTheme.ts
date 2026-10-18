@@ -3,10 +3,12 @@ import {
   Badge,
   Button,
   Card,
+  Checkbox,
   createTheme,
   type MantineColorsTuple,
   type MantineSize,
   Paper,
+  PasswordInput,
   SegmentedControl,
   Select,
   Tabs,
@@ -98,6 +100,8 @@ export const adminMantineTheme = createTheme({
   },
   spacing,
   components: {
+    Checkbox: Checkbox.extend({ defaultProps: { size: defaultSize, radius: defaultRadius } }),
+    PasswordInput: PasswordInput.extend({ defaultProps: { size: defaultSize, radius: defaultRadius } }),
     Button: Button.extend({
       defaultProps: {
         size: defaultSize,

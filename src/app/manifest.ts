@@ -4,6 +4,8 @@ import { getPayload } from 'payload'
 import { loadPublicSiteSettings } from '@/lib/site/settings'
 import config from '@/payload.config'
 
+export const dynamic = 'force-dynamic'
+
 export default async function manifest(): Promise<MetadataRoute.Manifest> {
   const payload = await getPayload({ config })
   const settings = await loadPublicSiteSettings(payload)

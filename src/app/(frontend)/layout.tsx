@@ -25,6 +25,8 @@ import { ThemeLivePreviewBridge } from '@/components/frontend/ThemeLivePreviewBr
 
 import './styles.css'
 
+export const dynamic = 'force-dynamic'
+
 export async function generateMetadata() {
   const payload = await getPayload({ config })
   const settings = await loadPublicSiteSettings(payload)
