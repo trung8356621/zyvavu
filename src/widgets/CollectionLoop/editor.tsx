@@ -1,14 +1,14 @@
 'use client'
 
+import { resolveWidgetStyles } from '@/lib/style-engine/serializer'
+import { animationAttributes } from '@/lib/style-engine/animation-presets'
+
 import React from 'react'
 import type { ComponentConfig } from '@puckeditor/core'
 import { createUsePuck } from '@puckeditor/core'
 
 const usePuck = createUsePuck()
-import {
-  ItemContextProvider,
-  type LoopItemRecord,
-} from '@/lib/theme-engine/item-context'
+import { ItemContextProvider, type LoopItemRecord } from '@/lib/theme-engine/item-context'
 import { ItemTitleFrontend } from '@/widgets/ItemTitle/frontend'
 import { ItemImageFrontend } from '@/widgets/ItemImage/frontend'
 import { ItemExcerptFrontend } from '@/widgets/ItemExcerpt/frontend'
@@ -156,6 +156,7 @@ export const collectionLoopEditor: ComponentConfig<CollectionLoopProps> = {
 }
 
 function CollectionLoopEditorCanvas({
+  style: semanticStyle,
   id = 'collection-loop',
   heading,
   mode = 'dynamic',
@@ -184,83 +185,144 @@ function CollectionLoopEditorCanvas({
   const previewRecords = activeRecords.slice(1, Math.max(2, Number(columns)))
 
   return (
+    <div
+      className="zyvavu-widget-collection-loop zyvavu-widget-collection-loop--editor"
+      {...animationAttributes(semanticStyle?.animation)}
+      style={{
+        padding: '24px 0',
+        border: '1px dashed #cbd5e1',
+        borderRadius: '10px',
+        margin: '12px 0',
+        backgroundColor: '#fafaf9',
+        ...resolveWidgetStyles(semanticStyle),
+      }}
+    >
+      {/* Editor Info Bar */}
       <div
-        className="zyvavu-widget-collection-loop zyvavu-widget-collection-loop--editor"
         style={{
-          padding: '24px 0',
-          border: '1px dashed #cbd5e1',
-          borderRadius: '10px',
-          margin: '12px 0',
-          backgroundColor: '#fafaf9',
+          padding: '0 16px 12px',
+          borderBottom: '1px solid #e2e8f0',
+          marginBottom: '16px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '8px',
         }}
       >
-        {/* Editor Info Bar */}
-        <div
-          style={{
-            padding: '0 16px 12px',
-            borderBottom: '1px solid #e2e8f0',
-            marginBottom: '16px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: '8px',
-          }}
-        >
-          <div>
-            <span
-              style={{
-                fontSize: '11px',
-                fontWeight: 700,
-                textTransform: 'uppercase',
-                background: '#0e6b66',
-                color: '#ffffff',
-                padding: '2px 8px',
-                borderRadius: '4px',
-                marginRight: '8px',
-              }}
-            >
-              Collection Loop
-            </span>
-            <span style={{ fontSize: '13px', fontWeight: 600, color: '#334155' }}>
-              Mode: {mode === 'dynamic' ? `Dynamic (${source})` : 'Manual Items'} •{' '}
-              {columns} Columns
-            </span>
-          </div>
-          <span style={{ fontSize: '12px', color: '#64748b' }}>
-            Thiết kế 1 Prototype Card bên trái — các thẻ Preview bên phải tự động lặp theo
-          </span>
-        </div>
-
-        {heading && (
-          <h2
+        <div>
+          <span
             style={{
-              margin: '0 16px 20px',
-              fontSize: '1.5rem',
+              fontSize: '11px',
               fontWeight: 700,
-              color: '#0f172a',
+              textTransform: 'uppercase',
+              background: '#0e6b66',
+              color: '#ffffff',
+              padding: '2px 8px',
+              borderRadius: '4px',
+              marginRight: '8px',
             }}
           >
-            {heading}
-          </h2>
-        )}
+            Collection Loop
+          </span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: '#334155' }}>
+            Mode: {mode === 'dynamic' ? `Dynamic (${source})` : 'Manual Items'} • {columns} Columns
+          </span>
+        </div>
+        <span style={{ fontSize: '12px', color: '#64748b' }}>
+          Thiết kế 1 Prototype Card bên trái — các thẻ Preview bên phải tự động lặp theo
+        </span>
+      </div>
 
-        <div
+      {heading && (
+        <h2
           style={{
-            display: 'grid',
-            gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
-            gap: gap || '24px',
-            padding: '0 16px',
+            margin: '0 16px 20px',
+            fontSize: '1.5rem',
+            fontWeight: 700,
+            color: '#0f172a',
           }}
         >
-          {/* 1. Prototype Card: editable dropzone */}
+          {heading}
+        </h2>
+      )}
+
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+          gap: gap || '24px',
+          padding: '0 16px',
+        }}
+      >
+        {/* 1. Prototype Card: editable dropzone */}
+        <div
+          style={{
+            border: '2px dashed #0e6b66',
+            borderRadius: '8px',
+            padding: '16px',
+            background: '#ffffff',
+            boxShadow: '0 2px 8px rgba(14, 107, 102, 0.08)',
+            position: 'relative',
+            display: 'flex',
+            flexDirection: 'column',
+            minHeight: '220px',
+          }}
+        >
           <div
             style={{
-              border: '2px dashed #0e6b66',
+              fontSize: '10px',
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              background: '#e6fffa',
+              color: '#0e6b66',
+              border: '1px solid #b2f5ea',
+              borderRadius: '4px',
+              padding: '2px 6px',
+              alignSelf: 'flex-start',
+              marginBottom: '12px',
+              letterSpacing: '0.05em',
+            }}
+          >
+            ★ PROTOTYPE TEMPLATE (Editable)
+          </div>
+
+          <ItemContextProvider item={prototypeRecord}>
+            {ItemTemplateSlot ? (
+              <ItemTemplateSlot />
+            ) : (
+              <div style={{ color: '#94a3b8', fontSize: '13px' }}>Slot: Drop widgets here</div>
+            )}
+          </ItemContextProvider>
+
+          {templateItems.length === 0 && (
+            <div
+              style={{
+                marginTop: '12px',
+                padding: '12px',
+                background: '#f8fafc',
+                border: '1px dashed #cbd5e1',
+                borderRadius: '6px',
+                fontSize: '12px',
+                color: '#64748b',
+                textAlign: 'center',
+              }}
+            >
+              Kéo thả các Item widgets (ItemTitle, ItemImage, ItemExcerpt, ItemLink...) vào đây.
+            </div>
+          )}
+        </div>
+
+        {/* 2. Repeated Preview Cards */}
+        {previewRecords.map((sampleRecord, sIdx) => (
+          <div
+            key={sampleRecord.id || sIdx}
+            style={{
+              border: '1px solid #e2e8f0',
               borderRadius: '8px',
               padding: '16px',
               background: '#ffffff',
-              boxShadow: '0 2px 8px rgba(14, 107, 102, 0.08)',
+              opacity: 0.92,
               position: 'relative',
               display: 'flex',
               flexDirection: 'column',
@@ -270,116 +332,53 @@ function CollectionLoopEditorCanvas({
             <div
               style={{
                 fontSize: '10px',
-                fontWeight: 700,
+                fontWeight: 600,
                 textTransform: 'uppercase',
-                background: '#e6fffa',
-                color: '#0e6b66',
-                border: '1px solid #b2f5ea',
+                background: '#f1f5f9',
+                color: '#64748b',
                 borderRadius: '4px',
                 padding: '2px 6px',
                 alignSelf: 'flex-start',
                 marginBottom: '12px',
-                letterSpacing: '0.05em',
               }}
             >
-              ★ PROTOTYPE TEMPLATE (Editable)
+              Preview #{sIdx + 2} (Auto-repeated)
             </div>
 
-            <ItemContextProvider item={prototypeRecord}>
-              {ItemTemplateSlot ? (
-                <ItemTemplateSlot />
+            <ItemContextProvider item={sampleRecord}>
+              {templateItems.length > 0 ? (
+                templateItems.map((child: any, cIdx: number) => {
+                  const Component = SAFE_PREVIEW_COMPONENTS[child.type]
+                  if (!Component) return null
+                  return (
+                    <Component
+                      key={child.props?.id || cIdx}
+                      {...child.props}
+                      dataContext={{ type: 'home', item: sampleRecord }}
+                    />
+                  )
+                })
               ) : (
-                <div style={{ color: '#94a3b8', fontSize: '13px' }}>
-                  Slot: Drop widgets here
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    height: '100%',
+                    minHeight: '140px',
+                    color: '#cbd5e1',
+                    fontSize: '12px',
+                    fontStyle: 'italic',
+                    textAlign: 'center',
+                  }}
+                >
+                  (Lặp theo Prototype)
                 </div>
               )}
             </ItemContextProvider>
-
-            {templateItems.length === 0 && (
-              <div
-                style={{
-                  marginTop: '12px',
-                  padding: '12px',
-                  background: '#f8fafc',
-                  border: '1px dashed #cbd5e1',
-                  borderRadius: '6px',
-                  fontSize: '12px',
-                  color: '#64748b',
-                  textAlign: 'center',
-                }}
-              >
-                Kéo thả các Item widgets (ItemTitle, ItemImage, ItemExcerpt, ItemLink...) vào đây.
-              </div>
-            )}
           </div>
-
-          {/* 2. Repeated Preview Cards */}
-          {previewRecords.map((sampleRecord, sIdx) => (
-            <div
-              key={sampleRecord.id || sIdx}
-              style={{
-                border: '1px solid #e2e8f0',
-                borderRadius: '8px',
-                padding: '16px',
-                background: '#ffffff',
-                opacity: 0.92,
-                position: 'relative',
-                display: 'flex',
-                flexDirection: 'column',
-                minHeight: '220px',
-              }}
-            >
-              <div
-                style={{
-                  fontSize: '10px',
-                  fontWeight: 600,
-                  textTransform: 'uppercase',
-                  background: '#f1f5f9',
-                  color: '#64748b',
-                  borderRadius: '4px',
-                  padding: '2px 6px',
-                  alignSelf: 'flex-start',
-                  marginBottom: '12px',
-                }}
-              >
-                Preview #{sIdx + 2} (Auto-repeated)
-              </div>
-
-              <ItemContextProvider item={sampleRecord}>
-                {templateItems.length > 0 ? (
-                  templateItems.map((child: any, cIdx: number) => {
-                    const Component = SAFE_PREVIEW_COMPONENTS[child.type]
-                    if (!Component) return null
-                    return (
-                      <Component
-                        key={child.props?.id || cIdx}
-                        {...child.props}
-                        dataContext={{ type: 'home', item: sampleRecord }}
-                      />
-                    )
-                  })
-                ) : (
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      height: '100%',
-                      minHeight: '140px',
-                      color: '#cbd5e1',
-                      fontSize: '12px',
-                      fontStyle: 'italic',
-                      textAlign: 'center',
-                    }}
-                  >
-                    (Lặp theo Prototype)
-                  </div>
-                )}
-              </ItemContextProvider>
-            </div>
-          ))}
-        </div>
+        ))}
       </div>
-    )
+    </div>
+  )
 }
-

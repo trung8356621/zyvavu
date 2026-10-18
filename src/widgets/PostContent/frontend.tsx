@@ -1,15 +1,20 @@
+import type { UniversalStyle } from '@/lib/style-engine/types'
+import { resolveWidgetStyles } from '@/lib/style-engine/serializer'
+import { animationAttributes } from '@/lib/style-engine/animation-presets'
 import React from 'react'
 import { RichText } from '@payloadcms/richtext-lexical/react'
 import { RenderBlocks } from '@/components/frontend/RenderBlocks'
 import type { ThemeDataContext } from '@/lib/theme-engine/types'
 
 export type PostContentProps = {
+  style?: UniversalStyle
   id?: string
   showExcerptFirst?: boolean
   dataContext?: ThemeDataContext
 }
 
 export function PostContentFrontend({
+  style: semanticStyle,
   showExcerptFirst = false,
   dataContext,
 }: PostContentProps) {
@@ -19,9 +24,21 @@ export function PostContentFrontend({
   const excerpt = doc?.excerpt
 
   return (
-    <div className="zyvavu-widget-post-content" style={{ lineHeight: 1.8 }}>
+    <div
+      className="zyvavu-widget-post-content"
+      {...animationAttributes(semanticStyle?.animation)}
+      style={{ lineHeight: 1.8, ...resolveWidgetStyles(semanticStyle) }}
+    >
       {showExcerptFirst && excerpt ? (
-        <p className="zyvavu-widget-post-content__lead" style={{ fontSize: '1.2em', fontWeight: 500, color: 'var(--zyvavu-theme-text-muted, #5f7370)', marginBottom: '24px' }}>
+        <p
+          className="zyvavu-widget-post-content__lead"
+          style={{
+            fontSize: '1.2em',
+            fontWeight: 500,
+            color: 'var(--zyvavu-theme-text-muted, #5f7370)',
+            marginBottom: '24px',
+          }}
+        >
           {excerpt}
         </p>
       ) : null}

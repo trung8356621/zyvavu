@@ -1,5 +1,8 @@
 'use client'
 
+import { resolveWidgetStyles } from '@/lib/style-engine/serializer'
+import { animationAttributes } from '@/lib/style-engine/animation-presets'
+
 import React from 'react'
 import type { ComponentConfig } from '@puckeditor/core'
 import type { ColumnsProps } from './frontend'
@@ -36,7 +39,14 @@ export const columnsEditor: ComponentConfig<ColumnsProps> = {
   defaultProps: {
     distribution: 'equal-2',
   },
-  render: ({ distribution = 'equal-2', column1: Col1, column2: Col2, column3: Col3, column4: Col4 }: any) => {
+  render: ({
+    style: semanticStyle,
+    distribution = 'equal-2',
+    column1: Col1,
+    column2: Col2,
+    column3: Col3,
+    column4: Col4,
+  }: any) => {
     const template = GRID_TEMPLATES[distribution] || GRID_TEMPLATES['equal-2']
     const hasCol2 = ['equal-2', '2:1', '1:2', '1:1:1', '1:1:1:1'].includes(distribution)
     const hasCol3 = ['1:1:1', '1:1:1:1'].includes(distribution)
@@ -45,6 +55,7 @@ export const columnsEditor: ComponentConfig<ColumnsProps> = {
     return (
       <div
         className="zyvavu-widget-columns"
+        {...animationAttributes(semanticStyle?.animation)}
         style={{
           display: 'grid',
           gridTemplateColumns: template,
@@ -52,6 +63,7 @@ export const columnsEditor: ComponentConfig<ColumnsProps> = {
           width: '100%',
           padding: '12px 0',
           boxSizing: 'border-box',
+          ...resolveWidgetStyles(semanticStyle),
         }}
       >
         <div style={{ minWidth: 0 }}>{Col1 && <Col1 />}</div>

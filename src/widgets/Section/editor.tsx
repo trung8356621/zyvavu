@@ -1,5 +1,7 @@
 'use client'
 
+import { animationAttributes } from '@/lib/style-engine/animation-presets'
+
 import React from 'react'
 import type { ComponentConfig } from '@puckeditor/core'
 import type { SectionProps } from './frontend'
@@ -80,6 +82,7 @@ export const sectionEditor: ComponentConfig<SectionProps> = {
 
     return (
       <section
+        {...animationAttributes(effectiveStyle?.animation)}
         id={id}
         className="zyvavu-widget-section zyvavu-widget-section--editor site-section"
         style={{
@@ -92,7 +95,10 @@ export const sectionEditor: ComponentConfig<SectionProps> = {
 
         {/* 2. Media Layer */}
         {layers.videoConfig?.url ? (
-          <div className="zyvavu-section__media zyvavu-section__media--video" style={layers.mediaStyle}>
+          <div
+            className="zyvavu-section__media zyvavu-section__media--video"
+            style={layers.mediaStyle}
+          >
             <video
               autoPlay={false} // Don't autoplay inside editor to avoid canvas re-render noise
               muted={true}
@@ -109,7 +115,10 @@ export const sectionEditor: ComponentConfig<SectionProps> = {
             </video>
           </div>
         ) : (
-          <div className="zyvavu-section__media zyvavu-section__media--image" style={layers.mediaStyle} />
+          <div
+            className="zyvavu-section__media zyvavu-section__media--image"
+            style={layers.mediaStyle}
+          />
         )}
 
         {/* 3. Overlay Layer */}

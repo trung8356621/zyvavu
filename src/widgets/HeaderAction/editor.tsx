@@ -2,7 +2,7 @@
 
 import React from 'react'
 import type { ComponentConfig } from '@puckeditor/core'
-import type { HeaderActionProps } from './frontend'
+import { HeaderActionFrontend, type HeaderActionProps } from './frontend'
 
 export const headerActionEditor: ComponentConfig<HeaderActionProps> = {
   label: 'Header Action Button',
@@ -29,22 +29,5 @@ export const headerActionEditor: ComponentConfig<HeaderActionProps> = {
     url: '/contact',
     variant: 'solid',
   },
-  render: ({ label = 'Liên hệ', variant = 'solid' }) => {
-    return (
-      <span
-        style={{
-          display: 'inline-block',
-          padding: '6px 14px',
-          background: variant === 'solid' ? '#0e6b66' : 'transparent',
-          color: variant === 'solid' ? '#fff' : '#0e6b66',
-          border: variant === 'outline' ? '1px solid #0e6b66' : 'none',
-          borderRadius: '4px',
-          fontSize: '13px',
-          fontWeight: 600,
-        }}
-      >
-        {label}
-      </span>
-    )
-  },
+  render: (props) => <HeaderActionFrontend {...props} dataContext={undefined} />,
 }

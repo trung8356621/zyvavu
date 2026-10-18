@@ -1,21 +1,9 @@
 'use client'
 
 import React from 'react'
-import {
-  Box,
-  Divider,
-  Group,
-  SegmentedControl,
-  Select,
-  Stack,
-  Text,
-} from '@mantine/core'
+import { Box, Divider, Group, SegmentedControl, Select, Stack, Text } from '@mantine/core'
 import { AlignCenter, AlignLeft, AlignRight } from 'lucide-react'
-import type {
-  DimensionsConfig,
-  SpacingConfig,
-  TextAlign,
-} from '@/lib/style-engine/types'
+import type { DimensionsConfig, SpacingConfig, TextAlign } from '@/lib/style-engine/types'
 
 export interface SpacingDimensionsControlProps {
   spacing?: SpacingConfig
@@ -48,7 +36,11 @@ export function SpacingDimensionsControl({
 
   return (
     <Stack gap="xs">
-      <Text size="xs" fw={700} style={{ fontSize: 13, color: 'var(--mantine-color-text, #17201f)' }}>
+      <Text
+        size="xs"
+        fw={700}
+        style={{ fontSize: 13, color: 'var(--mantine-color-text, #17201f)' }}
+      >
         Spacing & Layout Geometry
       </Text>
 
@@ -56,11 +48,12 @@ export function SpacingDimensionsControl({
         <Select
           size="sm"
           label="Padding"
-          placeholder="Select spacing"
-          value={spacing.padding?.token || 'md'}
+          placeholder="Inherit"
+          clearable
+          value={spacing.padding?.token || null}
           onChange={(val) =>
             updateSpacing({
-              padding: { ...spacing.padding, token: val || 'md' },
+              padding: { ...spacing.padding, token: val || undefined },
             })
           }
           data={[
@@ -76,11 +69,12 @@ export function SpacingDimensionsControl({
         <Select
           size="sm"
           label="Margin"
-          placeholder="Select margin"
-          value={spacing.margin?.token || 'none'}
+          placeholder="Inherit"
+          clearable
+          value={spacing.margin?.token || null}
           onChange={(val) =>
             updateSpacing({
-              margin: { ...spacing.margin, token: val || 'none' },
+              margin: { ...spacing.margin, token: val || undefined },
             })
           }
           data={[
@@ -101,8 +95,10 @@ export function SpacingDimensionsControl({
             <Select
               size="sm"
               label="Container Width"
-              value={dimensions.containerWidth || 'containerWidth'}
-              onChange={(val) => updateDimensions({ containerWidth: val || 'containerWidth' })}
+              placeholder="Inherit"
+              clearable
+              value={dimensions.containerWidth || null}
+              onChange={(val) => updateDimensions({ containerWidth: val || undefined })}
               data={[
                 { value: 'containerWidth', label: 'Standard Container' },
                 { value: 'narrowWidth', label: 'Narrow Container' },
@@ -114,8 +110,10 @@ export function SpacingDimensionsControl({
             <Select
               size="sm"
               label="Minimum Height"
-              value={dimensions.minHeight || 'auto'}
-              onChange={(val) => updateDimensions({ minHeight: val || 'auto' })}
+              placeholder="Inherit"
+              clearable
+              value={dimensions.minHeight || null}
+              onChange={(val) => updateDimensions({ minHeight: val || undefined })}
               data={[
                 { value: 'auto', label: 'Auto (Content Fit)' },
                 { value: 'sm', label: 'Small (200px)' },
@@ -127,7 +125,12 @@ export function SpacingDimensionsControl({
           </Group>
 
           <Box>
-            <Text size="xs" fw={600} mb={4} style={{ fontSize: 12, color: 'var(--mantine-color-text, #17201f)' }}>
+            <Text
+              size="xs"
+              fw={600}
+              mb={4}
+              style={{ fontSize: 12, color: 'var(--mantine-color-text, #17201f)' }}
+            >
               Content Alignment
             </Text>
             <SegmentedControl

@@ -1,7 +1,15 @@
 'use client'
 
 import React, { useCallback, useMemo, useState } from 'react'
-import { Puck, ActionBar, type Config, type Data, type Plugin, type Viewport, createUsePuck } from '@puckeditor/core'
+import {
+  Puck,
+  ActionBar,
+  type Config,
+  type Data,
+  type Plugin,
+  type Viewport,
+  createUsePuck,
+} from '@puckeditor/core'
 import '@puckeditor/core/dist/index.css'
 import { Alert, Box, Button, Group, LoadingOverlay, Text } from '@mantine/core'
 import { Check, AlertCircle, Palette, Save, Sliders } from 'lucide-react'
@@ -9,9 +17,15 @@ import { Check, AlertCircle, Palette, Save, Sliders } from 'lucide-react'
 import { CURRENT_BUILDER_VERSION, validateBuilderDocument } from './document'
 import type { BuilderDocument } from './types'
 import type { ThemeConfig, WidgetSemanticStyle } from '@/lib/theme-engine/types'
-import { normalizeComponentType } from '@/lib/style-engine/capabilities'
+import {
+  getComponentStyleCapabilities,
+  normalizeComponentType,
+} from '@/lib/style-engine/capabilities'
 import { PageSettingsPanel } from '@/components/admin/theme-builder/PageSettingsPanel'
-import { WidgetStyleContextMenu, computeTranslatedAnchorPosition } from '@/components/admin/theme-builder/WidgetStyleContextMenu'
+import {
+  WidgetStyleContextMenu,
+  computeTranslatedAnchorPosition,
+} from '@/components/admin/theme-builder/WidgetStyleContextMenu'
 import { stylePreviewStore } from '@/lib/style-engine/preview-store'
 import actionBarStyles from './WidgetActionBar.module.css'
 
@@ -37,12 +51,19 @@ interface PuckApi {
 function PuckBridge({
   children,
   onRegisterApi,
+  onSelectionChange,
 }: {
   children: React.ReactNode
   onRegisterApi: (api: PuckApi) => void
+  onSelectionChange: (id: string | undefined) => void
 }) {
   const appState = usePuck((s) => s.appState)
   const dispatch = usePuck((s) => s.dispatch)
+  const selected = usePuck((s) => s.selectedItem)
+  const selectedId = selected?.props?.id
+  React.useEffect(() => {
+    onSelectionChange(selectedId)
+  }, [selectedId, onSelectionChange])
   const appStateRef = React.useRef(appState)
   appStateRef.current = appState
 
@@ -69,6 +90,7 @@ function PuckActionBarBridge({
   styleMenuComponentId?: string
   onOpenStyleMenu: (payload: {
     componentType: string
+    componentVariant?: string
     componentId: string
     currentStyle: WidgetSemanticStyle
     anchorEl: HTMLElement
@@ -114,6 +136,7 @@ function PuckActionBarBridge({
     const initialPos = computeTranslatedAnchorPosition(anchor, 340, 480)
     onOpenStyleMenu({
       componentType,
+      componentVariant: resolvedItem?.props?.variant,
       componentId,
       currentStyle,
       anchorEl: anchor,
@@ -132,11 +155,13 @@ function PuckActionBarBridge({
           {label && <ActionBar.Label label={label} />}
         </ActionBar.Group>
         <ActionBar.Group>
-          <span className={actionBarStyles.styleTrigger}>
-            <ActionBar.Action label="Edit Style" onClick={handleEditStyleClick}>
-              <Palette size={14} />
-            </ActionBar.Action>
-          </span>
+          {getComponentStyleCapabilities(componentType).length > 0 && (
+            <span className={actionBarStyles.styleTrigger}>
+              <ActionBar.Action label="Edit Style" onClick={handleEditStyleClick}>
+                <Palette size={14} />
+              </ActionBar.Action>
+            </span>
+          )}
           <ActionBar.Separator />
           {children}
         </ActionBar.Group>
@@ -292,6 +317,7 @@ export function PuckHost({
   const [activeStyleMenu, setActiveStyleMenu] = useState<{
     opened: boolean
     componentType: string
+    componentVariant?: string
     componentId: string
     currentStyle: WidgetSemanticStyle
     anchorEl: HTMLElement | null
@@ -307,12 +333,14 @@ export function PuckHost({
   const handleOpenStyleMenu = useCallback(
     ({
       componentType,
+      componentVariant,
       componentId,
       currentStyle,
       anchorEl,
       initialPosition,
     }: {
       componentType: string
+      componentVariant?: string
       componentId: string
       currentStyle: WidgetSemanticStyle
       anchorEl: HTMLElement | null
@@ -322,6 +350,7 @@ export function PuckHost({
       setActiveStyleMenu({
         opened: true,
         componentType,
+        componentVariant,
         componentId,
         currentStyle,
         anchorEl,
@@ -412,10 +441,6 @@ export function PuckHost({
       const compId = componentEl.getAttribute('data-puck-component')
       if (!compId) return
 
-      // Prevent native browser context menu ONLY for canvas components
-      e.preventDefault()
-      e.stopPropagation()
-
       const api = puckApiRef.current
       if (!api) return
 
@@ -426,6 +451,9 @@ export function PuckHost({
       if (!found) return
 
       const { item, selector } = found
+      if (!getComponentStyleCapabilities(item.type).length) return
+      e.preventDefault()
+      e.stopPropagation()
 
       // Select clicked component in Puck UI
       api.dispatch({
@@ -462,6 +490,7 @@ export function PuckHost({
       setActiveStyleMenu({
         opened: true,
         componentType: item.type,
+        componentVariant: item.props?.variant,
         componentId: item.props?.id || compId,
         currentStyle: (item.props?.style as WidgetSemanticStyle) || {},
         anchorEl: componentEl,
@@ -469,12 +498,16 @@ export function PuckHost({
       })
     }
 
-    const viewportEl = typeof window !== 'undefined' ? window.document.querySelector('.zyvavu-puck-viewport') : null
+    const viewportEl =
+      typeof window !== 'undefined' ? window.document.querySelector('.zyvavu-puck-viewport') : null
     if (viewportEl) {
       viewportEl.addEventListener('contextmenu', handleContextMenu as EventListener)
     }
 
-    const frameEl = typeof window !== 'undefined' ? (window.document.querySelector('#preview-frame') as HTMLIFrameElement | null) : null
+    const frameEl =
+      typeof window !== 'undefined'
+        ? (window.document.querySelector('#preview-frame') as HTMLIFrameElement | null)
+        : null
     let frameDoc: Document | null = null
     const attachToFrame = () => {
       try {
@@ -505,11 +538,21 @@ export function PuckHost({
     }
   }, [])
 
+  const handleSelectionChange = useCallback((id: string | undefined) => {
+    setActiveStyleMenu((previous) => {
+      if (previous && previous.componentId !== id) {
+        stylePreviewStore.clearPreview(previous.componentId)
+        return null
+      }
+      return previous
+    })
+  }, [])
+
   const puckOverrides = useMemo(() => {
     return {
       headerActions: () => <React.Fragment />,
       puck: ({ children }: { children: React.ReactNode }) => (
-        <PuckBridge onRegisterApi={handleRegisterPuckApi}>
+        <PuckBridge onRegisterApi={handleRegisterPuckApi} onSelectionChange={handleSelectionChange}>
           {children}
         </PuckBridge>
       ),
@@ -521,7 +564,13 @@ export function PuckHost({
         />
       ),
     }
-  }, [handleRegisterPuckApi, handleOpenStyleMenu, activeStyleMenu?.opened, activeStyleMenu?.componentId])
+  }, [
+    handleRegisterPuckApi,
+    handleOpenStyleMenu,
+    handleSelectionChange,
+    activeStyleMenu?.opened,
+    activeStyleMenu?.componentId,
+  ])
 
   return (
     <Box
@@ -649,6 +698,7 @@ export function PuckHost({
           anchorEl={activeStyleMenu.anchorEl}
           initialPosition={activeStyleMenu.initialPosition}
           componentType={activeStyleMenu.componentType}
+          componentVariant={activeStyleMenu.componentVariant}
           componentId={activeStyleMenu.componentId}
           currentStyle={activeStyleMenu.currentStyle}
           themeConfig={themeConfig}

@@ -1,3 +1,4 @@
+import { animationAttributes } from '@/lib/style-engine/animation-presets'
 import React from 'react'
 import Link from 'next/link'
 import type { ThemeDataContext, WidgetSemanticStyle } from '@/lib/theme-engine/types'
@@ -31,7 +32,11 @@ export function TextBlockFrontend({
 
   const resolved = resolveWidgetStyles(semanticStyle)
   const effectiveAlign = resolved.textAlign || semanticStyle?.align || align
-  const titleColor = resolved.color || (semanticStyle?.colorToken ? resolveColorToken(semanticStyle.colorToken) : 'var(--zyvavu-theme-text, inherit)')
+  const titleColor =
+    resolved.color ||
+    (semanticStyle?.colorToken
+      ? resolveColorToken(semanticStyle.colorToken)
+      : 'var(--zyvavu-theme-text, inherit)')
 
   const visualPreset =
     (typeof semanticStyle?.typography === 'object'
@@ -41,6 +46,7 @@ export function TextBlockFrontend({
   return (
     <div
       className="zyvavu-widget-text"
+      {...animationAttributes(semanticStyle?.animation)}
       style={{
         textAlign: effectiveAlign,
         padding: resolved.padding || '24px 0',
@@ -55,6 +61,7 @@ export function TextBlockFrontend({
         opacity: resolved.opacity,
         backdropFilter: resolved.backdropFilter,
         boxSizing: 'border-box',
+        ...resolveWidgetStyles(semanticStyle),
       }}
     >
       {badge ? (
@@ -84,9 +91,12 @@ export function TextBlockFrontend({
           style={{
             margin: '0 0 16px 0',
             fontSize: `var(--zyvavu-theme-${visualPreset}-size, 2rem)`,
-            lineHeight: resolved.lineHeight || `var(--zyvavu-theme-${visualPreset}-line-height, 1.3)`,
+            lineHeight:
+              resolved.lineHeight || `var(--zyvavu-theme-${visualPreset}-line-height, 1.3)`,
             fontWeight: `var(--zyvavu-theme-${visualPreset}-weight, 600)`,
-            letterSpacing: resolved.letterSpacing || `var(--zyvavu-theme-${visualPreset}-letter-spacing, normal)`,
+            letterSpacing:
+              resolved.letterSpacing ||
+              `var(--zyvavu-theme-${visualPreset}-letter-spacing, normal)`,
             color: titleColor,
             textShadow: resolved.textShadow,
             WebkitTextStroke: (resolved as any).WebkitTextStroke,

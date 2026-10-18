@@ -2,7 +2,9 @@
 
 import React from 'react'
 import type { ComponentConfig } from '@puckeditor/core'
-import type { FeaturedMediaProps } from './frontend'
+import { FeaturedMediaFrontend, type FeaturedMediaProps } from './frontend'
+import { resolveWidgetStyles } from '@/lib/style-engine/serializer'
+import { animationAttributes } from '@/lib/style-engine/animation-presets'
 
 export const featuredMediaEditor: ComponentConfig<FeaturedMediaProps> = {
   label: 'Featured Media',
@@ -30,28 +32,16 @@ export const featuredMediaEditor: ComponentConfig<FeaturedMediaProps> = {
     aspectRatio: '16:9',
     rounded: true,
   },
-  render: ({ aspectRatio = '16:9', rounded = true }) => {
-    return (
+  render: (props) =>
+    props.src ? (
+      <FeaturedMediaFrontend {...props} dataContext={undefined} />
+    ) : (
       <div
         className="zyvavu-widget-featured-media"
-        style={{
-          width: '100%',
-          aspectRatio: aspectRatio === 'auto' ? '16/9' : aspectRatio.replace(':', '/'),
-          backgroundColor: '#e8eeea',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          borderRadius: rounded ? '8px' : 0,
-          border: '1px dashed #0e6b66',
-          marginBottom: '16px',
-          color: '#0e6b66',
-        }}
+        {...animationAttributes(props.style?.animation)}
+        style={{ minHeight: '120px', ...resolveWidgetStyles(props.style) }}
       >
-        <span style={{ fontSize: '28px', marginBottom: '8px' }}>🖼️</span>
-        <span style={{ fontWeight: 600, fontSize: '13px' }}>Featured Media Slot ({aspectRatio})</span>
-        <span style={{ fontSize: '11px', color: '#666' }}>Automatically loads featured image from post or page document</span>
+        Featured Media · {props.aspectRatio} · Image loads from the document
       </div>
-    )
-  },
+    ),
 }

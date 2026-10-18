@@ -2,7 +2,7 @@
 
 import React from 'react'
 import type { ComponentConfig } from '@puckeditor/core'
-import type { PostMetaProps } from './frontend'
+import { PostMetaFrontend, type PostMetaProps } from './frontend'
 
 export const postMetaEditor: ComponentConfig<PostMetaProps> = {
   label: 'Document Metadata',
@@ -28,27 +28,13 @@ export const postMetaEditor: ComponentConfig<PostMetaProps> = {
     showDate: true,
     showCategories: true,
   },
-  render: ({ showDate = true, showCategories = true }) => {
-    return (
-      <div
-        className="zyvavu-widget-post-meta"
-        style={{
-          display: 'flex',
-          gap: '12px',
-          padding: '8px 0',
-          fontSize: '13px',
-          color: '#666',
-          borderBottom: '1px solid #f0f0f0',
-          marginBottom: '16px',
-        }}
-      >
-        {showDate && <span>📅 15 Tháng Mười, 2026</span>}
-        {showCategories && (
-          <span style={{ background: '#eef2f1', padding: '2px 8px', borderRadius: '4px', color: '#0e6b66' }}>
-            🏷️ Tin Tức Doanh Nghiệp
-          </span>
-        )}
-      </div>
-    )
-  },
+  render: (props) => (
+    <PostMetaFrontend
+      {...props}
+      dataContext={{
+        type: 'single',
+        document: { updatedAt: '2026-01-01', categories: [{ title: 'Tin tức' }] },
+      }}
+    />
+  ),
 }

@@ -34,11 +34,7 @@ import {
   Trash2,
 } from 'lucide-react'
 import type { ThemeConfig } from '@/lib/theme-engine/types'
-import type {
-  BackgroundConfig,
-  BackgroundMode,
-  PatternPreset,
-} from '@/lib/style-engine/types'
+import type { BackgroundConfig, BackgroundMode, PatternPreset } from '@/lib/style-engine/types'
 import {
   resolveColorToken,
   serializeGradientCss,
@@ -50,6 +46,7 @@ import {
 export interface BackgroundStyleControlProps {
   value?: BackgroundConfig
   themeConfig?: ThemeConfig
+  colorOnly?: boolean
   initialConfiguring?: boolean
   onChange: (val: BackgroundConfig) => void
   onOpenColorModal: (target: 'background' | 'overlay' | 'fallback') => void
@@ -107,6 +104,7 @@ const POSITION_3X3 = [
 ]
 
 export function BackgroundStyleControl({
+  colorOnly = false,
   value = { mode: 'color', colorToken: 'surface' },
   themeConfig,
   initialConfiguring = false,
@@ -144,9 +142,9 @@ export function BackgroundStyleControl({
   const overlayColor = resolveColorToken(overlayColorToken, '#000000')
   const overlayOpacity =
     mode === 'image'
-      ? value.image?.overlay?.opacity ?? 0.5
+      ? (value.image?.overlay?.opacity ?? 0.5)
       : mode === 'video'
-        ? value.video?.overlay?.opacity ?? 0.5
+        ? (value.video?.overlay?.opacity ?? 0.5)
         : 0
 
   const hasOverlay =
@@ -197,12 +195,11 @@ export function BackgroundStyleControl({
             zIndex: 1,
             backgroundColor:
               mode === 'color'
-                ? (!meshCss && !gradientCss ? currentBgColor : undefined)
+                ? !meshCss && !gradientCss
+                  ? currentBgColor
+                  : undefined
                 : fallbackColor,
-            backgroundImage:
-              mode === 'color'
-                ? (meshCss || gradientCss || undefined)
-                : undefined,
+            backgroundImage: mode === 'color' ? meshCss || gradientCss || undefined : undefined,
           }}
         />
 
@@ -378,15 +375,19 @@ export function BackgroundStyleControl({
         }}
         data={[
           { label: 'Color', value: 'color' },
-          { label: 'Image', value: 'image' },
-          { label: 'Video', value: 'video' },
+          { label: 'Image', value: 'image', disabled: colorOnly },
+          { label: 'Video', value: 'video', disabled: colorOnly },
         ]}
       />
 
       {/* 1. COLOR MODE: Simplified directly-clickable swatch card */}
       {mode === 'color' && (
         <Stack gap="xs">
-          <Text size="xs" fw={600} style={{ fontSize: 13, color: 'var(--mantine-color-text, #17201f)' }}>
+          <Text
+            size="xs"
+            fw={600}
+            style={{ fontSize: 13, color: 'var(--mantine-color-text, #17201f)' }}
+          >
             Theme Color / Gradient / Mesh
           </Text>
 
@@ -429,8 +430,17 @@ export function BackgroundStyleControl({
                   }}
                 />
                 <Box style={{ overflow: 'hidden' }}>
-                  <Text size="sm" fw={600} truncate style={{ fontSize: 13, color: 'var(--mantine-color-text, #17201f)' }}>
-                    {value.mesh ? 'Mesh Gradient' : value.gradient ? 'Theme Gradient' : currentColorToken}
+                  <Text
+                    size="sm"
+                    fw={600}
+                    truncate
+                    style={{ fontSize: 13, color: 'var(--mantine-color-text, #17201f)' }}
+                  >
+                    {value.mesh
+                      ? 'Mesh Gradient'
+                      : value.gradient
+                        ? 'Theme Gradient'
+                        : currentColorToken}
                   </Text>
                   <Text size="xs" c="dimmed" truncate style={{ fontSize: 12 }}>
                     {value.mesh
@@ -442,7 +452,12 @@ export function BackgroundStyleControl({
                 </Box>
               </Group>
 
-              <Badge size="sm" variant="light" color="teal" style={{ flexShrink: 0, textTransform: 'none' }}>
+              <Badge
+                size="sm"
+                variant="light"
+                color="teal"
+                style={{ flexShrink: 0, textTransform: 'none' }}
+              >
                 Palette
               </Badge>
             </Group>
@@ -451,8 +466,8 @@ export function BackgroundStyleControl({
       )}
 
       {/* 2. IMAGE MODE: Visual quick selection & Advanced Configure view */}
-      {mode === 'image' && (
-        !isConfiguring ? (
+      {mode === 'image' &&
+        (!isConfiguring ? (
           /* Image Quick Selection View */
           <Stack gap="sm">
             {/* Selected Image Status Card */}
@@ -473,7 +488,12 @@ export function BackgroundStyleControl({
                       }}
                     />
                     <Box style={{ overflow: 'hidden' }}>
-                      <Text size="xs" fw={600} truncate style={{ fontSize: 12, color: 'var(--mantine-color-text, #17201f)' }}>
+                      <Text
+                        size="xs"
+                        fw={600}
+                        truncate
+                        style={{ fontSize: 12, color: 'var(--mantine-color-text, #17201f)' }}
+                      >
                         Selected Image
                       </Text>
                       <Text size="xs" c="dimmed" truncate style={{ fontSize: 11, maxWidth: 170 }}>
@@ -514,7 +534,8 @@ export function BackgroundStyleControl({
                 }}
               >
                 <Text size="xs" c="dimmed" style={{ fontSize: 12 }}>
-                  No background image selected. Choose from curated styles below or enter a custom URL.
+                  No background image selected. Choose from curated styles below or enter a custom
+                  URL.
                 </Text>
               </Paper>
             )}
@@ -522,7 +543,11 @@ export function BackgroundStyleControl({
             {/* Curated Demo Background Gallery */}
             <Box>
               <Group justify="space-between" mb={6}>
-                <Text size="xs" fw={600} style={{ fontSize: 12, color: 'var(--mantine-color-text, #17201f)' }}>
+                <Text
+                  size="xs"
+                  fw={600}
+                  style={{ fontSize: 12, color: 'var(--mantine-color-text, #17201f)' }}
+                >
                   Curated Backgrounds
                 </Text>
                 <Text size="xs" c="dimmed" style={{ fontSize: 11 }}>
@@ -534,7 +559,12 @@ export function BackgroundStyleControl({
                 {DEMO_BACKGROUND_IMAGES.map((img) => {
                   const isSelected = value.image?.url === img.url
                   return (
-                    <Tooltip key={img.id} label={`${img.label} — ${img.attribution}`} position="top" withArrow>
+                    <Tooltip
+                      key={img.id}
+                      label={`${img.label} — ${img.attribution}`}
+                      position="top"
+                      withArrow
+                    >
                       <UnstyledButton
                         role="button"
                         aria-label={`Select ${img.label} background`}
@@ -564,12 +594,14 @@ export function BackgroundStyleControl({
                         }}
                         onMouseEnter={(e) => {
                           if (!isSelected) {
-                            e.currentTarget.style.borderColor = 'var(--mantine-color-teal-4, #20c997)'
+                            e.currentTarget.style.borderColor =
+                              'var(--mantine-color-teal-4, #20c997)'
                           }
                         }}
                         onMouseLeave={(e) => {
                           if (!isSelected) {
-                            e.currentTarget.style.borderColor = 'var(--mantine-color-default-border, #dfe5e2)'
+                            e.currentTarget.style.borderColor =
+                              'var(--mantine-color-default-border, #dfe5e2)'
                           }
                         }}
                       >
@@ -602,7 +634,11 @@ export function BackgroundStyleControl({
                             padding: '2px 4px',
                           }}
                         >
-                          <Text size="xs" truncate style={{ color: '#ffffff', fontSize: 10, fontWeight: 500 }}>
+                          <Text
+                            size="xs"
+                            truncate
+                            style={{ color: '#ffffff', fontSize: 10, fontWeight: 500 }}
+                          >
                             {img.label}
                           </Text>
                         </Box>
@@ -696,7 +732,12 @@ export function BackgroundStyleControl({
 
             {/* 3x3 Position Selector */}
             <Box>
-              <Text size="xs" fw={600} mb={6} style={{ fontSize: 12, color: 'var(--mantine-color-text, #17201f)' }}>
+              <Text
+                size="xs"
+                fw={600}
+                mb={6}
+                style={{ fontSize: 12, color: 'var(--mantine-color-text, #17201f)' }}
+              >
                 Focal Position (3x3 Grid)
               </Text>
               <Box
@@ -778,7 +819,11 @@ export function BackgroundStyleControl({
             {/* Overlay Settings */}
             <Box>
               <Group justify="space-between" mb={4}>
-                <Text size="xs" fw={600} style={{ fontSize: 12, color: 'var(--mantine-color-text, #17201f)' }}>
+                <Text
+                  size="xs"
+                  fw={600}
+                  style={{ fontSize: 12, color: 'var(--mantine-color-text, #17201f)' }}
+                >
                   Overlay Color & Opacity
                 </Text>
                 <Button
@@ -882,12 +927,11 @@ export function BackgroundStyleControl({
               )}
             </Group>
           </Stack>
-        )
-      )}
+        ))}
 
       {/* 3. VIDEO MODE: Visual quick selection & Advanced Configure view */}
-      {mode === 'video' && (
-        !isConfiguring ? (
+      {mode === 'video' &&
+        (!isConfiguring ? (
           /* Video Quick Selection View */
           <Stack gap="sm">
             <TextInput
@@ -926,9 +970,15 @@ export function BackgroundStyleControl({
               </Group>
             )}
 
-            <Paper p="xs" withBorder radius="xs" style={{ backgroundColor: 'var(--mantine-color-gray-0, #f8f9fa)' }}>
+            <Paper
+              p="xs"
+              withBorder
+              radius="xs"
+              style={{ backgroundColor: 'var(--mantine-color-gray-0, #f8f9fa)' }}
+            >
               <Text size="xs" c="dimmed" style={{ fontSize: 12 }}>
-                Videos autoplay muted with loop enabled and automatically fall back to poster image when reduced-motion is requested.
+                Videos autoplay muted with loop enabled and automatically fall back to poster image
+                when reduced-motion is requested.
               </Text>
             </Paper>
 
@@ -1026,7 +1076,11 @@ export function BackgroundStyleControl({
             {/* Video Overlay */}
             <Box>
               <Group justify="space-between" mb={2}>
-                <Text size="xs" fw={600} style={{ fontSize: 12, color: 'var(--mantine-color-text, #17201f)' }}>
+                <Text
+                  size="xs"
+                  fw={600}
+                  style={{ fontSize: 12, color: 'var(--mantine-color-text, #17201f)' }}
+                >
                   Video Overlay Opacity
                 </Text>
                 <Button
@@ -1076,8 +1130,7 @@ export function BackgroundStyleControl({
               </Group>
             </Box>
           </Stack>
-        )
-      )}
+        ))}
     </Stack>
   )
 }

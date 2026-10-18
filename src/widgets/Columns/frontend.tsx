@@ -1,9 +1,13 @@
+import type { UniversalStyle } from '@/lib/style-engine/types'
+import { resolveWidgetStyles } from '@/lib/style-engine/serializer'
+import { animationAttributes } from '@/lib/style-engine/animation-presets'
 import React from 'react'
 import type { ThemeDataContext } from '@/lib/theme-engine/types'
 
 export type ColumnsDistribution = '1' | 'equal-2' | '2:1' | '1:2' | '1:1:1' | '1:1:1:1'
 
 export type ColumnsProps = {
+  style?: UniversalStyle
   id?: string
   distribution?: ColumnsDistribution
   gap?: string
@@ -24,6 +28,7 @@ const GRID_TEMPLATES: Record<ColumnsDistribution, string> = {
 }
 
 export function ColumnsFrontend({
+  style: semanticStyle,
   distribution = 'equal-2',
   gap = '24px',
   column1,
@@ -39,6 +44,7 @@ export function ColumnsFrontend({
   return (
     <div
       className="zyvavu-widget-columns"
+      {...animationAttributes(semanticStyle?.animation)}
       style={{
         display: 'grid',
         gridTemplateColumns: template,
@@ -46,6 +52,7 @@ export function ColumnsFrontend({
         width: '100%',
         margin: '24px 0',
         boxSizing: 'border-box',
+        ...resolveWidgetStyles(semanticStyle),
       }}
     >
       <div className="zyvavu-widget-columns__col" style={{ minWidth: 0 }}>

@@ -1,23 +1,8 @@
 'use client'
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import {
-  ActionIcon,
-  Box,
-  Button,
-  Group,
-  Stack,
-  Tabs,
-  Text,
-} from '@mantine/core'
-import {
-  BoxSelect,
-  Layers,
-  Palette,
-  Sliders,
-  Type,
-  X,
-} from 'lucide-react'
+import { ActionIcon, Box, Button, Group, Stack, Tabs, Text } from '@mantine/core'
+import { BoxSelect, Layers, Palette, Sliders, Type, X } from 'lucide-react'
 
 import type { ThemeConfig, WidgetSemanticStyle } from '@/lib/theme-engine/types'
 import { getWidgetManifest } from '@/lib/theme-engine/widget-registry-manifests'
@@ -48,6 +33,9 @@ import { TypographyStyleControl } from './style-controls/TypographyStyleControl'
 import { BackgroundStyleControl } from './style-controls/BackgroundStyleControl'
 import { SpacingDimensionsControl } from './style-controls/SpacingDimensionsControl'
 import { BordersEffectsControl } from './style-controls/BordersEffectsControl'
+import { ButtonStyleControl } from './style-controls/ButtonStyleControl'
+import { AnimationPresetPicker } from '@/components/admin/shared/AnimationPresetPicker'
+import { validateUniversalStyle } from '@/lib/style-engine/validation'
 
 export function computeTranslatedAnchorPosition(
   anchor: HTMLElement | null,
@@ -61,7 +49,10 @@ export function computeTranslatedAnchorPosition(
 
   if (!anchor) {
     const defaultX = Math.min(336, Math.max(padding, window.innerWidth - width - padding))
-    const defaultY = Math.min(80, Math.max(minTopToolbarClearance, window.innerHeight - height - padding))
+    const defaultY = Math.min(
+      80,
+      Math.max(minTopToolbarClearance, window.innerHeight - height - padding),
+    )
     return { x: Math.max(padding, defaultX), y: Math.max(minTopToolbarClearance, defaultY) }
   }
 
@@ -91,8 +82,7 @@ export function computeTranslatedAnchorPosition(
     }
   } else if (win !== window) {
     const previewFrame =
-      document.querySelector('iframe#preview-frame') ||
-      document.querySelector('iframe')
+      document.querySelector('iframe#preview-frame') || document.querySelector('iframe')
     if (previewFrame) {
       const iframeRect = previewFrame.getBoundingClientRect()
       rect = {
@@ -151,6 +141,7 @@ export interface WidgetStyleContextMenuProps {
   anchorEl: HTMLElement | null
   initialPosition?: { x: number; y: number }
   componentType: string
+  componentVariant?: string
   componentId: string
   currentStyle?: WidgetSemanticStyle
   themeConfig?: ThemeConfig
@@ -163,6 +154,7 @@ export function WidgetStyleContextMenu({
   anchorEl,
   initialPosition,
   componentType: rawComponentType,
+  componentVariant,
   componentId,
   currentStyle = {},
   themeConfig,
@@ -175,6 +167,8 @@ export function WidgetStyleContextMenu({
   const committedStyleRef = useRef<WidgetSemanticStyle>(currentStyle || {})
   // 2. draftStyle: Temporary changes inside the Style Editor
   const [draftStyle, setDraftStyle] = useState<WidgetSemanticStyle>(() => currentStyle || {})
+  const [validationError, setValidationError] = useState<string | null>(null)
+  const [animationPickerOpened, setAnimationPickerOpened] = useState(false)
   // 3. prePaletteDraftRef: Snapshot before opening child Color Palette modal
   const prePaletteDraftRef = useRef<WidgetSemanticStyle | null>(null)
 
@@ -193,8 +187,10 @@ export function WidgetStyleContextMenu({
   }, [componentType])
 
   const capabilities: StyleDomain[] = useMemo(() => {
-    return getComponentStyleCapabilities(componentType, manifest || undefined)
-  }, [componentType, manifest])
+    return getComponentStyleCapabilities(componentType, manifest || undefined, {
+      variant: componentVariant,
+    })
+  }, [componentType, manifest, componentVariant])
 
   const hasTypography = capabilities.includes('typography')
   const hasBackground = capabilities.includes('background')
@@ -235,6 +231,7 @@ export function WidgetStyleContextMenu({
   useEffect(() => {
     committedStyleRef.current = currentStyle || {}
     setDraftStyle(currentStyle || {})
+    setValidationError(null)
     return () => {
       // Clear canvas preview when unmounting or switching component
       stylePreviewStore.clearPreview(componentId)
@@ -254,7 +251,9 @@ export function WidgetStyleContextMenu({
     return {
       ...s,
       typography: {
-        typography: s.typography?.typography || (typeof style.typography === 'string' ? style.typography : undefined),
+        typography:
+          s.typography?.typography ||
+          (typeof style.typography === 'string' ? style.typography : undefined),
         colorToken: s.typography?.colorToken || style.colorToken,
         align: s.typography?.align || style.align,
         effectPreset: s.typography?.effectPreset,
@@ -262,9 +261,21 @@ export function WidgetStyleContextMenu({
         lineHeight: s.typography?.lineHeight,
         verticalText: s.typography?.verticalText,
       },
-      background: s.background || (style.backgroundToken ? { mode: 'color', colorToken: style.backgroundToken } : undefined),
-      spacing: s.spacing && typeof s.spacing === 'object' ? s.spacing : { padding: { token: typeof style.spacing === 'string' ? style.spacing : 'md' } },
-      radius: s.radius && typeof s.radius === 'object' ? s.radius : { radiusToken: typeof style.radius === 'string' ? style.radius : 'none' },
+      background:
+        s.background ||
+        (style.backgroundToken ? { mode: 'color', colorToken: style.backgroundToken } : undefined),
+      spacing:
+        s.spacing && typeof s.spacing === 'object'
+          ? s.spacing
+          : typeof style.spacing === 'string'
+            ? { padding: { token: style.spacing } }
+            : undefined,
+      radius:
+        s.radius && typeof s.radius === 'object'
+          ? s.radius
+          : typeof style.radius === 'string'
+            ? { radiusToken: style.radius }
+            : undefined,
     }
   }, [])
 
@@ -273,26 +284,39 @@ export function WidgetStyleContextMenu({
   }, [draftStyle, normalizeStyle])
 
   // Real-time draft update that immediately updates the canvas preview without committing to Puck
-  const updateDraft = useCallback((partial: Partial<UniversalStyle>) => {
-    setDraftStyle((prev) => {
-      const prevNorm = normalizeStyle(prev)
-      const merged: WidgetSemanticStyle = {
-        ...prev,
-        ...prevNorm,
-        ...partial,
-        // Maintain legacy top-level mirrors for backward compatibility
-        colorToken: partial.typography?.colorToken || prevNorm.typography?.colorToken || prev.colorToken,
-        align: partial.typography?.align || prevNorm.typography?.align || prev.align,
-        backgroundToken: partial.background?.colorToken || prevNorm.background?.colorToken || prev.backgroundToken,
-      }
-      // Broadcast live preview to canvas
-      stylePreviewStore.setPreview(componentId, merged)
-      return merged
-    })
-  }, [componentId, normalizeStyle])
+  const updateDraft = useCallback(
+    (partial: Partial<UniversalStyle>) => {
+      setDraftStyle((prev) => {
+        const prevNorm = normalizeStyle(prev)
+        const merged: WidgetSemanticStyle = {
+          ...prev,
+          ...prevNorm,
+          ...partial,
+          // Maintain legacy top-level mirrors for backward compatibility
+          colorToken:
+            partial.typography?.colorToken || prevNorm.typography?.colorToken || prev.colorToken,
+          align: partial.typography?.align || prevNorm.typography?.align || prev.align,
+          backgroundToken:
+            partial.background?.colorToken ||
+            prevNorm.background?.colorToken ||
+            prev.backgroundToken,
+        }
+        // Broadcast live preview to canvas
+        stylePreviewStore.setPreview(componentId, merged)
+        return merged
+      })
+    },
+    [componentId, normalizeStyle],
+  )
 
   // Apply Action: Commits draftStyle to Puck document in a single update
   const handleApply = useCallback(() => {
+    const validation = validateUniversalStyle(draftStyle)
+    if (!validation.valid) {
+      setValidationError(validation.errors.join('; '))
+      return
+    }
+    setValidationError(null)
     onUpdateStyle(draftStyle)
     stylePreviewStore.clearPreview(componentId)
     onClose()
@@ -306,8 +330,14 @@ export function WidgetStyleContextMenu({
   }, [componentId, onClose])
 
   // Palette Child Opening
-  const handleOpenColorModal = (target: 'text' | 'background' | 'overlay' | 'border' | 'fallback') => {
-    if (typeof document !== 'undefined' && document.activeElement && 'blur' in document.activeElement) {
+  const handleOpenColorModal = (
+    target: 'text' | 'background' | 'overlay' | 'border' | 'fallback',
+  ) => {
+    if (
+      typeof document !== 'undefined' &&
+      document.activeElement &&
+      'blur' in document.activeElement
+    ) {
       ;(document.activeElement as HTMLElement).blur()
     }
     prePaletteDraftRef.current = draftStyle
@@ -456,7 +486,7 @@ export function WidgetStyleContextMenu({
         draggable={true}
         showCloseButton={true}
         closeOnClickOutside={false}
-        closeOnEscape={true}
+        closeOnEscape={!animationPickerOpened}
         zIndex={ADMIN_OVERLAY_LAYERS.STYLE_MODAL}
         footer={
           <Group justify="space-between" w="100%">
@@ -467,7 +497,18 @@ export function WidgetStyleContextMenu({
               <Button variant="default" size="xs" onClick={handleCancel}>
                 Hủy / Cancel
               </Button>
-              <Button color="teal" size="xs" onClick={handleApply}>
+              <Button
+                variant="subtle"
+                size="sm"
+                onClick={() => {
+                  setDraftStyle({})
+                  setValidationError(null)
+                  stylePreviewStore.setPreview(componentId, {})
+                }}
+              >
+                Reset style
+              </Button>
+              <Button color="teal" size="xs" disabled={animationPickerOpened} onClick={handleApply}>
                 Áp dụng / Apply
               </Button>
             </Group>
@@ -475,14 +516,26 @@ export function WidgetStyleContextMenu({
         }
       >
         <Stack gap="xs">
+          {validationError && (
+            <Text c="red" role="alert">
+              {validationError}
+            </Text>
+          )}
+          {!capabilities.length && <Text>No implemented style controls for this widget.</Text>}
           {/* Tab Navigation */}
           <Tabs
             value={activeTab}
-            onChange={(val) => setActiveTab(val || 'typography')}
+            onChange={(val) => {
+              if (!animationPickerOpened) setActiveTab(val || 'typography')
+            }}
             variant="pills"
             color="teal"
           >
             <Tabs.List grow mb="xs">
+              {capabilities.includes('button') && <Tabs.Tab value="button">Button shell</Tabs.Tab>}
+              {capabilities.includes('animation') && (
+                <Tabs.Tab value="animation">Animation</Tabs.Tab>
+              )}
               {hasTypography && (
                 <Tabs.Tab value="typography" leftSection={<Type size={14} />}>
                   Type
@@ -505,6 +558,17 @@ export function WidgetStyleContextMenu({
               )}
             </Tabs.List>
           </Tabs>
+          {activeTab === 'button' && capabilities.includes('button') && (
+            <ButtonStyleControl key={componentId} themeConfig={themeConfig} />
+          )}
+          {activeTab === 'animation' && capabilities.includes('animation') && (
+            <AnimationPresetPicker
+              target={componentType === 'Section' ? 'section' : 'widget'}
+              onOpenChange={setAnimationPickerOpened}
+              value={normalizedDraft.animation}
+              onChange={(animation) => updateDraft({ animation })}
+            />
+          )}
 
           {/* 1. TYPOGRAPHY DOMAIN */}
           {activeTab === 'typography' && hasTypography && (
@@ -519,6 +583,7 @@ export function WidgetStyleContextMenu({
           {/* 2. BACKGROUND DOMAIN */}
           {activeTab === 'background' && hasBackground && (
             <BackgroundStyleControl
+              colorOnly={componentType !== 'Section'}
               value={normalizedDraft.background}
               themeConfig={themeConfig}
               onChange={(bg) => updateDraft({ background: bg })}
@@ -531,7 +596,9 @@ export function WidgetStyleContextMenu({
             <SpacingDimensionsControl
               spacing={normalizedDraft.spacing}
               dimensions={normalizedDraft.dimensions}
-              showDimensions={capabilities.includes('dimensions') || capabilities.includes('section')}
+              showDimensions={
+                capabilities.includes('dimensions') || capabilities.includes('section')
+              }
               onChangeSpacing={(sp) => updateDraft({ spacing: sp })}
               onChangeDimensions={(dim) => updateDraft({ dimensions: dim })}
             />
@@ -540,6 +607,7 @@ export function WidgetStyleContextMenu({
           {/* 4. BORDERS & EFFECTS DOMAIN */}
           {activeTab === 'borders' && hasBorderOrEffects && (
             <BordersEffectsControl
+              themeConfig={themeConfig}
               border={normalizedDraft.border}
               radius={normalizedDraft.radius}
               shadow={normalizedDraft.shadow}
@@ -590,9 +658,7 @@ export function WidgetStyleContextMenu({
           zIndex={ADMIN_OVERLAY_LAYERS.PALETTE_MODAL}
           includeBackgroundTokens={true}
           supportedModes={
-            colorModalTarget === 'background'
-              ? ['solid', 'gradient', 'mesh']
-              : ['solid']
+            colorModalTarget === 'background' ? ['solid', 'gradient', 'mesh'] : ['solid']
           }
           gradientValue={normalizedDraft.background?.gradient}
           meshValue={normalizedDraft.background?.mesh}

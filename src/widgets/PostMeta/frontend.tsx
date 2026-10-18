@@ -1,7 +1,11 @@
+import type { UniversalStyle } from '@/lib/style-engine/types'
+import { resolveWidgetStyles } from '@/lib/style-engine/serializer'
+import { animationAttributes } from '@/lib/style-engine/animation-presets'
 import React from 'react'
 import type { ThemeDataContext } from '@/lib/theme-engine/types'
 
 export type PostMetaProps = {
+  style?: UniversalStyle
   id?: string
   showDate?: boolean
   showAuthor?: boolean
@@ -10,6 +14,7 @@ export type PostMetaProps = {
 }
 
 export function PostMetaFrontend({
+  style: semanticStyle,
   showDate = true,
   showAuthor = true,
   showCategories = true,
@@ -17,12 +22,19 @@ export function PostMetaFrontend({
 }: PostMetaProps) {
   const doc = dataContext?.document
   const rawDate = doc?.updatedAt || doc?.createdAt
-  const dateStr = rawDate ? new Date(rawDate).toLocaleDateString('vi-VN', { year: 'numeric', month: 'long', day: 'numeric' }) : null
+  const dateStr = rawDate
+    ? new Date(rawDate).toLocaleDateString('vi-VN', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      })
+    : null
   const categories: any[] = Array.isArray(doc?.categories) ? doc.categories : []
 
   return (
     <div
       className="zyvavu-widget-post-meta"
+      {...animationAttributes(semanticStyle?.animation)}
       style={{
         display: 'flex',
         flexWrap: 'wrap',
@@ -31,6 +43,7 @@ export function PostMetaFrontend({
         fontSize: '14px',
         color: 'var(--zyvavu-theme-text-muted, #5f7370)',
         marginBottom: '24px',
+        ...resolveWidgetStyles(semanticStyle),
       }}
     >
       {showDate && dateStr ? (
@@ -40,7 +53,10 @@ export function PostMetaFrontend({
       ) : null}
 
       {showCategories && categories.length > 0 ? (
-        <div className="zyvavu-widget-post-meta__categories" style={{ display: 'flex', gap: '6px' }}>
+        <div
+          className="zyvavu-widget-post-meta__categories"
+          style={{ display: 'flex', gap: '6px' }}
+        >
           {categories.map((cat, idx) => {
             const title = typeof cat === 'object' ? cat.title : `Category #${cat}`
             return (

@@ -1,3 +1,6 @@
+import type { UniversalStyle } from '@/lib/style-engine/types'
+import { resolveWidgetStyles } from '@/lib/style-engine/serializer'
+import { animationAttributes } from '@/lib/style-engine/animation-presets'
 import React from 'react'
 import type { LoopItemRecord, ThemeDataContext } from '@/lib/theme-engine/types'
 import { ItemTitleFrontend } from '@/widgets/ItemTitle/frontend'
@@ -5,6 +8,7 @@ import { ItemExcerptFrontend } from '@/widgets/ItemExcerpt/frontend'
 import { ItemLinkFrontend } from '@/widgets/ItemLink/frontend'
 
 export type CollectionLoopProps = {
+  style?: UniversalStyle
   id?: string
   mode?: 'dynamic' | 'manual'
   source?: 'posts' | 'products'
@@ -34,9 +38,7 @@ function mapDocToRecord(doc: any): LoopItemRecord {
         : null
   const imgUrl =
     imgDoc?.url ||
-    (typeof doc.featuredMedia === 'string'
-      ? `/api/media/file/${doc.featuredMedia}`
-      : undefined)
+    (typeof doc.featuredMedia === 'string' ? `/api/media/file/${doc.featuredMedia}` : undefined)
 
   const firstCat =
     Array.isArray(doc.categories) && doc.categories[0]
@@ -49,7 +51,12 @@ function mapDocToRecord(doc: any): LoopItemRecord {
     id: doc.id,
     title: doc.title,
     slug: doc.slug,
-    url: doc.canonicalPath || doc.canonicalUrl || doc.url || doc.publicPath || `/posts/${doc.slug || doc.id}`,
+    url:
+      doc.canonicalPath ||
+      doc.canonicalUrl ||
+      doc.url ||
+      doc.publicPath ||
+      `/posts/${doc.slug || doc.id}`,
     excerpt: doc.excerpt || '',
     date: doc.publishedAt || doc.createdAt,
     category: firstCat ? firstCat.title || firstCat.name : undefined,
@@ -67,10 +74,15 @@ function renderRecords(props: CollectionLoopProps, records: LoopItemRecord[]) {
     emptyText = 'Chưa có bài viết nào.',
     dataContext,
     renderSlot,
+    style: semanticStyle,
   } = props
 
   return (
-    <div className="zyvavu-widget-collection-loop" style={{ padding: '24px 0' }}>
+    <div
+      className="zyvavu-widget-collection-loop"
+      {...animationAttributes(semanticStyle?.animation)}
+      style={{ padding: '24px 0', ...resolveWidgetStyles(semanticStyle) }}
+    >
       {heading && (
         <h2
           className="zyvavu-widget-collection-loop__heading"
@@ -107,11 +119,7 @@ function renderRecords(props: CollectionLoopProps, records: LoopItemRecord[]) {
               item: record,
             }
             const slotContent = renderSlot
-              ? renderSlot(
-                  'itemTemplate',
-                  itemContext,
-                  `loop-${id}-item-${record.id || idx}`,
-                )
+              ? renderSlot('itemTemplate', itemContext, `loop-${id}-item-${record.id || idx}`)
               : null
 
             return (
@@ -215,16 +223,18 @@ export function CollectionLoopFrontend(
   const boundedLimit = Math.min(Math.max(1, limit || 6), 24)
 
   if (mode === 'manual') {
-    const records: LoopItemRecord[] = (manualItems || []).slice(0, boundedLimit).map((item, idx) => ({
-      id: item.id || `manual-${idx}`,
-      title: item.title || `Mục ${idx + 1}`,
-      excerpt: item.excerpt || '',
-      url: item.url || '#',
-      image: item.image,
-      category: item.category,
-      date: item.date,
-      raw: item,
-    }))
+    const records: LoopItemRecord[] = (manualItems || [])
+      .slice(0, boundedLimit)
+      .map((item, idx) => ({
+        id: item.id || `manual-${idx}`,
+        title: item.title || `Mục ${idx + 1}`,
+        excerpt: item.excerpt || '',
+        url: item.url || '#',
+        image: item.image,
+        category: item.category,
+        date: item.date,
+        raw: item,
+      }))
     return renderRecords(props, records)
   }
 

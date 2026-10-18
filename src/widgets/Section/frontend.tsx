@@ -1,5 +1,7 @@
 'use client'
 
+import { animationAttributes } from '@/lib/style-engine/animation-presets'
+
 import React from 'react'
 import type { ThemeDataContext } from '@/lib/theme-engine/types'
 import type { UniversalStyle } from '@/lib/style-engine/types'
@@ -43,6 +45,7 @@ export function SectionFrontend({
     <section
       id={id}
       className="zyvavu-widget-section site-section"
+      {...animationAttributes(style?.animation)}
       style={layers.rootStyle}
     >
       {/* 1. Base Color Layer */}
@@ -50,7 +53,10 @@ export function SectionFrontend({
 
       {/* 2. Background Media (Image or Video) */}
       {layers.videoConfig?.url ? (
-        <div className="zyvavu-section__media zyvavu-section__media--video" style={layers.mediaStyle}>
+        <div
+          className="zyvavu-section__media zyvavu-section__media--video"
+          style={layers.mediaStyle}
+        >
           <video
             autoPlay={layers.videoConfig.autoplay !== false}
             muted={true}
@@ -67,7 +73,10 @@ export function SectionFrontend({
           </video>
         </div>
       ) : (
-        <div className="zyvavu-section__media zyvavu-section__media--image" style={layers.mediaStyle} />
+        <div
+          className="zyvavu-section__media zyvavu-section__media--image"
+          style={layers.mediaStyle}
+        />
       )}
 
       {/* 3. Overlay Layer */}

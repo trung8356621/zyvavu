@@ -42,6 +42,17 @@ export function resolveWidgetStyles(style?: UniversalStyle): CSSProperties {
   if (!style) return {}
 
   const result: CSSProperties = {}
+  const preset =
+    typeof style.typography === 'string' ? style.typography : style.typography?.typography
+  if (preset && /^[a-z][a-z0-9-]*$/i.test(preset)) {
+    result.fontSize = `var(--zyvavu-theme-${preset}-size)`
+    result.fontWeight = `var(--zyvavu-theme-${preset}-weight)` as CSSProperties['fontWeight']
+    result.lineHeight = `var(--zyvavu-theme-${preset}-line-height)`
+    result.letterSpacing = `var(--zyvavu-theme-${preset}-letter-spacing, normal)`
+    result.fontFamily = preset.startsWith('h')
+      ? 'var(--zyvavu-theme-font-heading)'
+      : 'var(--zyvavu-theme-font)'
+  }
 
   // 1. Typography
   if (style.typography) {
@@ -117,7 +128,8 @@ export function resolveWidgetStyles(style?: UniversalStyle): CSSProperties {
         result.padding = resolveSpacingToken(sp.padding.token)
       } else {
         if (sp.padding?.topToken) result.paddingTop = resolveSpacingToken(sp.padding.topToken)
-        if (sp.padding?.bottomToken) result.paddingBottom = resolveSpacingToken(sp.padding.bottomToken)
+        if (sp.padding?.bottomToken)
+          result.paddingBottom = resolveSpacingToken(sp.padding.bottomToken)
         if (sp.padding?.leftToken) result.paddingLeft = resolveSpacingToken(sp.padding.leftToken)
         if (sp.padding?.rightToken) result.paddingRight = resolveSpacingToken(sp.padding.rightToken)
       }
@@ -152,6 +164,19 @@ export function resolveWidgetStyles(style?: UniversalStyle): CSSProperties {
     }
   }
 
+  if (style.border?.linked === false) {
+    for (const side of ['top', 'right', 'bottom', 'left'] as const) {
+      const value = style.border.sides?.[side]
+      if (value && Object.values(value).some((entry) => entry !== undefined)) {
+        const key = `border${side[0].toUpperCase()}${side.slice(1)}` as 'borderTop'
+        result[key] =
+          value.style === 'none'
+            ? 'none'
+            : `${resolveBorderWidthToken(value.widthToken)} ${value.style || 'solid'} ${resolveColorToken(value.colorToken, 'currentColor')}`
+      }
+    }
+  }
+
   if (style.radius) {
     if (typeof style.radius === 'string') {
       result.borderRadius = resolveRadiusToken(style.radius)
@@ -159,9 +184,24 @@ export function resolveWidgetStyles(style?: UniversalStyle): CSSProperties {
       result.borderRadius = resolveRadiusToken(style.radius.radiusToken)
     }
   }
+  if (typeof style.radius === 'object' && style.radius.linked === false) {
+    for (const corner of ['topLeft', 'topRight', 'bottomRight', 'bottomLeft'] as const) {
+      const token = style.radius.corners?.[corner]
+      if (token)
+        result[
+          `border${corner[0].toUpperCase()}${corner.slice(1)}Radius` as 'borderTopLeftRadius'
+        ] = resolveRadiusToken(token)
+    }
+  }
+  if (style.shadow?.layers?.length) {
+    result.boxShadow = style.shadow.layers
+      .map((token) => resolveShadowToken(token))
+      .filter(Boolean)
+      .join(', ')
+  }
 
   // 5. Shadow
-  if (style.shadow?.shadowToken) {
+  if (style.shadow?.shadowToken && !style.shadow.layers?.length) {
     result.boxShadow = resolveShadowToken(style.shadow.shadowToken)
   }
 
@@ -181,12 +221,16 @@ export function resolveWidgetStyles(style?: UniversalStyle): CSSProperties {
 
   // 7. Dimensions
   if (style.dimensions) {
+    if (style.dimensions.containerWidth)
+      result.maxWidth = resolveContainerWidth(style.dimensions.containerWidth)
+    if (style.dimensions.align) result.textAlign = style.dimensions.align
+    if (style.dimensions.contentAlign) result.alignItems = style.dimensions.contentAlign
     if (style.dimensions.minHeight) {
       const mh = style.dimensions.minHeight
       if (mh === 'screen') result.minHeight = '100vh'
-      else if (mh === 'sm') result.minHeight = '150px'
-      else if (mh === 'md') result.minHeight = '300px'
-      else if (mh === 'lg') result.minHeight = '500px'
+      else if (mh === 'sm') result.minHeight = '200px'
+      else if (mh === 'md') result.minHeight = '400px'
+      else if (mh === 'lg') result.minHeight = '600px'
       else if (mh !== 'auto') result.minHeight = mh
     }
   }
@@ -219,15 +263,15 @@ export function resolveSectionLayerStyles(
     boxSizing: 'border-box',
   }
 
-  const verticalPadding =
-    s.section?.verticalPadding || sectionProps?.verticalPadding || 'md'
+  const verticalPadding = s.section?.verticalPadding || sectionProps?.verticalPadding || 'md'
   if (verticalPadding !== 'none') {
     const padVal = resolveSpacingToken(verticalPadding)
     rootStyle.paddingTop = padVal
     rootStyle.paddingBottom = padVal
   }
 
-  const minHeight = s.section?.minHeight || sectionProps?.minHeight || 'auto'
+  const minHeight =
+    s.section?.minHeight || s.dimensions?.minHeight || sectionProps?.minHeight || 'auto'
   if (minHeight === 'screen') {
     rootStyle.minHeight = '100vh'
   } else if (minHeight === 'sm') {
@@ -250,7 +294,7 @@ export function resolveSectionLayerStyles(
     rootStyle.borderRadius = resolveRadiusToken(s.radius.radiusToken)
   }
 
-  if (s.shadow?.shadowToken) {
+  if (s.shadow?.shadowToken && !s.shadow.layers?.length) {
     rootStyle.boxShadow = resolveShadowToken(s.shadow.shadowToken)
   }
 
@@ -356,7 +400,8 @@ export function resolveSectionLayerStyles(
   }
 
   // 5. Container & Content Layer (zIndex 10)
-  const rawWidthToken = s.section?.containerWidth || sectionProps?.containerWidth
+  const rawWidthToken =
+    s.section?.containerWidth || s.dimensions?.containerWidth || sectionProps?.containerWidth
   const containerWidthToken =
     !rawWidthToken || rawWidthToken === 'inherit'
       ? sectionProps?.pageContainerWidth || 'containerWidth'
@@ -384,6 +429,14 @@ export function resolveSectionLayerStyles(
     position: 'relative',
     width: '100%',
   }
+
+  const { maxWidth: _containerWidth, ...presentation } = resolveWidgetStyles({
+    ...s,
+    background: undefined,
+    backgroundToken: undefined,
+    typography: undefined,
+  })
+  Object.assign(rootStyle, presentation)
 
   return {
     rootStyle,

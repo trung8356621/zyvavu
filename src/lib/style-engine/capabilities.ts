@@ -8,99 +8,61 @@ export const COMPONENT_STYLE_CAPABILITIES: Record<string, StyleDomain[]> = {
   Section: [
     'section',
     'background',
-    'dimensions',
     'spacing',
+    'dimensions',
     'border',
     'shadow',
     'effects',
-    'responsive',
+    'animation',
   ],
-  Columns: [
-    'dimensions',
-    'spacing',
-    'border',
-    'shadow',
-    'responsive',
-  ],
-  PostTitle: [
-    'typography',
-    'spacing',
-    'shadow',
-    'effects',
-    'responsive',
-  ],
+  Columns: ['spacing', 'dimensions', 'border', 'shadow', 'effects', 'animation'],
+  PostTitle: ['typography', 'spacing', 'dimensions', 'border', 'shadow', 'effects', 'animation'],
+  PostContent: ['typography', 'spacing', 'dimensions', 'border', 'shadow', 'effects', 'animation'],
+  PostMeta: ['typography', 'spacing', 'dimensions', 'border', 'shadow', 'effects', 'animation'],
   TextBlock: [
     'typography',
     'background',
     'spacing',
-    'border',
-    'shadow',
-    'effects',
-    'responsive',
-  ],
-  FeaturedMedia: [
     'dimensions',
     'border',
     'shadow',
     'effects',
-    'spacing',
-    'responsive',
+    'animation',
   ],
-  RecentPosts: [
-    'dimensions',
-    'spacing',
-    'background',
-    'border',
-    'shadow',
-    'responsive',
-  ],
+  FeaturedMedia: ['spacing', 'dimensions', 'border', 'shadow', 'effects', 'animation'],
   CategoryHeader: [
     'typography',
-    'background',
     'spacing',
-    'border',
-    'shadow',
-    'responsive',
-  ],
-  ProductHeader: [
-    'typography',
-    'dimensions',
-    'spacing',
-    'shadow',
-    'responsive',
-  ],
-  ItemTitle: [
-    'typography',
-    'spacing',
-    'responsive',
-  ],
-  ItemExcerpt: [
-    'typography',
-    'spacing',
-    'responsive',
-  ],
-  ItemImage: [
     'dimensions',
     'border',
     'shadow',
-    'responsive',
+    'effects',
+    'animation',
   ],
-  ItemLink: [
+  CollectionLoop: ['spacing', 'dimensions', 'border', 'shadow', 'effects', 'animation'],
+  RecentPosts: ['spacing', 'dimensions', 'border', 'shadow', 'effects', 'animation'],
+  ItemTitle: ['typography', 'spacing', 'dimensions', 'border', 'shadow', 'effects', 'animation'],
+  ItemExcerpt: ['typography', 'spacing', 'dimensions', 'border', 'shadow', 'effects', 'animation'],
+  ItemImage: ['spacing', 'dimensions', 'border', 'shadow', 'effects', 'animation'],
+  ItemLink: ['typography', 'spacing', 'dimensions', 'border', 'shadow', 'effects', 'animation'],
+  HeaderAction: [
+    'typography',
+    'button',
+    'spacing',
+    'dimensions',
+    'border',
+    'shadow',
+    'effects',
+    'animation',
+  ],
+  HeaderTopBarText: [
     'typography',
     'spacing',
-    'border',
-    'responsive',
-  ],
-  Header: [
-    'background',
+    'dimensions',
     'border',
     'shadow',
-  ],
-  Footer: [
-    'background',
-    'border',
-    'spacing',
-    'shadow',
+    'effects',
+    'animation',
   ],
 }
 
@@ -135,38 +97,21 @@ export function normalizeComponentType(typeOrLabel: string): string {
 export function getComponentStyleCapabilities(
   componentType: string,
   manifest?: WidgetManifest,
+  context?: { variant?: string },
 ): StyleDomain[] {
   const normalized = normalizeComponentType(componentType)
 
   // 1. Direct registry lookup
   if (COMPONENT_STYLE_CAPABILITIES[normalized]) {
+    if (normalized === 'ItemLink' && ['button', 'outline'].includes(context?.variant || '')) {
+      return [...COMPONENT_STYLE_CAPABILITIES[normalized], 'button']
+    }
     return COMPONENT_STYLE_CAPABILITIES[normalized]
   }
 
-  // 2. Infer from manifest capabilities if present
-  const capabilities = manifest?.capabilities || []
-  const domains: Set<StyleDomain> = new Set(['responsive'])
-
-  if (capabilities.some((c) => ['document.title', 'document.content', 'document.meta', 'layout.text'].includes(c))) {
-    domains.add('typography')
-    domains.add('spacing')
-  }
-
-  if (capabilities.some((c) => ['layout.container', 'layout.columns'].includes(c))) {
-    domains.add('dimensions')
-    domains.add('spacing')
-    domains.add('border')
-    domains.add('shadow')
-  }
-
-  if (capabilities.some((c) => ['document.media'].includes(c))) {
-    domains.add('dimensions')
-    domains.add('border')
-    domains.add('shadow')
-    domains.add('effects')
-  }
-
-  return Array.from(domains)
+  // A manifest alone does not prove editor + SSR support. Unknown renderers stay hidden.
+  void manifest
+  return []
 }
 
 /**

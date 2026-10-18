@@ -1,8 +1,12 @@
+import type { UniversalStyle } from '@/lib/style-engine/types'
+import { resolveWidgetStyles } from '@/lib/style-engine/serializer'
+import { animationAttributes } from '@/lib/style-engine/animation-presets'
 import React from 'react'
 import Link from 'next/link'
 import type { ThemeDataContext } from '@/lib/theme-engine/types'
 
 export type ItemTitleProps = {
+  style?: UniversalStyle
   tag?: 'h2' | 'h3' | 'h4' | 'div'
   linkToPost?: boolean
   className?: string
@@ -10,6 +14,7 @@ export type ItemTitleProps = {
 }
 
 export function ItemTitleFrontend({
+  style: semanticStyle,
   tag = 'h3',
   linkToPost = true,
   className = '',
@@ -21,21 +26,24 @@ export function ItemTitleFrontend({
 
   const Tag = tag as keyof React.JSX.IntrinsicElements
 
-  const content = linkToPost && item?.url ? (
-    <Link
-      href={url}
-      className="zyvavu-item-title__link"
-      style={{
-        color: 'var(--zyvavu-theme-text, inherit)',
-        textDecoration: 'none',
-        transition: 'color 0.2s ease',
-      }}
-    >
-      {title}
-    </Link>
-  ) : (
-    title
-  )
+  const content =
+    linkToPost && item?.url ? (
+      <Link
+        href={url}
+        className="zyvavu-item-title__link"
+        {...animationAttributes(semanticStyle?.animation)}
+        style={{
+          color: resolveWidgetStyles(semanticStyle).color || 'var(--zyvavu-theme-text, inherit)',
+          textDecoration: 'none',
+          transition: 'color 0.2s ease',
+          ...resolveWidgetStyles(semanticStyle),
+        }}
+      >
+        {title}
+      </Link>
+    ) : (
+      title
+    )
 
   return (
     <Tag

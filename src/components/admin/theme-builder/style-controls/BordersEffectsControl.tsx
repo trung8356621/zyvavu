@@ -11,6 +11,7 @@ import {
   Slider,
   Stack,
   Text,
+  Switch,
 } from '@mantine/core'
 import type {
   BorderConfig,
@@ -19,8 +20,10 @@ import type {
   ShadowConfig,
 } from '@/lib/style-engine/types'
 import { resolveColorToken } from '@/lib/style-engine/token-resolver'
+import type { ThemeConfig } from '@/lib/theme-engine/types'
 
 export interface BordersEffectsControlProps {
+  themeConfig?: ThemeConfig
   border?: BorderConfig
   radius?: RadiusConfig
   shadow?: ShadowConfig
@@ -33,6 +36,7 @@ export interface BordersEffectsControlProps {
 }
 
 export function BordersEffectsControl({
+  themeConfig,
   border = {},
   radius = {},
   shadow = {},
@@ -47,7 +51,11 @@ export function BordersEffectsControl({
 
   return (
     <Stack gap="xs">
-      <Text size="xs" fw={700} style={{ fontSize: 13, color: 'var(--mantine-color-text, #17201f)' }}>
+      <Text
+        size="xs"
+        fw={700}
+        style={{ fontSize: 13, color: 'var(--mantine-color-text, #17201f)' }}
+      >
         Borders & Radius
       </Text>
 
@@ -88,6 +96,51 @@ export function BordersEffectsControl({
           ]}
         />
       </Group>
+
+      <Switch
+        label="Link border sides"
+        checked={border.linked !== false}
+        onChange={(event) => onChangeBorder({ ...border, linked: event.currentTarget.checked })}
+      />
+      {border.linked === false &&
+        (['top', 'right', 'bottom', 'left'] as const).map((side) => {
+          const value = border.sides?.[side] || {}
+          const update = (partial: Partial<BorderConfig>) =>
+            onChangeBorder({
+              ...border,
+              sides: { ...border.sides, [side]: { ...value, ...partial } },
+            })
+          return (
+            <Group key={side} grow align="flex-end">
+              <Select
+                label={`${side} border`}
+                clearable
+                placeholder="Inherit"
+                value={value.style || null}
+                data={['none', 'solid', 'dashed', 'dotted']}
+                onChange={(style) =>
+                  update({ style: (style as BorderConfig['style']) || undefined })
+                }
+              />
+              <Select
+                label={`${side} width`}
+                clearable
+                value={value.widthToken || null}
+                data={['thin', 'medium', 'thick']}
+                onChange={(widthToken) => update({ widthToken: widthToken || undefined })}
+              />
+              <Select
+                label={`${side} color`}
+                clearable
+                value={value.colorToken || null}
+                data={Object.keys(
+                  themeConfig?.tokens.colors || { primary: '', text: '', border: '' },
+                )}
+                onChange={(colorToken) => update({ colorToken: colorToken || undefined })}
+              />
+            </Group>
+          )
+        })}
 
       {border.style && border.style !== 'none' && (
         <Paper p="xs" withBorder radius="xs">
@@ -133,8 +186,37 @@ export function BordersEffectsControl({
       />
 
       <Divider my={2} />
+      <Switch
+        label="Link radius corners"
+        checked={radius.linked !== false}
+        onChange={(event) => onChangeRadius({ ...radius, linked: event.currentTarget.checked })}
+      />
+      {radius.linked === false &&
+        (['topLeft', 'topRight', 'bottomRight', 'bottomLeft'] as const).map((corner) => (
+          <Select
+            key={corner}
+            label={`${corner} radius`}
+            clearable
+            placeholder="Inherit"
+            value={radius.corners?.[corner] || null}
+            data={[
+              'none',
+              ...Object.keys(themeConfig?.tokens.radius || { sm: '', md: '', lg: '', pill: '' }),
+            ]}
+            onChange={(value) =>
+              onChangeRadius({
+                ...radius,
+                corners: { ...radius.corners, [corner]: value || undefined },
+              })
+            }
+          />
+        ))}
 
-      <Text size="xs" fw={700} style={{ fontSize: 13, color: 'var(--mantine-color-text, #17201f)' }}>
+      <Text
+        size="xs"
+        fw={700}
+        style={{ fontSize: 13, color: 'var(--mantine-color-text, #17201f)' }}
+      >
         Shadow & Effects
       </Text>
 
@@ -146,6 +228,7 @@ export function BordersEffectsControl({
           onChangeShadow({
             ...shadow,
             shadowToken: val || 'none',
+            layers: undefined,
           })
         }
         data={[
@@ -155,10 +238,50 @@ export function BordersEffectsControl({
           { value: 'shadowStrong', label: 'Strong Shadow (High)' },
         ]}
       />
+      <Button
+        variant="default"
+        disabled={(shadow.layers?.length || 0) >= 4}
+        onClick={() =>
+          onChangeShadow({
+            ...shadow,
+            shadowToken: undefined,
+            layers: [...(shadow.layers || []), 'shadowSoft'],
+          })
+        }
+      >
+        Add shadow layer
+      </Button>
+      {shadow.layers?.map((layer, index) => (
+        <Group key={index} grow>
+          <Select
+            label={`Shadow layer ${index + 1}`}
+            value={layer}
+            data={['shadowSoft', 'shadowMedium', 'shadowStrong']}
+            onChange={(value) =>
+              onChangeShadow({
+                ...shadow,
+                layers: shadow.layers?.map((token, i) => (i === index ? value || token : token)),
+              })
+            }
+          />
+          <Button
+            variant="subtle"
+            onClick={() =>
+              onChangeShadow({ ...shadow, layers: shadow.layers?.filter((_, i) => i !== index) })
+            }
+          >
+            Remove layer {index + 1}
+          </Button>
+        </Group>
+      ))}
 
       <Box>
         <Group justify="space-between" mb={2}>
-          <Text size="xs" fw={600} style={{ fontSize: 12, color: 'var(--mantine-color-text, #17201f)' }}>
+          <Text
+            size="xs"
+            fw={600}
+            style={{ fontSize: 12, color: 'var(--mantine-color-text, #17201f)' }}
+          >
             Opacity
           </Text>
           <Text size="xs" c="dimmed" style={{ fontSize: 12 }}>

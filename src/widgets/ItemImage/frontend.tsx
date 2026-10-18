@@ -1,8 +1,12 @@
+import type { UniversalStyle } from '@/lib/style-engine/types'
+import { resolveWidgetStyles } from '@/lib/style-engine/serializer'
+import { animationAttributes } from '@/lib/style-engine/animation-presets'
 import React from 'react'
 import Link from 'next/link'
 import type { ThemeDataContext } from '@/lib/theme-engine/types'
 
 export type ItemImageProps = {
+  style?: UniversalStyle
   aspectRatio?: '16:9' | '4:3' | '1:1' | 'auto'
   borderRadius?: string
   linkToPost?: boolean
@@ -11,6 +15,7 @@ export type ItemImageProps = {
 }
 
 export function ItemImageFrontend({
+  style: semanticStyle,
   aspectRatio = '16:9',
   borderRadius = '4px',
   linkToPost = true,
@@ -67,6 +72,7 @@ export function ItemImageFrontend({
   const wrapped = (
     <div
       className={`zyvavu-item-image ${className}`.trim()}
+      {...animationAttributes(semanticStyle?.animation)}
       style={{
         position: 'relative',
         width: '100%',
@@ -74,6 +80,7 @@ export function ItemImageFrontend({
         overflow: 'hidden',
         borderRadius: borderRadius || '4px',
         backgroundColor: '#e2e8f0',
+        ...resolveWidgetStyles(semanticStyle),
       }}
     >
       {imageElement}

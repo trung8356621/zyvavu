@@ -1,8 +1,12 @@
+import type { UniversalStyle } from '@/lib/style-engine/types'
+import { resolveWidgetStyles } from '@/lib/style-engine/serializer'
+import { animationAttributes } from '@/lib/style-engine/animation-presets'
 import React from 'react'
 import Link from 'next/link'
 import type { ThemeDataContext } from '@/lib/theme-engine/types'
 
 export type HeaderActionProps = {
+  style?: UniversalStyle
   id?: string
   label?: string
   url?: string
@@ -12,6 +16,7 @@ export type HeaderActionProps = {
 }
 
 export function HeaderActionFrontend({
+  style: semanticStyle,
   label = 'Liên hệ',
   url = '/contact',
   newTab = false,
@@ -24,6 +29,7 @@ export function HeaderActionFrontend({
   return (
     <div className="zyvavu-widget-header-action" style={{ display: 'inline-block' }}>
       <Link
+        {...animationAttributes(semanticStyle?.animation)}
         href={url}
         target={newTab ? '_blank' : undefined}
         style={{
@@ -37,6 +43,7 @@ export function HeaderActionFrontend({
           color: isOutline ? 'var(--zyvavu-theme-primary, #0e6b66)' : '#ffffff',
           border: isOutline ? '1px solid var(--zyvavu-theme-primary, #0e6b66)' : 'none',
           transition: 'all 0.2s ease',
+          ...resolveWidgetStyles(semanticStyle),
         }}
       >
         {label}

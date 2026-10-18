@@ -1,4 +1,5 @@
 import type { UniversalStyle } from './types'
+import { isAnimationSupported } from './animation-presets'
 
 export interface StyleValidationResult {
   valid: boolean
@@ -97,7 +98,9 @@ export function validateUniversalStyle(style: unknown): StyleValidationResult {
 
       if (bg.colorToken && typeof bg.colorToken === 'string') {
         if (bg.colorToken.startsWith('#') || bg.colorToken.startsWith('rgb')) {
-          errors.push(`Direct color value "${bg.colorToken}" is not permitted for background.colorToken.`)
+          errors.push(
+            `Direct color value "${bg.colorToken}" is not permitted for background.colorToken.`,
+          )
         }
       }
 
@@ -171,8 +174,13 @@ export function validateUniversalStyle(style: unknown): StyleValidationResult {
 
   // 4. Border & Radius validation
   if (s.border) {
-    if (s.border.colorToken && (s.border.colorToken.startsWith('#') || s.border.colorToken.startsWith('rgb'))) {
-      errors.push(`Direct color value "${s.border.colorToken}" is not permitted for border.colorToken`)
+    if (
+      s.border.colorToken &&
+      (s.border.colorToken.startsWith('#') || s.border.colorToken.startsWith('rgb'))
+    ) {
+      errors.push(
+        `Direct color value "${s.border.colorToken}" is not permitted for border.colorToken`,
+      )
     }
   }
 
@@ -182,6 +190,65 @@ export function validateUniversalStyle(style: unknown): StyleValidationResult {
       errors.push('Effects opacity must be between 0 and 1')
     }
   }
+
+  const token = (value: unknown, path: string) => {
+    if (value !== undefined && (typeof value !== 'string' || !/^[a-z][a-z0-9-]*$/i.test(value)))
+      errors.push(`${path} must be a semantic token`)
+  }
+  const choice = (value: unknown, values: string[], path: string) => {
+    if (value !== undefined && !values.includes(value as string)) errors.push(`Invalid ${path}`)
+  }
+  const validateBorder = (border: any, path: string) => {
+    if (!border || typeof border !== 'object' || Array.isArray(border)) {
+      errors.push(`Invalid ${path}`)
+      return
+    }
+    choice(border.style, ['none', 'solid', 'dashed', 'dotted'], `${path}.style`)
+    choice(border.widthToken, ['none', 'thin', 'medium', 'thick'], `${path}.widthToken`)
+    token(border.colorToken, `${path}.colorToken`)
+  }
+  if (s.border) {
+    validateBorder(s.border, 'border')
+    for (const [side, value] of Object.entries(s.border.sides || {})) {
+      choice(side, ['top', 'right', 'bottom', 'left'], 'border side')
+      validateBorder(value, `border.${side}`)
+    }
+  }
+  if (s.radius && typeof s.radius === 'object') {
+    token(s.radius.radiusToken, 'radius')
+    for (const [corner, value] of Object.entries(s.radius.corners || {})) {
+      choice(corner, ['topLeft', 'topRight', 'bottomLeft', 'bottomRight'], 'radius corner')
+      token(value, `radius.${corner}`)
+    }
+  }
+  if (s.dimensions) {
+    choice(
+      s.dimensions.containerWidth,
+      ['containerWidth', 'narrowWidth', 'wideWidth', 'full'],
+      'container width',
+    )
+    choice(s.dimensions.minHeight, ['auto', 'screen', 'sm', 'md', 'lg'], 'minimum height')
+    choice(s.dimensions.align, ['left', 'center', 'right', 'justify'], 'layout alignment')
+    choice(s.dimensions.contentAlign, ['start', 'center', 'end', 'stretch'], 'content alignment')
+  }
+  if (s.spacing && typeof s.spacing === 'object') {
+    for (const field of ['padding', 'margin']) {
+      for (const value of Object.values(s.spacing[field] || {}))
+        choice(value, ['none', 'xs', 'sm', 'md', 'lg', 'xl', 'xxl'], `${field} spacing`)
+    }
+    choice(s.spacing.gapToken, ['none', 'xs', 'sm', 'md', 'lg', 'xl', 'xxl'], 'gap spacing')
+  }
+  if (s.shadow?.layers !== undefined) {
+    if (!Array.isArray(s.shadow.layers) || s.shadow.layers.length > 4)
+      errors.push('Shadow layers must be an array of up to four presets')
+    else
+      for (const layer of s.shadow.layers)
+        choice(layer, ['shadowSoft', 'shadowMedium', 'shadowStrong'], 'shadow layer')
+  }
+  if (s.animation && !isAnimationSupported(s.animation))
+    errors.push('Unsupported animation preset, trigger, target or options')
+  if (s.button && (s.button.version !== 1 || s.button.normal || s.button.hover))
+    errors.push('Button design is shell-only; appearance fields cannot be persisted yet')
 
   return {
     valid: errors.length === 0,

@@ -1,8 +1,12 @@
+import type { UniversalStyle } from '@/lib/style-engine/types'
+import { resolveWidgetStyles } from '@/lib/style-engine/serializer'
+import { animationAttributes } from '@/lib/style-engine/animation-presets'
 import React from 'react'
 import Link from 'next/link'
 import type { ThemeDataContext } from '@/lib/theme-engine/types'
 
 export type ItemLinkProps = {
+  style?: UniversalStyle
   label?: string
   variant?: 'link' | 'button' | 'outline'
   className?: string
@@ -10,6 +14,7 @@ export type ItemLinkProps = {
 }
 
 export function ItemLinkFrontend({
+  style: semanticStyle,
   label = 'Xem chi tiết →',
   variant = 'link',
   className = '',
@@ -23,6 +28,7 @@ export function ItemLinkFrontend({
       <Link
         href={url}
         className={`zyvavu-item-link zyvavu-item-link--btn ${className}`.trim()}
+        {...animationAttributes(semanticStyle?.animation)}
         style={{
           display: 'inline-flex',
           alignItems: 'center',
@@ -35,6 +41,7 @@ export function ItemLinkFrontend({
           fontSize: '0.875rem',
           textDecoration: 'none',
           transition: 'all 0.2s ease',
+          ...resolveWidgetStyles(semanticStyle),
         }}
       >
         {label}
@@ -47,6 +54,7 @@ export function ItemLinkFrontend({
       <Link
         href={url}
         className={`zyvavu-item-link zyvavu-item-link--outline ${className}`.trim()}
+        {...animationAttributes(semanticStyle?.animation)}
         style={{
           display: 'inline-flex',
           alignItems: 'center',
@@ -59,6 +67,7 @@ export function ItemLinkFrontend({
           fontSize: '0.875rem',
           textDecoration: 'none',
           transition: 'all 0.2s ease',
+          ...resolveWidgetStyles(semanticStyle),
         }}
       >
         {label}
@@ -70,6 +79,7 @@ export function ItemLinkFrontend({
     <Link
       href={url}
       className={`zyvavu-item-link ${className}`.trim()}
+      {...animationAttributes(semanticStyle?.animation)}
       style={{
         display: 'inline-flex',
         alignItems: 'center',
@@ -79,6 +89,7 @@ export function ItemLinkFrontend({
         fontSize: '0.9rem',
         textDecoration: 'none',
         transition: 'color 0.2s ease',
+        ...resolveWidgetStyles(semanticStyle),
       }}
     >
       {label}

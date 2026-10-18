@@ -1,8 +1,12 @@
+import type { UniversalStyle } from '@/lib/style-engine/types'
+import { resolveWidgetStyles } from '@/lib/style-engine/serializer'
+import { animationAttributes } from '@/lib/style-engine/animation-presets'
 import React from 'react'
 import Link from 'next/link'
 import type { ThemeDataContext } from '@/lib/theme-engine/types'
 
 export type RecentPostsProps = {
+  style?: UniversalStyle
   id?: string
   limit?: number
   columns?: number
@@ -11,6 +15,7 @@ export type RecentPostsProps = {
 }
 
 export function RecentPostsFrontend({
+  style: semanticStyle,
   limit = 6,
   columns = 3,
   heading = 'Bài Viết Mới Nhất',
@@ -19,14 +24,21 @@ export function RecentPostsFrontend({
   const isTag = dataContext?.archive?.taxonomyType === 'tag'
   const effectiveHeading =
     isTag && heading
-      ? heading.replace(/CHUYÊN MỤC/g, 'THẺ').replace(/Chuyên Mục/g, 'Thẻ').replace(/chuyên mục/g, 'thẻ')
+      ? heading
+          .replace(/CHUYÊN MỤC/g, 'THẺ')
+          .replace(/Chuyên Mục/g, 'Thẻ')
+          .replace(/chuyên mục/g, 'thẻ')
       : heading
   const posts: any[] = dataContext?.archive?.posts || []
   const displayPosts = posts.slice(0, limit)
 
   if (!displayPosts.length) {
     return (
-      <div className="zyvavu-widget-recent-posts" style={{ padding: '32px 0' }}>
+      <div
+        className="zyvavu-widget-recent-posts"
+        {...animationAttributes(semanticStyle?.animation)}
+        style={{ padding: '32px 0', ...resolveWidgetStyles(semanticStyle) }}
+      >
         {effectiveHeading && <h2 style={{ marginBottom: '16px' }}>{effectiveHeading}</h2>}
         <p style={{ color: '#888' }}>Chưa có bài viết nào được đăng tải.</p>
       </div>
@@ -36,7 +48,11 @@ export function RecentPostsFrontend({
   const colStyle = columns === 2 ? '1fr 1fr' : columns === 4 ? 'repeat(4, 1fr)' : 'repeat(3, 1fr)'
 
   return (
-    <div className="zyvavu-widget-recent-posts" style={{ padding: '32px 0' }}>
+    <div
+      className="zyvavu-widget-recent-posts"
+      {...animationAttributes(semanticStyle?.animation)}
+      style={{ padding: '32px 0', ...resolveWidgetStyles(semanticStyle) }}
+    >
       {effectiveHeading && (
         <h2
           className="zyvavu-widget-recent-posts__heading"
@@ -59,14 +75,20 @@ export function RecentPostsFrontend({
         }}
       >
         {displayPosts.map((post, idx) => {
-          const dateStr = post.publishedAt || post.createdAt
-            ? new Date(post.publishedAt || post.createdAt).toLocaleDateString('vi-VN', {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric',
-              })
-            : null
-          const postUrl = post.canonicalPath || post.canonicalUrl || post.url || post.publicPath || `/posts/${post.slug || post.id}`
+          const dateStr =
+            post.publishedAt || post.createdAt
+              ? new Date(post.publishedAt || post.createdAt).toLocaleDateString('vi-VN', {
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric',
+                })
+              : null
+          const postUrl =
+            post.canonicalPath ||
+            post.canonicalUrl ||
+            post.url ||
+            post.publicPath ||
+            `/posts/${post.slug || post.id}`
 
           return (
             <article
@@ -84,7 +106,9 @@ export function RecentPostsFrontend({
             >
               <div>
                 {dateStr && (
-                  <span style={{ fontSize: '12px', color: 'var(--zyvavu-theme-text-muted, #5f7370)' }}>
+                  <span
+                    style={{ fontSize: '12px', color: 'var(--zyvavu-theme-text-muted, #5f7370)' }}
+                  >
                     {dateStr}
                   </span>
                 )}

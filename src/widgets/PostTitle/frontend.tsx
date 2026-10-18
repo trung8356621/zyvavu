@@ -1,3 +1,4 @@
+import { animationAttributes } from '@/lib/style-engine/animation-presets'
 import React from 'react'
 import type { ThemeDataContext, WidgetSemanticStyle } from '@/lib/theme-engine/types'
 import { resolveWidgetStyles } from '@/lib/style-engine/serializer'
@@ -30,25 +31,25 @@ export function PostTitleFrontend({
       : semanticStyle?.typography) || 'h1'
 
   // Independent Semantic HTML tag from Widget Settings (with fallback to visual heading preset or 'h1')
-  const HeadingTag = (
-    tag ||
-    (typeof visualPreset === 'string' && visualPreset.startsWith('h') ? visualPreset : 'h1')
-  ) as keyof React.JSX.IntrinsicElements
+  const HeadingTag = (tag ||
+    (typeof visualPreset === 'string' && visualPreset.startsWith('h')
+      ? visualPreset
+      : 'h1')) as keyof React.JSX.IntrinsicElements
 
   const resolved = resolveWidgetStyles(semanticStyle)
   const effectiveAlign = resolved.textAlign || semanticStyle?.align || align
 
   const defaultColor =
-    variant === 'accent'
-      ? 'var(--zyvavu-theme-primary, var(--zyvavu-primary, #0e6b66))'
-      : 'inherit'
+    variant === 'accent' ? 'var(--zyvavu-theme-primary, var(--zyvavu-primary, #0e6b66))' : 'inherit'
 
   return (
     <div
       className={`zyvavu-widget-post-title zyvavu-widget-post-title--${variant}`}
+      {...animationAttributes(semanticStyle?.animation)}
       style={{
         textAlign: effectiveAlign,
         marginBottom: '1.5rem',
+        ...resolveWidgetStyles(semanticStyle),
       }}
     >
       <HeadingTag
@@ -59,7 +60,8 @@ export function PostTitleFrontend({
           fontSize: `var(--zyvavu-theme-${visualPreset}-size, var(--zyvavu-theme-h1-size, 44px))`,
           lineHeight: resolved.lineHeight || `var(--zyvavu-theme-${visualPreset}-line-height, 1.2)`,
           fontWeight: `var(--zyvavu-theme-${visualPreset}-weight, 700)`,
-          letterSpacing: resolved.letterSpacing || `var(--zyvavu-theme-${visualPreset}-letter-spacing, normal)`,
+          letterSpacing:
+            resolved.letterSpacing || `var(--zyvavu-theme-${visualPreset}-letter-spacing, normal)`,
           writingMode: resolved.writingMode,
           textShadow: resolved.textShadow,
           WebkitTextStroke: (resolved as any).WebkitTextStroke,

@@ -1,3 +1,4 @@
+import { ANIMATION_CSS } from '@/lib/style-engine/animation-presets'
 import type {
   ColorPreset,
   CustomPresetsStore,
@@ -6,11 +7,7 @@ import type {
   TypographyPreset,
 } from './types'
 import { validateColorString, validateThemeTokens } from './presets'
-import {
-  DEFAULT_THEME_ID,
-  getInstalledTheme,
-  normalizeThemeId,
-} from './themes'
+import { DEFAULT_THEME_ID, getInstalledTheme, normalizeThemeId } from './themes'
 import { getPreviewThemeFromCookie, resolveActiveThemeId } from './resolver'
 
 export const THEME_STYLE_PUBLISHED_KEY = 'theme_style_published'
@@ -96,7 +93,8 @@ export async function resolveActiveThemeConfig(
       }
 
       if (targetTheme === 'corporate') {
-        const legacyOverride = settingsStyles[THEME_STYLE_PUBLISHED_KEY] as Partial<ThemeConfig> | undefined
+        const legacyOverride = settingsStyles[THEME_STYLE_PUBLISHED_KEY] as
+          Partial<ThemeConfig> | undefined
         if (legacyOverride && typeof legacyOverride === 'object') {
           const validation = validateThemeTokens(legacyOverride.tokens)
           if (validation.valid) {
@@ -184,7 +182,8 @@ export async function resolveDraftThemeConfig(
       }
 
       if (targetTheme === 'corporate') {
-        const legacyOverride = settingsStyles[THEME_STYLE_DRAFT_KEY] as Partial<ThemeConfig> | undefined
+        const legacyOverride = settingsStyles[THEME_STYLE_DRAFT_KEY] as
+          Partial<ThemeConfig> | undefined
         if (legacyOverride && typeof legacyOverride === 'object') {
           const validation = validateThemeTokens(legacyOverride.tokens)
           if (validation.valid) {
@@ -267,9 +266,7 @@ export function normalizeCustomColorPreset(raw: unknown, index = 0): ColorPreset
   if (!name) return null
 
   const sourceColors: Record<string, any> =
-    obj.colors && typeof obj.colors === 'object' && !Array.isArray(obj.colors)
-      ? obj.colors
-      : obj
+    obj.colors && typeof obj.colors === 'object' && !Array.isArray(obj.colors) ? obj.colors : obj
 
   const extracted: Record<string, string> = {}
   for (const key of COLOR_TOKEN_KEYS) {
@@ -280,7 +277,11 @@ export function normalizeCustomColorPreset(raw: unknown, index = 0): ColorPreset
   }
 
   // Support legacy `secondary` key mapped to `accent` if `accent` is absent
-  if (!extracted.accent && typeof sourceColors.secondary === 'string' && validateColorString(sourceColors.secondary)) {
+  if (
+    !extracted.accent &&
+    typeof sourceColors.secondary === 'string' &&
+    validateColorString(sourceColors.secondary)
+  ) {
     extracted.accent = sourceColors.secondary.trim()
   }
 
@@ -633,7 +634,9 @@ export function generateThemeCss(themeConfig?: ThemeConfig): string {
   const pageSpacingToken = tokens?.layout?.pageSpacing || tokens?.layout?.spacing || 'md'
   const resolvedPageSpacing =
     tokens?.spacing?.[pageSpacingToken] ||
-    (pageSpacingToken.includes('px') || pageSpacingToken.includes('rem') ? pageSpacingToken : '16px')
+    (pageSpacingToken.includes('px') || pageSpacingToken.includes('rem')
+      ? pageSpacingToken
+      : '16px')
   cssVars.push(`--zyvavu-theme-page-spacing: ${resolvedPageSpacing};`)
 
   // 3. Spacing
@@ -677,7 +680,8 @@ export function generateThemeCss(themeConfig?: ThemeConfig): string {
         if (spec.size) cssVars.push(`--zyvavu-theme-${h}-size: ${spec.size};`)
         if (spec.lineHeight) cssVars.push(`--zyvavu-theme-${h}-line-height: ${spec.lineHeight};`)
         if (spec.weight) cssVars.push(`--zyvavu-theme-${h}-weight: ${spec.weight};`)
-        if (spec.letterSpacing) cssVars.push(`--zyvavu-theme-${h}-letter-spacing: ${spec.letterSpacing};`)
+        if (spec.letterSpacing)
+          cssVars.push(`--zyvavu-theme-${h}-letter-spacing: ${spec.letterSpacing};`)
       }
     }
   }
@@ -817,6 +821,7 @@ h6 {
   }
 }
 
+${ANIMATION_CSS}
 ${slotRules.join('\n')}
 `.trim()
 }

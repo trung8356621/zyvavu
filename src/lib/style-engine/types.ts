@@ -9,14 +9,11 @@ export type StyleDomain =
   | 'effects'
   | 'responsive'
   | 'section'
+  | 'animation'
+  | 'button'
 
 export type TextEffectPreset =
-  | 'none'
-  | 'shadow-soft'
-  | 'shadow-hard'
-  | 'outline'
-  | 'glow'
-  | 'subtle-depth'
+  'none' | 'shadow-soft' | 'shadow-hard' | 'outline' | 'glow' | 'subtle-depth'
 
 export type LetterSpacingPreset = 'tighter' | 'tight' | 'normal' | 'wide' | 'wider'
 export type LineHeightPreset = 'compact' | 'normal' | 'relaxed' | 'loose'
@@ -97,6 +94,10 @@ export interface BackgroundConfig {
 }
 
 export interface BorderConfig {
+  linked?: boolean
+  sides?: Partial<
+    Record<'top' | 'right' | 'bottom' | 'left', Omit<BorderConfig, 'sides' | 'linked'>>
+  >
   style?: 'solid' | 'dashed' | 'dotted' | 'none'
   widthToken?: 'none' | 'thin' | 'medium' | 'thick' | string
   colorToken?: string
@@ -104,6 +105,8 @@ export interface BorderConfig {
 }
 
 export interface RadiusConfig {
+  linked?: boolean
+  corners?: Partial<Record<'topLeft' | 'topRight' | 'bottomRight' | 'bottomLeft', string>>
   radiusToken?: 'none' | 'sm' | 'md' | 'lg' | 'pill' | string
 }
 
@@ -131,7 +134,9 @@ export interface DimensionsConfig {
 }
 
 export interface ShadowConfig {
-  shadowToken?: 'none' | 'shadowSoft' | 'shadowMedium' | 'shadowStrong' | 'subtle' | 'elevated' | string
+  layers?: string[]
+  shadowToken?:
+    'none' | 'shadowSoft' | 'shadowMedium' | 'shadowStrong' | 'subtle' | 'elevated' | string
 }
 
 export interface EffectsConfig {
@@ -170,6 +175,8 @@ export interface TypographyStyleConfig {
  * Stored in `widget.props.style`.
  */
 export interface UniversalStyle {
+  animation?: import('./animation-presets').AnimationConfig
+  button?: ButtonStyleShell
   typography?: TypographyStyleConfig
   background?: BackgroundConfig
   border?: BorderConfig
@@ -185,4 +192,28 @@ export interface UniversalStyle {
   colorToken?: string
   backgroundToken?: string
   align?: TextAlign
+}
+
+/** Reserved contract: no frontend effects until explicitly supported by a renderer. */
+export interface ButtonStyleShell {
+  version: 1
+  normal?: ButtonShellState
+  hover?: ButtonShellState
+}
+
+export interface ButtonShellState {
+  preset?: 'theme' | 'outline'
+  background?: BackgroundConfig
+  text?: TypographyStyleConfig
+  border?: BorderConfig
+  radius?: RadiusConfig
+  shadow?: ShadowConfig
+  layout?: { spacing?: SpacingConfig; dimensions?: DimensionsConfig }
+  icon?: {
+    visible?: boolean
+    sizeToken?: string
+    colorToken?: string
+    spacingToken?: string
+    rotation?: number
+  }
 }

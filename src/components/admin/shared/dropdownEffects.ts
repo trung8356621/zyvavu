@@ -1,3 +1,5 @@
+import { ANIMATION_PRESETS, type AnimationConfig } from '@/lib/style-engine/animation-presets'
+
 export type DropdownEffectId = 'none' | 'fade' | 'slide-down'
 export type ItemDropdownEffectId = 'inherit' | DropdownEffectId
 
@@ -9,29 +11,19 @@ export type DropdownEffectDefinition = {
   previewClass: string
 }
 
-export const DROPDOWN_EFFECTS: Record<DropdownEffectId, DropdownEffectDefinition> = {
-  none: {
-    id: 'none',
-    name: 'None',
-    description: 'Instant display without transition animation.',
-    cssAnimation: 'none',
-    previewClass: 'effect-none',
-  },
-  fade: {
-    id: 'fade',
-    name: 'Fade',
-    description: 'Smooth opacity transition (200ms ease).',
-    cssAnimation: 'opacity 200ms ease',
-    previewClass: 'effect-fade',
-  },
-  'slide-down': {
-    id: 'slide-down',
-    name: 'Slide Down',
-    description: 'Subtle vertical slide with fading entrance (250ms cubic-bezier).',
-    cssAnimation: 'transform 250ms ease, opacity 250ms ease',
-    previewClass: 'effect-slide-down',
-  },
-}
+// Compatibility view of the global registry, retaining the public legacy shape.
+export const DROPDOWN_EFFECTS = Object.fromEntries(
+  ANIMATION_PRESETS.filter((preset) => 'dropdownTransition' in preset).map((preset) => [
+    preset.id,
+    {
+      id: preset.id,
+      name: preset.name,
+      description: preset.name,
+      cssAnimation: 'dropdownTransition' in preset ? preset.dropdownTransition : 'none',
+      previewClass: `effect-${preset.id}`,
+    },
+  ]),
+) as Record<DropdownEffectId, DropdownEffectDefinition>
 
 /**
  * Resolves the effective dropdown animation effect for an item.
@@ -45,4 +37,19 @@ export function resolveDropdownEffect(
     return menuDefault || 'fade'
   }
   return itemEffect
+}
+
+export function dropdownToAnimation(value: DropdownEffectId): AnimationConfig | undefined {
+  const preset = ANIMATION_PRESETS.find(
+    (p) => p.id === value && (p.targets as readonly string[]).includes('dropdown'),
+  )
+  return preset && preset.id !== 'none'
+    ? { preset: preset.id, trigger: preset.trigger, target: 'dropdown' }
+    : undefined
+}
+
+export function animationToDropdown(value?: AnimationConfig): DropdownEffectId {
+  return value?.target === 'dropdown' && (value.preset === 'fade' || value.preset === 'slide-down')
+    ? value.preset
+    : 'none'
 }
