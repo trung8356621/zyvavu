@@ -2,11 +2,12 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => {
   const payload = { init: vi.fn(), db: { beginTransaction: vi.fn(), commitTransaction: vi.fn(), rollbackTransaction: vi.fn(), sessions: { tx: { db: {} } } }, create: vi.fn(), updateGlobal: vi.fn(), destroy: vi.fn() }
-  return { payload, query: vi.fn(), end: vi.fn(), inventory: vi.fn(), persist: vi.fn(), save: vi.fn(), up: vi.fn() }
+  return { payload, seed: vi.fn(), query: vi.fn(), end: vi.fn(), inventory: vi.fn(), persist: vi.fn(), save: vi.fn(), up: vi.fn() }
 })
 vi.mock('payload', () => ({ BasePayload: class { constructor() { return mocks.payload } }, createLocalReq: vi.fn(async (options) => options.req) }))
 vi.mock('@payloadcms/db-postgres', () => ({ postgresAdapter: vi.fn(() => ({})) }))
 vi.mock('@/payload.config', () => ({ default: Promise.resolve({}) }))
+vi.mock('@/lib/installation/starter-content', () => ({ seedStarterContent: mocks.seed }))
 vi.mock('@/migrations', () => ({ migrations: [{ name: 'project-migration', up: mocks.up }] }))
 vi.mock('@/lib/installation/database', () => ({ connectDatabase: vi.fn(async () => ({ query: mocks.query, end: mocks.end })), databaseInventory: mocks.inventory }))
 vi.mock('@/lib/installation/store', () => ({ persistEnvironment: mocks.persist, saveRecord: mocks.save }))
@@ -30,6 +31,9 @@ it('commits migrations, native migration records, first privileged user, and set
   expect(mocks.payload.create).toHaveBeenCalledWith(expect.objectContaining({ collection: 'users', data: { ...admin, role: 'system-admin' }, req: { transactionID: 'tx' } }))
   expect(mocks.payload.updateGlobal).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ setupComplete: true }), req: { transactionID: 'tx' } }))
   expect(mocks.payload.db.commitTransaction).toHaveBeenCalledWith('tx')
+  expect(mocks.seed).toHaveBeenCalledWith(mocks.payload, { transactionID: 'tx' }, 'vi', true)
+  expect(mocks.payload.updateGlobal.mock.invocationCallOrder[0]).toBeLessThan(mocks.seed.mock.invocationCallOrder[0])
+  expect(mocks.seed.mock.invocationCallOrder[0]).toBeLessThan(mocks.payload.db.commitTransaction.mock.invocationCallOrder[0])
   expect(record.phase).toBe('installed')
   expect(mocks.persist.mock.invocationCallOrder[0]).toBeLessThan(mocks.payload.db.commitTransaction.mock.invocationCallOrder[0])
   expect(mocks.payload.db.commitTransaction.mock.invocationCallOrder[0]).toBeLessThan(mocks.save.mock.invocationCallOrder.at(-1)!)
@@ -47,6 +51,14 @@ it('rolls back administrator creation if saving website settings fails', async (
   await expect(finishInstallation(makeRecord(), admin)).rejects.toThrow('settings rejected')
   expect(mocks.payload.db.rollbackTransaction).toHaveBeenCalledWith('tx')
   expect(mocks.payload.db.commitTransaction).not.toHaveBeenCalled()
+})
+it('rolls back setup and never marks installed if starter content fails', async () => {
+  mocks.seed.mockRejectedValueOnce(new Error('starter URL conflict'))
+  const record = makeRecord()
+  await expect(finishInstallation(record, admin)).rejects.toThrow('starter URL conflict')
+  expect(mocks.payload.db.rollbackTransaction).toHaveBeenCalledWith('tx')
+  expect(mocks.payload.db.commitTransaction).not.toHaveBeenCalled()
+  expect(record.phase).toBe('provisioning')
 })
 it('rejects initialized or nonempty databases before configuration or Payload writes', async () => {
   for (const inventory of ['installed', 'initialized', 'existing']) {

@@ -6,3 +6,7 @@ export * from './graph-builder'
 export * from './metadata'
 export * from './feed'
 export * from './SeoJsonLd'
+
+export * from './indexability'
+export * from './robots'
+export * from './sitemap'

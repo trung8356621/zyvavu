@@ -5,6 +5,7 @@ import { migrations } from '@/migrations'
 import { connectDatabase, databaseInventory } from './database'
 import { persistEnvironment, saveRecord, type InstallationRecord } from './store'
 import { SetupError, validateAdmin, validateWebsite } from './validation'
+import { seedStarterContent } from './starter-content'
 
 export async function finishInstallation(record: InstallationRecord, adminInput: { email: string; password: string }) {
   const admin = validateAdmin(adminInput)
@@ -61,6 +62,7 @@ export async function finishInstallation(record: InstallationRecord, adminInput:
       }
       await payload.create({ collection: 'users', data: { ...admin, role: 'system-admin' }, overrideAccess: true, req })
       await payload.updateGlobal({ slug: 'settings', data: { ...record.website, timezone: record.website.timezone as Setting['timezone'], setupComplete: true }, overrideAccess: true, req })
+      await seedStarterContent(payload, req, record.website.language, true)
       await payload.db.commitTransaction(transactionID)
     } catch (error) { await payload.db.rollbackTransaction(transactionID); throw error }
     record.phase = 'installed'

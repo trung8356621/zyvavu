@@ -34,13 +34,13 @@ export function buildRootLayoutMetadata(site: SeoSiteInfo): Metadata {
 
 /**
  * Converts a resolved SeoPageContext into Next.js server-side Metadata.
- * Ensures non-indexable (draft, private, 404, redirect) contexts never leak private data,
- * never emit canonical URLs, and always set noindex/nofollow.
+ * Unavailable contexts omit canonical metadata and use noindex/nofollow.
+ * Public noindex documents retain their canonical URL and descriptive metadata.
  */
 export function buildNextMetadata(context: SeoPageContext): Metadata {
   const feedUrl = buildAbsoluteUrl(context.site.siteUrl, '/feed/')
 
-  if (context.status !== 'ok' || !context.isIndexable || !context.canonicalUrl) {
+  if (context.status !== 'ok' || !context.canonicalUrl) {
     return {
       title: `Not Found — ${context.site.siteName}`,
       description: undefined,
@@ -81,8 +81,8 @@ export function buildNextMetadata(context: SeoPageContext): Metadata {
     title: context.title,
     description: context.description,
     robots: {
-      index: true,
-      follow: true,
+      index: context.isIndexable,
+      follow: context.isIndexable,
     },
     alternates: {
       canonical: context.canonicalUrl,

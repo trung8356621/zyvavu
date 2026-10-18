@@ -1,3 +1,4 @@
+import { decideIndexability } from './indexability'
 import type { Payload } from 'payload'
 
 import { loadPublicSiteSettings } from '@/lib/site/settings'
@@ -64,7 +65,7 @@ function buildNotFoundContext(site: SeoSiteInfo, requestedPath: string): SeoPage
   return {
     status: 'not_found',
     requestedPath,
-    isIndexable: false,
+    isIndexable: decideIndexability({ status: 'not_found', canonicalPath: null }).indexable,
     site,
     title: `Not Found — ${site.siteName}`,
     documentTitle: 'Not Found',
@@ -82,7 +83,11 @@ function buildRedirectContext(
     status: 'redirect',
     requestedPath,
     redirectTarget,
-    isIndexable: false,
+    isIndexable: decideIndexability({
+      status: 'redirect',
+      canonicalPath: null,
+      recordRole: 'redirect',
+    }).indexable,
     site,
     title: site.siteName,
     documentTitle: site.siteName,
@@ -101,7 +106,12 @@ function buildDefaultHomeContext(site: SeoSiteInfo): SeoPageContext {
     status: 'ok',
     requestedPath: '/',
     resourceType: 'home',
-    isIndexable: true,
+    isIndexable: decideIndexability({
+      status: 'ok',
+      resourceType: 'home',
+      canonicalPath,
+      recordRole: 'canonical',
+    }).indexable,
     site,
     canonicalPath,
     canonicalUrl,
@@ -242,7 +252,13 @@ export async function resolveSeoPageContext(
       status: 'ok',
       requestedPath: normalizedRequested,
       resourceType: isHome ? 'home' : 'page',
-      isIndexable: true,
+      isIndexable: decideIndexability({
+        status: 'ok',
+        resourceType: isHome ? 'home' : 'page',
+        doc: pageDoc,
+        canonicalPath: isHome ? '/' : canonicalPath,
+        recordRole: 'canonical',
+      }).indexable,
       site,
       canonicalPath: isHome ? '/' : canonicalPath,
       canonicalUrl: isHome ? homeUrl : canonicalUrl,
@@ -317,7 +333,13 @@ export async function resolveSeoPageContext(
       status: 'ok',
       requestedPath: normalizedRequested,
       resourceType: 'post',
-      isIndexable: true,
+      isIndexable: decideIndexability({
+        status: 'ok',
+        resourceType: 'post',
+        doc: postDoc,
+        canonicalPath,
+        recordRole: 'canonical',
+      }).indexable,
       site,
       canonicalPath,
       canonicalUrl,
@@ -375,7 +397,13 @@ export async function resolveSeoPageContext(
       status: 'ok',
       requestedPath: normalizedRequested,
       resourceType: resolved.resourceType,
-      isIndexable: true,
+      isIndexable: decideIndexability({
+        status: 'ok',
+        resourceType: resolved.resourceType,
+        doc: termDoc,
+        canonicalPath,
+        recordRole: 'canonical',
+      }).indexable,
       site,
       canonicalPath,
       canonicalUrl,

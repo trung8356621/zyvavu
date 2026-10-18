@@ -5,6 +5,7 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
+    "seed:starter": "tsx scripts/seed-starter.ts",
     "build": "cross-env NODE_OPTIONS=\"--no-deprecation --max-old-space-size=8000\" next build",
     "dev": "node scripts/dev.mjs",
     "dev:webpack": "node scripts/dev.mjs --webpack",

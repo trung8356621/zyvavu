@@ -1,0 +1,116 @@
+/* Native XML presentation; loc remains selectable text, not an HTML link. */
+@namespace sm url("http://www.sitemaps.org/schemas/sitemap/0.9");
+
+:root {
+  color-scheme: light;
+  background: #f3f6fb;
+  color: #213047;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+sm|sitemapindex,
+sm|urlset {
+  display: block;
+  box-sizing: border-box;
+  min-height: 100vh;
+  padding: 40px max(20px, calc((100vw - 1160px) / 2)) 48px;
+  background: #f3f6fb;
+  overflow-x: auto;
+}
+
+sm|sitemapindex::before,
+sm|urlset::before {
+  display: block;
+  box-sizing: border-box;
+  margin-bottom: 24px;
+  padding: 28px 32px;
+  border-radius: 12px;
+  background: #1257a6;
+  color: #fff;
+  font-size: 1.2rem;
+  font-weight: 600;
+  white-space: pre-line;
+  content: "ZYVAVU · SƠ ĐỒ TRANG WEB XML\A Danh sách sơ đồ giúp công cụ tìm kiếm khám phá các URL chính thức của website.";
+}
+
+sm|urlset::before {
+  content: "ZYVAVU · DANH SÁCH URL\A Các URL chính thức có thể lập chỉ mục và thời gian cập nhật được cung cấp bên dưới.";
+}
+
+sm|sitemap,
+sm|url {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  min-width: 640px;
+  background: #fff;
+  border-bottom: 1px solid #dce4ee;
+}
+
+sm|sitemap {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+sm|sitemap:nth-of-type(even),
+sm|url:nth-of-type(even) {
+  background: #eaf1f9;
+}
+
+sm|loc,
+sm|lastmod {
+  display: block;
+  min-width: 0;
+  padding: 18px 24px;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+sm|loc {
+  color: #124f91;
+}
+
+sm|lastmod {
+  border-left: 1px solid #dce4ee;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.875rem;
+}
+
+sm|loc::before,
+sm|lastmod::before {
+  display: block;
+  margin-bottom: 4px;
+  color: #52647a;
+  font-size: 0.75rem;
+  font-weight: 600;
+  content: "URL CHÍNH THỨC";
+}
+
+sm|sitemap > sm|loc::before {
+  content: "URL SƠ ĐỒ";
+}
+
+sm|lastmod::before {
+  content: "CẬP NHẬT LẦN CUỐI";
+}
+
+sm|sitemapindex::after,
+sm|urlset::after {
+  display: block;
+  margin-top: 24px;
+  color: #52647a;
+  content: "Đây là tài liệu XML dành cho công cụ tìm kiếm. Để duyệt các liên kết có thể nhấp, mở /sitemap-view trên website này. Thời gian cập nhật hiển thị theo định dạng ISO 8601; URL không có ngày được giữ nguyên.";
+}
+
+@media (max-width: 700px) {
+  sm|sitemapindex,
+  sm|urlset {
+    padding: 16px 12px 32px;
+  }
+
+  sm|sitemapindex::before,
+  sm|urlset::before {
+    padding: 22px 20px;
+    font-size: 1rem;
+  }
+}
