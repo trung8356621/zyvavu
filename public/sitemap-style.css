@@ -67,7 +67,9 @@ sm|lastmod {
 }
 
 sm|loc {
-  color: #124f91;
+  color: inherit;
+  cursor: text;
+  text-decoration: none;
 }
 
 sm|lastmod {

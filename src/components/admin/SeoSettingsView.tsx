@@ -1,7 +1,7 @@
 import React from 'react'
 import { isSiteStaff } from '@/access/roles'
 import { DefaultTemplate } from '@payloadcms/next/templates'
-import { Paper, Stack, Text, Title } from '@mantine/core'
+import { Anchor, Group, Paper, Stack, Text, Title } from '@mantine/core'
 import type { AdminViewServerProps } from 'payload'
 
 export function SeoSettingsView(props: AdminViewServerProps) {
@@ -37,6 +37,10 @@ export function SeoSettingsView(props: AdminViewServerProps) {
               <Text c="dimmed" size="md">
                 SEO configuration will be available in a future implementation.
               </Text>
+              <Group>
+                <Anchor href="/sitemap-view">Sitemap viewer</Anchor>
+                <Anchor href="/sitemap.xml">Raw XML</Anchor>
+              </Group>
             </Stack>
           </Paper>
         </div>
@@ -54,6 +58,10 @@ export function SeoSettingsView(props: AdminViewServerProps) {
           <Text c="dimmed" size="md">
             SEO configuration will be available in a future implementation.
           </Text>
+          <Group>
+            <Anchor href="/sitemap-view">Sitemap viewer</Anchor>
+            <Anchor href="/sitemap.xml">Raw XML</Anchor>
+          </Group>
         </Stack>
       </Paper>
     </div>

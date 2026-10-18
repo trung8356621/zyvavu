@@ -27,7 +27,7 @@ it.each([
   mocks.status.mockResolvedValue(status)
   const entries = [
     () => robots(),
-    () => index(),
+    () => index(new Request('http://localhost/sitemap.xml')),
     () => chunk(new Request('http://localhost/sitemap/posts/1.xml'), { params: Promise.resolve({ group: 'posts', page: '1.xml' }) }),
     () => Viewer(),
     () => ChunkViewer({ params: Promise.resolve({ group: 'posts', page: '1' }) }),
@@ -42,7 +42,7 @@ it('returns XML, plain text and HTML elements after installation', async () => {
     findGlobal: async () => ({ siteName: 'Zyvavu', siteUrl: 'https://zyvavu.test', language: 'vi' }),
     find: async () => ({ docs: [], totalDocs: 0 }),
   })
-  const xml = await index()
+  const xml = await index(new Request('http://localhost/sitemap.xml'))
   expect(xml.status).toBe(200)
   expect(xml.headers.get('content-type')).toContain('application/xml')
   expect(await xml.text()).toContain('<sitemapindex')

@@ -1,8 +1,8 @@
 import React from 'react'
-import Link from 'next/link'
 
 import type { SitemapChunkView, SitemapIndexRow } from '@/lib/seo/sitemap-view'
 import { sitemapViewPath } from '@/lib/seo/sitemap-view'
+import { sitemapChunkPath } from '@/lib/seo/sitemap'
 
 function formatLastmod(value?: string): string {
   if (!value) return '—'
@@ -15,7 +15,12 @@ function formatLastmod(value?: string): string {
   }).format(new Date(time))
 }
 
-export function SitemapIndexView({ rows }: { rows: SitemapIndexRow[] }) {
+function Lastmod({ value }: { value?: string }) {
+  if (!value || Number.isNaN(Date.parse(value))) return <>—</>
+  return <time dateTime={value} title={value}>{formatLastmod(value)} UTC</time>
+}
+
+export function SitemapIndexView({ rows, xmlNavigation = false }: { rows: SitemapIndexRow[]; xmlNavigation?: boolean }) {
   return (
     <main className="zv-sitemap">
       <p className="zv-sitemap__brand">Zyvavu</p>
@@ -24,7 +29,7 @@ export function SitemapIndexView({ rows }: { rows: SitemapIndexRow[] }) {
         Bản xem này giúp người đọc duyệt các sơ đồ trang. Công cụ tìm kiếm vẫn nhận tệp XML gốc. Trang không dùng XSLT.
       </p>
       <p>
-        <a href="/sitemap.xml">Xem XML gốc</a>
+        <a href="/sitemap.xml?raw=1">Xem XML gốc</a>
       </p>
       {rows.length === 0 ? (
         <p>Chưa có sơ đồ nào được xuất bản.</p>
@@ -44,15 +49,15 @@ export function SitemapIndexView({ rows }: { rows: SitemapIndexRow[] }) {
               {rows.map((row) => (
                 <tr key={`${row.group}-${row.page}`}>
                   <td>
-                    <a href={row.viewPath}>
+                    <a href={xmlNavigation ? row.xmlPath : row.viewPath}>
                       {row.label}
                       {row.page > 1 ? ` — phần ${row.page}` : ''}
                     </a>
                   </td>
                   <td>{row.urlCount}</td>
-                  <td>{formatLastmod(row.lastmod)}</td>
+                  <td><Lastmod value={row.lastmod} /></td>
                   <td>
-                    <a href={row.xmlPath}>Xem XML gốc</a>
+                    <a href={`${row.xmlPath}?raw=1`}>Xem XML gốc</a>
                   </td>
                 </tr>
               ))}
@@ -64,13 +69,13 @@ export function SitemapIndexView({ rows }: { rows: SitemapIndexRow[] }) {
   )
 }
 
-export function SitemapChunkView({ view }: { view: SitemapChunkView }) {
+export function SitemapChunkView({ view, xmlNavigation = false }: { view: SitemapChunkView; xmlNavigation?: boolean }) {
   const pages = Array.from({ length: view.pageCount }, (_, index) => index + 1)
   return (
     <main className="zv-sitemap">
       <p className="zv-sitemap__brand">Zyvavu</p>
       <p>
-        <Link href="/sitemap-view">Quay lại sơ đồ trang</Link>
+        <a href={xmlNavigation ? '/sitemap.xml' : '/sitemap-view'}>Quay lại sơ đồ trang</a>
       </p>
       <h1>
         {view.label}
@@ -81,7 +86,7 @@ export function SitemapChunkView({ view }: { view: SitemapChunkView }) {
         {view.pageCount > 1 ? ` Có ${view.pageCount} phần.` : ''}
       </p>
       <p>
-        <a href={view.xmlPath}>Xem XML gốc</a>
+        <a href={`${view.xmlPath}?raw=1`}>Xem XML gốc</a>
       </p>
       <div className="zv-sitemap__table-wrap">
         <table>
@@ -105,7 +110,7 @@ export function SitemapChunkView({ view }: { view: SitemapChunkView }) {
                   <td>
                     <a href={entry.loc}>{entry.loc}</a>
                   </td>
-                  <td>{formatLastmod(entry.lastmod)}</td>
+                  <td><Lastmod value={entry.lastmod} /></td>
                 </tr>
               ))
             )}
@@ -120,7 +125,7 @@ export function SitemapChunkView({ view }: { view: SitemapChunkView }) {
                 {page}
               </span>
             ) : (
-              <a key={page} href={sitemapViewPath(view.group, page)}>
+              <a key={page} href={xmlNavigation ? sitemapChunkPath(view.group, page) : sitemapViewPath(view.group, page)}>
                 {page}
               </a>
             ),
