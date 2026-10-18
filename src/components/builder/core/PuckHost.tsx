@@ -46,6 +46,57 @@ export const MEGA_MENU_VIEWPORTS = DESKTOP_ONLY_VIEWPORT
 interface PuckApi {
   dispatch: (action: any) => void
   getAppState: () => any
+  findItem?: (id: string) => ReturnType<typeof findItemAndSelector>
+}
+
+type StyleMenuRequest = {
+  componentType: string
+  componentVariant?: string
+  componentId: string
+  currentStyle: WidgetSemanticStyle
+  anchorEl: HTMLElement | null
+  initialPosition?: { x: number; y: number }
+}
+
+type EditorBridgeValue = {
+  registerApi: (api: PuckApi) => void
+  select: (id: string | undefined) => void
+  openStyle: (request: StyleMenuRequest) => void
+  styleComponentId?: string
+}
+
+const EditorBridgeContext = React.createContext<EditorBridgeValue | null>(null)
+const EMPTY_STYLE: WidgetSemanticStyle = Object.freeze({})
+
+function StablePuckOverride({ children }: { children: React.ReactNode }) {
+  const bridge = React.useContext(EditorBridgeContext)!
+  return (
+    <PuckBridge onRegisterApi={bridge.registerApi} onSelectionChange={bridge.select}>
+      {children}
+    </PuckBridge>
+  )
+}
+
+function StableActionBarOverride(
+  props: Omit<
+    React.ComponentProps<typeof PuckActionBarBridge>,
+    'onOpenStyleMenu' | 'styleMenuComponentId'
+  >,
+) {
+  const bridge = React.useContext(EditorBridgeContext)!
+  return (
+    <PuckActionBarBridge
+      {...props}
+      onOpenStyleMenu={bridge.openStyle}
+      styleMenuComponentId={bridge.styleComponentId}
+    />
+  )
+}
+
+const PUCK_OVERRIDES = {
+  headerActions: () => <React.Fragment />,
+  puck: StablePuckOverride,
+  actionBar: StableActionBarOverride,
 }
 
 function PuckBridge({
@@ -59,20 +110,36 @@ function PuckBridge({
 }) {
   const appState = usePuck((s) => s.appState)
   const dispatch = usePuck((s) => s.dispatch)
+  const getItemById = usePuck((s) => s.getItemById)
+  const getSelectorForId = usePuck((s) => s.getSelectorForId)
   const selected = usePuck((s) => s.selectedItem)
-  const selectedId = selected?.props?.id
+  const selector = appState.ui?.itemSelector
+  const selectedId =
+    selected?.props?.id ||
+    (selector
+      ? selector.zone
+        ? appState.data.zones?.[selector.zone]?.[selector.index]?.props?.id
+        : appState.data.content?.[selector.index]?.props?.id
+      : undefined)
   React.useEffect(() => {
     onSelectionChange(selectedId)
   }, [selectedId, onSelectionChange])
   const appStateRef = React.useRef(appState)
-  appStateRef.current = appState
+  React.useLayoutEffect(() => {
+    appStateRef.current = appState
+  }, [appState])
 
   React.useEffect(() => {
     onRegisterApi({
       dispatch,
       getAppState: () => appStateRef.current,
+      findItem: (id) => {
+        const item = getItemById?.(id)
+        const selector = getSelectorForId?.(id)
+        return item && selector ? { item, selector } : null
+      },
     })
-  }, [dispatch, onRegisterApi])
+  }, [dispatch, onRegisterApi, getItemById, getSelectorForId])
 
   return <>{children}</>
 }
@@ -128,7 +195,7 @@ function PuckActionBarBridge({
   const rawType = resolvedItem?.type || label || ''
   const componentType = normalizeComponentType(rawType)
   const componentId = resolvedItem?.props?.id || resolvedItem?.id || ''
-  const currentStyle = (resolvedItem?.props?.style as WidgetSemanticStyle) || {}
+  const currentStyle = (resolvedItem?.props?.style as WidgetSemanticStyle) || EMPTY_STYLE
 
   const handleEditStyleClick = (e: React.SyntheticEvent) => {
     e.stopPropagation()
@@ -239,6 +306,7 @@ export function PuckHost({
   const [validationError, setValidationError] = useState<string | null>(null)
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false)
   const latestDocRef = React.useRef<BuilderDocument>(localDoc)
+  const viewportRef = React.useRef<HTMLDivElement>(null)
 
   const pageSettingsPlugin: Plugin = useMemo(() => {
     return {
@@ -346,6 +414,8 @@ export function PuckHost({
       anchorEl: HTMLElement | null
       initialPosition?: { x: number; y: number }
     }) => {
+      // Reopening the active editor must not erase its live preview.
+      if (activeStyleMenu?.opened && activeStyleMenu.componentId === componentId) return
       stylePreviewStore.clearPreview()
       setActiveStyleMenu({
         opened: true,
@@ -357,7 +427,7 @@ export function PuckHost({
         initialPosition,
       })
     },
-    [],
+    [activeStyleMenu],
   )
 
   const handleCloseStyleMenu = useCallback(() => {
@@ -387,7 +457,19 @@ export function PuckHost({
             },
           }
         }
-        return item
+        if (!item?.props) return item
+        let changed = false
+        const props = { ...item.props }
+        for (const [key, value] of Object.entries(props)) {
+          if (Array.isArray(value) && value.some((child) => child?.props && child?.type)) {
+            const children = value.map(updateItem)
+            if (children.some((child, index) => child !== value[index])) {
+              props[key] = children
+              changed = true
+            }
+          }
+        }
+        return changed ? { ...item, props } : item
       }
 
       if (api) {
@@ -395,6 +477,7 @@ export function PuckHost({
           type: 'setData',
           data: (prev: Data) => ({
             ...prev,
+            root: updateItem(prev.root),
             content: (prev.content || []).map(updateItem),
             zones: Object.fromEntries(
               Object.entries(prev.zones || {}).map(([zoneKey, items]) => [
@@ -406,26 +489,9 @@ export function PuckHost({
         })
       }
 
-      const current = latestDocRef.current || localDoc
-      const updatedDoc: BuilderDocument = {
-        ...current,
-        content: (current.content || []).map(updateItem),
-        zones: Object.fromEntries(
-          Object.entries(current.zones || {}).map(([zoneKey, items]) => [
-            zoneKey,
-            (items as any[]).map(updateItem),
-          ]),
-        ),
-      }
-      latestDocRef.current = updatedDoc
-      setLocalDoc(updatedDoc)
-      if (onChange) {
-        onChange(updatedDoc)
-      }
-
       setActiveStyleMenu((prev) => (prev ? { ...prev, currentStyle: newStyle } : null))
     },
-    [activeStyleMenu, localDoc, onChange],
+    [activeStyleMenu],
   )
 
   // Native right-click on canvas widgets triggers the style context menu
@@ -447,7 +513,7 @@ export function PuckHost({
       const appState = api.getAppState()
       const data = appState.data as Data
 
-      const found = findItemAndSelector(data, compId)
+      const found = api.findItem?.(compId) || findItemAndSelector(data, compId)
       if (!found) return
 
       const { item, selector } = found
@@ -498,43 +564,42 @@ export function PuckHost({
       })
     }
 
-    const viewportEl =
-      typeof window !== 'undefined' ? window.document.querySelector('.zyvavu-puck-viewport') : null
-    if (viewportEl) {
-      viewportEl.addEventListener('contextmenu', handleContextMenu as EventListener)
-    }
-
-    const frameEl =
-      typeof window !== 'undefined'
-        ? (window.document.querySelector('#preview-frame') as HTMLIFrameElement | null)
-        : null
+    const viewportEl = viewportRef.current
+    if (!viewportEl) return
+    viewportEl.addEventListener('contextmenu', handleContextMenu)
+    let frame: HTMLIFrameElement | null = null
     let frameDoc: Document | null = null
-    const attachToFrame = () => {
+    const attachDocument = () => {
+      let nextDoc: Document | null = null
       try {
-        if (frameEl && frameEl.contentDocument) {
-          frameDoc = frameEl.contentDocument
-          frameDoc.addEventListener('contextmenu', handleContextMenu as EventListener)
-        }
+        nextDoc = frame?.contentDocument || null
       } catch {
-        // Cross-origin or not mounted
+        /* Cross-origin frames cannot be inspected. */
       }
+      if (frameDoc === nextDoc) return
+      frameDoc?.removeEventListener('contextmenu', handleContextMenu)
+      frameDoc = nextDoc
+      frameDoc?.addEventListener('contextmenu', handleContextMenu)
     }
-
-    if (frameEl) {
-      frameEl.addEventListener('load', attachToFrame)
-      attachToFrame()
+    const discoverFrame = () => {
+      const nextFrame = viewportEl.querySelector<HTMLIFrameElement>('iframe#preview-frame, iframe')
+      if (frame !== nextFrame) {
+        frame?.removeEventListener('load', attachDocument)
+        frameDoc?.removeEventListener('contextmenu', handleContextMenu)
+        frameDoc = null
+        frame = nextFrame
+        frame?.addEventListener('load', attachDocument)
+      }
+      attachDocument()
     }
-
+    discoverFrame()
+    const observer = new MutationObserver(discoverFrame)
+    observer.observe(viewportEl, { childList: true, subtree: true })
     return () => {
-      if (viewportEl) {
-        viewportEl.removeEventListener('contextmenu', handleContextMenu as EventListener)
-      }
-      if (frameEl) {
-        frameEl.removeEventListener('load', attachToFrame)
-      }
-      if (frameDoc) {
-        frameDoc.removeEventListener('contextmenu', handleContextMenu as EventListener)
-      }
+      observer.disconnect()
+      viewportEl.removeEventListener('contextmenu', handleContextMenu)
+      frame?.removeEventListener('load', attachDocument)
+      frameDoc?.removeEventListener('contextmenu', handleContextMenu)
     }
   }, [])
 
@@ -548,163 +613,143 @@ export function PuckHost({
     })
   }, [])
 
-  const puckOverrides = useMemo(() => {
-    return {
-      headerActions: () => <React.Fragment />,
-      puck: ({ children }: { children: React.ReactNode }) => (
-        <PuckBridge onRegisterApi={handleRegisterPuckApi} onSelectionChange={handleSelectionChange}>
-          {children}
-        </PuckBridge>
-      ),
-      actionBar: (props: any) => (
-        <PuckActionBarBridge
-          {...props}
-          onOpenStyleMenu={handleOpenStyleMenu}
-          styleMenuComponentId={activeStyleMenu?.opened ? activeStyleMenu.componentId : undefined}
-        />
-      ),
-    }
-  }, [
-    handleRegisterPuckApi,
-    handleOpenStyleMenu,
-    handleSelectionChange,
-    activeStyleMenu?.opened,
-    activeStyleMenu?.componentId,
-  ])
+  const bridgeValue: EditorBridgeValue = {
+    registerApi: handleRegisterPuckApi,
+    select: handleSelectionChange,
+    openStyle: handleOpenStyleMenu,
+    styleComponentId: activeStyleMenu?.opened ? activeStyleMenu.componentId : undefined,
+  }
+  const activeViewports = desktopOnly ? DESKTOP_ONLY_VIEWPORT : viewports || RESPONSIVE_VIEWPORTS
+  const puckUi = useMemo(
+    () => ({
+      viewports: {
+        current: { width: '100%' as const, height: 'auto' as const },
+        options: activeViewports,
+        controlsVisible: !desktopOnly,
+      },
+    }),
+    [activeViewports, desktopOnly],
+  )
+  const plugins = useMemo(() => [pageSettingsPlugin], [pageSettingsPlugin])
 
   return (
-    <Box
-      className="zyvavu-puck-host-wrapper"
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        height: height || '100%',
-        width: '100%',
-        minWidth: 0,
-        minHeight: 0,
-        position: 'relative',
-        backgroundColor: 'var(--zyvavu-surface, #ffffff)',
-        overflow: 'hidden',
-      }}
-    >
-      <LoadingOverlay visible={isLoading || isSaving} overlayProps={{ blur: 1 }} />
-
-      {/* Optional Builder Top Bar */}
-      {!hideTopBar && (
-        <Box
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '8px 16px',
-            borderBottom: '1px solid var(--zyvavu-border, #dfe5e2)',
-            backgroundColor: 'var(--zyvavu-background, #f5f6f4)',
-            flexShrink: 0,
-          }}
-        >
-          <Group gap="sm">
-            <Text size="sm" fw={600} c="var(--zyvavu-text, #17201f)">
-              Visual Layout Builder
-            </Text>
-            <Text size="xs" c="dimmed">
-              (Puck Engine v{CURRENT_BUILDER_VERSION})
-            </Text>
-          </Group>
-
-          <Group gap="sm">
-            {headerActions}
-            {saveSuccess && (
-              <Group gap={4} style={{ color: '#0e6b66' }}>
-                <Check size={14} />
-                <Text size="xs" fw={500}>
-                  Saved
-                </Text>
-              </Group>
-            )}
-            <Button
-              size="xs"
-              color="#0e6b66"
-              leftSection={<Save size={14} />}
-              loading={isSaving}
-              onClick={() => handlePublish()}
-            >
-              Save Layout
-            </Button>
-          </Group>
-        </Box>
-      )}
-
-      {(error || validationError) && (
-        <Alert
-          icon={<AlertCircle size={16} />}
-          title="Error"
-          color="red"
-          withCloseButton
-          onClose={() => setValidationError(null)}
-          m="xs"
-        >
-          {error || validationError}
-        </Alert>
-      )}
-
-      {/* Visual Canvas Area */}
+    <EditorBridgeContext.Provider value={bridgeValue}>
       <Box
-        className="zyvavu-puck-viewport"
+        className="zyvavu-puck-host-wrapper"
         style={{
-          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          height: height || '100%',
           width: '100%',
-          height: '100%',
           minWidth: 0,
           minHeight: 0,
-          overflow: 'hidden',
           position: 'relative',
+          backgroundColor: 'var(--zyvavu-surface, #ffffff)',
+          overflow: 'hidden',
         }}
       >
-        {(() => {
-          const activeViewports = desktopOnly
-            ? DESKTOP_ONLY_VIEWPORT
-            : viewports || RESPONSIVE_VIEWPORTS
-          const showControls = !desktopOnly
+        <LoadingOverlay visible={isLoading || isSaving} overlayProps={{ blur: 1 }} />
 
-          return (
-            <Puck
-              config={config}
-              data={puckData}
-              plugins={[pageSettingsPlugin]}
-              viewports={activeViewports}
-              ui={{
-                viewports: {
-                  current: {
-                    width: '100%',
-                    height: 'auto',
-                  },
-                  options: activeViewports,
-                  controlsVisible: showControls,
-                },
-              }}
-              overrides={puckOverrides}
-              onPublish={handlePublish}
-              onChange={handlePuckChange}
-            />
-          )
-        })()}
+        {/* Optional Builder Top Bar */}
+        {!hideTopBar && (
+          <Box
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '8px 16px',
+              borderBottom: '1px solid var(--zyvavu-border, #dfe5e2)',
+              backgroundColor: 'var(--zyvavu-background, #f5f6f4)',
+              flexShrink: 0,
+            }}
+          >
+            <Group gap="sm">
+              <Text size="sm" fw={600} c="var(--zyvavu-text, #17201f)">
+                Visual Layout Builder
+              </Text>
+              <Text size="xs" c="dimmed">
+                (Puck Engine v{CURRENT_BUILDER_VERSION})
+              </Text>
+            </Group>
+
+            <Group gap="sm">
+              {headerActions}
+              {saveSuccess && (
+                <Group gap={4} style={{ color: '#0e6b66' }}>
+                  <Check size={14} />
+                  <Text size="xs" fw={500}>
+                    Saved
+                  </Text>
+                </Group>
+              )}
+              <Button
+                size="xs"
+                color="#0e6b66"
+                leftSection={<Save size={14} />}
+                loading={isSaving}
+                onClick={() => handlePublish()}
+              >
+                Save Layout
+              </Button>
+            </Group>
+          </Box>
+        )}
+
+        {(error || validationError) && (
+          <Alert
+            icon={<AlertCircle size={16} />}
+            title="Error"
+            color="red"
+            withCloseButton
+            onClose={() => setValidationError(null)}
+            m="xs"
+          >
+            {error || validationError}
+          </Alert>
+        )}
+
+        {/* Visual Canvas Area */}
+        <Box
+          ref={viewportRef}
+          className="zyvavu-puck-viewport"
+          style={{
+            flex: 1,
+            width: '100%',
+            height: '100%',
+            minWidth: 0,
+            minHeight: 0,
+            overflow: 'hidden',
+            position: 'relative',
+          }}
+        >
+          <Puck
+            config={config}
+            data={puckData}
+            plugins={plugins}
+            viewports={activeViewports}
+            ui={puckUi}
+            overrides={PUCK_OVERRIDES}
+            onPublish={handlePublish}
+            onChange={handlePuckChange}
+          />
+        </Box>
+
+        {/* Stable Floating Style Context Menu (Owned outside transient Puck ActionBar) */}
+        {activeStyleMenu?.opened && (
+          <WidgetStyleContextMenu
+            opened={activeStyleMenu.opened}
+            onClose={handleCloseStyleMenu}
+            anchorEl={activeStyleMenu.anchorEl}
+            initialPosition={activeStyleMenu.initialPosition}
+            componentType={activeStyleMenu.componentType}
+            componentVariant={activeStyleMenu.componentVariant}
+            componentId={activeStyleMenu.componentId}
+            currentStyle={activeStyleMenu.currentStyle}
+            themeConfig={themeConfig}
+            onUpdateStyle={handleUpdateWidgetStyle}
+          />
+        )}
       </Box>
-
-      {/* Stable Floating Style Context Menu (Owned outside transient Puck ActionBar) */}
-      {activeStyleMenu?.opened && (
-        <WidgetStyleContextMenu
-          opened={activeStyleMenu.opened}
-          onClose={handleCloseStyleMenu}
-          anchorEl={activeStyleMenu.anchorEl}
-          initialPosition={activeStyleMenu.initialPosition}
-          componentType={activeStyleMenu.componentType}
-          componentVariant={activeStyleMenu.componentVariant}
-          componentId={activeStyleMenu.componentId}
-          currentStyle={activeStyleMenu.currentStyle}
-          themeConfig={themeConfig}
-          onUpdateStyle={handleUpdateWidgetStyle}
-        />
-      )}
-    </Box>
+    </EditorBridgeContext.Provider>
   )
 }

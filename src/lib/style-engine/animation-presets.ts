@@ -77,6 +77,7 @@ export const ANIMATION_CSS = `
 @keyframes zyvavu-motion-fade { from { opacity: .3 } to { opacity: 1 } }
 @keyframes zyvavu-motion-slide { from { opacity: .3; transform: translateY(-8px) } to { opacity: 1; transform: none } }
 @keyframes zyvavu-motion-pulse { 50% { transform: scale(1.015) } }
+@keyframes zyvavu-motion-lift-preview { 50% { transform: translateY(-3px) } }
 @media (prefers-reduced-motion: no-preference) {
   [data-zyvavu-motion] { --zyvavu-motion-duration: 250ms; }
   [data-zyvavu-speed="fast"] { --zyvavu-motion-duration: 150ms; }
@@ -86,5 +87,6 @@ export const ANIMATION_CSS = `
   [data-zyvavu-motion="pulse"] { animation: zyvavu-motion-pulse calc(var(--zyvavu-motion-duration) * 12) ease-in-out infinite; }
   [data-zyvavu-motion="lift"] { transition: transform var(--zyvavu-motion-duration) ease; }
   [data-zyvavu-motion="lift"]:is(:hover, :focus-within) { transform: translateY(-3px); }
+  [data-zyvavu-motion="lift"][data-zyvavu-motion-preview="true"] { animation: zyvavu-motion-lift-preview var(--zyvavu-motion-duration) ease; }
 }
 `

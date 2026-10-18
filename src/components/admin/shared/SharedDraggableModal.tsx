@@ -27,6 +27,31 @@ export interface SharedDraggableModalProps {
   className?: string
   style?: React.CSSProperties
   headerExtra?: React.ReactNode
+  subHeader?: React.ReactNode
+}
+
+export function clampModalPosition(
+  position: { x: number; y: number },
+  viewport: { width: number; height: number },
+  size: { width: number; height: number },
+) {
+  const padding = 12
+  return {
+    x: Math.max(
+      padding,
+      Math.min(
+        position.x,
+        viewport.width - Math.min(size.width, viewport.width - padding * 2) - padding,
+      ),
+    ),
+    y: Math.max(
+      padding,
+      Math.min(
+        position.y,
+        viewport.height - Math.min(size.height, viewport.height - padding * 2) - padding,
+      ),
+    ),
+  }
 }
 
 /**
@@ -104,12 +129,24 @@ export function SharedDraggableModal({
   className,
   style,
   headerExtra,
+  subHeader,
 }: SharedDraggableModalProps) {
-  const [position, setPosition] = useState<{ x: number; y: number }>(() => initialPosition || { x: 340, y: 80 })
+  const [viewport, setViewport] = useState(() => ({
+    width: typeof window === 'undefined' ? 0 : window.innerWidth,
+    height: typeof window === 'undefined' ? 0 : window.innerHeight,
+  }))
+  const [position, setPosition] = useState<{ x: number; y: number }>(
+    () => initialPosition || { x: 340, y: 80 },
+  )
   const [isDragging, setIsDragging] = useState(false)
   const hasBeenDraggedRef = useRef(false)
   const isDraggingRef = useRef(false)
-  const dragStartRef = useRef<{ pointerX: number; pointerY: number; modalX: number; modalY: number }>({
+  const dragStartRef = useRef<{
+    pointerX: number
+    pointerY: number
+    modalX: number
+    modalY: number
+  }>({
     pointerX: 0,
     pointerY: 0,
     modalX: 0,
@@ -119,11 +156,37 @@ export function SharedDraggableModal({
 
   const numericWidth = typeof width === 'number' ? width : parseInt(String(width), 10) || 300
 
+  useEffect(() => {
+    if (!opened) return
+    const resize = () => {
+      const next = {
+        width: window.innerWidth,
+        height: Math.min(window.innerHeight, window.visualViewport?.height || window.innerHeight),
+      }
+      setViewport(next)
+      const rect = modalRef.current?.getBoundingClientRect()
+      if (rect) setPosition((previous) => clampModalPosition(previous, next, rect))
+    }
+    resize()
+    window.addEventListener('resize', resize)
+    window.visualViewport?.addEventListener('resize', resize)
+    return () => {
+      window.removeEventListener('resize', resize)
+      window.visualViewport?.removeEventListener('resize', resize)
+    }
+  }, [opened])
+
   // Position calculation and reset when opened
   const resetToAnchorPosition = useCallback(() => {
     hasBeenDraggedRef.current = false
     if (initialPosition) {
-      setPosition(initialPosition)
+      setPosition(
+        clampModalPosition(
+          initialPosition,
+          { width: window.innerWidth, height: window.innerHeight },
+          { width: numericWidth, height: modalRef.current?.getBoundingClientRect().height || 360 },
+        ),
+      )
     } else {
       const estimatedHeight = modalRef.current?.getBoundingClientRect().height || 360
       const pos = computeAnchorPosition(anchorEl || null, numericWidth, estimatedHeight)
@@ -169,7 +232,11 @@ export function SharedDraggableModal({
     e.preventDefault()
 
     // Dismiss any active dropdown/popover before dragging starts
-    if (typeof document !== 'undefined' && document.activeElement && 'blur' in document.activeElement) {
+    if (
+      typeof document !== 'undefined' &&
+      document.activeElement &&
+      'blur' in document.activeElement
+    ) {
       ;(document.activeElement as HTMLElement).blur()
     }
 
@@ -197,7 +264,12 @@ export function SharedDraggableModal({
       const minX = 12
       const maxX = Math.max(minX, window.innerWidth - modalW - 12)
       const minY = 12
-      const maxY = Math.max(minY, window.innerHeight - 50)
+      const maxY = Math.max(
+        minY,
+        Math.min(window.innerHeight, window.visualViewport?.height || window.innerHeight) -
+          modalH -
+          12,
+      )
 
       const rawX = dragStartRef.current.modalX + deltaX
       const rawY = dragStartRef.current.modalY + deltaY
@@ -295,7 +367,7 @@ export function SharedDraggableModal({
           top: position.y,
           width,
           maxWidth: 'calc(100vw - 24px)',
-          maxHeight: 'calc(100vh - 24px)',
+          maxHeight: Math.max(0, viewport.height - position.y - 12),
           display: 'flex',
           flexDirection: 'column',
           zIndex,
@@ -309,6 +381,7 @@ export function SharedDraggableModal({
         }}
         role="dialog"
         aria-modal={withBackdrop}
+        aria-label={typeof title === 'string' ? title : undefined}
       >
         {/* Header with Grip & Drag Support */}
         <Box
@@ -344,7 +417,12 @@ export function SharedDraggableModal({
                 title
               )}
               {subtitle && (
-                <Text size="xs" c="dimmed" truncate style={{ fontSize: 12, color: 'var(--mantine-color-dimmed, #556068)' }}>
+                <Text
+                  size="xs"
+                  c="dimmed"
+                  truncate
+                  style={{ fontSize: 12, color: 'var(--mantine-color-dimmed, #556068)' }}
+                >
                   {subtitle}
                 </Text>
               )}
@@ -370,8 +448,19 @@ export function SharedDraggableModal({
           </Group>
         </Box>
 
+        {subHeader && (
+          <Box
+            p="xs"
+            data-modal-region="navigation"
+            style={{ flexShrink: 0, borderBottom: '1px solid var(--mantine-color-default-border)' }}
+          >
+            {subHeader}
+          </Box>
+        )}
+
         {/* Modal Scrollable Body */}
         <Box
+          data-modal-region="content"
           p="xs"
           style={{
             flex: 1,

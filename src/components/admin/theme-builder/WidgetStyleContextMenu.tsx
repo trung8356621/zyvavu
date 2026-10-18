@@ -148,7 +148,15 @@ export interface WidgetStyleContextMenuProps {
   onUpdateStyle: (style: WidgetSemanticStyle) => void
 }
 
-export function WidgetStyleContextMenu({
+const EMPTY_STYLE: WidgetSemanticStyle = Object.freeze({})
+
+export function WidgetStyleContextMenu(props: WidgetStyleContextMenuProps) {
+  return props.opened ? (
+    <WidgetStyleSession key={`${props.componentType}:${props.componentId}`} {...props} />
+  ) : null
+}
+
+function WidgetStyleSession({
   opened,
   onClose,
   anchorEl,
@@ -156,7 +164,7 @@ export function WidgetStyleContextMenu({
   componentType: rawComponentType,
   componentVariant,
   componentId,
-  currentStyle = {},
+  currentStyle = EMPTY_STYLE,
   themeConfig,
   onUpdateStyle,
 }: WidgetStyleContextMenuProps) {
@@ -227,16 +235,8 @@ export function WidgetStyleContextMenu({
     }
   }, [componentType, hasTypography, hasBackground, hasSpacingOrDimensions])
 
-  // Sync draftStyle when switching components or when opening with new style
-  useEffect(() => {
-    committedStyleRef.current = currentStyle || {}
-    setDraftStyle(currentStyle || {})
-    setValidationError(null)
-    return () => {
-      // Clear canvas preview when unmounting or switching component
-      stylePreviewStore.clearPreview(componentId)
-    }
-  }, [componentId, currentStyle])
+  // Snapshot is captured at session mount; unrelated parent rerenders cannot erase a draft.
+  useEffect(() => () => stylePreviewStore.clearPreview(componentId), [componentId])
 
   // Resolve coordinate position translating iframe offsets if necessary
   const resolvedPosition = useMemo(() => {
@@ -488,6 +488,45 @@ export function WidgetStyleContextMenu({
         closeOnClickOutside={false}
         closeOnEscape={!animationPickerOpened}
         zIndex={ADMIN_OVERLAY_LAYERS.STYLE_MODAL}
+        subHeader={
+          <Tabs
+            value={activeTab}
+            onChange={(val) => {
+              if (!animationPickerOpened) setActiveTab(val || 'typography')
+            }}
+            variant="pills"
+            color="teal"
+          >
+            <Tabs.List
+              style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}
+            >
+              {capabilities.includes('button') && <Tabs.Tab value="button">Button shell</Tabs.Tab>}
+              {capabilities.includes('animation') && (
+                <Tabs.Tab value="animation">Animation</Tabs.Tab>
+              )}
+              {hasTypography && (
+                <Tabs.Tab value="typography" leftSection={<Type size={14} />}>
+                  Type
+                </Tabs.Tab>
+              )}
+              {hasBackground && (
+                <Tabs.Tab value="background" leftSection={<Palette size={14} />}>
+                  Backdrop
+                </Tabs.Tab>
+              )}
+              {hasSpacingOrDimensions && (
+                <Tabs.Tab value="spacing" leftSection={<BoxSelect size={14} />}>
+                  Layout
+                </Tabs.Tab>
+              )}
+              {hasBorderOrEffects && (
+                <Tabs.Tab value="borders" leftSection={<Layers size={14} />}>
+                  Borders
+                </Tabs.Tab>
+              )}
+            </Tabs.List>
+          </Tabs>
+        }
         footer={
           <Group justify="space-between" w="100%">
             <Text size="xs" c="dimmed" style={{ fontSize: 12 }}>
@@ -522,42 +561,7 @@ export function WidgetStyleContextMenu({
             </Text>
           )}
           {!capabilities.length && <Text>No implemented style controls for this widget.</Text>}
-          {/* Tab Navigation */}
-          <Tabs
-            value={activeTab}
-            onChange={(val) => {
-              if (!animationPickerOpened) setActiveTab(val || 'typography')
-            }}
-            variant="pills"
-            color="teal"
-          >
-            <Tabs.List grow mb="xs">
-              {capabilities.includes('button') && <Tabs.Tab value="button">Button shell</Tabs.Tab>}
-              {capabilities.includes('animation') && (
-                <Tabs.Tab value="animation">Animation</Tabs.Tab>
-              )}
-              {hasTypography && (
-                <Tabs.Tab value="typography" leftSection={<Type size={14} />}>
-                  Type
-                </Tabs.Tab>
-              )}
-              {hasBackground && (
-                <Tabs.Tab value="background" leftSection={<Palette size={14} />}>
-                  Backdrop
-                </Tabs.Tab>
-              )}
-              {hasSpacingOrDimensions && (
-                <Tabs.Tab value="spacing" leftSection={<BoxSelect size={14} />}>
-                  Layout
-                </Tabs.Tab>
-              )}
-              {hasBorderOrEffects && (
-                <Tabs.Tab value="borders" leftSection={<Layers size={14} />}>
-                  Borders
-                </Tabs.Tab>
-              )}
-            </Tabs.List>
-          </Tabs>
+
           {activeTab === 'button' && capabilities.includes('button') && (
             <ButtonStyleControl key={componentId} themeConfig={themeConfig} />
           )}
