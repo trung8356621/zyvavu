@@ -1,3 +1,4 @@
+import { withWidgetStyleSurface } from '@/lib/style-engine/WidgetStyleSurface'
 import type { UniversalStyle } from '@/lib/style-engine/types'
 import { resolveWidgetStyles } from '@/lib/style-engine/serializer'
 import { animationAttributes } from '@/lib/style-engine/animation-presets'
@@ -14,6 +15,7 @@ export type PostContentProps = {
 }
 
 export function PostContentFrontend({
+  id: surfaceId,
   style: semanticStyle,
   showExcerptFirst = false,
   dataContext,
@@ -23,7 +25,7 @@ export function PostContentFrontend({
   const hasBlocks = Array.isArray(doc?.layout) && doc.layout.length > 0
   const excerpt = doc?.excerpt
 
-  return (
+  return withWidgetStyleSurface(
     <div
       className="zyvavu-widget-post-content"
       {...animationAttributes(semanticStyle?.animation)}
@@ -62,6 +64,8 @@ export function PostContentFrontend({
       {!hasContent && !hasBlocks && !excerpt ? (
         <p style={{ color: '#888', fontStyle: 'italic' }}>Nội dung đang được cập nhật...</p>
       ) : null}
-    </div>
+    </div>,
+    semanticStyle,
+    surfaceId,
   )
 }

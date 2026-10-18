@@ -27,7 +27,8 @@ vi.mock('@puckeditor/core', async (importOriginal) => {
   return {
     ...actual,
     usePuck: () => mockState,
-    createUsePuck: () => (selector?: (s: any) => any) => (selector ? selector(mockState) : mockState),
+    createUsePuck: () => (selector?: (s: any) => any) =>
+      selector ? selector(mockState) : mockState,
   }
 })
 
@@ -95,7 +96,7 @@ describe('Theme Builder Hotfix — Flat Accordion & Style Context Menu', () => {
       vi.spyOn(iframe, 'getBoundingClientRect').mockReturnValue({
         left: 320, // 320px sidebar offset
         right: 1200,
-        top: 60,   // 60px header offset
+        top: 60, // 60px header offset
         bottom: 800,
         width: 880,
         height: 740,
@@ -198,10 +199,10 @@ describe('Theme Builder Hotfix — Flat Accordion & Style Context Menu', () => {
         </MantineProvider>,
       )
 
-      expect(screen.getByText(/Style:.*Title/i)).toBeDefined()
-      expect(screen.getByText('Type')).toBeDefined()
+      expect(screen.getByText(/Style actions:.*Title/i)).toBeDefined()
+      expect(screen.getByText('Typography')).toBeDefined()
       expect(screen.getByText('Layout')).toBeDefined()
-      expect(screen.queryByText('Backdrop')).toBeNull()
+      expect(screen.getByText('Background')).toBeDefined()
     })
 
     it('correctly maps friendly Puck label Document Title to PostTitle capabilities', () => {
@@ -223,8 +224,8 @@ describe('Theme Builder Hotfix — Flat Accordion & Style Context Menu', () => {
         </MantineProvider>,
       )
 
-      expect(screen.getByText(/Style:.*Title/i)).toBeDefined()
-      expect(screen.getByText('Type')).toBeDefined()
+      expect(screen.getByText(/Style actions:.*Title/i)).toBeDefined()
+      expect(screen.getByText('Typography')).toBeDefined()
       expect(screen.getByText('Layout')).toBeDefined()
     })
 
@@ -247,9 +248,9 @@ describe('Theme Builder Hotfix — Flat Accordion & Style Context Menu', () => {
         </MantineProvider>,
       )
 
-      expect(screen.getByText(/Style: Section/i)).toBeDefined()
-      expect(screen.queryByText('Type')).toBeNull()
-      expect(screen.getByText('Backdrop')).toBeDefined()
+      expect(screen.getByText(/Style actions: Section/i)).toBeDefined()
+      expect(screen.queryByText('Typography')).toBeNull()
+      expect(screen.getByText('Background')).toBeDefined()
     })
   })
 
@@ -473,7 +474,9 @@ describe('Theme Builder Hotfix — Flat Accordion & Style Context Menu', () => {
         </MantineProvider>,
       )
 
-      const minimalPresetBtn = screen.getByRole('button', { name: /Select Modern Minimal background/i })
+      const minimalPresetBtn = screen.getByRole('button', {
+        name: /Select Modern Minimal background/i,
+      })
       expect(minimalPresetBtn).toBeDefined()
       fireEvent.click(minimalPresetBtn)
       expect(onChange).toHaveBeenCalledWith(
@@ -509,4 +512,3 @@ describe('Theme Builder Hotfix — Flat Accordion & Style Context Menu', () => {
     })
   })
 })
-

@@ -1,3 +1,4 @@
+import { withWidgetStyleSurface } from '@/lib/style-engine/WidgetStyleSurface'
 import type { UniversalStyle } from '@/lib/style-engine/types'
 import { resolveWidgetStyles } from '@/lib/style-engine/serializer'
 import { animationAttributes } from '@/lib/style-engine/animation-presets'
@@ -12,11 +13,12 @@ export type HeaderTopBarTextProps = {
 }
 
 export function HeaderTopBarTextFrontend({
+  id: surfaceId,
   style: semanticStyle,
   text = 'Cổng thông tin doanh nghiệp B2B — Hotline: 0900.000.000',
 }: HeaderTopBarTextProps) {
   if (!text) return null
-  return (
+  return withWidgetStyleSurface(
     <div
       className="zyvavu-widget-topbar-text"
       {...animationAttributes(semanticStyle?.animation)}
@@ -27,6 +29,8 @@ export function HeaderTopBarTextFrontend({
       }}
     >
       {text}
-    </div>
+    </div>,
+    semanticStyle,
+    surfaceId,
   )
 }

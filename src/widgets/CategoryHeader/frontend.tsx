@@ -1,3 +1,4 @@
+import { withWidgetStyleSurface } from '@/lib/style-engine/WidgetStyleSurface'
 import type { UniversalStyle } from '@/lib/style-engine/types'
 import { resolveWidgetStyles } from '@/lib/style-engine/serializer'
 import { animationAttributes } from '@/lib/style-engine/animation-presets'
@@ -14,6 +15,7 @@ export type CategoryHeaderProps = {
 }
 
 export function CategoryHeaderFrontend({
+  id: surfaceId,
   style: semanticStyle,
   align = 'left',
   title: customTitle,
@@ -24,7 +26,7 @@ export function CategoryHeaderFrontend({
   const title = customTitle || dataContext?.archive?.title || (isTag ? 'Thẻ' : 'Chuyên Mục')
   const description = customDescription || dataContext?.archive?.description
 
-  return (
+  return withWidgetStyleSurface(
     <div
       className="zyvavu-widget-category-header"
       {...animationAttributes(semanticStyle?.animation)}
@@ -73,6 +75,8 @@ export function CategoryHeaderFrontend({
           {description}
         </p>
       ) : null}
-    </div>
+    </div>,
+    semanticStyle,
+    surfaceId,
   )
 }

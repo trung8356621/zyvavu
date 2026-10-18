@@ -1,5 +1,7 @@
 'use client'
 
+import { withWidgetStyleSurface } from '@/lib/style-engine/WidgetStyleSurface'
+
 import React from 'react'
 import type { ComponentConfig } from '@puckeditor/core'
 import type { HeaderNavProps } from './frontend'
@@ -20,8 +22,8 @@ export const headerNavEditor: ComponentConfig<HeaderNavProps> = {
   defaultProps: {
     dropdownEffect: 'fade',
   },
-  render: ({ dropdownEffect = 'fade' }) => {
-    return (
+  render: ({ style: surfaceStyle, id: surfaceId, dropdownEffect = 'fade' }) => {
+    return withWidgetStyleSurface(
       <div
         style={{
           display: 'flex',
@@ -39,7 +41,9 @@ export const headerNavEditor: ComponentConfig<HeaderNavProps> = {
         <span>Giới thiệu</span>
         <span>Tin tức</span>
         <span>Liên hệ</span>
-      </div>
+      </div>,
+      surfaceStyle,
+      surfaceId,
     )
   },
 }

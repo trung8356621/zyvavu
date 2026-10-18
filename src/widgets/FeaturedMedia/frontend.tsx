@@ -1,3 +1,4 @@
+import { withWidgetStyleSurface } from '@/lib/style-engine/WidgetStyleSurface'
 import type { UniversalStyle } from '@/lib/style-engine/types'
 import { resolveWidgetStyles } from '@/lib/style-engine/serializer'
 import { animationAttributes } from '@/lib/style-engine/animation-presets'
@@ -15,6 +16,7 @@ export type FeaturedMediaProps = {
 }
 
 export function FeaturedMediaFrontend({
+  id: surfaceId,
   style: semanticStyle,
   aspectRatio = '16:9',
   rounded = true,
@@ -32,7 +34,7 @@ export function FeaturedMediaFrontend({
 
   if (!src) return null
 
-  return (
+  return withWidgetStyleSurface(
     <div
       className="zyvavu-widget-featured-media"
       {...animationAttributes(semanticStyle?.animation)}
@@ -55,6 +57,8 @@ export function FeaturedMediaFrontend({
           display: 'block',
         }}
       />
-    </div>
+    </div>,
+    semanticStyle,
+    surfaceId,
   )
 }

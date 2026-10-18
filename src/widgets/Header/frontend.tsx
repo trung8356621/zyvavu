@@ -1,7 +1,11 @@
+import { withWidgetStyleSurface } from '@/lib/style-engine/WidgetStyleSurface'
+import type { UniversalStyle } from '@/lib/style-engine/types'
 import React from 'react'
 import type { ThemeDataContext } from '@/lib/theme-engine/types'
 
 export type HeaderProps = {
+  style?: UniversalStyle
+
   id?: string
   showTopBar?: boolean
   showBottomBar?: boolean
@@ -19,6 +23,8 @@ export type HeaderProps = {
 }
 
 export function HeaderFrontend({
+  style: surfaceStyle,
+  id: surfaceId,
   showTopBar = true,
   showBottomBar = false,
   sticky = true,
@@ -35,13 +41,15 @@ export function HeaderFrontend({
   const hasTopBar = showTopBar && (topBarLeft || topBarCenter || topBarRight)
   const hasBottomBar = showBottomBar && (bottomBarLeft || bottomBarCenter || bottomBarRight)
 
-  return (
+  return withWidgetStyleSurface(
     <header
       className={`zyvavu-widget-header root ${sticky ? 'zyvavu-widget-header--sticky' : ''}`}
       style={{
         width: '100%',
-        backgroundColor: 'var(--zyvavu-theme-header-background, var(--zyvavu-theme-background, #ffffff))',
-        borderBottom: '1px solid var(--zyvavu-theme-header-border, var(--zyvavu-theme-border, #dfe5e2))',
+        backgroundColor:
+          'var(--zyvavu-theme-header-background, var(--zyvavu-theme-background, #ffffff))',
+        borderBottom:
+          '1px solid var(--zyvavu-theme-header-border, var(--zyvavu-theme-border, #dfe5e2))',
         color: 'var(--zyvavu-theme-header-text, var(--zyvavu-theme-text, #17201f))',
         position: sticky ? 'sticky' : 'relative',
         top: 0,
@@ -95,13 +103,22 @@ export function HeaderFrontend({
             gap: '24px',
           }}
         >
-          <div className="zyvavu-header-slot zyvavu-header-slot--main-left" style={{ display: 'flex', alignItems: 'center' }}>
+          <div
+            className="zyvavu-header-slot zyvavu-header-slot--main-left"
+            style={{ display: 'flex', alignItems: 'center' }}
+          >
             {mainHeaderLeft}
           </div>
-          <div className="zyvavu-header-slot zyvavu-header-slot--main-center" style={{ display: 'flex', alignItems: 'center', flex: 1, justifyContent: 'center' }}>
+          <div
+            className="zyvavu-header-slot zyvavu-header-slot--main-center"
+            style={{ display: 'flex', alignItems: 'center', flex: 1, justifyContent: 'center' }}
+          >
             {mainHeaderCenter}
           </div>
-          <div className="zyvavu-header-slot zyvavu-header-slot--main-right" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div
+            className="zyvavu-header-slot zyvavu-header-slot--main-right"
+            style={{ display: 'flex', alignItems: 'center', gap: '12px' }}
+          >
             {mainHeaderRight}
           </div>
         </div>
@@ -127,12 +144,20 @@ export function HeaderFrontend({
               justifyContent: 'space-between',
             }}
           >
-            <div className="zyvavu-header-slot zyvavu-header-slot--bottom-left">{bottomBarLeft}</div>
-            <div className="zyvavu-header-slot zyvavu-header-slot--bottom-center">{bottomBarCenter}</div>
-            <div className="zyvavu-header-slot zyvavu-header-slot--bottom-right">{bottomBarRight}</div>
+            <div className="zyvavu-header-slot zyvavu-header-slot--bottom-left">
+              {bottomBarLeft}
+            </div>
+            <div className="zyvavu-header-slot zyvavu-header-slot--bottom-center">
+              {bottomBarCenter}
+            </div>
+            <div className="zyvavu-header-slot zyvavu-header-slot--bottom-right">
+              {bottomBarRight}
+            </div>
           </div>
         </div>
       )}
-    </header>
+    </header>,
+    surfaceStyle,
+    surfaceId,
   )
 }

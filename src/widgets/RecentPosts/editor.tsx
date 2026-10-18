@@ -1,5 +1,7 @@
 'use client'
 
+import { withWidgetStyleSurface } from '@/lib/style-engine/WidgetStyleSurface'
+
 import { resolveWidgetStyles } from '@/lib/style-engine/serializer'
 import { animationAttributes } from '@/lib/style-engine/animation-presets'
 
@@ -35,8 +37,8 @@ export const recentPostsEditor: ComponentConfig<RecentPostsProps> = {
     limit: 6,
     columns: 3,
   },
-  render: ({ style: semanticStyle, heading = 'Bài Viết Mới Nhất', columns = 3 }) => {
-    return (
+  render: ({ id: surfaceId, style: semanticStyle, heading = 'Bài Viết Mới Nhất', columns = 3 }) => {
+    return withWidgetStyleSurface(
       <div
         className="zyvavu-widget-recent-posts"
         {...animationAttributes(semanticStyle?.animation)}
@@ -67,7 +69,9 @@ export const recentPostsEditor: ComponentConfig<RecentPostsProps> = {
             </div>
           ))}
         </div>
-      </div>
+      </div>,
+      semanticStyle,
+      surfaceId,
     )
   },
 }

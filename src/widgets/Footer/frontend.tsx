@@ -1,8 +1,12 @@
+import { withWidgetStyleSurface } from '@/lib/style-engine/WidgetStyleSurface'
+import type { UniversalStyle } from '@/lib/style-engine/types'
 import React from 'react'
 import Link from 'next/link'
 import type { ThemeDataContext } from '@/lib/theme-engine/types'
 
 export type FooterProps = {
+  style?: UniversalStyle
+
   id?: string
   copyright?: string
   showBrand?: boolean
@@ -12,6 +16,8 @@ export type FooterProps = {
 }
 
 export function FooterFrontend({
+  style: surfaceStyle,
+  id: surfaceId,
   copyright = '© 2026 Zyvavu. All rights reserved.',
   showBrand = true,
   siteName: customName,
@@ -20,7 +26,7 @@ export function FooterFrontend({
 }: FooterProps) {
   const siteName = customName || dataContext?.site?.siteName || 'Zyvavu'
 
-  return (
+  return withWidgetStyleSurface(
     <footer
       className="zyvavu-widget-footer"
       style={{
@@ -65,6 +71,8 @@ export function FooterFrontend({
           <div>{copyright}</div>
         </div>
       </div>
-    </footer>
+    </footer>,
+    surfaceStyle,
+    surfaceId,
   )
 }

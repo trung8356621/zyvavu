@@ -1,3 +1,4 @@
+import { withWidgetStyleSurface } from '@/lib/style-engine/WidgetStyleSurface'
 import type { UniversalStyle } from '@/lib/style-engine/types'
 import { resolveWidgetStyles } from '@/lib/style-engine/serializer'
 import { animationAttributes } from '@/lib/style-engine/animation-presets'
@@ -6,6 +7,8 @@ import Link from 'next/link'
 import type { ThemeDataContext } from '@/lib/theme-engine/types'
 
 export type ItemImageProps = {
+  id?: string
+
   style?: UniversalStyle
   aspectRatio?: '16:9' | '4:3' | '1:1' | 'auto'
   borderRadius?: string
@@ -15,6 +18,7 @@ export type ItemImageProps = {
 }
 
 export function ItemImageFrontend({
+  id: surfaceId,
   style: semanticStyle,
   aspectRatio = '16:9',
   borderRadius = '4px',
@@ -87,13 +91,13 @@ export function ItemImageFrontend({
     </div>
   )
 
+  const surface = withWidgetStyleSurface(wrapped, semanticStyle, surfaceId)
   if (linkToPost && item?.url) {
     return (
       <Link href={postUrl} style={{ display: 'block', textDecoration: 'none' }}>
-        {wrapped}
+        {surface}
       </Link>
     )
   }
-
-  return wrapped
+  return surface
 }

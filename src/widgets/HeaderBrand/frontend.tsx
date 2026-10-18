@@ -1,8 +1,12 @@
+import { withWidgetStyleSurface } from '@/lib/style-engine/WidgetStyleSurface'
+import type { UniversalStyle } from '@/lib/style-engine/types'
 import React from 'react'
 import Link from 'next/link'
 import type { ThemeDataContext } from '@/lib/theme-engine/types'
 
 export type HeaderBrandProps = {
+  style?: UniversalStyle
+
   id?: string
   showTagline?: boolean
   siteName?: string
@@ -13,6 +17,8 @@ export type HeaderBrandProps = {
 }
 
 export function HeaderBrandFrontend({
+  style: surfaceStyle,
+  id: surfaceId,
   showTagline = true,
   siteName: customName,
   logoUrl: customLogo,
@@ -25,9 +31,16 @@ export function HeaderBrandFrontend({
   const logoAlt = customAlt || dataContext?.site?.logoAlt || siteName
   const tagline = customTagline || dataContext?.site?.tagline
 
-  return (
-    <div className="zyvavu-widget-header-brand" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-      <Link href="/" className="site-brand-link" style={{ textDecoration: 'none', color: 'inherit', fontWeight: 700, fontSize: '1.25rem' }}>
+  return withWidgetStyleSurface(
+    <div
+      className="zyvavu-widget-header-brand"
+      style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+    >
+      <Link
+        href="/"
+        className="site-brand-link"
+        style={{ textDecoration: 'none', color: 'inherit', fontWeight: 700, fontSize: '1.25rem' }}
+      >
         {logoUrl ? (
           <img
             src={logoUrl}
@@ -40,10 +53,20 @@ export function HeaderBrandFrontend({
         )}
       </Link>
       {showTagline && tagline ? (
-        <span className="site-tagline" style={{ fontSize: '12px', color: 'var(--zyvavu-theme-text-muted, #5f7370)', borderLeft: '1px solid #ddd', paddingLeft: '8px' }}>
+        <span
+          className="site-tagline"
+          style={{
+            fontSize: '12px',
+            color: 'var(--zyvavu-theme-text-muted, #5f7370)',
+            borderLeft: '1px solid #ddd',
+            paddingLeft: '8px',
+          }}
+        >
           {tagline}
         </span>
       ) : null}
-    </div>
+    </div>,
+    surfaceStyle,
+    surfaceId,
   )
 }

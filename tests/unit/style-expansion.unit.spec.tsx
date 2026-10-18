@@ -47,11 +47,17 @@ afterEach(() => {
 })
 
 describe('Style expansion contracts', () => {
-  it('does not infer working controls for unimplemented renderers', () => {
+  it('exposes shared surface domains without inferring text capabilities', () => {
     expect(
       getComponentStyleCapabilities('Unknown', { capabilities: ['layout.text'] } as never),
-    ).toEqual([])
-    expect(getComponentStyleCapabilities('HeaderNav')).toEqual([])
+    ).toEqual(['animation', 'background', 'spacing', 'dimensions', 'border'])
+    expect(getComponentStyleCapabilities('HeaderNav')).toEqual([
+      'animation',
+      'background',
+      'spacing',
+      'dimensions',
+      'border',
+    ])
     expect(getComponentStyleCapabilities('HeaderAction')).toContain('button')
     expect(getComponentStyleCapabilities('ItemLink', undefined, { variant: 'link' })).not.toContain(
       'button',
@@ -193,7 +199,7 @@ describe('Style expansion contracts', () => {
       </MantineProvider>,
     )
     for (const name of BUTTON_STYLE_GROUPS) expect(screen.getByRole('tab', { name })).toBeTruthy()
-    expect(screen.getByText(/Apply does not save/)).toBeTruthy()
+    expect(screen.getByText(/Shell samples are local and are not saved/)).toBeTruthy()
     const sample = screen.getByRole('combobox', { name: 'Theme Button Presets (sample)' })
     fireEvent.click(sample)
     fireEvent.click(screen.getByRole('option', { name: 'outline' }))
@@ -226,7 +232,7 @@ describe('Style expansion contracts', () => {
     })
   })
 
-  it('Escape closes the nested animation picker without discarding the owning style transaction', () => {
+  it('Animation opens directly and Escape cancels its independent transaction', () => {
     const onClose = vi.fn()
     render(
       <MantineProvider>
@@ -241,10 +247,9 @@ describe('Style expansion contracts', () => {
         />
       </MantineProvider>,
     )
-    fireEvent.click(screen.getByRole('tab', { name: 'Animation' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Animation: none' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Animation' }))
     fireEvent.keyDown(window, { key: 'Escape' })
-    expect(onClose).not.toHaveBeenCalled()
+    expect(onClose).toHaveBeenCalledOnce()
     expect(screen.queryByRole('button', { name: 'Use animation' })).toBeNull()
     expect(
       (screen.getByRole('button', { name: 'Áp dụng / Apply' }) as HTMLButtonElement).disabled,

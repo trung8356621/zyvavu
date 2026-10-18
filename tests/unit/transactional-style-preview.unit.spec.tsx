@@ -25,7 +25,8 @@ vi.mock('@puckeditor/core', async (importOriginal) => {
   return {
     ...actual,
     usePuck: () => mockState,
-    createUsePuck: () => (selector?: (s: any) => any) => (selector ? selector(mockState) : mockState),
+    createUsePuck: () => (selector?: (s: any) => any) =>
+      selector ? selector(mockState) : mockState,
   }
 })
 
@@ -84,6 +85,7 @@ describe('Transactional Style Editing & Overlay Layers', { timeout: 25000 }, () 
     render(
       <MantineProvider theme={adminMantineTheme}>
         <WidgetStyleContextMenu
+          domain="background"
           opened={true}
           onClose={onClose}
           anchorEl={null}
@@ -127,6 +129,7 @@ describe('Transactional Style Editing & Overlay Layers', { timeout: 25000 }, () 
     render(
       <MantineProvider theme={adminMantineTheme}>
         <WidgetStyleContextMenu
+          domain="background"
           opened={true}
           onClose={onClose}
           anchorEl={null}
@@ -176,6 +179,7 @@ describe('Transactional Style Editing & Overlay Layers', { timeout: 25000 }, () 
     render(
       <MantineProvider theme={adminMantineTheme}>
         <WidgetStyleContextMenu
+          domain="background"
           opened={true}
           onClose={onClose}
           anchorEl={null}

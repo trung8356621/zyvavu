@@ -11,8 +11,18 @@ import {
   createUsePuck,
 } from '@puckeditor/core'
 import '@puckeditor/core/dist/index.css'
-import { Alert, Box, Button, Group, LoadingOverlay, Text } from '@mantine/core'
-import { Check, AlertCircle, Palette, Save, Sliders } from 'lucide-react'
+import { Alert, Box, Button, Group, LoadingOverlay, Text, Menu, ActionIcon } from '@mantine/core'
+import {
+  Check,
+  AlertCircle,
+  Palette,
+  Save,
+  Sliders,
+  Play,
+  LayoutGrid,
+  Square,
+  MoreHorizontal,
+} from 'lucide-react'
 
 import { CURRENT_BUILDER_VERSION, validateBuilderDocument } from './document'
 import type { BuilderDocument } from './types'
@@ -27,6 +37,12 @@ import {
   computeTranslatedAnchorPosition,
 } from '@/components/admin/theme-builder/WidgetStyleContextMenu'
 import { stylePreviewStore } from '@/lib/style-engine/preview-store'
+import {
+  getStyleModalDomains,
+  STYLE_MODAL_TITLES,
+  type StyleModalDomain,
+} from '@/lib/style-engine/domains'
+import { WidgetPatternLibrary } from '@/components/admin/theme-builder/WidgetPatternLibrary'
 import actionBarStyles from './WidgetActionBar.module.css'
 
 const usePuck = createUsePuck()
@@ -44,12 +60,15 @@ export const RESPONSIVE_VIEWPORTS: Viewport[] = [
 export const MEGA_MENU_VIEWPORTS = DESKTOP_ONLY_VIEWPORT
 
 interface PuckApi {
+  canEdit: (id: string) => boolean
   dispatch: (action: any) => void
   getAppState: () => any
   findItem?: (id: string) => ReturnType<typeof findItemAndSelector>
 }
 
 type StyleMenuRequest = {
+  requestNonce?: number
+  domain?: StyleModalDomain
   componentType: string
   componentVariant?: string
   componentId: string
@@ -63,6 +82,9 @@ type EditorBridgeValue = {
   select: (id: string | undefined) => void
   openStyle: (request: StyleMenuRequest) => void
   styleComponentId?: string
+  templateContext?: string
+  themeConfig?: ThemeConfig
+  beforeOperation: () => boolean
 }
 
 const EditorBridgeContext = React.createContext<EditorBridgeValue | null>(null)
@@ -93,7 +115,27 @@ function StableActionBarOverride(
   )
 }
 
+function StableLibraryOverride() {
+  const bridge = React.useContext(EditorBridgeContext)!
+  return (
+    <WidgetPatternLibrary
+      context={bridge.templateContext}
+      themeConfig={bridge.themeConfig}
+      beforeOperation={bridge.beforeOperation}
+    />
+  )
+}
+function StableIframeOverride({ children }: { children: React.ReactNode }) {
+  return (
+    <>
+      <style>{`[data-zyvavu-motion] { animation: none !important; transition: none !important; } [data-zyvavu-motion="lift"]:is(:hover,:focus-within) { transform: none; } @media (prefers-reduced-motion: reduce) { [data-widget-style-surface] video { display: none; } }`}</style>
+      {children}
+    </>
+  )
+}
 const PUCK_OVERRIDES = {
+  components: StableLibraryOverride,
+  iframe: StableIframeOverride,
   headerActions: () => <React.Fragment />,
   puck: StablePuckOverride,
   actionBar: StableActionBarOverride,
@@ -112,6 +154,7 @@ function PuckBridge({
   const dispatch = usePuck((s) => s.dispatch)
   const getItemById = usePuck((s) => s.getItemById)
   const getSelectorForId = usePuck((s) => s.getSelectorForId)
+  const getPermissions = usePuck((s) => s.getPermissions)
   const selected = usePuck((s) => s.selectedItem)
   const selector = appState.ui?.itemSelector
   const selectedId =
@@ -131,6 +174,7 @@ function PuckBridge({
 
   React.useEffect(() => {
     onRegisterApi({
+      canEdit: (id) => Boolean(getPermissions({ item: getItemById(id) }).edit),
       dispatch,
       getAppState: () => appStateRef.current,
       findItem: (id) => {
@@ -139,7 +183,7 @@ function PuckBridge({
         return item && selector ? { item, selector } : null
       },
     })
-  }, [dispatch, onRegisterApi, getItemById, getSelectorForId])
+  }, [dispatch, onRegisterApi, getItemById, getSelectorForId, getPermissions])
 
   return <>{children}</>
 }
@@ -156,6 +200,7 @@ function PuckActionBarBridge({
   parentAction?: React.ReactNode
   styleMenuComponentId?: string
   onOpenStyleMenu: (payload: {
+    domain?: StyleModalDomain
     componentType: string
     componentVariant?: string
     componentId: string
@@ -197,11 +242,12 @@ function PuckActionBarBridge({
   const componentId = resolvedItem?.props?.id || resolvedItem?.id || ''
   const currentStyle = (resolvedItem?.props?.style as WidgetSemanticStyle) || EMPTY_STYLE
 
-  const handleEditStyleClick = (e: React.SyntheticEvent) => {
+  const handleEditStyleClick = (e: React.SyntheticEvent, domain?: StyleModalDomain) => {
     e.stopPropagation()
     const anchor = e.currentTarget as HTMLElement
     const initialPos = computeTranslatedAnchorPosition(anchor, 340, 480)
     onOpenStyleMenu({
+      domain,
       componentType,
       componentVariant: resolvedItem?.props?.variant,
       componentId,
@@ -222,12 +268,41 @@ function PuckActionBarBridge({
           {label && <ActionBar.Label label={label} />}
         </ActionBar.Group>
         <ActionBar.Group>
-          {getComponentStyleCapabilities(componentType).length > 0 && (
-            <span className={actionBarStyles.styleTrigger}>
-              <ActionBar.Action label="Edit Style" onClick={handleEditStyleClick}>
-                <Palette size={14} />
-              </ActionBar.Action>
-            </span>
+          {getStyleModalDomains(componentType, resolvedItem?.props?.variant)
+            .slice(0, 4)
+            .map((domain, index) => {
+              const Icon = [Play, Palette, LayoutGrid, Square][index]
+              return (
+                <span key={domain} className={actionBarStyles.styleTrigger}>
+                  <ActionBar.Action
+                    label={STYLE_MODAL_TITLES[domain]}
+                    onClick={(event) => handleEditStyleClick(event, domain)}
+                  >
+                    <Icon size={14} />
+                  </ActionBar.Action>
+                </span>
+              )
+            })}
+          {getStyleModalDomains(componentType, resolvedItem?.props?.variant).length > 4 && (
+            <Menu withinPortal>
+              <Menu.Target>
+                <ActionIcon variant="subtle" size="sm" aria-label="More style actions">
+                  <MoreHorizontal size={14} />
+                </ActionIcon>
+              </Menu.Target>
+              <Menu.Dropdown>
+                {getStyleModalDomains(componentType, resolvedItem?.props?.variant)
+                  .slice(4)
+                  .map((domain) => (
+                    <Menu.Item
+                      key={domain}
+                      onClick={(event) => handleEditStyleClick(event, domain)}
+                    >
+                      {STYLE_MODAL_TITLES[domain]}
+                    </Menu.Item>
+                  ))}
+              </Menu.Dropdown>
+            </Menu>
           )}
           <ActionBar.Separator />
           {children}
@@ -382,15 +457,9 @@ export function PuckHost({
     [localDoc, onSave],
   )
 
-  const [activeStyleMenu, setActiveStyleMenu] = useState<{
-    opened: boolean
-    componentType: string
-    componentVariant?: string
-    componentId: string
-    currentStyle: WidgetSemanticStyle
-    anchorEl: HTMLElement | null
-    initialPosition?: { x: number; y: number }
-  } | null>(null)
+  const [activeStyleMenu, setActiveStyleMenu] = useState<
+    (StyleMenuRequest & { opened: boolean }) | null
+  >(null)
 
   const puckApiRef = React.useRef<PuckApi | null>(null)
 
@@ -400,25 +469,36 @@ export function PuckHost({
 
   const handleOpenStyleMenu = useCallback(
     ({
+      domain,
       componentType,
       componentVariant,
       componentId,
       currentStyle,
       anchorEl,
       initialPosition,
-    }: {
-      componentType: string
-      componentVariant?: string
-      componentId: string
-      currentStyle: WidgetSemanticStyle
-      anchorEl: HTMLElement | null
-      initialPosition?: { x: number; y: number }
-    }) => {
+    }: StyleMenuRequest) => {
       // Reopening the active editor must not erase its live preview.
-      if (activeStyleMenu?.opened && activeStyleMenu.componentId === componentId) return
+      if (activeStyleMenu?.opened && activeStyleMenu.componentId === componentId) {
+        setActiveStyleMenu((previous) =>
+          previous
+            ? { ...previous, domain, requestNonce: (previous.requestNonce || 0) + 1 }
+            : previous,
+        )
+        return
+      }
+      if (activeStyleMenu && stylePreviewStore.getPreview(activeStyleMenu.componentId)) {
+        setValidationError('Apply or cancel the active style draft before editing another widget.')
+        return
+      }
+      const item = puckApiRef.current?.findItem?.(componentId)?.item
+      if (item?.props?.lock?.canEditProps === false || !puckApiRef.current?.canEdit(componentId)) {
+        setValidationError('This widget is locked against edits.')
+        return
+      }
       stylePreviewStore.clearPreview()
       setActiveStyleMenu({
         opened: true,
+        domain,
         componentType,
         componentVariant,
         componentId,
@@ -437,10 +517,15 @@ export function PuckHost({
 
   const handleUpdateWidgetStyle = useCallback(
     (newStyle: WidgetSemanticStyle) => {
-      stylePreviewStore.clearPreview()
-      if (!activeStyleMenu) return
+      if (!activeStyleMenu) return false
       const { componentId } = activeStyleMenu
       const api = puckApiRef.current
+      const current = api?.findItem?.(componentId)?.item
+      if (!current || current.props?.lock?.canEditProps === false || !api?.canEdit(componentId)) {
+        setValidationError('This widget is unavailable or locked against edits.')
+        return false
+      }
+      stylePreviewStore.clearPreview()
 
       const updateItem = (item: any) => {
         if (
@@ -490,6 +575,7 @@ export function PuckHost({
       }
 
       setActiveStyleMenu((prev) => (prev ? { ...prev, currentStyle: newStyle } : null))
+      return true
     },
     [activeStyleMenu],
   )
@@ -521,6 +607,14 @@ export function PuckHost({
       e.preventDefault()
       e.stopPropagation()
 
+      if (
+        activeStyleMenu &&
+        activeStyleMenu.componentId !== compId &&
+        stylePreviewStore.getPreview(activeStyleMenu.componentId)
+      ) {
+        setValidationError('Apply or cancel the active style draft before editing another widget.')
+        return
+      }
       // Select clicked component in Puck UI
       api.dispatch({
         type: 'setUi',
@@ -553,8 +647,7 @@ export function PuckHost({
       initialPos.x = Math.max(padding, initialPos.x)
       initialPos.y = Math.max(68, initialPos.y)
 
-      setActiveStyleMenu({
-        opened: true,
+      handleOpenStyleMenu({
         componentType: item.type,
         componentVariant: item.props?.variant,
         componentId: item.props?.id || compId,
@@ -601,11 +694,12 @@ export function PuckHost({
       frame?.removeEventListener('load', attachDocument)
       frameDoc?.removeEventListener('contextmenu', handleContextMenu)
     }
-  }, [])
+  }, [activeStyleMenu, handleOpenStyleMenu])
 
   const handleSelectionChange = useCallback((id: string | undefined) => {
     setActiveStyleMenu((previous) => {
       if (previous && previous.componentId !== id) {
+        if (stylePreviewStore.getPreview(previous.componentId)) return previous
         stylePreviewStore.clearPreview(previous.componentId)
         return null
       }
@@ -614,6 +708,10 @@ export function PuckHost({
   }, [])
 
   const bridgeValue: EditorBridgeValue = {
+    templateContext,
+    themeConfig,
+    beforeOperation: () =>
+      !activeStyleMenu || !stylePreviewStore.getPreview(activeStyleMenu.componentId),
     registerApi: handleRegisterPuckApi,
     select: handleSelectionChange,
     openStyle: handleOpenStyleMenu,
@@ -635,7 +733,7 @@ export function PuckHost({
   return (
     <EditorBridgeContext.Provider value={bridgeValue}>
       <Box
-        className="zyvavu-puck-host-wrapper"
+        className={`zyvavu-puck-host-wrapper ${actionBarStyles.libraryHost}`}
         style={{
           display: 'flex',
           flexDirection: 'column',
@@ -738,6 +836,8 @@ export function PuckHost({
         {activeStyleMenu?.opened && (
           <WidgetStyleContextMenu
             opened={activeStyleMenu.opened}
+            domain={activeStyleMenu.domain}
+            requestNonce={activeStyleMenu.requestNonce}
             onClose={handleCloseStyleMenu}
             anchorEl={activeStyleMenu.anchorEl}
             initialPosition={activeStyleMenu.initialPosition}

@@ -1,7 +1,11 @@
+import { withWidgetStyleSurface } from '@/lib/style-engine/WidgetStyleSurface'
+import type { UniversalStyle } from '@/lib/style-engine/types'
 import React from 'react'
 import type { ThemeDataContext } from '@/lib/theme-engine/types'
 
 export type ProductHeaderProps = {
+  style?: UniversalStyle
+
   id?: string
   showPrice?: boolean
   showAddToCart?: boolean
@@ -9,6 +13,8 @@ export type ProductHeaderProps = {
 }
 
 export function ProductHeaderFrontend({
+  style: surfaceStyle,
+  id: surfaceId,
   showPrice = true,
   showAddToCart = true,
   dataContext,
@@ -17,7 +23,7 @@ export function ProductHeaderFrontend({
   const title = doc?.title || 'Sản phẩm mẫu (Contract Boundary)'
   const price = doc?.price
 
-  return (
+  return withWidgetStyleSurface(
     <div
       className="zyvavu-widget-product-header"
       style={{
@@ -28,12 +34,21 @@ export function ProductHeaderFrontend({
         marginBottom: '24px',
       }}
     >
-      <div style={{ fontSize: '12px', textTransform: 'uppercase', color: '#888', marginBottom: '8px' }}>
+      <div
+        style={{ fontSize: '12px', textTransform: 'uppercase', color: '#888', marginBottom: '8px' }}
+      >
         Product Template Contract Boundary
       </div>
       <h1 style={{ margin: '0 0 12px', fontSize: '2rem' }}>{title}</h1>
       {showPrice && (
-        <div style={{ fontSize: '1.4rem', fontWeight: 600, color: 'var(--zyvavu-theme-primary, #0e6b66)', marginBottom: '16px' }}>
+        <div
+          style={{
+            fontSize: '1.4rem',
+            fontWeight: 600,
+            color: 'var(--zyvavu-theme-primary, #0e6b66)',
+            marginBottom: '16px',
+          }}
+        >
           {price ? `${price} đ` : 'Liên hệ báo giá'}
         </div>
       )}
@@ -54,6 +69,8 @@ export function ProductHeaderFrontend({
           Đặt hàng (Chờ nhà cung cấp sản phẩm)
         </button>
       )}
-    </div>
+    </div>,
+    surfaceStyle,
+    surfaceId,
   )
 }

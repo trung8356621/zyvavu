@@ -1,3 +1,4 @@
+import { withWidgetStyleSurface } from '@/lib/style-engine/WidgetStyleSurface'
 import type { UniversalStyle } from '@/lib/style-engine/types'
 import { resolveWidgetStyles } from '@/lib/style-engine/serializer'
 import { animationAttributes } from '@/lib/style-engine/animation-presets'
@@ -28,6 +29,7 @@ const GRID_TEMPLATES: Record<ColumnsDistribution, string> = {
 }
 
 export function ColumnsFrontend({
+  id: surfaceId,
   style: semanticStyle,
   distribution = 'equal-2',
   gap = '24px',
@@ -41,7 +43,7 @@ export function ColumnsFrontend({
   const hasCol3 = ['1:1:1', '1:1:1:1'].includes(distribution)
   const hasCol4 = distribution === '1:1:1:1'
 
-  return (
+  return withWidgetStyleSurface(
     <div
       className="zyvavu-widget-columns"
       {...animationAttributes(semanticStyle?.animation)}
@@ -73,6 +75,8 @@ export function ColumnsFrontend({
           {column4}
         </div>
       )}
-    </div>
+    </div>,
+    semanticStyle,
+    surfaceId,
   )
 }

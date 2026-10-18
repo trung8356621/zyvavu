@@ -1,5 +1,7 @@
 'use client'
 
+import { withWidgetStyleSurface } from '@/lib/style-engine/WidgetStyleSurface'
+
 import React from 'react'
 import type { ComponentConfig } from '@puckeditor/core'
 import type { ProductHeaderProps } from './frontend'
@@ -28,8 +30,8 @@ export const productHeaderEditor: ComponentConfig<ProductHeaderProps> = {
     showPrice: true,
     showAddToCart: true,
   },
-  render: ({ showPrice = true, showAddToCart = true }) => {
-    return (
+  render: ({ style: surfaceStyle, id: surfaceId, showPrice = true, showAddToCart = true }) => {
+    return withWidgetStyleSurface(
       <div
         style={{
           padding: '24px',
@@ -39,19 +41,39 @@ export const productHeaderEditor: ComponentConfig<ProductHeaderProps> = {
           margin: '16px 0',
         }}
       >
-        <span style={{ fontSize: '11px', textTransform: 'uppercase', color: '#d9480f', fontWeight: 600 }}>
+        <span
+          style={{
+            fontSize: '11px',
+            textTransform: 'uppercase',
+            color: '#d9480f',
+            fontWeight: 600,
+          }}
+        >
           Product Template Contract (Awaiting Real Products Collection)
         </span>
         <h2 style={{ margin: '8px 0', fontSize: '1.8rem' }}>[Tên Sản Phẩm Đăng Ký]</h2>
-        {showPrice && <div style={{ fontSize: '1.2rem', color: '#0e6b66', fontWeight: 600 }}>[Giá sản phẩm]</div>}
+        {showPrice && (
+          <div style={{ fontSize: '1.2rem', color: '#0e6b66', fontWeight: 600 }}>
+            [Giá sản phẩm]
+          </div>
+        )}
         {showAddToCart && (
           <div style={{ marginTop: '12px' }}>
-            <span style={{ padding: '6px 16px', background: '#ccc', borderRadius: '4px', fontSize: '13px' }}>
+            <span
+              style={{
+                padding: '6px 16px',
+                background: '#ccc',
+                borderRadius: '4px',
+                fontSize: '13px',
+              }}
+            >
               Nút Mua Hàng (Vô hiệu hoá cho đến khi module sản phẩm sẵn sàng)
             </span>
           </div>
         )}
-      </div>
+      </div>,
+      surfaceStyle,
+      surfaceId,
     )
   },
 }

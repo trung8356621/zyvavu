@@ -33,3 +33,13 @@
   outline: 2px solid var(--zyvavu-primary);
   outline-offset: -2px;
 }
+
+/* Puck's existing user width variable; only the Blocks library expands the panel. */
+.libraryHost:has([data-widget-pattern-library]) {
+  --puck-user-sidebar-left-width: var(--zyvavu-builder-library-width, clamp(20rem, 32vw, 28rem));
+}
+@media (max-width: 765px) {
+  .libraryHost:has([data-widget-pattern-library]) {
+    --puck-user-sidebar-left-width: 100%;
+  }
+}

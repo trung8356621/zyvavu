@@ -1,5 +1,7 @@
 'use client'
 
+import { withWidgetStyleSurface } from '@/lib/style-engine/WidgetStyleSurface'
+
 import { resolveWidgetStyles } from '@/lib/style-engine/serializer'
 import { animationAttributes } from '@/lib/style-engine/animation-presets'
 
@@ -40,6 +42,7 @@ export const columnsEditor: ComponentConfig<ColumnsProps> = {
     distribution: 'equal-2',
   },
   render: ({
+    id: surfaceId,
     style: semanticStyle,
     distribution = 'equal-2',
     column1: Col1,
@@ -52,7 +55,7 @@ export const columnsEditor: ComponentConfig<ColumnsProps> = {
     const hasCol3 = ['1:1:1', '1:1:1:1'].includes(distribution)
     const hasCol4 = distribution === '1:1:1:1'
 
-    return (
+    return withWidgetStyleSurface(
       <div
         className="zyvavu-widget-columns"
         {...animationAttributes(semanticStyle?.animation)}
@@ -70,7 +73,9 @@ export const columnsEditor: ComponentConfig<ColumnsProps> = {
         {hasCol2 && <div style={{ minWidth: 0 }}>{Col2 && <Col2 />}</div>}
         {hasCol3 && <div style={{ minWidth: 0 }}>{Col3 && <Col3 />}</div>}
         {hasCol4 && <div style={{ minWidth: 0 }}>{Col4 && <Col4 />}</div>}
-      </div>
+      </div>,
+      semanticStyle,
+      surfaceId,
     )
   },
 }

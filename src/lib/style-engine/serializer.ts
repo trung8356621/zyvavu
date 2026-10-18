@@ -339,6 +339,12 @@ export function resolveSectionLayerStyles(
     mediaStyle.backgroundRepeat = bg.image.repeat || 'no-repeat'
   }
 
+  // Poster remains visible when reduced-motion CSS hides the video element.
+  if (bg.mode === 'video' && (bg.video?.posterUrl || bg.video?.fallbackImageUrl)) {
+    mediaStyle.backgroundImage = `url("${bg.video.posterUrl || bg.video.fallbackImageUrl}")`
+    mediaStyle.backgroundSize = 'cover'
+    mediaStyle.backgroundPosition = bg.video.position || 'center'
+  }
   // Video configuration
   let videoConfig: SectionResolvedLayers['videoConfig'] = undefined
   if (bg.mode === 'video' && bg.video?.url) {
@@ -387,15 +393,25 @@ export function resolveSectionLayerStyles(
     pointerEvents: 'none',
   }
 
-  const patternPreset = bg.image?.pattern?.preset
+  const pattern = bg.pattern || bg.image?.pattern
+  const patternPreset = pattern?.preset
   if (patternPreset && patternPreset !== 'none') {
     const patCss = resolvePatternCss(patternPreset)
     if (patCss) {
+      const color = resolveColorToken(bg.pattern?.colorToken || 'text')
+      const factor = bg.pattern?.scale === 'sm' ? 0.5 : bg.pattern?.scale === 'lg' ? 2 : 1
       patternStyle.backgroundImage = patCss
+        .replace(/rgba\(0,\s*0,\s*0,\s*[\d.]+\)/g, color)
+        .replace(/([\d.]+)px/g, (_, n) => `${Number(n) * factor}px`)
+      patternStyle.color = color
       const pSize = resolvePatternSize(patternPreset)
-      if (pSize) patternStyle.backgroundSize = pSize
-      patternStyle.opacity =
-        typeof bg.image?.pattern?.opacity === 'number' ? bg.image.pattern.opacity : 0.15
+      if (pSize) {
+        patternStyle.backgroundSize = pSize.replace(
+          /([\d.]+)px/g,
+          (_, n) => `${Number(n) * factor}px`,
+        )
+      }
+      patternStyle.opacity = typeof pattern?.opacity === 'number' ? pattern.opacity : 0.15
     }
   }
 
@@ -428,6 +444,12 @@ export function resolveSectionLayerStyles(
   const contentStyle: CSSProperties = {
     position: 'relative',
     width: '100%',
+    ...(s.spacing?.gapToken
+      ? { display: 'flex', flexDirection: 'column', gap: resolveSpacingToken(s.spacing.gapToken) }
+      : {}),
+    ...(s.dimensions?.contentAlign
+      ? { display: 'flex', flexDirection: 'column', alignItems: s.dimensions.contentAlign }
+      : {}),
   }
 
   const { maxWidth: _containerWidth, ...presentation } = resolveWidgetStyles({

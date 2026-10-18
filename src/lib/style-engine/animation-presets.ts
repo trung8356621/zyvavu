@@ -78,6 +78,7 @@ export const ANIMATION_CSS = `
 @keyframes zyvavu-motion-slide { from { opacity: .3; transform: translateY(-8px) } to { opacity: 1; transform: none } }
 @keyframes zyvavu-motion-pulse { 50% { transform: scale(1.015) } }
 @keyframes zyvavu-motion-lift-preview { 50% { transform: translateY(-3px) } }
+@media (prefers-reduced-motion: reduce) { [data-widget-style-surface] video { display: none; } }
 @media (prefers-reduced-motion: no-preference) {
   [data-zyvavu-motion] { --zyvavu-motion-duration: 250ms; }
   [data-zyvavu-speed="fast"] { --zyvavu-motion-duration: 150ms; }

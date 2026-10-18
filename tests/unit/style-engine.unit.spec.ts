@@ -17,10 +17,7 @@ import {
   serializeGradientCss,
   serializeMeshCss,
 } from '@/lib/style-engine/token-resolver'
-import {
-  resolveSectionLayerStyles,
-  resolveWidgetStyles,
-} from '@/lib/style-engine/serializer'
+import { resolveSectionLayerStyles, resolveWidgetStyles } from '@/lib/style-engine/serializer'
 import { validateUniversalStyle } from '@/lib/style-engine/validation'
 import type { GradientDef, MeshDef, UniversalStyle } from '@/lib/style-engine/types'
 
@@ -299,7 +296,7 @@ describe('Universal Visual Style Engine', () => {
       expect(caps).toContain('typography')
       expect(caps).toContain('spacing')
       expect(componentSupportsDomain('PostTitle', 'typography')).toBe(true)
-      expect(componentSupportsDomain('PostTitle', 'background')).toBe(false)
+      expect(componentSupportsDomain('PostTitle', 'background')).toBe(true)
     })
 
     it('returns approved style domains for TextBlock', () => {

@@ -101,17 +101,23 @@ export function getComponentStyleCapabilities(
 ): StyleDomain[] {
   const normalized = normalizeComponentType(componentType)
 
-  // 1. Direct registry lookup
-  if (COMPONENT_STYLE_CAPABILITIES[normalized]) {
-    if (normalized === 'ItemLink' && ['button', 'outline'].includes(context?.variant || '')) {
-      return [...COMPONENT_STYLE_CAPABILITIES[normalized], 'button']
-    }
-    return COMPONENT_STYLE_CAPABILITIES[normalized]
-  }
-
-  // A manifest alone does not prove editor + SSR support. Unknown renderers stay hidden.
+  // Every registered renderer is composed with the shared surface adapter.
+  const globalDomains: StyleDomain[] = [
+    'animation',
+    'background',
+    'spacing',
+    'dimensions',
+    'border',
+  ]
+  const textDomains = COMPONENT_STYLE_CAPABILITIES[normalized] || []
+  const extra = textDomains.filter(
+    (domain) =>
+      !globalDomains.includes(domain) && (domain !== 'section' || normalized === 'Section'),
+  )
+  if (normalized === 'ItemLink' && ['button', 'outline'].includes(context?.variant || ''))
+    extra.push('button')
   void manifest
-  return []
+  return [...globalDomains, ...extra]
 }
 
 /**

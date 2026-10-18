@@ -1,3 +1,4 @@
+import { withWidgetStyleSurface } from '@/lib/style-engine/WidgetStyleSurface'
 import type { UniversalStyle } from '@/lib/style-engine/types'
 import { resolveWidgetStyles } from '@/lib/style-engine/serializer'
 import { animationAttributes } from '@/lib/style-engine/animation-presets'
@@ -6,6 +7,8 @@ import Link from 'next/link'
 import type { ThemeDataContext } from '@/lib/theme-engine/types'
 
 export type ItemTitleProps = {
+  id?: string
+
   style?: UniversalStyle
   tag?: 'h2' | 'h3' | 'h4' | 'div'
   linkToPost?: boolean
@@ -14,6 +17,7 @@ export type ItemTitleProps = {
 }
 
 export function ItemTitleFrontend({
+  id: surfaceId,
   style: semanticStyle,
   tag = 'h3',
   linkToPost = true,
@@ -36,7 +40,11 @@ export function ItemTitleFrontend({
           color: resolveWidgetStyles(semanticStyle).color || 'var(--zyvavu-theme-text, inherit)',
           textDecoration: 'none',
           transition: 'color 0.2s ease',
-          ...resolveWidgetStyles(semanticStyle),
+          ...resolveWidgetStyles({
+            typography: semanticStyle?.typography,
+            colorToken: semanticStyle?.colorToken,
+            align: semanticStyle?.align,
+          }),
         }}
       >
         {title}
@@ -45,7 +53,7 @@ export function ItemTitleFrontend({
       title
     )
 
-  return (
+  return withWidgetStyleSurface(
     <Tag
       className={`zyvavu-item-title ${className}`.trim()}
       style={{
@@ -54,9 +62,12 @@ export function ItemTitleFrontend({
         fontWeight: 700,
         lineHeight: 1.35,
         color: 'var(--zyvavu-theme-text, inherit)',
+        ...resolveWidgetStyles(semanticStyle),
       }}
     >
       {content}
-    </Tag>
+    </Tag>,
+    semanticStyle,
+    surfaceId,
   )
 }

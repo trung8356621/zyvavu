@@ -1,8 +1,15 @@
 'use client'
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ActionIcon, Box, Button, Group, Stack, Tabs, Text } from '@mantine/core'
-import { BoxSelect, Layers, Palette, Sliders, Type, X } from 'lucide-react'
+import { Button, Group, Stack, Modal, Text } from '@mantine/core'
+import { Sliders } from 'lucide-react'
+import {
+  getStyleModalDomains,
+  STYLE_MODAL_TITLES,
+  resetStyleDomain,
+  type StyleModalDomain,
+} from '@/lib/style-engine/domains'
+import { replayWidgetAnimation } from '@/lib/style-engine/animation-replay'
 
 import type { ThemeConfig, WidgetSemanticStyle } from '@/lib/theme-engine/types'
 import { getWidgetManifest } from '@/lib/theme-engine/widget-registry-manifests'
@@ -14,20 +21,7 @@ import {
   getComponentStyleCapabilities,
   normalizeComponentType,
 } from '@/lib/style-engine/capabilities'
-import type {
-  BackgroundConfig,
-  BorderConfig,
-  DimensionsConfig,
-  EffectsConfig,
-  GradientDef,
-  MeshDef,
-  RadiusConfig,
-  ShadowConfig,
-  SpacingConfig,
-  StyleDomain,
-  TypographyStyleConfig,
-  UniversalStyle,
-} from '@/lib/style-engine/types'
+import type { GradientDef, MeshDef, StyleDomain, UniversalStyle } from '@/lib/style-engine/types'
 
 import { TypographyStyleControl } from './style-controls/TypographyStyleControl'
 import { BackgroundStyleControl } from './style-controls/BackgroundStyleControl'
@@ -136,6 +130,8 @@ export function computeTranslatedAnchorPosition(
 }
 
 export interface WidgetStyleContextMenuProps {
+  domain?: StyleModalDomain
+  requestNonce?: number
   opened: boolean
   onClose: () => void
   anchorEl: HTMLElement | null
@@ -145,7 +141,7 @@ export interface WidgetStyleContextMenuProps {
   componentId: string
   currentStyle?: WidgetSemanticStyle
   themeConfig?: ThemeConfig
-  onUpdateStyle: (style: WidgetSemanticStyle) => void
+  onUpdateStyle: (style: WidgetSemanticStyle) => boolean | void
 }
 
 const EMPTY_STYLE: WidgetSemanticStyle = Object.freeze({})
@@ -157,6 +153,8 @@ export function WidgetStyleContextMenu(props: WidgetStyleContextMenuProps) {
 }
 
 function WidgetStyleSession({
+  domain,
+  requestNonce,
   opened,
   onClose,
   anchorEl,
@@ -171,12 +169,13 @@ function WidgetStyleSession({
   const componentType = normalizeComponentType(rawComponentType)
 
   // Transactional Style States:
-  // 1. committedStyleRef: Snapshot of the style currently committed in Puck
-  const committedStyleRef = useRef<WidgetSemanticStyle>(currentStyle || {})
+  // 1. committedStyle: Snapshot of the style currently committed in Puck
+  const [committedStyle, setCommittedStyle] = useState<WidgetSemanticStyle>(currentStyle || {})
   // 2. draftStyle: Temporary changes inside the Style Editor
   const [draftStyle, setDraftStyle] = useState<WidgetSemanticStyle>(() => currentStyle || {})
   const [validationError, setValidationError] = useState<string | null>(null)
   const [animationPickerOpened, setAnimationPickerOpened] = useState(false)
+  const [shellRevision, setShellRevision] = useState(0)
   // 3. prePaletteDraftRef: Snapshot before opening child Color Palette modal
   const prePaletteDraftRef = useRef<WidgetSemanticStyle | null>(null)
 
@@ -211,29 +210,24 @@ function WidgetStyleSession({
     capabilities.includes('shadow') ||
     capabilities.includes('effects')
 
-  // Initial active tab
-  const [activeTab, setActiveTab] = useState<string>(() => {
-    if (componentType === 'Section' && hasBackground) return 'background'
-    if (hasTypography) return 'typography'
-    if (hasBackground) return 'background'
-    if (hasSpacingOrDimensions) return 'spacing'
-    return 'borders'
-  })
-
-  // Sync activeTab when component type or capabilities change
-  useEffect(() => {
-    if (componentType === 'Section' && hasBackground) {
-      setActiveTab('background')
-    } else if (hasTypography) {
-      setActiveTab('typography')
-    } else if (hasBackground) {
-      setActiveTab('background')
-    } else if (hasSpacingOrDimensions) {
-      setActiveTab('spacing')
-    } else {
-      setActiveTab('borders')
-    }
-  }, [componentType, hasTypography, hasBackground, hasSpacingOrDimensions])
+  const [activeTab, setActiveTab] = useState<StyleModalDomain | null>(domain || null)
+  const [pendingDomain, setPendingDomain] = useState<StyleModalDomain | null>(null)
+  const switchDomain = (next: StyleModalDomain) => {
+    if (next === activeTab) return
+    if (JSON.stringify(draftStyle) !== JSON.stringify(committedStyle)) setPendingDomain(next)
+    else setActiveTab(next)
+  }
+  const [handledRequest, setHandledRequest] = useState({ domain, requestNonce })
+  if (handledRequest.domain !== domain || handledRequest.requestNonce !== requestNonce) {
+    setHandledRequest({ domain, requestNonce })
+    const dirty = JSON.stringify(draftStyle) !== JSON.stringify(committedStyle)
+    if (domain && dirty && domain !== activeTab) setPendingDomain(domain)
+    else if (!dirty) setActiveTab(domain || null)
+    else if (!domain)
+      setValidationError('Apply or cancel this draft before returning to style actions.')
+  }
+  const replayCleanup = useRef<(() => void) | null>(null)
+  useEffect(() => () => replayCleanup.current?.(), [])
 
   // Snapshot is captured at session mount; unrelated parent rerenders cannot erase a draft.
   useEffect(() => () => stylePreviewStore.clearPreview(componentId), [componentId])
@@ -317,7 +311,7 @@ function WidgetStyleSession({
       return
     }
     setValidationError(null)
-    onUpdateStyle(draftStyle)
+    if (onUpdateStyle(draftStyle) === false) return
     stylePreviewStore.clearPreview(componentId)
     onClose()
   }, [draftStyle, onUpdateStyle, componentId, onClose])
@@ -325,7 +319,7 @@ function WidgetStyleSession({
   // Cancel Action: Discards unapplied draft and restores canvas appearance
   const handleCancel = useCallback(() => {
     stylePreviewStore.clearPreview(componentId)
-    setDraftStyle(committedStyleRef.current)
+    setDraftStyle(committedStyle)
     onClose()
   }, [componentId, onClose])
 
@@ -476,7 +470,11 @@ function WidgetStyleSession({
       <SharedDraggableModal
         opened={opened}
         onClose={handleCancel}
-        title={`Style: ${manifest?.label || componentType}`}
+        title={
+          activeTab
+            ? `${STYLE_MODAL_TITLES[activeTab]}: ${manifest?.label || componentType}`
+            : `Style actions: ${manifest?.label || componentType}`
+        }
         subtitle="Configure presentation without handwritten CSS"
         headerExtra={<Sliders size={16} color="var(--mantine-color-teal-7, #0e6b66)" />}
         width={360}
@@ -486,72 +484,46 @@ function WidgetStyleSession({
         draggable={true}
         showCloseButton={true}
         closeOnClickOutside={false}
-        closeOnEscape={!animationPickerOpened}
+        closeOnEscape={!animationPickerOpened && !colorModalTarget && !pendingDomain}
         zIndex={ADMIN_OVERLAY_LAYERS.STYLE_MODAL}
-        subHeader={
-          <Tabs
-            value={activeTab}
-            onChange={(val) => {
-              if (!animationPickerOpened) setActiveTab(val || 'typography')
-            }}
-            variant="pills"
-            color="teal"
-          >
-            <Tabs.List
-              style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}
-            >
-              {capabilities.includes('button') && <Tabs.Tab value="button">Button shell</Tabs.Tab>}
-              {capabilities.includes('animation') && (
-                <Tabs.Tab value="animation">Animation</Tabs.Tab>
-              )}
-              {hasTypography && (
-                <Tabs.Tab value="typography" leftSection={<Type size={14} />}>
-                  Type
-                </Tabs.Tab>
-              )}
-              {hasBackground && (
-                <Tabs.Tab value="background" leftSection={<Palette size={14} />}>
-                  Backdrop
-                </Tabs.Tab>
-              )}
-              {hasSpacingOrDimensions && (
-                <Tabs.Tab value="spacing" leftSection={<BoxSelect size={14} />}>
-                  Layout
-                </Tabs.Tab>
-              )}
-              {hasBorderOrEffects && (
-                <Tabs.Tab value="borders" leftSection={<Layers size={14} />}>
-                  Borders
-                </Tabs.Tab>
-              )}
-            </Tabs.List>
-          </Tabs>
-        }
         footer={
-          <Group justify="space-between" w="100%">
-            <Text size="xs" c="dimmed" style={{ fontSize: 12 }}>
-              {componentType}: {componentId}
-            </Text>
-            <Group gap="xs">
-              <Button variant="default" size="xs" onClick={handleCancel}>
-                Hủy / Cancel
-              </Button>
-              <Button
-                variant="subtle"
-                size="sm"
-                onClick={() => {
-                  setDraftStyle({})
-                  setValidationError(null)
-                  stylePreviewStore.setPreview(componentId, {})
-                }}
-              >
-                Reset style
-              </Button>
-              <Button color="teal" size="xs" disabled={animationPickerOpened} onClick={handleApply}>
-                Áp dụng / Apply
-              </Button>
+          activeTab ? (
+            <Group justify="space-between" w="100%">
+              <Text size="xs" c="dimmed" style={{ fontSize: 12 }}>
+                {componentType}: {componentId}
+              </Text>
+              <Group gap="xs">
+                <Button variant="default" size="xs" onClick={handleCancel}>
+                  Hủy / Cancel
+                </Button>
+                <Button
+                  variant="subtle"
+                  size="sm"
+                  onClick={() => {
+                    setShellRevision((value) => value + 1)
+                    const next = resetStyleDomain(draftStyle, activeTab!)
+                    if (componentType === 'Section' && activeTab === 'borders') {
+                      delete next.shadow
+                      delete next.effects
+                    }
+                    setDraftStyle(next)
+                    setValidationError(null)
+                    stylePreviewStore.setPreview(componentId, next)
+                  }}
+                >
+                  Reset domain
+                </Button>
+                <Button
+                  color="teal"
+                  size="xs"
+                  disabled={animationPickerOpened}
+                  onClick={handleApply}
+                >
+                  Áp dụng / Apply
+                </Button>
+              </Group>
             </Group>
-          </Group>
+          ) : undefined
         }
       >
         <Stack gap="xs">
@@ -560,18 +532,48 @@ function WidgetStyleSession({
               {validationError}
             </Text>
           )}
-          {!capabilities.length && <Text>No implemented style controls for this widget.</Text>}
+          {!activeTab &&
+            getStyleModalDomains(componentType, componentVariant).map((item) => (
+              <Button key={item} variant="default" onClick={() => switchDomain(item)}>
+                {STYLE_MODAL_TITLES[item]}
+              </Button>
+            ))}
 
           {activeTab === 'button' && capabilities.includes('button') && (
-            <ButtonStyleControl key={componentId} themeConfig={themeConfig} />
+            <ButtonStyleControl
+              key={`${componentId}:${shellRevision}`}
+              themeConfig={themeConfig}
+              typography={
+                <TypographyStyleControl
+                  value={normalizedDraft.typography}
+                  themeConfig={themeConfig}
+                  onChange={(typography) => updateDraft({ typography })}
+                  onOpenColorModal={() => handleOpenColorModal('text')}
+                />
+              }
+            />
           )}
           {activeTab === 'animation' && capabilities.includes('animation') && (
-            <AnimationPresetPicker
-              target={componentType === 'Section' ? 'section' : 'widget'}
-              onOpenChange={setAnimationPickerOpened}
-              value={normalizedDraft.animation}
-              onChange={(animation) => updateDraft({ animation })}
-            />
+            <Stack>
+              <AnimationPresetPicker
+                inline
+                target={componentType === 'Section' ? 'section' : 'widget'}
+                onOpenChange={setAnimationPickerOpened}
+                value={normalizedDraft.animation}
+                onChange={(animation) => updateDraft({ animation })}
+              />
+              <Button
+                disabled={!normalizedDraft.animation || normalizedDraft.animation.preset === 'none'}
+                onClick={() => {
+                  replayCleanup.current?.()
+                  const result = replayWidgetAnimation(componentId, normalizedDraft.animation)
+                  replayCleanup.current = result.cancel
+                  setValidationError(result.message || null)
+                }}
+              >
+                Test Animation
+              </Button>
+            </Stack>
           )}
 
           {/* 1. TYPOGRAPHY DOMAIN */}
@@ -587,7 +589,7 @@ function WidgetStyleSession({
           {/* 2. BACKGROUND DOMAIN */}
           {activeTab === 'background' && hasBackground && (
             <BackgroundStyleControl
-              colorOnly={componentType !== 'Section'}
+              colorOnly={false}
               value={normalizedDraft.background}
               themeConfig={themeConfig}
               onChange={(bg) => updateDraft({ background: bg })}
@@ -609,8 +611,13 @@ function WidgetStyleSession({
           )}
 
           {/* 4. BORDERS & EFFECTS DOMAIN */}
-          {activeTab === 'borders' && hasBorderOrEffects && (
+          {['borders', 'shadow', 'effects'].includes(activeTab || '') && hasBorderOrEffects && (
             <BordersEffectsControl
+              domain={
+                activeTab === 'borders' && componentType === 'Section'
+                  ? 'all'
+                  : (activeTab as 'borders' | 'shadow' | 'effects')
+              }
               themeConfig={themeConfig}
               border={normalizedDraft.border}
               radius={normalizedDraft.radius}
@@ -626,6 +633,49 @@ function WidgetStyleSession({
         </Stack>
       </SharedDraggableModal>
 
+      <Modal
+        opened={Boolean(pendingDomain)}
+        onClose={() => setPendingDomain(null)}
+        title="Unapplied changes"
+        zIndex={ADMIN_OVERLAY_LAYERS.PALETTE_MODAL}
+      >
+        <Stack>
+          <Text>Apply or discard the current domain before opening another.</Text>
+          <Group>
+            <Button variant="default" onClick={() => setPendingDomain(null)}>
+              Continue editing
+            </Button>
+            <Button
+              variant="subtle"
+              onClick={() => {
+                setDraftStyle(committedStyle)
+                stylePreviewStore.clearPreview(componentId)
+                setActiveTab(pendingDomain)
+                setPendingDomain(null)
+              }}
+            >
+              Discard
+            </Button>
+            <Button
+              onClick={() => {
+                const result = validateUniversalStyle(draftStyle)
+                if (!result.valid) {
+                  setValidationError(result.errors.join('; '))
+                  setPendingDomain(null)
+                  return
+                }
+                if (onUpdateStyle(draftStyle) === false) return
+                setCommittedStyle(draftStyle)
+                stylePreviewStore.clearPreview(componentId)
+                setActiveTab(pendingDomain)
+                setPendingDomain(null)
+              }}
+            >
+              Apply and continue
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
       {/* Unified Color / Gradient / Mesh Modal (Child Transactional Selection) */}
       {colorModalTarget && (
         <ThemeColorPaletteModal

@@ -104,6 +104,37 @@ export function validateUniversalStyle(style: unknown): StyleValidationResult {
         }
       }
 
+      for (const pattern of [bg.pattern, bg.image?.pattern]) {
+        if (!pattern) continue
+        if (typeof pattern !== 'object' || Array.isArray(pattern)) {
+          errors.push('Pattern must be structured options')
+          continue
+        }
+        if (
+          Object.keys(pattern).some(
+            (key) => !['preset', 'colorToken', 'opacity', 'scale'].includes(key),
+          )
+        )
+          errors.push('Unsupported pattern field')
+        if (pattern.preset && !VALID_PATTERN_PRESETS.includes(pattern.preset))
+          errors.push('Invalid pattern preset')
+        if (
+          pattern.colorToken &&
+          (typeof pattern.colorToken !== 'string' || !/^[a-z][a-z0-9-]*$/i.test(pattern.colorToken))
+        )
+          errors.push('Pattern color must be a semantic token')
+        if (
+          pattern.opacity !== undefined &&
+          (typeof pattern.opacity !== 'number' ||
+            !Number.isFinite(pattern.opacity) ||
+            pattern.opacity < 0 ||
+            pattern.opacity > 1)
+        )
+          errors.push('Pattern opacity must be between 0 and 1')
+        if (pattern.scale && !['sm', 'md', 'lg'].includes(pattern.scale))
+          errors.push('Invalid pattern scale')
+      }
+
       // Gradient validation
       if (bg.gradient) {
         if (bg.gradient.type && !['linear', 'radial'].includes(bg.gradient.type)) {

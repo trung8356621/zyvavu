@@ -1,5 +1,7 @@
 'use client'
 
+import { withWidgetStyleSurface } from '@/lib/style-engine/WidgetStyleSurface'
+
 import React from 'react'
 import type { ComponentConfig } from '@puckeditor/core'
 import type { HeaderBrandProps } from './frontend'
@@ -19,12 +21,34 @@ export const headerBrandEditor: ComponentConfig<HeaderBrandProps> = {
   defaultProps: {
     showTagline: true,
   },
-  render: ({ showTagline = true }) => {
-    return (
-      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '4px 8px', border: '1px dashed #aaa', borderRadius: '4px' }}>
+  render: ({ style: surfaceStyle, id: surfaceId, showTagline = true }) => {
+    return withWidgetStyleSurface(
+      <div
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '8px',
+          padding: '4px 8px',
+          border: '1px dashed #aaa',
+          borderRadius: '4px',
+        }}
+      >
         <span style={{ fontWeight: 700, fontSize: '16px', color: '#0e6b66' }}>Zyvavu</span>
-        {showTagline && <span style={{ fontSize: '11px', color: '#666', borderLeft: '1px solid #ccc', paddingLeft: '6px' }}>Enterprise B2B</span>}
-      </div>
+        {showTagline && (
+          <span
+            style={{
+              fontSize: '11px',
+              color: '#666',
+              borderLeft: '1px solid #ccc',
+              paddingLeft: '6px',
+            }}
+          >
+            Enterprise B2B
+          </span>
+        )}
+      </div>,
+      surfaceStyle,
+      surfaceId,
     )
   },
 }

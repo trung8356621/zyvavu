@@ -1,3 +1,4 @@
+import { withWidgetStyleSurface } from '@/lib/style-engine/WidgetStyleSurface'
 import { animationAttributes } from '@/lib/style-engine/animation-presets'
 import React from 'react'
 import Link from 'next/link'
@@ -19,6 +20,7 @@ export type TextBlockProps = {
 }
 
 export function TextBlockFrontend({
+  id: surfaceId,
   title,
   content,
   align = 'left',
@@ -43,7 +45,7 @@ export function TextBlockFrontend({
       ? semanticStyle.typography?.typography
       : semanticStyle?.typography) || 'h2'
 
-  return (
+  return withWidgetStyleSurface(
     <div
       className="zyvavu-widget-text"
       {...animationAttributes(semanticStyle?.animation)}
@@ -142,6 +144,8 @@ export function TextBlockFrontend({
           {ctaLabel}
         </Link>
       ) : null}
-    </div>
+    </div>,
+    semanticStyle,
+    surfaceId,
   )
 }

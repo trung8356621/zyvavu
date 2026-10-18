@@ -84,7 +84,15 @@ export interface BackgroundVideoConfig {
   position?: string
 }
 
+export interface BackgroundPatternConfig {
+  preset?: PatternPreset
+  colorToken?: string
+  opacity?: number
+  scale?: 'sm' | 'md' | 'lg'
+}
+
 export interface BackgroundConfig {
+  pattern?: BackgroundPatternConfig
   mode?: BackgroundMode
   colorToken?: string
   gradient?: GradientDef
@@ -198,7 +206,12 @@ export interface UniversalStyle {
 export interface ButtonStyleShell {
   version: 1
   normal?: ButtonShellState
-  hover?: ButtonShellState
+  hover?: Pick<ButtonShellState, 'background' | 'shadow'> & {
+    text?: Pick<TypographyStyleConfig, 'colorToken'>
+    border?: Pick<BorderConfig, 'colorToken'>
+    opacity?: number
+    transform?: 'none' | 'lift' | 'grow'
+  }
 }
 
 export interface ButtonShellState {

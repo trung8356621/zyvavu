@@ -1,3 +1,4 @@
+import { withWidgetStyleSurface } from '@/lib/style-engine/WidgetStyleSurface'
 import type { UniversalStyle } from '@/lib/style-engine/types'
 import { resolveWidgetStyles } from '@/lib/style-engine/serializer'
 import { animationAttributes } from '@/lib/style-engine/animation-presets'
@@ -5,6 +6,8 @@ import React from 'react'
 import type { ThemeDataContext } from '@/lib/theme-engine/types'
 
 export type ItemExcerptProps = {
+  id?: string
+
   style?: UniversalStyle
   maxLines?: number
   className?: string
@@ -12,6 +15,7 @@ export type ItemExcerptProps = {
 }
 
 export function ItemExcerptFrontend({
+  id: surfaceId,
   style: semanticStyle,
   maxLines = 3,
   className = '',
@@ -22,7 +26,7 @@ export function ItemExcerptFrontend({
     item?.excerpt ||
     'Tóm tắt nội dung mô tả chi tiết của bài viết này để hiển thị trên thẻ card xem trước.'
 
-  return (
+  return withWidgetStyleSurface(
     <p
       className={`zyvavu-item-excerpt ${className}`.trim()}
       {...animationAttributes(semanticStyle?.animation)}
@@ -39,6 +43,8 @@ export function ItemExcerptFrontend({
       }}
     >
       {excerpt}
-    </p>
+    </p>,
+    semanticStyle,
+    surfaceId,
   )
 }

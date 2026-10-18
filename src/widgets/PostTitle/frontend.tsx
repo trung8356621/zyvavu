@@ -1,3 +1,4 @@
+import { withWidgetStyleSurface } from '@/lib/style-engine/WidgetStyleSurface'
 import { animationAttributes } from '@/lib/style-engine/animation-presets'
 import React from 'react'
 import type { ThemeDataContext, WidgetSemanticStyle } from '@/lib/theme-engine/types'
@@ -15,6 +16,7 @@ export type PostTitleProps = {
 }
 
 export function PostTitleFrontend({
+  id: surfaceId,
   tag,
   align = 'left',
   variant = 'default',
@@ -42,7 +44,7 @@ export function PostTitleFrontend({
   const defaultColor =
     variant === 'accent' ? 'var(--zyvavu-theme-primary, var(--zyvavu-primary, #0e6b66))' : 'inherit'
 
-  return (
+  return withWidgetStyleSurface(
     <div
       className={`zyvavu-widget-post-title zyvavu-widget-post-title--${variant}`}
       {...animationAttributes(semanticStyle?.animation)}
@@ -69,6 +71,8 @@ export function PostTitleFrontend({
       >
         {title}
       </HeadingTag>
-    </div>
+    </div>,
+    semanticStyle,
+    surfaceId,
   )
 }

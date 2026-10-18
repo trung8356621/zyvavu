@@ -95,9 +95,10 @@ export function resolveLineHeight(preset?: LineHeightPreset): string | undefined
   }
 }
 
-export function resolveTextEffect(
-  preset?: TextEffectPreset,
-): { textShadow?: string; WebkitTextStroke?: string } {
+export function resolveTextEffect(preset?: TextEffectPreset): {
+  textShadow?: string
+  WebkitTextStroke?: string
+} {
   switch (preset) {
     case 'shadow-soft':
       return {
@@ -199,6 +200,10 @@ export function resolvePatternSize(preset?: PatternPreset): string | undefined {
       return '24px 24px'
     case 'noise':
       return '4px 4px'
+    case 'diagonal':
+      return '24px 24px'
+    case 'stripes':
+      return '16px 16px'
     default:
       return undefined
   }

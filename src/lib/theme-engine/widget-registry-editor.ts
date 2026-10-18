@@ -11,10 +11,10 @@ function wrapWithStylePreview(config: any) {
   if (!config || !config.render) return config
   return {
     ...config,
-    render: (props: any) => {
+    render: function WidgetPreviewRenderer(props: any) {
       const preview = useWidgetPreviewStyle(props.id, props.puck?.id, props.puck?.componentId)
       const effectiveProps = preview ? { ...props, style: preview } : props
-      return config.render(effectiveProps)
+      return React.createElement(config.render, effectiveProps)
     },
   }
 }
@@ -187,18 +187,32 @@ export function getEditorConfigForContext(
 
   return {
     root: {
-      render: ({ children, puck, pageSettings }: { children?: React.ReactNode; puck?: any; pageSettings?: PageSettings }) => {
+      render: ({
+        children,
+        puck,
+        pageSettings,
+      }: {
+        children?: React.ReactNode
+        puck?: any
+        pageSettings?: PageSettings
+      }) => {
         const effectiveLayout = resolveEffectivePageLayout(pageSettings, themeConfig?.tokens)
-        const resolved = resolvePageSettingsStyles(pageSettings, themeConfig?.tokens, context, isPageContent)
+        const resolved = resolvePageSettingsStyles(
+          pageSettings,
+          themeConfig?.tokens,
+          context,
+          isPageContent,
+        )
         const styleTag = resolved.scopedCss
           ? React.createElement('style', {
               dangerouslySetInnerHTML: { __html: resolved.scopedCss },
             })
           : null
 
-        const contentNode = isPageContent && puck?.renderDropZone
-          ? puck.renderDropZone({ zone: 'default-zone', allow: ['Section'] })
-          : children
+        const contentNode =
+          isPageContent && puck?.renderDropZone
+            ? puck.renderDropZone({ zone: 'default-zone', allow: ['Section'] })
+            : children
 
         const innerRoot = React.createElement(
           'div',

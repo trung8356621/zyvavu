@@ -1,3 +1,4 @@
+import { withWidgetStyleSurface } from '@/lib/style-engine/WidgetStyleSurface'
 import type { UniversalStyle } from '@/lib/style-engine/types'
 import { resolveWidgetStyles } from '@/lib/style-engine/serializer'
 import { animationAttributes } from '@/lib/style-engine/animation-presets'
@@ -6,6 +7,8 @@ import Link from 'next/link'
 import type { ThemeDataContext } from '@/lib/theme-engine/types'
 
 export type ItemLinkProps = {
+  id?: string
+
   style?: UniversalStyle
   label?: string
   variant?: 'link' | 'button' | 'outline'
@@ -14,6 +17,7 @@ export type ItemLinkProps = {
 }
 
 export function ItemLinkFrontend({
+  id: surfaceId,
   style: semanticStyle,
   label = 'Xem chi tiết →',
   variant = 'link',
@@ -24,7 +28,7 @@ export function ItemLinkFrontend({
   const url = item?.url || '#'
 
   if (variant === 'button') {
-    return (
+    return withWidgetStyleSurface(
       <Link
         href={url}
         className={`zyvavu-item-link zyvavu-item-link--btn ${className}`.trim()}
@@ -45,12 +49,14 @@ export function ItemLinkFrontend({
         }}
       >
         {label}
-      </Link>
+      </Link>,
+      semanticStyle,
+      surfaceId,
     )
   }
 
   if (variant === 'outline') {
-    return (
+    return withWidgetStyleSurface(
       <Link
         href={url}
         className={`zyvavu-item-link zyvavu-item-link--outline ${className}`.trim()}
@@ -71,11 +77,13 @@ export function ItemLinkFrontend({
         }}
       >
         {label}
-      </Link>
+      </Link>,
+      semanticStyle,
+      surfaceId,
     )
   }
 
-  return (
+  return withWidgetStyleSurface(
     <Link
       href={url}
       className={`zyvavu-item-link ${className}`.trim()}
@@ -93,6 +101,8 @@ export function ItemLinkFrontend({
       }}
     >
       {label}
-    </Link>
+    </Link>,
+    semanticStyle,
+    surfaceId,
   )
 }

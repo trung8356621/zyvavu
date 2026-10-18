@@ -1,3 +1,4 @@
+import { withWidgetStyleSurface } from '@/lib/style-engine/WidgetStyleSurface'
 import type { UniversalStyle } from '@/lib/style-engine/types'
 import { resolveWidgetStyles } from '@/lib/style-engine/serializer'
 import { animationAttributes } from '@/lib/style-engine/animation-presets'
@@ -16,6 +17,7 @@ export type HeaderActionProps = {
 }
 
 export function HeaderActionFrontend({
+  id: surfaceId,
   style: semanticStyle,
   label = 'Liên hệ',
   url = '/contact',
@@ -26,28 +28,29 @@ export function HeaderActionFrontend({
 
   const isOutline = variant === 'outline'
 
-  return (
-    <div className="zyvavu-widget-header-action" style={{ display: 'inline-block' }}>
-      <Link
-        {...animationAttributes(semanticStyle?.animation)}
-        href={url}
-        target={newTab ? '_blank' : undefined}
-        style={{
-          display: 'inline-block',
-          padding: '8px 16px',
-          borderRadius: '6px',
-          fontSize: '14px',
-          fontWeight: 600,
-          textDecoration: 'none',
-          backgroundColor: isOutline ? 'transparent' : 'var(--zyvavu-theme-primary, #0e6b66)',
-          color: isOutline ? 'var(--zyvavu-theme-primary, #0e6b66)' : '#ffffff',
-          border: isOutline ? '1px solid var(--zyvavu-theme-primary, #0e6b66)' : 'none',
-          transition: 'all 0.2s ease',
-          ...resolveWidgetStyles(semanticStyle),
-        }}
-      >
-        {label}
-      </Link>
-    </div>
+  return withWidgetStyleSurface(
+    <Link
+      className="zyvavu-widget-header-action"
+      {...animationAttributes(semanticStyle?.animation)}
+      href={url}
+      target={newTab ? '_blank' : undefined}
+      style={{
+        display: 'inline-block',
+        padding: '8px 16px',
+        borderRadius: '6px',
+        fontSize: '14px',
+        fontWeight: 600,
+        textDecoration: 'none',
+        backgroundColor: isOutline ? 'transparent' : 'var(--zyvavu-theme-primary, #0e6b66)',
+        color: isOutline ? 'var(--zyvavu-theme-primary, #0e6b66)' : '#ffffff',
+        border: isOutline ? '1px solid var(--zyvavu-theme-primary, #0e6b66)' : 'none',
+        transition: 'all 0.2s ease',
+        ...resolveWidgetStyles(semanticStyle),
+      }}
+    >
+      {label}
+    </Link>,
+    semanticStyle,
+    surfaceId,
   )
 }

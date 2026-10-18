@@ -1,3 +1,4 @@
+import { withWidgetStyleSurface } from '@/lib/style-engine/WidgetStyleSurface'
 import type { UniversalStyle } from '@/lib/style-engine/types'
 import { resolveWidgetStyles } from '@/lib/style-engine/serializer'
 import { animationAttributes } from '@/lib/style-engine/animation-presets'
@@ -14,6 +15,7 @@ export type PostMetaProps = {
 }
 
 export function PostMetaFrontend({
+  id: surfaceId,
   style: semanticStyle,
   showDate = true,
   showAuthor = true,
@@ -31,7 +33,7 @@ export function PostMetaFrontend({
     : null
   const categories: any[] = Array.isArray(doc?.categories) ? doc.categories : []
 
-  return (
+  return withWidgetStyleSurface(
     <div
       className="zyvavu-widget-post-meta"
       {...animationAttributes(semanticStyle?.animation)}
@@ -78,6 +80,8 @@ export function PostMetaFrontend({
           })}
         </div>
       ) : null}
-    </div>
+    </div>,
+    semanticStyle,
+    surfaceId,
   )
 }

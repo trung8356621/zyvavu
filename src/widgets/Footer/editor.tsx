@@ -1,5 +1,7 @@
 'use client'
 
+import { withWidgetStyleSurface } from '@/lib/style-engine/WidgetStyleSurface'
+
 import React from 'react'
 import type { ComponentConfig } from '@puckeditor/core'
 import type { FooterProps } from './frontend'
@@ -25,8 +27,14 @@ export const footerEditor: ComponentConfig<FooterProps> = {
     copyright: '© 2026 Zyvavu. All rights reserved.',
     showBrand: true,
   },
-  render: ({ copyright = '© 2026 Zyvavu', showBrand = true, footerContent: Content }: any) => {
-    return (
+  render: ({
+    style: surfaceStyle,
+    id: surfaceId,
+    copyright = '© 2026 Zyvavu',
+    showBrand = true,
+    footerContent: Content,
+  }: any) => {
+    return withWidgetStyleSurface(
       <div
         className="zyvavu-widget-footer"
         style={{
@@ -37,17 +45,44 @@ export const footerEditor: ComponentConfig<FooterProps> = {
           margin: '16px 0',
         }}
       >
-        <div style={{ fontSize: '11px', textTransform: 'uppercase', color: '#0e6b66', fontWeight: 600, marginBottom: '12px' }}>
+        <div
+          style={{
+            fontSize: '11px',
+            textTransform: 'uppercase',
+            color: '#0e6b66',
+            fontWeight: 600,
+            marginBottom: '12px',
+          }}
+        >
           Free Footer Builder Area
         </div>
-        <div style={{ border: '1px dashed #ccc', padding: '16px', borderRadius: '4px', minHeight: '60px', marginBottom: '16px' }}>
+        <div
+          style={{
+            border: '1px dashed #ccc',
+            padding: '16px',
+            borderRadius: '4px',
+            minHeight: '60px',
+            marginBottom: '16px',
+          }}
+        >
           {Content && <Content />}
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #dee2e6', paddingTop: '12px', fontSize: '12px', color: '#666' }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            borderTop: '1px solid #dee2e6',
+            paddingTop: '12px',
+            fontSize: '12px',
+            color: '#666',
+          }}
+        >
           {showBrand && <span style={{ fontWeight: 600 }}>Zyvavu CMS</span>}
           <span>{copyright}</span>
         </div>
-      </div>
+      </div>,
+      surfaceStyle,
+      surfaceId,
     )
   },
 }

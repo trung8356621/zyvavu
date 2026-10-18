@@ -1,5 +1,8 @@
 'use client'
 
+import { withWidgetStyleSurface } from '@/lib/style-engine/WidgetStyleSurface'
+import type { UniversalStyle } from '@/lib/style-engine/types'
+
 import React, { useState } from 'react'
 import Link from 'next/link'
 import type { NavLink, ResolvedMenuItem } from '@/lib/url/menu-links'
@@ -7,6 +10,8 @@ import type { ThemeDataContext } from '@/lib/theme-engine/types'
 import { MegaMenuRenderer } from '@/components/frontend/MegaMenuRenderer'
 
 export type HeaderNavProps = {
+  style?: UniversalStyle
+
   id?: string
   dropdownEffect?: 'none' | 'fade' | 'slide-down'
   items?: NavLink[]
@@ -15,6 +20,8 @@ export type HeaderNavProps = {
 }
 
 export function HeaderNavFrontend({
+  style: surfaceStyle,
+  id: surfaceId,
   dropdownEffect = 'fade',
   items: customItems,
   menuTree: customTree,
@@ -41,7 +48,7 @@ export function HeaderNavFrontend({
     }))
 
   if (!tree.length) {
-    return (
+    return withWidgetStyleSurface(
       <nav className="site-nav" style={{ display: 'flex', gap: '20px' }}>
         <Link
           href="/"
@@ -54,7 +61,9 @@ export function HeaderNavFrontend({
         >
           Trang chủ
         </Link>
-      </nav>
+      </nav>,
+      surfaceStyle,
+      surfaceId,
     )
   }
 
@@ -64,7 +73,7 @@ export function HeaderNavFrontend({
     setMobileExpanded((prev) => ({ ...prev, [id]: !prev[id] }))
   }
 
-  return (
+  return withWidgetStyleSurface(
     <>
       {/* DESKTOP NAVIGATION */}
       <nav
@@ -171,7 +180,8 @@ export function HeaderNavFrontend({
                         transition: 'background-color 0.15s ease, color 0.15s ease',
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = 'var(--zyvavu-theme-surface, #f5f7f6)'
+                        e.currentTarget.style.backgroundColor =
+                          'var(--zyvavu-theme-surface, #f5f7f6)'
                         e.currentTarget.style.color = 'var(--zyvavu-theme-primary, #0e6b66)'
                       }}
                       onMouseLeave={(e) => {
@@ -223,7 +233,14 @@ export function HeaderNavFrontend({
           color: 'var(--zyvavu-theme-header-text, var(--zyvavu-theme-text, #17201f))',
         }}
       >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
           {mobileOpen ? <path d="M18 6L6 18M6 6l12 12" /> : <path d="M4 6h16M4 12h16M4 18h16" />}
         </svg>
       </button>
@@ -246,7 +263,8 @@ export function HeaderNavFrontend({
           <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
             {tree.map((item) => {
               const hasChildren = Array.isArray(item.children) && item.children.length > 0
-              const isMega = item.hasSubmenu && item.submenuType === 'mega' && Boolean(item.megaLayout)
+              const isMega =
+                item.hasSubmenu && item.submenuType === 'mega' && Boolean(item.megaLayout)
               const isClassic = hasChildren && !isMega
               const hasDropdown = hasChildren || isMega
               const isExpanded = Boolean(mobileExpanded[item.id])
@@ -259,7 +277,13 @@ export function HeaderNavFrontend({
                     padding: '12px 0',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                    }}
+                  >
                     <Link
                       href={item.href}
                       onClick={() => setMobileOpen(false)}
@@ -325,6 +349,8 @@ export function HeaderNavFrontend({
           </ul>
         </div>
       )}
-    </>
+    </>,
+    surfaceStyle,
+    surfaceId,
   )
 }

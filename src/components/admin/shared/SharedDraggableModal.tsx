@@ -291,6 +291,22 @@ export function SharedDraggableModal({
     window.addEventListener('pointerup', onPointerUp)
   }
 
+  // Floating tools focus their own controls while leaving the canvas reachable.
+  useEffect(() => {
+    if (!opened) return
+    const previous = anchorEl || (document.activeElement as HTMLElement | null)
+    const frame = requestAnimationFrame(() => {
+      const control = modalRef.current?.querySelector<HTMLElement>(
+        '[data-modal-region="content"] input, [data-modal-region="content"] button, button',
+      )
+      control?.focus({ preventScroll: true })
+    })
+    return () => {
+      cancelAnimationFrame(frame)
+      if (previous?.isConnected) previous.focus({ preventScroll: true })
+    }
+  }, [opened, anchorEl])
+
   // Escape key handler
   useEffect(() => {
     if (!opened || !closeOnEscape) return

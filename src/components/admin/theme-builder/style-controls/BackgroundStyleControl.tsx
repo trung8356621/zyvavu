@@ -154,9 +154,9 @@ export function BackgroundStyleControl({
         ? Boolean(value.video?.overlay?.colorToken || value.video?.overlay?.opacity !== undefined)
         : false
 
-  const patternPreset = value.image?.pattern?.preset || 'none'
-  const hasPattern = mode === 'image' && patternPreset !== 'none'
-  const patternOpacity = value.image?.pattern?.opacity ?? 0.15
+  const patternPreset = value.pattern?.preset || value.image?.pattern?.preset || 'none'
+  const hasPattern = patternPreset !== 'none'
+  const patternOpacity = value.pattern?.opacity ?? value.image?.pattern?.opacity ?? 0.15
 
   const gradientCss = value.gradient ? serializeGradientCss(value.gradient) : undefined
   const meshCss = value.mesh ? serializeMeshCss(value.mesh) : undefined
@@ -252,7 +252,12 @@ export function BackgroundStyleControl({
               inset: 0,
               zIndex: 4,
               backgroundImage: patternCss,
-              backgroundSize: patternSize || 'auto',
+              backgroundSize: (patternSize || 'auto').replace(
+                /([\d.]+)px/g,
+                (_, n) =>
+                  `${Number(n) * (value.pattern?.scale === 'sm' ? 0.5 : value.pattern?.scale === 'lg' ? 2 : 1)}px`,
+              ),
+              color: resolveColorToken(value.pattern?.colorToken || 'text'),
               opacity: patternOpacity,
             }}
           />
@@ -363,6 +368,56 @@ export function BackgroundStyleControl({
           </Group>
         </Box>
       </Box>
+
+      <Stack gap="xs">
+        <Select
+          label="Background pattern"
+          value={value.pattern?.preset || value.image?.pattern?.preset || 'none'}
+          data={[
+            { value: 'none', label: 'None' },
+            { value: 'dots', label: 'Dots' },
+            { value: 'grid', label: 'Grid' },
+            { value: 'stripes', label: 'Horizontal lines' },
+            { value: 'diagonal', label: 'Diagonal stripes' },
+            { value: 'noise', label: 'Subtle texture' },
+          ]}
+          onChange={(preset) =>
+            update({ pattern: { ...value.pattern, preset: preset as PatternPreset } })
+          }
+        />
+        {value.pattern?.preset && value.pattern.preset !== 'none' && (
+          <>
+            <Select
+              label="Pattern color token"
+              value={value.pattern.colorToken || 'text'}
+              data={Object.keys(
+                themeConfig?.tokens.colors || { text: '', primary: '', border: '' },
+              )}
+              onChange={(token) =>
+                update({ pattern: { ...value.pattern, colorToken: token || undefined } })
+              }
+            />
+            <Text size="sm">Pattern opacity</Text>
+            <Slider
+              aria-label="Pattern opacity"
+              min={0}
+              max={100}
+              value={Math.round((value.pattern.opacity ?? 0.15) * 100)}
+              onChange={(opacity) =>
+                update({ pattern: { ...value.pattern, opacity: opacity / 100 } })
+              }
+            />
+            <Select
+              label="Pattern scale"
+              value={value.pattern.scale || 'md'}
+              data={['sm', 'md', 'lg']}
+              onChange={(scale) =>
+                update({ pattern: { ...value.pattern, scale: scale as 'sm' | 'md' | 'lg' } })
+              }
+            />
+          </>
+        )}
+      </Stack>
 
       {/* Mode Switcher */}
       <SegmentedControl
@@ -872,60 +927,6 @@ export function BackgroundStyleControl({
                 </Text>
               </Group>
             </Box>
-
-            {/* Pattern Presets */}
-            <Group grow gap="xs">
-              <Select
-                size="sm"
-                label="CSS Pattern Preset"
-                value={value.image?.pattern?.preset || 'none'}
-                onChange={(val) =>
-                  update({
-                    image: {
-                      ...value.image,
-                      pattern: {
-                        ...value.image?.pattern,
-                        preset: (val as PatternPreset) || 'none',
-                      },
-                    },
-                  })
-                }
-                data={[
-                  { value: 'none', label: 'None' },
-                  { value: 'dots', label: 'Subtle Dots' },
-                  { value: 'grid', label: 'Fine Grid' },
-                  { value: 'diagonal', label: 'Diagonal Lines' },
-                  { value: 'stripes', label: 'Horizontal Stripes' },
-                  { value: 'noise', label: 'Subtle Noise' },
-                ]}
-              />
-
-              {value.image?.pattern?.preset && value.image.pattern.preset !== 'none' && (
-                <Box>
-                  <Text size="xs" fw={500} mb={2} style={{ fontSize: 12 }}>
-                    Pattern Opacity
-                  </Text>
-                  <Slider
-                    size="sm"
-                    color="teal"
-                    min={0}
-                    max={100}
-                    value={Math.round((value.image?.pattern?.opacity ?? 0.15) * 100)}
-                    onChange={(val) =>
-                      update({
-                        image: {
-                          ...value.image,
-                          pattern: {
-                            ...value.image?.pattern,
-                            opacity: val / 100,
-                          },
-                        },
-                      })
-                    }
-                  />
-                </Box>
-              )}
-            </Group>
           </Stack>
         ))}
 

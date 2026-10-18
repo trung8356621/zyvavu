@@ -1,3 +1,4 @@
+import { withWidgetStyleSurface } from '@/lib/style-engine/WidgetStyleSurface'
 import type { UniversalStyle } from '@/lib/style-engine/types'
 import { resolveWidgetStyles } from '@/lib/style-engine/serializer'
 import { animationAttributes } from '@/lib/style-engine/animation-presets'
@@ -15,6 +16,7 @@ export type RecentPostsProps = {
 }
 
 export function RecentPostsFrontend({
+  id: surfaceId,
   style: semanticStyle,
   limit = 6,
   columns = 3,
@@ -33,7 +35,7 @@ export function RecentPostsFrontend({
   const displayPosts = posts.slice(0, limit)
 
   if (!displayPosts.length) {
-    return (
+    return withWidgetStyleSurface(
       <div
         className="zyvavu-widget-recent-posts"
         {...animationAttributes(semanticStyle?.animation)}
@@ -41,13 +43,15 @@ export function RecentPostsFrontend({
       >
         {effectiveHeading && <h2 style={{ marginBottom: '16px' }}>{effectiveHeading}</h2>}
         <p style={{ color: '#888' }}>Chưa có bài viết nào được đăng tải.</p>
-      </div>
+      </div>,
+      semanticStyle,
+      surfaceId,
     )
   }
 
   const colStyle = columns === 2 ? '1fr 1fr' : columns === 4 ? 'repeat(4, 1fr)' : 'repeat(3, 1fr)'
 
-  return (
+  return withWidgetStyleSurface(
     <div
       className="zyvavu-widget-recent-posts"
       {...animationAttributes(semanticStyle?.animation)}
@@ -153,6 +157,8 @@ export function RecentPostsFrontend({
           )
         })}
       </div>
-    </div>
+    </div>,
+    semanticStyle,
+    surfaceId,
   )
 }
