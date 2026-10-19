@@ -1,0 +1,24 @@
+html,
+body {
+  margin: 0;
+  width: 100%;
+  min-height: 100%;
+  background: var(--zyvavu-theme-background, #fff);
+  color: var(--zyvavu-theme-text, #17201f);
+  font-family: var(--zyvavu-theme-font, sans-serif);
+}
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+[data-pattern-capture] {
+  width: 1200px;
+  min-height: 800px;
+}
+[data-pattern-capture] [data-zyvavu-motion] {
+  animation: none !important;
+}
+[data-pattern-capture] video {
+  display: none;
+}

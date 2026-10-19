@@ -1,4 +1,5 @@
 import React from 'react'
+import { inlineSlotsToZones } from './patterns/json'
 import type { ThemeDataContext, ThemeTemplateDocument } from './types'
 import { getFrontendWidget } from './widget-registry-frontend'
 import { resolvePageSettingsStyles, resolveEffectivePageLayout } from './page-settings'
@@ -28,7 +29,7 @@ export function ThemeRenderer({
   }
 
   // Normalize legacy documents in-memory for public SSR without mutating DB records
-  const effectiveDoc = normalizeThemeTemplateDocument(document)
+  const effectiveDoc = inlineSlotsToZones(normalizeThemeTemplateDocument(document))
   const zones = effectiveDoc.zones || {}
 
   const renderItem = (
@@ -51,11 +52,7 @@ export function ThemeRenderer({
 
     // Dynamic slot renderer for repeating server widgets like CollectionLoop
     const renderSlot = isRepeatingLoop
-      ? (
-          slotName: string,
-          customContext?: ThemeDataContext,
-          keyPrefix?: string,
-        ) => {
+      ? (slotName: string, customContext?: ThemeDataContext, keyPrefix?: string) => {
           const zoneKey = `${id}:${slotName}`
           const zoneItems = zones[zoneKey]
           if (!Array.isArray(zoneItems) || zoneItems.length === 0) return null
@@ -87,9 +84,7 @@ export function ThemeRenderer({
           if (Array.isArray(zoneItems) && zoneItems.length > 0) {
             slotProps[slotName] = (
               <React.Fragment key={zoneKey}>
-                {zoneItems.map((child, childIdx) =>
-                  renderItem(child, childIdx, currentContext),
-                )}
+                {zoneItems.map((child, childIdx) => renderItem(child, childIdx, currentContext))}
               </React.Fragment>
             )
           }
@@ -120,7 +115,12 @@ export function ThemeRenderer({
 
   const pageSettings = effectiveDoc.root?.props?.pageSettings
   const effectiveLayout = resolveEffectivePageLayout(pageSettings)
-  const resolved = resolvePageSettingsStyles(pageSettings, undefined, effectiveDoc.template, hasSections)
+  const resolved = resolvePageSettingsStyles(
+    pageSettings,
+    undefined,
+    effectiveDoc.template,
+    hasSections,
+  )
 
   if (isNested) {
     return <>{effectiveDoc.content.map((item, idx) => renderItem(item, idx))}</>
@@ -135,10 +135,11 @@ export function ThemeRenderer({
         effectiveSpacing: effectiveLayout.spacing,
       }}
     >
-      <div className={`zyvavu-theme-root ${containerClass} ${resolved.className} ${className}`.trim()} style={resolved.style}>
-        {resolved.scopedCss && (
-          <style dangerouslySetInnerHTML={{ __html: resolved.scopedCss }} />
-        )}
+      <div
+        className={`zyvavu-theme-root ${containerClass} ${resolved.className} ${className}`.trim()}
+        style={resolved.style}
+      >
+        {resolved.scopedCss && <style dangerouslySetInnerHTML={{ __html: resolved.scopedCss }} />}
         {effectiveDoc.content.map((item, idx) => renderItem(item, idx))}
       </div>
     </PageLayoutProvider>

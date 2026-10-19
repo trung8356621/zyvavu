@@ -8,7 +8,7 @@
 }
 .columns {
   display: grid;
-  grid-template-columns: minmax(4.5rem, 1fr) minmax(0, 3fr);
+  grid-template-columns: minmax(5rem, 1fr) minmax(0, 3fr);
   flex: 1;
   min-height: 0;
   overflow: hidden;
@@ -51,5 +51,99 @@
     overflow-x: auto;
     border-right: 0;
     border-bottom: 1px solid var(--mantine-color-default-border);
+  }
+}
+
+.categoryTile {
+  min-height: calc(
+    2 * var(--mantine-line-height-sm) * var(--mantine-font-size-sm) + 2 *
+      var(--mantine-spacing-sm) + 1.5rem
+  );
+  height: auto;
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-xs);
+  margin-bottom: var(--mantine-spacing-xs);
+}
+.categoryInner {
+  width: 100%;
+  min-width: 0;
+  justify-content: center;
+}
+.categoryContent {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+}
+.categoryContent svg {
+  flex: none;
+}
+.categoryLabel {
+  display: block;
+  width: 100%;
+  white-space: normal;
+  overflow-wrap: normal;
+  word-break: normal;
+  text-align: center;
+  line-height: var(--mantine-line-height-sm);
+  min-height: calc(2 * var(--mantine-line-height-sm) * var(--mantine-font-size-sm));
+}
+.categoryTile:focus-visible {
+  outline: 2px solid var(--mantine-primary-color-filled);
+  outline-offset: -2px;
+}
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  gap: var(--mantine-spacing-sm);
+}
+.card {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+}
+.card .preview {
+  height: 10rem;
+  min-height: 0;
+  padding: var(--mantine-spacing-xs);
+  border: 0;
+}
+.card .preview > div {
+  transform-origin: top left;
+}
+.overlay {
+  position: absolute;
+  inset: var(--mantine-spacing-xs) var(--mantine-spacing-xs) auto auto;
+  display: flex;
+  gap: var(--mantine-spacing-xs);
+  opacity: 0;
+  pointer-events: none;
+  padding: var(--mantine-spacing-xs);
+  border-radius: var(--mantine-radius-sm);
+  background: var(--mantine-color-body);
+  box-shadow: var(--mantine-shadow-sm);
+}
+.card:hover .overlay,
+.card:focus-within .overlay {
+  opacity: 1;
+  pointer-events: auto;
+}
+@media (hover: none) {
+  .overlay {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .overlay {
+    transition: opacity 120ms ease;
+  }
+}
+@container (max-width:19rem) {
+  .categoryTile {
+    flex: 0 0 6rem;
+    margin-bottom: 0;
   }
 }

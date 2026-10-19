@@ -1,12 +1,39 @@
 'use client'
 import React, { useMemo, useState } from 'react'
-import { Alert, Badge, Button, Group, Paper, Select, Stack, Text, TextInput } from '@mantine/core'
+import {
+  ActionIcon,
+  Alert,
+  Badge,
+  Button,
+  Divider,
+  Group,
+  Loader,
+  Menu,
+  Modal,
+  Paper,
+  SegmentedControl,
+  Select,
+  Stack,
+  Text,
+  TextInput,
+  Textarea,
+} from '@mantine/core'
 import { createUsePuck } from '@puckeditor/core'
-import { Columns3, Image, LayoutGrid, MousePointer2, Type, Layers } from 'lucide-react'
+import {
+  Columns3,
+  Image,
+  LayoutGrid,
+  MousePointer2,
+  Type,
+  Layers,
+  Database,
+  MoreHorizontal,
+  Bookmark,
+  Eye,
+  Plus,
+} from 'lucide-react'
 import type { TemplateContext, ThemeConfig } from '@/lib/theme-engine/types'
 import { getWidgetManifest } from '@/lib/theme-engine/widget-registry-manifests'
-import { WidgetStyleSurface } from '@/lib/style-engine/WidgetStyleSurface'
-import { resolveWidgetStyles } from '@/lib/style-engine/serializer'
 import {
   getWidgetDesignPatterns,
   instantiatePattern,
@@ -14,79 +41,49 @@ import {
   applyWidgetPattern,
   validatePatternOperation,
   walkPatternDocument,
+  designPatternFromJSON,
   type WidgetDesignPattern,
 } from '@/lib/theme-engine/widget-patterns'
+import {
+  serializeSelectedPattern,
+  validatePatternJSON,
+  type PatternJSON,
+  type PatternSource,
+} from '@/lib/theme-engine/patterns/json'
+import { PatternThumbnail, PatternPreviewModal } from './PatternPreview'
+import { useMyPatterns, type MyPatternDocument } from './useMyPatterns'
+import { ADMIN_OVERLAY_LAYERS } from '@/theme/layers'
 import styles from './WidgetPatternLibrary.module.css'
 const usePuck = createUsePuck()
-function categoryFor(type: string) {
-  if (type === 'Section') return 'sections'
+export function widgetLibraryCategory(type: string) {
+  const manifest = getWidgetManifest(type)
   if (
-    [
-      'PostTitle',
-      'PostContent',
-      'PostMeta',
-      'TextBlock',
-      'ItemTitle',
-      'ItemExcerpt',
-      'HeaderTopBarText',
-    ].includes(type)
+    manifest?.capabilities.some((capability) =>
+      /^(document|archive|item|site|product)\./.test(capability),
+    )
   )
-    return 'text'
-  if (['FeaturedMedia', 'ItemImage'].includes(type)) return 'images'
-  if (['HeaderAction', 'ItemLink'].includes(type)) return 'buttons'
-  return getWidgetManifest(type)?.category || 'general'
+    return 'dynamic'
+  if (type === 'Section') return 'sections'
+  if (type === 'Columns') return 'layout'
+  if (type === 'TextBlock') return 'text'
+  return manifest?.category || 'general'
+}
+const LABELS: Record<string, string> = {
+  sections: 'Sections',
+  layout: 'Layout',
+  text: 'Text',
+  images: 'Images',
+  buttons: 'Buttons',
+  general: 'Widgets',
+  dynamic: 'Nội dung động',
 }
 const ICONS: Record<string, React.ElementType> = {
   sections: Layers,
+  layout: Columns3,
   text: Type,
   images: Image,
   buttons: MousePointer2,
-  layout: Columns3,
-}
-function PatternPreview({ pattern }: { pattern: WidgetDesignPattern }) {
-  const textStyle = resolveWidgetStyles({ typography: pattern.props.style?.typography })
-  return (
-    <div className={styles.preview} aria-hidden="true">
-      <WidgetStyleSurface style={pattern.props.style}>
-        {pattern.preview.kind === 'columns' ? (
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: pattern.props.distribution === '2:1' ? '2fr 1fr' : '1fr 1fr',
-              gap: 'var(--mantine-spacing-xs)',
-            }}
-          >
-            {['Feature', 'Aside'].map((text) => (
-              <div
-                key={text}
-                style={{
-                  background: 'var(--zyvavu-theme-surface, white)',
-                  border: '1px solid var(--zyvavu-theme-border, #ddd)',
-                  padding: 'var(--mantine-spacing-sm)',
-                }}
-              >
-                {text}
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div>
-            <div
-              style={{
-                ...textStyle,
-                fontSize: pattern.preview.kind === 'text' ? '1.1rem' : '0.9rem',
-              }}
-            >
-              {pattern.preview.label}
-            </div>
-            <div style={{ fontSize: '0.75rem', opacity: 0.7 }}>
-              Content follows your published theme.
-            </div>
-          </div>
-        )}
-      </WidgetStyleSurface>
-    </div>
-  )
+  dynamic: Database,
 }
 export function WidgetPatternLibrary({
   context,
@@ -104,21 +101,54 @@ export function WidgetPatternLibrary({
   const getPermissions = usePuck((state) => state.getPermissions)
   const [category, setCategory] = useState('')
   const [search, setSearch] = useState('')
+  const [source, setSource] = useState<PatternSource>('system')
+  const [widgetFilter, setWidgetFilter] = useState<string | null>(null)
   const [destination, setDestination] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
-  const types = Object.keys(config.components)
-  const categories: string[] = [...new Set(types.map(categoryFor))]
-  const active = categories.includes(category) ? category : categories[0]
-  const matches = (text: string) => text.toLowerCase().includes(search.toLowerCase())
-  const patterns = getWidgetDesignPatterns().filter(
-    (pattern) =>
-      pattern.category === active && types.includes(pattern.widgetType) && matches(pattern.name),
+  const [busy, setBusy] = useState(false)
+  const [preview, setPreview] = useState<{
+    record: PatternJSON
+    url?: string | null
+    key: string
+  } | null>(null)
+  const [editor, setEditor] = useState<{ record: PatternJSON; doc?: MyPatternDocument } | null>(
+    null,
   )
+  const [confirm, setConfirm] = useState<{
+    kind: 'delete' | 'update'
+    doc: MyPatternDocument
+  } | null>(null)
+  const my = useMyPatterns(search, source === 'user')
+  const types = Object.keys(config.components)
+  const categories = [...new Set(types.map(widgetLibraryCategory))].sort((a, b) =>
+    a === 'dynamic' ? 1 : b === 'dynamic' ? -1 : 0,
+  )
+  const active = categories.find((item) => item === category) || categories[0]
+  const matches = (text: string) => text.toLocaleLowerCase().includes(search.toLocaleLowerCase())
+  const available = types.filter((type) => widgetLibraryCategory(type) === active)
+  const eligible = (record: PatternJSON) =>
+    types.includes(record.widgetType) &&
+    widgetLibraryCategory(record.widgetType) === active &&
+    (!widgetFilter || record.widgetType === widgetFilter) &&
+    matches(`${record.name} ${record.description} ${record.category}`)
+  const patterns =
+    source === 'user'
+      ? my.docs
+          .map((doc) => ({ pattern: designPatternFromJSON(doc.record), doc }))
+          .filter(({ pattern }) => eligible(pattern.canonical!))
+      : getWidgetDesignPatterns()
+          .filter(
+            (pattern) =>
+              pattern.canonical &&
+              pattern.canonical.source === source &&
+              eligible(pattern.canonical),
+          )
+          .map((pattern) => ({ pattern, doc: undefined as MyPatternDocument | undefined }))
   const slots = selected
     ? Object.entries(config.components[selected.type]?.fields || {})
         .filter(([, field]) => field.type === 'slot')
-        .map(([slot]) => slot)
+        .map(([key]) => key)
     : []
   const effectiveDestination = slots.includes(destination || '') ? destination : slots[0] || null
   const tokenStyle = useMemo(
@@ -191,17 +221,80 @@ export function WidgetPatternLibrary({
       setMessage(error instanceof Error ? error.message : 'Pattern could not be applied')
     }
   }
+
   const defaultPattern = (type: string): WidgetDesignPattern => ({
     id: `default:${type}`,
     version: 1,
     compatibility: { builderVersion: 1, widgetTypes: [type] },
     widgetType: type,
     name: config.components[type].label || type,
-    category: 'text',
+    category: widgetLibraryCategory(type),
     preview: { kind: 'text', label: type },
     props: {},
     tokenReferences: [],
   })
+  const captureSelected = (metadata?: PatternJSON) => {
+    if (!selected || !beforeOperation())
+      throw new Error('Select a widget and apply or cancel any style draft first.')
+    return serializeSelectedPattern(data, selected.props.id, {
+      id: metadata?.id || `user-${crypto.randomUUID()}`,
+      name: metadata?.name || `${config.components[selected.type]?.label || 'Widget'} pattern`,
+      description: metadata?.description || '',
+      category: metadata?.category || LABELS[widgetLibraryCategory(selected.type)] || 'Widgets',
+      ...(context ? { context: context as TemplateContext } : {}),
+    })
+  }
+  const openSave = () => {
+    try {
+      setEditor({ record: captureSelected() })
+    } catch (error) {
+      setMessage((error as Error).message)
+    }
+  }
+  const save = async () => {
+    if (!editor || busy) return
+    setBusy(true)
+    setMessage(null)
+    try {
+      validatePatternJSON(editor.record)
+      const doc = await my.save(editor.record, editor.doc?.id)
+      setEditor(null)
+      setSource('user')
+      setSuccess('Pattern JSON saved. Preparing thumbnail…')
+      const ready = await my.thumbnail(doc)
+      setSuccess(
+        ready
+          ? 'Pattern saved with a WebP thumbnail.'
+          : 'Pattern JSON saved. Thumbnail is unavailable; you can retry from its menu.',
+      )
+    } catch (error) {
+      setMessage((error as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+  const confirmAction = async () => {
+    if (!confirm || busy) return
+    setBusy(true)
+    setMessage(null)
+    try {
+      if (confirm.kind === 'delete') {
+        await my.remove(confirm.doc.id)
+        setSuccess('Pattern deleted. Existing page instances are unchanged.')
+      } else {
+        const record = captureSelected(confirm.doc.record)
+        const doc = await my.save(record, confirm.doc.id)
+        setConfirm(null)
+        setSuccess('Pattern JSON updated. Existing page instances are unchanged.')
+        await my.thumbnail(doc)
+      }
+      setConfirm(null)
+    } catch (error) {
+      setMessage((error as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
   return (
     <div className={styles.library} style={tokenStyle} data-widget-pattern-library>
       <TextInput
@@ -210,12 +303,40 @@ export function WidgetPatternLibrary({
         value={search}
         onChange={(event) => setSearch(event.currentTarget.value)}
       />
+      <SegmentedControl
+        value={source}
+        onChange={(value) => setSource(value as PatternSource)}
+        data={[
+          { value: 'system', label: 'System' },
+          { value: 'theme', label: 'Theme' },
+          { value: 'user', label: 'My Patterns' },
+        ]}
+      />
+      {selected && (
+        <Button
+          variant="default"
+          size="sm"
+          leftSection={<Bookmark size={16} />}
+          onClick={openSave}
+          disabled={busy}
+        >
+          Save as Pattern
+        </Button>
+      )}
       {message && (
         <Alert color="red" role="alert">
           {message}
         </Alert>
       )}
       {success && <Alert role="status">{success}</Alert>}
+      {source === 'user' && my.error && (
+        <Alert color="red" role="alert">
+          My Patterns could not be loaded. {my.error}
+          <Button variant="subtle" size="sm" onClick={my.reload}>
+            Retry
+          </Button>
+        </Alert>
+      )}
       {slots.length > 0 && (
         <Select
           label="Insert into selected container"
@@ -229,60 +350,198 @@ export function WidgetPatternLibrary({
           {categories.map((name) => {
             const Icon = ICONS[name] || LayoutGrid
             return (
-              <Button
-                key={name}
-                fullWidth
-                variant={active === name ? 'light' : 'subtle'}
-                aria-pressed={active === name}
-                mb="xs"
-                h="auto"
-                py="sm"
-                onClick={() => setCategory(name)}
-              >
-                <span className={styles.categoryContent}>
-                  <Icon size={20} />
-                  <span>{name}</span>
-                </span>
-              </Button>
+              <React.Fragment key={name}>
+                {name === 'dynamic' && (
+                  <Divider my="sm" label="Dynamic Content" labelPosition="center" />
+                )}
+                <Button
+                  fullWidth
+                  variant={active === name ? 'light' : 'subtle'}
+                  aria-pressed={active === name}
+                  classNames={{
+                    root: styles.categoryTile,
+                    inner: styles.categoryInner,
+                    label: styles.categoryContent,
+                  }}
+                  onClick={() => {
+                    setCategory(name)
+                    setWidgetFilter(null)
+                  }}
+                >
+                  <Icon size={20} aria-hidden="true" />
+                  <span className={styles.categoryLabel}>{LABELS[name] || 'Widgets'}</span>
+                </Button>
+              </React.Fragment>
             )
           })}
         </nav>
         <div className={styles.results}>
           <Stack gap="sm">
-            {patterns.length > 0 && <Text fw={600}>Design patterns</Text>}
-            {patterns.map((pattern) => (
-              <Paper key={pattern.id} withBorder p="sm">
-                <Stack gap="xs">
-                  <PatternPreview pattern={pattern} />
-                  <Text fw={600} size="sm">
-                    {pattern.name}
-                  </Text>
-                  <Badge variant="light">{pattern.widgetType}</Badge>
-                  <Group gap="xs">
-                    <Button size="sm" onClick={() => run(pattern)}>
-                      Insert
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="default"
-                      disabled={
-                        !selected ||
-                        !pattern.compatibility.widgetTypes.includes(selected.type) ||
-                        selected.props.lock?.canEditProps === false
-                      }
-                      onClick={() => run(pattern, true)}
-                    >
-                      Apply to selected
-                    </Button>
-                  </Group>
-                </Stack>
-              </Paper>
-            ))}
+            {active === 'dynamic' && (
+              <Text fw={600} size="sm">
+                Dynamic Content / Nội dung động
+              </Text>
+            )}
+            {available.length > 1 && (
+              <Select
+                aria-label="Filter widget type"
+                placeholder="All widget types"
+                clearable
+                value={widgetFilter}
+                onChange={setWidgetFilter}
+                data={available.map((type) => ({
+                  value: type,
+                  label:
+                    config.components[type].label || getWidgetManifest(type)?.label || 'Widget',
+                }))}
+              />
+            )}
+            {source === 'user' && my.loading && (
+              <Group gap="xs" role="status">
+                <Loader size="sm" />
+                <Text size="xs">Loading My Patterns…</Text>
+              </Group>
+            )}
+            <div className={styles.cards}>
+              {patterns.map(({ pattern, doc }) => {
+                const record = pattern.canonical!
+                const thumbnailRecord = doc
+                  ? {
+                      ...record,
+                      thumbnail: {
+                        version: record.version,
+                        status:
+                          doc.thumbnailStatus === 'ready'
+                            ? ('ready' as const)
+                            : doc.thumbnailStatus === 'failed'
+                              ? ('failed' as const)
+                              : ('pending' as const),
+                      },
+                    }
+                  : record
+                return (
+                  <Paper
+                    key={doc ? `user-${doc.id}` : pattern.id}
+                    withBorder
+                    className={styles.card}
+                  >
+                    <div className={styles.preview}>
+                      <PatternThumbnail record={thumbnailRecord} url={doc?.url} />
+                    </div>
+                    <div className={styles.overlay}>
+                      <ActionIcon
+                        variant="filled"
+                        aria-label={`Insert ${pattern.name}`}
+                        onClick={() => run(pattern)}
+                      >
+                        <Plus size={18} />
+                      </ActionIcon>
+                      <ActionIcon
+                        variant="default"
+                        aria-label={`Preview ${pattern.name}`}
+                        onClick={() =>
+                          setPreview({
+                            record: thumbnailRecord,
+                            url: doc?.url,
+                            key: doc ? `user-${doc.id}` : pattern.id,
+                          })
+                        }
+                      >
+                        <Eye size={18} />
+                      </ActionIcon>
+                      <Menu withinPortal zIndex={ADMIN_OVERLAY_LAYERS.ACTIVE_DROPDOWN}>
+                        <Menu.Target>
+                          <ActionIcon
+                            variant="default"
+                            aria-label={`More actions for ${pattern.name}`}
+                          >
+                            <MoreHorizontal size={18} />
+                          </ActionIcon>
+                        </Menu.Target>
+                        <Menu.Dropdown>
+                          <Menu.Item
+                            disabled={
+                              !selected ||
+                              !pattern.compatibility.widgetTypes.includes(selected.type) ||
+                              selected.props.lock?.canEditProps === false
+                            }
+                            onClick={() => run(pattern, true)}
+                          >
+                            Apply design to selected
+                          </Menu.Item>
+                          {doc && (
+                            <>
+                              <Menu.Item
+                                disabled={busy}
+                                onClick={() => setEditor({ record: doc.record, doc })}
+                              >
+                                Edit metadata / Rename
+                              </Menu.Item>
+                              <Menu.Item
+                                disabled={busy || !selected}
+                                onClick={() => setConfirm({ kind: 'update', doc })}
+                              >
+                                Update from selected widget
+                              </Menu.Item>
+                              <Menu.Item
+                                disabled={busy}
+                                onClick={() => {
+                                  setBusy(true)
+                                  void my.thumbnail(doc).finally(() => setBusy(false))
+                                }}
+                              >
+                                Retry thumbnail
+                              </Menu.Item>
+                              <Menu.Item
+                                color="red"
+                                disabled={busy}
+                                onClick={() => setConfirm({ kind: 'delete', doc })}
+                              >
+                                Delete
+                              </Menu.Item>
+                            </>
+                          )}
+                        </Menu.Dropdown>
+                      </Menu>
+                    </div>
+                    <Stack p="sm" gap="xs">
+                      <Text fw={600} size="sm">
+                        {pattern.name}
+                      </Text>
+                      <Badge variant="light" size="sm">
+                        {config.components[pattern.widgetType]?.label || 'Widget'}
+                      </Badge>
+                    </Stack>
+                  </Paper>
+                )
+              })}
+            </div>
+            {!patterns.length && !(source === 'user' && my.loading) && (
+              <Text size="sm" c="dimmed">
+                {source === 'user'
+                  ? 'No saved patterns match this category. Select a widget and choose Save as Pattern.'
+                  : source === 'theme'
+                    ? 'This theme has no patterns in this category.'
+                    : 'No supported design patterns for this widget type yet. Button Design remains shell-only.'}
+              </Text>
+            )}
+            {source === 'user' && my.page < my.totalPages && (
+              <Button
+                variant="default"
+                onClick={() => {
+                  void my.loadMore().catch((error) => setMessage(error.message))
+                }}
+              >
+                Load more patterns
+              </Button>
+            )}
+            <Divider />
             <Text fw={600}>Widgets</Text>
-            {types
+            {available
               .filter(
                 (type) =>
-                  categoryFor(type) === active && matches(config.components[type].label || type),
+                  (!widgetFilter || widgetFilter === type) &&
+                  matches(config.components[type].label || ''),
               )
               .map((type) => (
                 <Button
@@ -291,21 +550,111 @@ export function WidgetPatternLibrary({
                   fullWidth
                   onClick={() => run(defaultPattern(type))}
                 >
-                  Add {config.components[type].label || type}
+                  Add {config.components[type].label || getWidgetManifest(type)?.label || 'Widget'}
                 </Button>
               ))}
-            {!patterns.length &&
-              !types.some(
-                (type) =>
-                  categoryFor(type) === active && matches(config.components[type].label || type),
-              ) && <Text c="dimmed">No matching widgets or patterns.</Text>}
             <Text size="xs" c="dimmed">
-              Click to insert. Select a container to choose its slot; otherwise a page widget is
-              added inside a new Section.
+              Click to insert. Choose a container Slot, or add a new Section at page root.
             </Text>
           </Stack>
         </div>
       </div>
+      {preview && (
+        <PatternPreviewModal
+          key={preview.key}
+          record={preview.record}
+          url={preview.url}
+          previewKey={preview.key}
+          onClose={() => setPreview(null)}
+        />
+      )}
+      <Modal
+        opened={!!editor}
+        onClose={() => {
+          if (!busy) setEditor(null)
+        }}
+        title={editor?.doc ? 'Edit pattern metadata' : 'Save as Pattern'}
+        zIndex={ADMIN_OVERLAY_LAYERS.PALETTE_MODAL}
+      >
+        {editor && (
+          <Stack>
+            <TextInput
+              label="Pattern name"
+              required
+              maxLength={120}
+              value={editor.record.name}
+              onChange={(event) => {
+                const name = event.currentTarget.value
+                setEditor({ ...editor, record: { ...editor.record, name } })
+              }}
+            />
+            <TextInput
+              label="Category"
+              maxLength={80}
+              value={editor.record.category}
+              onChange={(event) => {
+                const category = event.currentTarget.value
+                setEditor({ ...editor, record: { ...editor.record, category } })
+              }}
+            />
+            <Textarea
+              label="Description"
+              maxLength={1000}
+              value={editor.record.description}
+              onChange={(event) => {
+                const description = event.currentTarget.value
+                setEditor({ ...editor, record: { ...editor.record, description } })
+              }}
+            />
+            <Group justify="flex-end">
+              <Button variant="default" disabled={busy} onClick={() => setEditor(null)}>
+                Cancel
+              </Button>
+              <Button
+                loading={busy}
+                disabled={!editor.record.name.trim()}
+                onClick={() => {
+                  void save()
+                }}
+              >
+                Save pattern JSON
+              </Button>
+            </Group>
+          </Stack>
+        )}
+      </Modal>
+      <Modal
+        opened={!!confirm}
+        onClose={() => {
+          if (!busy) setConfirm(null)
+        }}
+        title={
+          confirm?.kind === 'delete' ? 'Delete pattern?' : 'Update pattern from selected widget?'
+        }
+        zIndex={ADMIN_OVERLAY_LAYERS.PALETTE_MODAL}
+      >
+        <Stack>
+          <Text>
+            {confirm?.kind === 'delete'
+              ? 'Delete this saved pattern? Existing page instances will remain unchanged.'
+              : 'Replace the saved subtree with the currently selected widget and its Slots? Existing page instances will remain unchanged.'}
+          </Text>
+          <Group justify="flex-end">
+            <Button variant="default" disabled={busy} onClick={() => setConfirm(null)}>
+              Cancel
+            </Button>
+            <Button
+              color={confirm?.kind === 'delete' ? 'red' : undefined}
+              loading={busy}
+              onClick={() => {
+                void confirmAction()
+              }}
+            >
+              Confirm
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </div>
   )
 }

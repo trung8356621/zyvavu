@@ -28,9 +28,9 @@ it('renders registry categories and inserts a real pattern as one Puck operation
     </MantineProvider>,
   )
   expect(screen.getByRole('navigation', { name: 'Widget categories' })).toBeTruthy()
-  fireEvent.click(screen.getByRole('button', { name: 'sections' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Sections' }))
   expect(screen.getByText('Airy section')).toBeTruthy()
-  fireEvent.click(screen.getAllByRole('button', { name: 'Insert' })[0])
+  fireEvent.click(screen.getByRole('button', { name: 'Insert Airy section' }))
   expect(state.current.dispatch).toHaveBeenCalledOnce()
   const operation = state.current.dispatch.mock.calls[0][0]
   expect(operation.type).toBe('setData')
@@ -43,8 +43,8 @@ it('blocks library mutation while a style draft is active', () => {
       <WidgetPatternLibrary context="home" beforeOperation={() => false} />
     </MantineProvider>,
   )
-  fireEvent.click(screen.getByRole('button', { name: 'sections' }))
-  fireEvent.click(screen.getAllByRole('button', { name: 'Insert' })[0])
+  fireEvent.click(screen.getByRole('button', { name: 'Sections' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Insert Airy section' }))
   expect(state.current.dispatch).not.toHaveBeenCalled()
   expect(screen.getByRole('alert').textContent).toContain('Apply or cancel')
 })
@@ -55,8 +55,8 @@ it('honors Puck insertion permissions and shows a recoverable error', () => {
       <WidgetPatternLibrary context="home" beforeOperation={() => true} />
     </MantineProvider>,
   )
-  fireEvent.click(screen.getByRole('button', { name: 'sections' }))
-  fireEvent.click(screen.getAllByRole('button', { name: 'Insert' })[0])
+  fireEvent.click(screen.getByRole('button', { name: 'Sections' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Insert Airy section' }))
   expect(state.current.dispatch).not.toHaveBeenCalled()
   expect(screen.getByRole('alert').textContent).toContain('cannot be inserted')
 })

@@ -1,3 +1,6 @@
+import { getWidgetManifest } from './widget-registry-manifests'
+import { SYSTEM_PATTERNS } from './patterns/catalog'
+import { instantiatePatternJSON, validatePatternJSON, type PatternJSON } from './patterns/json'
 import type { Config, Data, SlotField } from '@puckeditor/core'
 import type { UniversalStyle } from '@/lib/style-engine/types'
 import { validateUniversalStyle } from '@/lib/style-engine/validation'
@@ -6,115 +9,60 @@ import type { TemplateContext, ThemeTemplateDocument } from './types'
 import { isPageContentContext } from './normalization'
 
 export interface WidgetDesignPattern {
+  canonical?: PatternJSON
   id: string
   version: number
   compatibility: { builderVersion: 1; widgetTypes: string[]; capabilities?: string[] }
   widgetType: string
   name: string
-  category: 'sections' | 'text' | 'layout' | 'buttons'
-  preview: { kind: 'section' | 'text' | 'columns' | 'button'; label: string }
-  props: { style?: UniversalStyle; distribution?: string; variant?: string }
+  category: string
+  preview: { kind: 'section' | 'text' | 'columns' | 'button' | 'media'; label: string }
+  props: {
+    style?: UniversalStyle
+    distribution?: string
+    variant?: string
+    aspectRatio?: string
+    rounded?: boolean
+  }
   tokenReferences: string[]
   slots?: Record<
     string,
     { type: string; props?: Record<string, unknown>; slots?: WidgetDesignPattern['slots'] }[]
   >
 }
-export const WIDGET_DESIGN_PATTERNS: readonly WidgetDesignPattern[] = [
-  {
-    id: 'section-airy',
-    version: 1,
-    compatibility: { builderVersion: 1, widgetTypes: ['Section'] },
-    widgetType: 'Section',
-    name: 'Airy section',
-    category: 'sections',
-    preview: { kind: 'section', label: 'Space for your content' },
-    props: {
-      style: {
-        background: { mode: 'color', colorToken: 'surface' },
-        spacing: { padding: { token: 'lg' } },
-      },
+export function designPatternFromJSON(canonical: PatternJSON): WidgetDesignPattern {
+  const root = canonical.payload.content[0]
+  const { style, distribution, variant, aspectRatio, rounded } = root.props
+  const props = Object.fromEntries(
+    Object.entries({ style, distribution, variant, aspectRatio, rounded }).filter(
+      ([, value]) => value !== undefined,
+    ),
+  )
+  return {
+    canonical,
+    id: canonical.id,
+    version: canonical.version,
+    widgetType: canonical.widgetType,
+    name: canonical.name,
+    category: canonical.category,
+    compatibility: { builderVersion: 1, widgetTypes: [canonical.widgetType] },
+    preview: {
+      kind:
+        canonical.widgetType === 'Section'
+          ? 'section'
+          : canonical.widgetType === 'Columns'
+            ? 'columns'
+            : canonical.widgetType === 'FeaturedMedia'
+              ? 'media'
+              : 'text',
+      label: canonical.name,
     },
-    tokenReferences: ['surface', 'lg'],
-  },
-  {
-    id: 'section-grid',
-    version: 1,
-    compatibility: { builderVersion: 1, widgetTypes: ['Section'] },
-    widgetType: 'Section',
-    name: 'Patterned section',
-    category: 'sections',
-    preview: { kind: 'section', label: 'A patterned backdrop' },
-    props: {
-      style: {
-        background: {
-          mode: 'color',
-          colorToken: 'surface',
-          pattern: { preset: 'grid', colorToken: 'primary', opacity: 0.15, scale: 'md' },
-        },
-        border: { style: 'solid', widthToken: 'thin', colorToken: 'border' },
-      },
-    },
-    tokenReferences: ['surface', 'primary', 'border'],
-  },
-  {
-    id: 'text-editorial',
-    version: 1,
-    compatibility: { builderVersion: 1, widgetTypes: ['TextBlock'] },
-    widgetType: 'TextBlock',
-    name: 'Editorial text',
-    category: 'text',
-    preview: { kind: 'text', label: 'A clear editorial heading' },
-    props: {
-      style: {
-        typography: { typography: 'h2', colorToken: 'text' },
-        spacing: { padding: { token: 'sm' } },
-      },
-    },
-    tokenReferences: ['h2', 'text', 'sm'],
-  },
-  {
-    id: 'text-card',
-    version: 1,
-    compatibility: { builderVersion: 1, widgetTypes: ['TextBlock'] },
-    widgetType: 'TextBlock',
-    name: 'Raised content card',
-    category: 'text',
-    preview: { kind: 'text', label: 'A focused content card' },
-    props: {
-      style: {
-        typography: { typography: 'h3', colorToken: 'primary' },
-        background: { mode: 'color', colorToken: 'surface' },
-        radius: { radiusToken: 'md' },
-        shadow: { shadowToken: 'shadowSoft' },
-        spacing: { padding: { token: 'md' } },
-      },
-    },
-    tokenReferences: ['h3', 'primary', 'surface', 'md', 'shadowSoft'],
-  },
-  {
-    id: 'columns-equal',
-    version: 1,
-    compatibility: { builderVersion: 1, widgetTypes: ['Columns'] },
-    widgetType: 'Columns',
-    name: 'Balanced columns',
-    category: 'layout',
-    preview: { kind: 'columns', label: 'Two equal columns' },
-    props: { distribution: 'equal-2', style: { spacing: { gapToken: 'md' } } },
-    tokenReferences: ['md'],
-  },
-  {
-    id: 'columns-feature',
-    version: 1,
-    compatibility: { builderVersion: 1, widgetTypes: ['Columns'] },
-    widgetType: 'Columns',
-    name: 'Feature and aside',
-    category: 'layout',
-    preview: { kind: 'columns', label: 'Feature with an aside' },
-    props: { distribution: '2:1', style: { spacing: { gapToken: 'lg' } } },
-    tokenReferences: ['lg'],
-  },
-]
+    props,
+    tokenReferences: canonical.theme.tokens,
+  }
+}
+export const WIDGET_DESIGN_PATTERNS: readonly WidgetDesignPattern[] =
+  SYSTEM_PATTERNS.map(designPatternFromJSON)
 
 const patternRegistry = new Map(WIDGET_DESIGN_PATTERNS.map((pattern) => [pattern.id, pattern]))
 /** Extension point for theme/user catalogs; no token ownership or persisted theme mutation. */
@@ -127,11 +75,51 @@ export function registerWidgetDesignPattern(pattern: WidgetDesignPattern) {
     !pattern.compatibility.widgetTypes.includes(pattern.widgetType)
   )
     throw new Error('Unsupported pattern version or compatibility')
-  if (Object.keys(pattern.props).some((key) => !['style', 'distribution', 'variant'].includes(key)))
+  if (
+    Object.keys(pattern.props).some(
+      (key) => !['style', 'distribution', 'variant', 'aspectRatio', 'rounded'].includes(key),
+    )
+  )
     throw new Error('Pattern props must be presentation-only')
   const validation = validateUniversalStyle(pattern.props.style)
   if (!validation.valid) throw new Error(validation.errors.join('; '))
-  patternRegistry.set(pattern.id, structuredClone(pattern))
+  let record = pattern.canonical
+  if (!record) {
+    let index = 0
+    const expand = (
+      type: string,
+      props: Record<string, unknown>,
+      slots?: WidgetDesignPattern['slots'],
+    ): any => {
+      const result = {
+        type,
+        props: {
+          ...structuredClone(getWidgetManifest(type)?.defaultProps || {}),
+          ...props,
+          id: `${pattern.id}-${index++}`,
+        } as Record<string, unknown>,
+      }
+      for (const [slot, children] of Object.entries(slots || {}))
+        result.props[slot] = children.map((child) =>
+          expand(child.type, child.props || {}, child.slots),
+        )
+      return result
+    }
+    record = {
+      schemaVersion: 1,
+      id: pattern.id,
+      name: pattern.name,
+      description: pattern.name,
+      category: pattern.category,
+      widgetType: pattern.widgetType,
+      source: 'theme',
+      version: pattern.version,
+      payload: { content: [expand(pattern.widgetType, pattern.props, pattern.slots)], zones: {} },
+      theme: { tokens: pattern.tokenReferences },
+    }
+  }
+  validatePatternJSON(record)
+  patternRegistry.set(pattern.id, designPatternFromJSON(structuredClone(record)))
 }
 export function getWidgetDesignPatterns(): readonly WidgetDesignPattern[] {
   return [...patternRegistry.values()]
@@ -223,6 +211,7 @@ export function instantiatePattern(
   config: Config,
   newId: () => string,
 ): any {
+  if (pattern.canonical) return instantiatePatternJSON(pattern.canonical, config, newId)
   const create = (
     type: string,
     props: Record<string, unknown> = {},
@@ -271,6 +260,8 @@ export function applyWidgetPattern(
         // Whitelisted presentation fields only; semantic content, bindings, locks and IDs survive.
         props.style = { ...props.style, ...structuredClone(pattern.props.style || {}) }
         if (pattern.props.variant !== undefined) props.variant = pattern.props.variant
+        if (pattern.props.aspectRatio !== undefined) props.aspectRatio = pattern.props.aspectRatio
+        if (pattern.props.rounded !== undefined) props.rounded = pattern.props.rounded
         if (pattern.props.distribution !== undefined) {
           if (Object.keys(props).some((key) => /^column[34]$/.test(key) && props[key]?.length))
             throw new Error('This pattern would hide occupied columns')

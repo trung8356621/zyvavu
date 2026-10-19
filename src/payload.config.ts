@@ -13,6 +13,7 @@ import { Posts } from './collections/Posts'
 import { Tags } from './collections/Tags'
 import { UrlRegistry } from './collections/UrlRegistry'
 import { Users } from './collections/Users'
+import { WidgetPatterns } from './collections/WidgetPatterns'
 import { SeoSettings } from './globals/SeoSettings'
 import { Settings } from './globals/Settings'
 import { SystemSettings } from './globals/SystemSettings'
@@ -102,7 +103,7 @@ export default buildConfig({
       },
     },
   },
-  collections: [Posts, Pages, Media, Categories, Tags, Menus, Users, UrlRegistry],
+  collections: [Posts, Pages, Media, Categories, Tags, Menus, Users, UrlRegistry, WidgetPatterns],
   globals: [Settings, SystemSettings, SeoSettings],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
@@ -154,7 +155,10 @@ export default buildConfig({
         }
         const ok = await setActiveThemeId(req.payload, themeId)
         if (!ok) {
-          return Response.json({ success: false, message: 'Failed to activate theme' }, { status: 400 })
+          return Response.json(
+            { success: false, message: 'Failed to activate theme' },
+            { status: 400 },
+          )
         }
         return Response.json({ success: true, activeTheme: themeId })
       },
@@ -182,10 +186,7 @@ export default buildConfig({
             `zyvavu_preview_theme=${normalizeThemeId(themeId)}; Path=/; SameSite=Lax; Max-Age=3600`,
           )
         } else {
-          headers.set(
-            'Set-Cookie',
-            `zyvavu_preview_theme=; Path=/; SameSite=Lax; Max-Age=0`,
-          )
+          headers.set('Set-Cookie', `zyvavu_preview_theme=; Path=/; SameSite=Lax; Max-Age=0`)
         }
         return new Response(JSON.stringify({ success: true }), { status: 200, headers })
       },
@@ -207,9 +208,18 @@ export default buildConfig({
         }
         const { template, document, themeId } = body || {}
         if (!template || !document) {
-          return Response.json({ success: false, message: 'Template and document are required' }, { status: 400 })
+          return Response.json(
+            { success: false, message: 'Template and document are required' },
+            { status: 400 },
+          )
         }
-        const res = await saveThemeTemplateOverride(req.payload, template, document, req.user, themeId)
+        const res = await saveThemeTemplateOverride(
+          req.payload,
+          template,
+          document,
+          req.user,
+          themeId,
+        )
         return Response.json(res, { status: res.success ? 200 : 400 })
       },
     },
@@ -276,7 +286,10 @@ export default buildConfig({
         }
         const { type, preset } = body || {}
         if (!type || !preset) {
-          return Response.json({ success: false, message: 'type and preset are required' }, { status: 400 })
+          return Response.json(
+            { success: false, message: 'type and preset are required' },
+            { status: 400 },
+          )
         }
         const res = await saveCustomPreset(req.payload, type, preset)
         return Response.json(res, { status: res.success ? 200 : 400 })

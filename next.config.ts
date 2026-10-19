@@ -8,6 +8,7 @@ const dirname = path.dirname(__filename)
 
 const nextConfig: NextConfig = {
   agentRules: false,
+  serverExternalPackages: ['@playwright/test', 'playwright', 'playwright-core'],
   allowedDevOrigins: ['zyvavu.test', '127.0.0.1:3107', 'localhost:3107', '127.0.0.1', 'localhost'],
   images: {
     localPatterns: [
@@ -25,11 +26,7 @@ const nextConfig: NextConfig = {
 
     webpackConfig.watchOptions = {
       ...webpackConfig.watchOptions,
-      ignored: [
-        /[\\/]node_modules[\\/]/,
-        /[\\/]\.git[\\/]/,
-        /[\\/]\.next[\\/]/,
-      ],
+      ignored: [/[\\/]node_modules[\\/]/, /[\\/]\.git[\\/]/, /[\\/]\.next[\\/]/],
     }
 
     return webpackConfig

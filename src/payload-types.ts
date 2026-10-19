@@ -75,6 +75,7 @@ export interface Config {
     menus: Menu;
     users: User;
     'url-registry': UrlRegistry;
+    'widget-patterns': WidgetPattern;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -90,6 +91,7 @@ export interface Config {
     menus: MenusSelect<false> | MenusSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     'url-registry': UrlRegistrySelect<false> | UrlRegistrySelect<true>;
+    'widget-patterns': WidgetPatternsSelect<false> | WidgetPatternsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -421,6 +423,41 @@ export interface UrlRegistry {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "widget-patterns".
+ */
+export interface WidgetPattern {
+  id: number;
+  name: string;
+  description?: string | null;
+  category: string;
+  source: string;
+  owner: number | User;
+  record:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  contentHash: string;
+  thumbnailHash?: string | null;
+  thumbnailStatus?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  url?: string | null;
+  thumbnailURL?: string | null;
+  filename?: string | null;
+  mimeType?: string | null;
+  filesize?: number | null;
+  width?: number | null;
+  height?: number | null;
+  focalX?: number | null;
+  focalY?: number | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
@@ -474,6 +511,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'url-registry';
         value: number | UrlRegistry;
+      } | null)
+    | ({
+        relationTo: 'widget-patterns';
+        value: number | WidgetPattern;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -712,6 +753,32 @@ export interface UrlRegistrySelect<T extends boolean = true> {
   siteKey?: T;
   updatedAt?: T;
   createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "widget-patterns_select".
+ */
+export interface WidgetPatternsSelect<T extends boolean = true> {
+  name?: T;
+  description?: T;
+  category?: T;
+  source?: T;
+  owner?: T;
+  record?: T;
+  contentHash?: T;
+  thumbnailHash?: T;
+  thumbnailStatus?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  url?: T;
+  thumbnailURL?: T;
+  filename?: T;
+  mimeType?: T;
+  filesize?: T;
+  width?: T;
+  height?: T;
+  focalX?: T;
+  focalY?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
