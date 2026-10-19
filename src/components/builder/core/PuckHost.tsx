@@ -22,6 +22,8 @@ import {
   LayoutGrid,
   Square,
   MoreHorizontal,
+  Settings,
+  Link as LinkIcon,
 } from 'lucide-react'
 
 import { CURRENT_BUILDER_VERSION, validateBuilderDocument } from './document'
@@ -44,6 +46,9 @@ import {
 } from '@/lib/style-engine/domains'
 import { WidgetPatternLibrary } from '@/components/admin/theme-builder/WidgetPatternLibrary'
 import actionBarStyles from './WidgetActionBar.module.css'
+
+import { AtomModal, type AtomModalRequest } from '@/components/admin/theme-builder/AtomModals'
+import { ATOM_TYPES, hasThemeLibrary } from '@/lib/theme-engine/widget-contracts'
 
 const usePuck = createUsePuck()
 
@@ -78,6 +83,7 @@ type StyleMenuRequest = {
 }
 
 type EditorBridgeValue = {
+  openAtom: (request: AtomModalRequest) => void
   registerApi: (api: PuckApi) => void
   select: (id: string | undefined) => void
   openStyle: (request: StyleMenuRequest) => void
@@ -124,6 +130,10 @@ function StableLibraryOverride() {
       beforeOperation={bridge.beforeOperation}
     />
   )
+}
+function StableThemeLibraryOverride() {
+  const bridge = React.useContext(EditorBridgeContext)!
+  return <WidgetPatternLibrary context={bridge.templateContext} themeConfig={bridge.themeConfig} beforeOperation={bridge.beforeOperation} mode="theme" />
 }
 function StableIframeOverride({ children }: { children: React.ReactNode }) {
   return (
@@ -209,6 +219,7 @@ function PuckActionBarBridge({
     initialPosition: { x: number; y: number }
   }) => void
 }) {
+  const bridge = React.useContext(EditorBridgeContext)!
   const selectedItem = usePuck((s) => s.selectedItem)
   const itemSelector = usePuck((s) => s.appState?.ui?.itemSelector)
   const appData = usePuck((s) => s.appState?.data)
@@ -304,6 +315,12 @@ function PuckActionBarBridge({
               </Menu.Dropdown>
             </Menu>
           )}
+          {(ATOM_TYPES as readonly string[]).includes(componentType) && (['settings', 'link'] as const).map(kind => (
+            <ActionBar.Action key={kind} label={kind === 'settings' ? 'Settings' : 'Link'} onClick={event => {
+              event.stopPropagation()
+              bridge.openAtom({ id: componentId, type: componentType, kind, anchor: event.currentTarget as HTMLElement })
+            }}>{kind === 'settings' ? <Settings size={14} /> : <LinkIcon size={14} />}</ActionBar.Action>
+          ))}
           <ActionBar.Separator />
           {children}
         </ActionBar.Group>
@@ -377,6 +394,7 @@ export function PuckHost({
   themeConfig,
   templateContext,
 }: PuckHostProps) {
+  const [atomModal, setAtomModal] = useState<AtomModalRequest | null>(null)
   const [localDoc, setLocalDoc] = useState<BuilderDocument>(document)
   const [validationError, setValidationError] = useState<string | null>(null)
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false)
@@ -386,7 +404,7 @@ export function PuckHost({
   const pageSettingsPlugin: Plugin = useMemo(() => {
     return {
       name: 'page-settings',
-      label: 'Page Settings',
+      label: templateContext === 'header' ? 'Header Settings' : 'Page Settings',
       icon: <Sliders size={16} />,
       render: () => <PageSettingsPanel themeConfig={themeConfig} templateName={templateContext} />,
     }
@@ -697,6 +715,7 @@ export function PuckHost({
   }, [activeStyleMenu, handleOpenStyleMenu])
 
   const handleSelectionChange = useCallback((id: string | undefined) => {
+    setAtomModal(previous => previous && previous.id !== id ? null : previous)
     setActiveStyleMenu((previous) => {
       if (previous && previous.componentId !== id) {
         if (stylePreviewStore.getPreview(previous.componentId)) return previous
@@ -708,6 +727,7 @@ export function PuckHost({
   }, [])
 
   const bridgeValue: EditorBridgeValue = {
+    openAtom: setAtomModal,
     templateContext,
     themeConfig,
     beforeOperation: () =>
@@ -728,7 +748,7 @@ export function PuckHost({
     }),
     [activeViewports, desktopOnly],
   )
-  const plugins = useMemo(() => [pageSettingsPlugin], [pageSettingsPlugin])
+  const plugins = useMemo(() => [pageSettingsPlugin, ...(hasThemeLibrary(templateContext) ? [{ name: 'theme', label: 'Theme', icon: <Palette size={16} />, render: StableThemeLibraryOverride }] : [])], [pageSettingsPlugin, templateContext])
 
   return (
     <EditorBridgeContext.Provider value={bridgeValue}>
@@ -831,6 +851,8 @@ export function PuckHost({
             onChange={handlePuckChange}
           />
         </Box>
+
+        {atomModal && <AtomModal request={atomModal} onClose={() => { atomModal.anchor.focus({ preventScroll: true }); setAtomModal(null) }} />}
 
         {/* Stable Floating Style Context Menu (Owned outside transient Puck ActionBar) */}
         {activeStyleMenu?.opened && (

@@ -1,3 +1,4 @@
+import { presentationType } from '@/lib/theme-engine/widget-contracts'
 import type { StyleDomain } from './types'
 import type { WidgetManifest } from '@/lib/theme-engine/types'
 
@@ -5,6 +6,10 @@ import type { WidgetManifest } from '@/lib/theme-engine/types'
  * Built-in style capability mappings for core widgets.
  */
 export const COMPONENT_STYLE_CAPABILITIES: Record<string, StyleDomain[]> = {
+  Heading: ['typography'],
+  Text: ['typography'],
+  Button: ['typography', 'button'],
+  Image: [],
   Section: [
     'section',
     'background',
@@ -99,7 +104,7 @@ export function getComponentStyleCapabilities(
   manifest?: WidgetManifest,
   context?: { variant?: string },
 ): StyleDomain[] {
-  const normalized = normalizeComponentType(componentType)
+  const normalized = presentationType(normalizeComponentType(componentType))
 
   // Every registered renderer is composed with the shared surface adapter.
   const globalDomains: StyleDomain[] = [

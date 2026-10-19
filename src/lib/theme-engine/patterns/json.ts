@@ -1,3 +1,5 @@
+import { atomManifests } from '@/widgets/atoms/manifests'
+import { validateFixedBinding } from '../widget-contracts'
 import type { Data, Config } from '@puckeditor/core'
 import type { ThemeComponentData, TemplateContext } from '../types'
 import { getWidgetManifest } from '../widget-registry-manifests'
@@ -5,6 +7,7 @@ import { validateUniversalStyle } from '@/lib/style-engine/validation'
 
 // Serialization/preview allowlist for existing renderers, not another widget registration.
 export const PATTERN_SLOTS: Record<string, readonly string[]> = {
+  ...Object.fromEntries(Object.keys(atomManifests).map((type) => [type, []])),
   Section: ['content'],
   Columns: ['column1', 'column2', 'column3', 'column4'],
   CollectionLoop: ['itemTemplate'],
@@ -150,6 +153,8 @@ export function validatePatternJSON(input: unknown): asserts input is PatternJSO
         throw new Error('Unsupported widget, duplicate ID, or more than 100 widgets')
       if (parent && (node.type === 'Section' || !PATTERN_SLOTS[parent]?.includes(slot!)))
         throw new Error('Invalid nested Slot structure')
+      const bindingErrors = validateFixedBinding(node)
+      if (bindingErrors.length) throw new Error(bindingErrors.join('; '))
       ids.add(node.props.id)
       const style = validateUniversalStyle(node.props.style)
       if (!style.valid) throw new Error(style.errors.join('; '))
@@ -270,6 +275,14 @@ export function instantiatePatternJSON(
   return copy
 }
 export const SIMPLE_PATTERN_TYPES = [
+  'Heading',
+  'Text',
+  'Button',
+  'DocumentTitle',
+  'DocumentDate',
+  'DocumentCategory',
+  'CategoryTitle',
+  'CategoryDescription',
   'TextBlock',
   'PostTitle',
   'HeaderAction',

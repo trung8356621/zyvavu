@@ -1,3 +1,4 @@
+import { ATOM_TYPES, SYSTEM_BLOCKS } from './widget-contracts'
 import type { TemplateContext, TemplatePolicy, WidgetCapability } from './types'
 
 export const TEMPLATE_POLICIES: Record<TemplateContext, TemplatePolicy> = {
@@ -92,7 +93,8 @@ export const TEMPLATE_POLICIES: Record<TemplateContext, TemplatePolicy> = {
   header: {
     context: 'header',
     mode: 'structured-header',
-    description: 'Flatsome-like structured header builder with Top Bar, Main Header, and Bottom Bar.',
+    description:
+      'Flatsome-like structured header builder with Top Bar, Main Header, and Bottom Bar.',
     allowedRegions: [
       'topBar:left',
       'topBar:center',
@@ -104,7 +106,14 @@ export const TEMPLATE_POLICIES: Record<TemplateContext, TemplatePolicy> = {
       'bottomBar:center',
       'bottomBar:right',
     ],
-    allowedWidgets: ['HeaderBrand', 'HeaderNav', 'HeaderSearch', 'HeaderAction', 'HeaderTopBarText', 'HeaderSocial'],
+    allowedWidgets: [
+      'HeaderBrand',
+      'HeaderNav',
+      'HeaderSearch',
+      'HeaderAction',
+      'HeaderTopBarText',
+      'HeaderSocial',
+    ],
     requiredWidgets: ['HeaderBrand', 'HeaderNav'],
     uniqueWidgets: ['HeaderBrand', 'HeaderNav'],
   },
@@ -121,5 +130,19 @@ export function getTemplatePolicy(context: TemplateContext): TemplatePolicy {
   if (!policy) {
     throw new Error(`No template policy registered for context "${context}"`)
   }
+  if (['home', 'single', 'page', 'category'].includes(context))
+    return {
+      ...policy,
+      allowedWidgets: [
+        ...policy.allowedWidgets,
+        ...ATOM_TYPES,
+        ...Object.entries(SYSTEM_BLOCKS)
+          .filter(([, d]) => (d.contexts as readonly string[]).includes(context))
+          .map(([id]) => id),
+      ],
+      uniqueCapabilities: undefined,
+      requiredWidgets: context === 'category' ? undefined : policy.requiredWidgets,
+      uniqueWidgets: context === 'category' ? undefined : policy.uniqueWidgets,
+    }
   return policy
 }

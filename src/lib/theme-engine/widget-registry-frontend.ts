@@ -1,3 +1,5 @@
+import { atomManifests } from '@/widgets/atoms/manifests'
+import { createAtomRenderer } from '@/widgets/atoms/frontend'
 import React from 'react'
 import type { WidgetManifest } from './types'
 
@@ -72,6 +74,12 @@ export type FrontendWidgetEntry = {
 
 // Default built-in registry
 const defaultFrontendRegistry: Record<string, FrontendWidgetEntry> = {
+  ...Object.fromEntries(
+    Object.entries(atomManifests).map(([id, manifest]) => [
+      id,
+      { manifest, component: createAtomRenderer(id) },
+    ]),
+  ),
   Section: { manifest: sectionManifest, component: SectionFrontend },
   PostTitle: { manifest: postTitleManifest, component: PostTitleFrontend },
   PostContent: { manifest: postContentManifest, component: PostContentFrontend },

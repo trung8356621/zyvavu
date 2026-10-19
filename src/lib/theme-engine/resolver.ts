@@ -9,6 +9,8 @@ import {
   normalizeThemeId,
 } from './themes'
 
+export class InvalidStoredTemplateError extends Error {}
+
 export const ACTIVE_THEME_KEY = 'active_theme_id'
 
 /**
@@ -154,18 +156,17 @@ export async function resolveThemeTemplate(
       const doc = settingsTemplates[scopedKey] as ThemeTemplateDocument | undefined
       if (doc && typeof doc === 'object') {
         const validation = validateThemeTemplateDocument(doc, context)
-        if (validation.valid) {
-          return doc
-        }
+        if (validation.valid) return doc
+        throw new InvalidStoredTemplateError(validation.errors.join('; '))
       }
 
       if (targetTheme === 'corporate') {
-        const legacyDoc = settingsTemplates[`theme_template_${context}`] as ThemeTemplateDocument | undefined
+        const legacyDoc = settingsTemplates[`theme_template_${context}`] as
+          ThemeTemplateDocument | undefined
         if (legacyDoc && typeof legacyDoc === 'object') {
           const validation = validateThemeTemplateDocument(legacyDoc, context)
-          if (validation.valid) {
-            return legacyDoc
-          }
+          if (validation.valid) return legacyDoc
+          throw new InvalidStoredTemplateError(validation.errors.join('; '))
         }
       }
     }
@@ -183,9 +184,8 @@ export async function resolveThemeTemplate(
     const prefDoc = preference?.docs?.[0]?.value as ThemeTemplateDocument | undefined
     if (prefDoc && typeof prefDoc === 'object') {
       const validation = validateThemeTemplateDocument(prefDoc, context)
-      if (validation.valid) {
-        return prefDoc
-      }
+      if (validation.valid) return prefDoc
+      throw new InvalidStoredTemplateError(validation.errors.join('; '))
     }
 
     if (targetTheme === 'corporate') {
@@ -201,12 +201,12 @@ export async function resolveThemeTemplate(
       const legacyDoc = legacyPref?.docs?.[0]?.value as ThemeTemplateDocument | undefined
       if (legacyDoc && typeof legacyDoc === 'object') {
         const validation = validateThemeTemplateDocument(legacyDoc, context)
-        if (validation.valid) {
-          return legacyDoc
-        }
+        if (validation.valid) return legacyDoc
+        throw new InvalidStoredTemplateError(validation.errors.join('; '))
       }
     }
   } catch (err) {
+    if (err instanceof InvalidStoredTemplateError) throw err
     console.error('[ThemeEngine] resolveThemeTemplate error:', err)
   }
 
@@ -252,7 +252,8 @@ export async function saveThemeTemplateOverride(
       })
       .catch(() => null)
 
-    const existingTemplates = ((settings as any)?.themeTemplates as Record<string, ThemeTemplateDocument>) || {}
+    const existingTemplates =
+      ((settings as any)?.themeTemplates as Record<string, ThemeTemplateDocument>) || {}
     const updatedTemplates = {
       ...existingTemplates,
       [scopedKey]: toSave,

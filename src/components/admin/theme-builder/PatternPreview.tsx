@@ -1,4 +1,6 @@
 'use client'
+import { atomManifests } from '@/widgets/atoms/manifests'
+import { createAtomRenderer } from '@/widgets/atoms/frontend'
 import React, { useState } from 'react'
 import { Alert, Button, Modal, Stack, Text } from '@mantine/core'
 import { TextBlockFrontend } from '@/widgets/TextBlock/frontend'
@@ -12,6 +14,7 @@ import type { PatternJSON } from '@/lib/theme-engine/patterns/json'
 import { isComplexPattern } from '@/lib/theme-engine/patterns/json'
 import { ADMIN_OVERLAY_LAYERS } from '@/theme/layers'
 const SIMPLE: Record<string, React.ComponentType<any>> = {
+  ...Object.fromEntries(Object.keys(atomManifests).map((type) => [type, createAtomRenderer(type)])),
   TextBlock: TextBlockFrontend,
   PostTitle: PostTitleFrontend,
   HeaderAction: HeaderActionFrontend,

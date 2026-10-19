@@ -11,7 +11,6 @@ import {
   Menu,
   Modal,
   Paper,
-  SegmentedControl,
   Select,
   Stack,
   Text,
@@ -39,6 +38,7 @@ import {
   instantiatePattern,
   insertWidgetPattern,
   applyWidgetPattern,
+  canApplyWidgetPattern,
   validatePatternOperation,
   walkPatternDocument,
   designPatternFromJSON,
@@ -48,12 +48,13 @@ import {
   serializeSelectedPattern,
   validatePatternJSON,
   type PatternJSON,
-  type PatternSource,
 } from '@/lib/theme-engine/patterns/json'
 import { PatternThumbnail, PatternPreviewModal } from './PatternPreview'
 import { useMyPatterns, type MyPatternDocument } from './useMyPatterns'
 import { ADMIN_OVERLAY_LAYERS } from '@/theme/layers'
 import styles from './WidgetPatternLibrary.module.css'
+import { systemDescriptor } from '@/lib/theme-engine/widget-contracts'
+import { stylePreviewStore } from '@/lib/style-engine/preview-store'
 const usePuck = createUsePuck()
 export function widgetLibraryCategory(type: string) {
   const manifest = getWidgetManifest(type)
@@ -89,7 +90,9 @@ export function WidgetPatternLibrary({
   context,
   themeConfig,
   beforeOperation,
+  mode = 'blocks',
 }: {
+  mode?: 'blocks' | 'theme' | 'user'
   context?: string
   themeConfig?: ThemeConfig
   beforeOperation: () => boolean
@@ -101,7 +104,8 @@ export function WidgetPatternLibrary({
   const getPermissions = usePuck((state) => state.getPermissions)
   const [category, setCategory] = useState('')
   const [search, setSearch] = useState('')
-  const [source, setSource] = useState<PatternSource>('system')
+  const source = mode === 'user' ? 'user' : mode === 'theme' ? 'theme' : 'system'
+  const [myOpened, setMyOpened] = useState(false)
   const [widgetFilter, setWidgetFilter] = useState<string | null>(null)
   const [destination, setDestination] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
@@ -120,16 +124,30 @@ export function WidgetPatternLibrary({
     doc: MyPatternDocument
   } | null>(null)
   const my = useMyPatterns(search, source === 'user')
-  const types = Object.keys(config.components)
-  const categories = [...new Set(types.map(widgetLibraryCategory))].sort((a, b) =>
+  const types = Object.keys(config.components).filter(
+    (type) =>
+      mode === 'user' ||
+      (mode === 'theme'
+        ? !!systemDescriptor(type) || type === 'PostContent' || type === 'CollectionLoop'
+        : !systemDescriptor(type) &&
+          !['PostTitle', 'PostContent', 'PostMeta', 'FeaturedMedia', 'CategoryHeader'].includes(
+            type,
+          )),
+  )
+  const categoryFor = (type: string) =>
+    mode === 'theme'
+      ? systemDescriptor(type)?.role ||
+        (type === 'PostContent' ? 'document.content' : 'archive.content')
+      : widgetLibraryCategory(type)
+  const categories = [...new Set(types.map(categoryFor))].sort((a, b) =>
     a === 'dynamic' ? 1 : b === 'dynamic' ? -1 : 0,
   )
   const active = categories.find((item) => item === category) || categories[0]
   const matches = (text: string) => text.toLocaleLowerCase().includes(search.toLocaleLowerCase())
-  const available = types.filter((type) => widgetLibraryCategory(type) === active)
+  const available = types.filter((type) => categoryFor(type) === active)
   const eligible = (record: PatternJSON) =>
     types.includes(record.widgetType) &&
-    widgetLibraryCategory(record.widgetType) === active &&
+    categoryFor(record.widgetType) === active &&
     (!widgetFilter || record.widgetType === widgetFilter) &&
     matches(`${record.name} ${record.description} ${record.category}`)
   const patterns =
@@ -141,7 +159,7 @@ export function WidgetPatternLibrary({
           .filter(
             (pattern) =>
               pattern.canonical &&
-              pattern.canonical.source === source &&
+              (mode === 'theme' ? true : pattern.canonical.source === source) &&
               eligible(pattern.canonical),
           )
           .map((pattern) => ({ pattern, doc: undefined as MyPatternDocument | undefined }))
@@ -160,7 +178,32 @@ export function WidgetPatternLibrary({
       ) as React.CSSProperties,
     [themeConfig],
   )
-  const run = (pattern: WidgetDesignPattern, apply = false) => {
+  const hoverId = React.useRef<string | null>(null)
+  const clearHover = () => {
+    if (hoverId.current) stylePreviewStore.clearPreview(hoverId.current)
+    hoverId.current = null
+  }
+  React.useEffect(
+    () => () => {
+      if (hoverId.current) stylePreviewStore.clearPreview(hoverId.current)
+    },
+    [selected?.props.id],
+  )
+  const hover = (pattern: WidgetDesignPattern) => {
+    clearHover()
+    if (selected && getPermissions({ item: selected }).edit && canApplyWidgetPattern(pattern, selected) && beforeOperation()) {
+      hoverId.current = selected.props.id
+      stylePreviewStore.setPreview(selected.props.id, {
+        ...selected.props.style,
+        ...pattern.props.style,
+      })
+    }
+  }
+  const run = (
+    pattern: WidgetDesignPattern,
+    apply = !!selected && canApplyWidgetPattern(pattern, selected),
+  ) => {
+    clearHover()
     setMessage(null)
     setSuccess(null)
     if (!context) {
@@ -259,7 +302,7 @@ export function WidgetPatternLibrary({
       validatePatternJSON(editor.record)
       const doc = await my.save(editor.record, editor.doc?.id)
       setEditor(null)
-      setSource('user')
+      setMyOpened(true)
       setSuccess('Pattern JSON saved. Preparing thumbnail…')
       const ready = await my.thumbnail(doc)
       setSuccess(
@@ -303,15 +346,21 @@ export function WidgetPatternLibrary({
         value={search}
         onChange={(event) => setSearch(event.currentTarget.value)}
       />
-      <SegmentedControl
-        value={source}
-        onChange={(value) => setSource(value as PatternSource)}
-        data={[
-          { value: 'system', label: 'System' },
-          { value: 'theme', label: 'Theme' },
-          { value: 'user', label: 'My Patterns' },
-        ]}
-      />
+      {mode === 'blocks' && (
+        <Button variant="default" onClick={() => setMyOpened(true)}>
+          My Patterns
+        </Button>
+      )}
+      {mode === 'blocks' && (
+        <Modal opened={myOpened} onClose={() => setMyOpened(false)} title="My Patterns" size="xl">
+          <WidgetPatternLibrary
+            context={context}
+            themeConfig={themeConfig}
+            beforeOperation={beforeOperation}
+            mode="user"
+          />
+        </Modal>
+      )}
       {selected && (
         <Button
           variant="default"
@@ -369,7 +418,12 @@ export function WidgetPatternLibrary({
                   }}
                 >
                   <Icon size={20} aria-hidden="true" />
-                  <span className={styles.categoryLabel}>{LABELS[name] || 'Widgets'}</span>
+                  <span className={styles.categoryLabel}>
+                    {mode === 'theme'
+                      ? config.components[types.find((type) => categoryFor(type) === name) || '']
+                          ?.label || name
+                      : LABELS[name] || 'Widgets'}
+                  </span>
                 </Button>
               </React.Fragment>
             )
@@ -424,6 +478,9 @@ export function WidgetPatternLibrary({
                     key={doc ? `user-${doc.id}` : pattern.id}
                     withBorder
                     className={styles.card}
+                    onClick={event => { if (!(event.target as HTMLElement).closest('button, a, input')) run(pattern) }}
+                    onMouseEnter={() => hover(pattern)}
+                    onMouseLeave={clearHover}
                   >
                     <div className={styles.preview}>
                       <PatternThumbnail record={thumbnailRecord} url={doc?.url} />
@@ -462,7 +519,7 @@ export function WidgetPatternLibrary({
                           <Menu.Item
                             disabled={
                               !selected ||
-                              !pattern.compatibility.widgetTypes.includes(selected.type) ||
+                              !canApplyWidgetPattern(pattern, selected) ||
                               selected.props.lock?.canEditProps === false
                             }
                             onClick={() => run(pattern, true)}
@@ -548,7 +605,7 @@ export function WidgetPatternLibrary({
                   key={type}
                   variant="default"
                   fullWidth
-                  onClick={() => run(defaultPattern(type))}
+                  onClick={() => run(defaultPattern(type), false)}
                 >
                   Add {config.components[type].label || getWidgetManifest(type)?.label || 'Widget'}
                 </Button>

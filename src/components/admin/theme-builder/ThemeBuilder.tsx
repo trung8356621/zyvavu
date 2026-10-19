@@ -1,4 +1,5 @@
 'use client'
+import { withRoleContract, homeHeadingWarning } from '@/lib/theme-engine/widget-contracts'
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
@@ -220,6 +221,15 @@ export function ThemeBuilder({
       {fontUrl && <link rel="stylesheet" href={fontUrl} />}
       <style dangerouslySetInnerHTML={{ __html: themeCss }} />
 
+      {homeHeadingWarning(activeDoc) && <Text size="sm" c="dimmed">{homeHeadingWarning(activeDoc)}</Text>}
+      {['single', 'page', 'category'].includes(selectedTemplate) && activeDoc?.metadata?.roleContract !== 1 && <Button variant="subtle" size="sm" onClick={() => {
+        const upgraded = withRoleContract(latestDocRef.current)
+        const result = validateThemeTemplateDocument(upgraded, selectedTemplate, templates[selectedTemplate])
+        if (!result.valid) { setSaveError(`Upgrade requires: ${result.errors.join('; ')}`); return }
+        setTemplates(previous => ({ ...previous, [selectedTemplate]: upgraded }))
+        latestDocRef.current = upgraded
+        setIsDirty(true)
+      }}>Enable required title/content roles</Button>}
       {/* TOP WORKSPACE TOOLBAR */}
       <Paper
         p="sm"

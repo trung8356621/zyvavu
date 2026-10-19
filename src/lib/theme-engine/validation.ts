@@ -1,4 +1,10 @@
-import type { TemplateContext, ThemeComponentData, ThemeTemplateDocument, ValidationResult } from './types'
+import { collectTemplateWidgets, validateRoleContract } from './widget-contracts'
+import type {
+  TemplateContext,
+  ThemeComponentData,
+  ThemeTemplateDocument,
+  ValidationResult,
+} from './types'
 import { getTemplatePolicy } from './policy'
 import { getWidgetManifest } from './widget-registry-manifests'
 import { validateUniversalStyle } from '@/lib/style-engine/validation'
@@ -87,6 +93,15 @@ export function validateThemeTemplateDocument(
     }
   }
 
+  const allWidgets = collectTemplateWidgets(candidate as ThemeTemplateDocument)
+  placedWidgets.splice(0, placedWidgets.length, ...allWidgets)
+  errors.push(
+    ...validateRoleContract(
+      { ...candidate, template: context } as ThemeTemplateDocument,
+      previousDoc,
+    ),
+  )
+
   // Policy validation
   try {
     // 0. Mandatory Section Architecture check for page-content templates
@@ -116,6 +131,19 @@ export function validateThemeTemplateDocument(
       }
     }
 
+    const ids = new Set<string>()
+    for (const node of placedWidgets) {
+      if (
+        !node.props ||
+        typeof node.props.id !== 'string' ||
+        !node.props.id ||
+        ids.has(node.props.id)
+      )
+        errors.push('Invalid or duplicate nested widget ID')
+      ids.add(node.props?.id)
+      if (node.type === 'Section' && !candidate.content.includes(node))
+        errors.push('Section cannot be nested')
+    }
     const policy = getTemplatePolicy(context)
     const allowedSet = new Set(policy.allowedWidgets)
     if (context === 'header') allowedSet.add('Header')
@@ -155,7 +183,9 @@ export function validateThemeTemplateDocument(
     if (policy.requiredCapabilities) {
       for (const reqCap of policy.requiredCapabilities) {
         if (!capabilityCounts.has(reqCap) || (capabilityCounts.get(reqCap) || 0) === 0) {
-          errors.push(`Template "${context}" requires a widget providing capability "${reqCap}" (e.g. PostContent)`)
+          errors.push(
+            `Template "${context}" requires a widget providing capability "${reqCap}" (e.g. PostContent)`,
+          )
         }
       }
     }
@@ -173,7 +203,9 @@ export function validateThemeTemplateDocument(
     if (policy.uniqueCapabilities) {
       for (const uniqCap of policy.uniqueCapabilities) {
         if ((capabilityCounts.get(uniqCap) || 0) > 1) {
-          errors.push(`Only one widget with capability "${uniqCap}" is allowed in template "${context}"`)
+          errors.push(
+            `Only one widget with capability "${uniqCap}" is allowed in template "${context}"`,
+          )
         }
       }
     }
@@ -181,12 +213,7 @@ export function validateThemeTemplateDocument(
     // 6. Widget Instance Locks (enforced against previousDoc)
     if (previousDoc) {
       const prevWidgets = new Map<string, ThemeComponentData>()
-      for (const w of previousDoc.content || []) prevWidgets.set(w.props.id, w)
-      if (previousDoc.zones) {
-        for (const zoneItems of Object.values(previousDoc.zones)) {
-          for (const w of zoneItems || []) prevWidgets.set(w.props.id, w)
-        }
-      }
+      for (const w of collectTemplateWidgets(previousDoc)) prevWidgets.set(w.props.id, w)
 
       const currWidgetIds = new Set(placedWidgets.map((w) => w.props.id))
 
@@ -223,13 +250,17 @@ export function validateThemeTemplateDocument(
         if (pageSettings.background) {
           const bg = pageSettings.background
           if (bg.type && !['theme', 'palette', 'image'].includes(bg.type)) {
-            errors.push(`Invalid background type "${bg.type}". Must be "theme", "palette", or "image"`)
+            errors.push(
+              `Invalid background type "${bg.type}". Must be "theme", "palette", or "image"`,
+            )
           }
           if (bg.type === 'palette') {
             if (!bg.token || typeof bg.token !== 'string' || !bg.token.trim()) {
               errors.push('Background palette mode requires a valid token ID')
             } else if (bg.token.startsWith('#') || bg.token.startsWith('rgb')) {
-              errors.push(`Direct color value "${bg.token}" is not permitted for background.token. Must be a semantic token ID.`)
+              errors.push(
+                `Direct color value "${bg.token}" is not permitted for background.token. Must be a semantic token ID.`,
+              )
             }
           }
         }
@@ -239,12 +270,16 @@ export function validateThemeTemplateDocument(
           const txt = pageSettings.text
           if (txt.typography && typeof txt.typography === 'string') {
             if (txt.typography.includes('px') || txt.typography.includes('rem')) {
-              errors.push(`Direct font size "${txt.typography}" is not permitted in text.typography. Must be a semantic preset ID.`)
+              errors.push(
+                `Direct font size "${txt.typography}" is not permitted in text.typography. Must be a semantic preset ID.`,
+              )
             }
           }
           if (txt.colorToken && typeof txt.colorToken === 'string') {
             if (txt.colorToken.startsWith('#') || txt.colorToken.startsWith('rgb')) {
-              errors.push(`Direct color value "${txt.colorToken}" is not permitted for text.colorToken. Must be a semantic token ID.`)
+              errors.push(
+                `Direct color value "${txt.colorToken}" is not permitted for text.colorToken. Must be a semantic token ID.`,
+              )
             }
           }
         }
@@ -254,12 +289,16 @@ export function validateThemeTemplateDocument(
           const layout = pageSettings.layout
           if (layout.containerWidth && typeof layout.containerWidth === 'string') {
             if (layout.containerWidth.includes('px') || layout.containerWidth.includes('%')) {
-              errors.push(`Direct dimension "${layout.containerWidth}" is not permitted for layout.containerWidth. Use semantic token (e.g. "containerWidth", "narrowWidth", "full").`)
+              errors.push(
+                `Direct dimension "${layout.containerWidth}" is not permitted for layout.containerWidth. Use semantic token (e.g. "containerWidth", "narrowWidth", "full").`,
+              )
             }
           }
           if (layout.spacing && typeof layout.spacing === 'string') {
             if (layout.spacing.includes('px') || layout.spacing.includes('rem')) {
-              errors.push(`Direct dimension "${layout.spacing}" is not permitted for layout.spacing. Use semantic token (e.g. "xs", "sm", "md", "lg", "xl").`)
+              errors.push(
+                `Direct dimension "${layout.spacing}" is not permitted for layout.spacing. Use semantic token (e.g. "xs", "sm", "md", "lg", "xl").`,
+              )
             }
           }
         }
@@ -271,7 +310,10 @@ export function validateThemeTemplateDocument(
           }
         }
         if (pageSettings.customJS && typeof pageSettings.customJS === 'string') {
-          if (/\beval\s*\(/.test(pageSettings.customJS) || /\bFunction\s*\(/.test(pageSettings.customJS)) {
+          if (
+            /\beval\s*\(/.test(pageSettings.customJS) ||
+            /\bFunction\s*\(/.test(pageSettings.customJS)
+          ) {
             errors.push('Unsafe eval or Function constructor is strictly prohibited in customJS')
           }
         }
@@ -290,19 +332,27 @@ export function validateThemeTemplateDocument(
         }
 
         if (style.fontSize || style.fontFamily) {
-          errors.push(`Widget "${widget.type}" (${widget.props.id}) cannot define arbitrary fontSize or fontFamily. Use semantic typography presets.`)
+          errors.push(
+            `Widget "${widget.type}" (${widget.props.id}) cannot define arbitrary fontSize or fontFamily. Use semantic typography presets.`,
+          )
         }
         if (style.color && (style.color.startsWith('#') || style.color.startsWith('rgb'))) {
-          errors.push(`Widget "${widget.type}" (${widget.props.id}) cannot define arbitrary color "${style.color}". Use semantic colorToken reference.`)
+          errors.push(
+            `Widget "${widget.type}" (${widget.props.id}) cannot define arbitrary color "${style.color}". Use semantic colorToken reference.`,
+          )
         }
         if (style.colorToken && typeof style.colorToken === 'string') {
           if (style.colorToken.startsWith('#') || style.colorToken.startsWith('rgb')) {
-            errors.push(`Widget "${widget.type}" (${widget.props.id}) colorToken cannot be a raw color value "${style.colorToken}". Must be a semantic token ID.`)
+            errors.push(
+              `Widget "${widget.type}" (${widget.props.id}) colorToken cannot be a raw color value "${style.colorToken}". Must be a semantic token ID.`,
+            )
           }
         }
         if (style.typography && typeof style.typography === 'string') {
           if (style.typography.includes('px') || style.typography.includes('rem')) {
-            errors.push(`Widget "${widget.type}" (${widget.props.id}) typography cannot be a raw font size. Must be a semantic preset ID.`)
+            errors.push(
+              `Widget "${widget.type}" (${widget.props.id}) typography cannot be a raw font size. Must be a semantic preset ID.`,
+            )
           }
         }
       }

@@ -1,3 +1,4 @@
+import { presentationType, systemDescriptor, validateFixedBinding } from './widget-contracts'
 import { getWidgetManifest } from './widget-registry-manifests'
 import { SYSTEM_PATTERNS } from './patterns/catalog'
 import { instantiatePatternJSON, validatePatternJSON, type PatternJSON } from './patterns/json'
@@ -140,6 +141,8 @@ export function walkPatternDocument(data: Data, config: Config, visit: (item: an
         )
           throw new Error('Widget is not allowed in this slot')
       }
+      const bindingErrors = validateFixedBinding(item)
+      if (bindingErrors.length) throw new Error(bindingErrors.join('; '))
       visit(item)
       for (const [name, field] of Object.entries(config.components[item.type]?.fields || {})) {
         if (field.type === 'slot' && item.props[name] !== undefined) {
@@ -236,6 +239,33 @@ export function instantiatePattern(
   return create(pattern.widgetType, pattern.props, pattern.slots)
 }
 
+export function canApplyWidgetPattern(
+  pattern: WidgetDesignPattern,
+  target: { type: string; props: Record<string, unknown> },
+): boolean {
+  if (target.props.lock && (target.props.lock as { canEditProps?: boolean }).canEditProps === false)
+    return false
+  const root = pattern.canonical?.payload.content[0]
+  if (
+    pattern.slots ||
+    (root &&
+      Object.keys(root.props).some(
+        (key) =>
+          Array.isArray(root.props[key]) &&
+          root.props[key].some((v: unknown) => v && typeof v === 'object' && 'type' in v),
+      ))
+  )
+    return false
+  const sourceBinding = systemDescriptor(pattern.widgetType)
+  if (sourceBinding && sourceBinding.binding !== systemDescriptor(target.type)?.binding)
+    return false
+  return (
+    pattern.compatibility.widgetTypes.includes(target.type) ||
+    (!!systemDescriptor(target.type) &&
+      presentationType(pattern.widgetType) === presentationType(target.type))
+  )
+}
+
 export function applyWidgetPattern(
   data: Data,
   pattern: WidgetDesignPattern,
@@ -249,10 +279,7 @@ export function applyWidgetPattern(
       for (const [key, field] of Object.entries(config.components[item.type]?.fields || {}))
         if (field.type === 'slot' && Array.isArray(props[key])) props[key] = update(props[key])
       if (props.id === selectedId) {
-        if (
-          props.lock?.canEditProps === false ||
-          !pattern.compatibility.widgetTypes.includes(item.type)
-        )
+        if (props.lock?.canEditProps === false || !canApplyWidgetPattern(pattern, item))
           throw new Error('Pattern is incompatible or widget is locked')
         if (pattern.slots)
           throw new Error('Nested patterns can be inserted only; existing content is preserved')

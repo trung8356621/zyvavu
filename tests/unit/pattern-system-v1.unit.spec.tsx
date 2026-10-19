@@ -45,7 +45,7 @@ afterEach(() => {
 })
 describe('Canonical Pattern V1', () => {
   it('ships six genuine designs for every enabled widget type and round-trips real JSON', () => {
-    expect(SYSTEM_PATTERNS).toHaveLength(24)
+    expect(SYSTEM_PATTERNS.length).toBeGreaterThanOrEqual(24)
     for (const type of ['TextBlock', 'Section', 'Columns', 'FeaturedMedia']) {
       const patterns = SYSTEM_PATTERNS.filter((pattern) => pattern.widgetType === type)
       expect(patterns).toHaveLength(6)

@@ -147,6 +147,25 @@ afterEach(() => {
 })
 
 describe('Editor stability', () => {
+  it.each(['Heading', 'Text', 'Button', 'Image'])('isolates %s Settings/Link from selection and history', (type) => {
+    const atomDoc = { ...document, content: [{ type, props: { id: 'atom', text: 'Content' } }] }
+    model.snapshot = { ...model.snapshot, selectedItem: atomDoc.content[0], appState: { data: atomDoc, ui: { itemSelector: { index: 0 } } } }
+    const onChange = vi.fn()
+    render(<MantineProvider><PuckHost config={{ components: {} }} document={atomDoc} onSave={vi.fn()} onChange={onChange} /></MantineProvider>)
+    const selected = model.snapshot.selectedItem
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
+    expect(screen.getByText(`${type} Settings`)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Close modal' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Link' }))
+    expect(screen.getByRole('dialog', { name: 'Link' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Close modal' }))
+    expect(model.snapshot.selectedItem).toBe(selected)
+    expect(model.history).toHaveLength(0)
+    expect(model.snapshot.dispatch).not.toHaveBeenCalled()
+    expect(onChange).not.toHaveBeenCalled()
+    expect(model.mounts).toBe(1)
+  })
+
   it('keeps the same canvas/iframe/media through repeated open, draft, Cancel, Apply and selection changes', () => {
     const onChange = vi.fn()
     render(

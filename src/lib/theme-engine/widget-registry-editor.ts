@@ -1,3 +1,5 @@
+import { collectTemplateWidgets, widgetRole } from './widget-contracts'
+import { atomEditors } from '@/widgets/atoms/editor'
 import React from 'react'
 import type { ComponentConfig, Config } from '@puckeditor/core'
 import type { PageSettings, TemplateContext, ThemeConfig } from './types'
@@ -89,6 +91,7 @@ export type EditorWidgetEntry = {
 }
 
 const defaultEditorRegistry: Record<string, EditorWidgetEntry> = {
+  ...atomEditors,
   Section: { manifest: sectionManifest, config: sectionEditor },
   PostTitle: { manifest: postTitleManifest, config: postTitleEditor },
   PostContent: { manifest: postContentManifest, config: postContentEditor },
@@ -145,6 +148,27 @@ export function getEditorConfigForContext(
       allowedComponents[widgetId] = wrapWithStylePreview(custom)
     } else if (base) {
       allowedComponents[widgetId] = wrapWithStylePreview(base.config)
+    }
+  }
+
+  for (const [type, component] of Object.entries(allowedComponents)) {
+    const role = widgetRole({ type, props: { id: '' } })
+    if (
+      !role ||
+      !['document.title', 'document.content', 'archive.title', 'archive.content'].includes(role)
+    )
+      continue
+    if (!(['single', 'page'].includes(context) ? role.startsWith('document.') : context === 'category' && role.startsWith('archive.'))) continue
+    const original = component.resolvePermissions
+    component.resolvePermissions = async (
+      item: { props: { id?: string } },
+      params: { appState: { data: any }; permissions: Record<string, boolean> },
+    ) => {
+      const base = original ? await original(item, params) : params.permissions
+      const occupied = collectTemplateWidgets(params.appState.data).some(
+        (node) => widgetRole(node) === role,
+      )
+      return { ...base, ...(occupied ? { insert: false, duplicate: false } : {}) }
     }
   }
 

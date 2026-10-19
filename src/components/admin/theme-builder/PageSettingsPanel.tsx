@@ -147,7 +147,7 @@ export function PageSettingsPanel({ themeConfig, templateName }: PageSettingsPan
           <Group gap="xs">
             <Settings size={18} color="var(--mantine-color-teal-7, #0e6b66)" />
             <Text fw={700} size="sm" c="var(--zyvavu-text, #17201f)">
-              Page Settings
+              {templateName === 'header' ? 'Header Settings' : 'Page Settings'}
             </Text>
           </Group>
           {templateName && (

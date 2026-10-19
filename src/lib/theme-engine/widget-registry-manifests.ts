@@ -1,3 +1,4 @@
+import { atomManifests } from '@/widgets/atoms/manifests'
 import type { WidgetManifest } from './types'
 import { normalizeComponentType } from '@/lib/style-engine/capabilities'
 
@@ -24,6 +25,7 @@ import { itemLinkManifest } from '@/widgets/ItemLink/manifest'
 import { sectionManifest } from '@/widgets/Section/manifest'
 
 const defaultManifestRegistry: Record<string, WidgetManifest> = {
+  ...atomManifests,
   Section: sectionManifest,
   PostTitle: postTitleManifest,
   PostContent: postContentManifest,

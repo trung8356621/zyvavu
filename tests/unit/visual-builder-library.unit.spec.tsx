@@ -7,6 +7,7 @@ vi.mock('@puckeditor/core', () => ({
   createUsePuck: () => (selector: (value: any) => unknown) => selector(state.current),
 }))
 import { getEditorConfigForContext } from '@/lib/theme-engine/widget-registry-editor'
+import { stylePreviewStore } from '@/lib/style-engine/preview-store'
 import { WidgetPatternLibrary } from '@/components/admin/theme-builder/WidgetPatternLibrary'
 beforeEach(() => {
   window.matchMedia = vi
@@ -20,7 +21,7 @@ beforeEach(() => {
     getPermissions: vi.fn().mockReturnValue({ insert: true, edit: true }),
   }
 })
-afterEach(cleanup)
+afterEach(() => { cleanup(); stylePreviewStore.clearPreview(); vi.unstubAllGlobals() })
 it('renders registry categories and inserts a real pattern as one Puck operation', () => {
   render(
     <MantineProvider>
@@ -59,4 +60,33 @@ it('honors Puck insertion permissions and shows a recoverable error', () => {
   fireEvent.click(screen.getByRole('button', { name: 'Insert Airy section' }))
   expect(state.current.dispatch).not.toHaveBeenCalled()
   expect(screen.getByRole('alert').textContent).toContain('cannot be inserted')
+})
+
+it('opens My Patterns as a standalone modal without changing Puck data', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ docs: [], totalPages: 1, page: 1 }) }))
+  render(<MantineProvider><WidgetPatternLibrary context="home" beforeOperation={() => true} /></MantineProvider>)
+  fireEvent.click(screen.getByRole('button', { name: 'My Patterns' }))
+  expect(await screen.findByRole('dialog', { name: 'My Patterns' })).toBeTruthy()
+  expect(screen.queryByRole('radio', { name: 'System' })).toBeNull()
+  expect(state.current.dispatch).not.toHaveBeenCalled()
+  vi.unstubAllGlobals()
+})
+it('groups Theme by fixed role and previews hover without document writes', () => {
+  state.current.config = getEditorConfigForContext('single')
+  const title = { type: 'DocumentTitle', props: { id: 'title', binding: 'document.title', role: 'document.title' } }
+  state.current.selectedItem = title
+  state.current.appState.data = { root: { props: {} }, content: [{ type: 'Section', props: { id: 'section', content: [title, { type: 'PostContent', props: { id: 'body' } }] } }] }
+  render(<MantineProvider><WidgetPatternLibrary context="single" mode="theme" beforeOperation={() => true} /></MantineProvider>)
+  fireEvent.click(screen.getByRole('button', { name: 'Document Title' }))
+  const card = screen.getByText('Document Title Accent').closest('[data-with-border]')!
+  fireEvent.mouseEnter(card)
+  expect(stylePreviewStore.getPreview('title')).not.toBeNull()
+  expect(state.current.dispatch).not.toHaveBeenCalled()
+  fireEvent.mouseLeave(card)
+  expect(stylePreviewStore.getPreview('title')).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: 'Insert Document Title Accent' }))
+  expect(state.current.dispatch).toHaveBeenCalledOnce()
+  const next = state.current.dispatch.mock.calls[0][0].data
+  expect(next.content[0].props.content[0].props.binding).toBe('document.title')
+  expect(next.content[0].props.content).toHaveLength(2)
 })

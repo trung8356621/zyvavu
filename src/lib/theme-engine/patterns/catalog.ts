@@ -1,3 +1,5 @@
+import { atomManifests } from '@/widgets/atoms/manifests'
+import { systemDescriptor } from '../widget-contracts'
 import type { UniversalStyle } from '@/lib/style-engine/types'
 import type { ThemeComponentData } from '../types'
 import { collectPatternTokens, type PatternJSON } from './json'
@@ -252,7 +254,7 @@ const mediaStyles: [string, string, UniversalStyle, string, boolean][] = [
     false,
   ],
 ]
-export const SYSTEM_PATTERNS: readonly PatternJSON[] = [
+const LEGACY_SYSTEM_PATTERNS: readonly PatternJSON[] = [
   ...textPatterns,
   ...sectionPatterns,
   ...layoutPatterns,
@@ -265,5 +267,30 @@ export const SYSTEM_PATTERNS: readonly PatternJSON[] = [
       style,
       { aspectRatio, rounded },
     ),
+  ),
+]
+
+export const SYSTEM_PATTERNS: PatternJSON[] = [
+  ...LEGACY_SYSTEM_PATTERNS,
+  ...Object.entries(atomManifests).flatMap(([type, manifest]) =>
+    ['text', 'primary'].map((color, index) => {
+      const record = pattern(
+        type,
+        `${type.toLowerCase()}-${color}`,
+        `${manifest.label} ${index ? 'Accent' : 'Default'}`,
+        `Presentation for ${systemDescriptor(type)?.role || type}.`,
+        {
+          typography: {
+            typography:
+              systemDescriptor(type)?.atom === 'Heading' || type === 'Heading' ? 'h2' : 'p1',
+            colorToken: color,
+          },
+        },
+        manifest.defaultProps,
+      )
+      record.source = systemDescriptor(type) ? 'theme' : 'system'
+      record.category = systemDescriptor(type)?.role || 'general'
+      return record
+    }),
   ),
 ]
