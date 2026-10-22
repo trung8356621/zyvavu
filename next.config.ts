@@ -26,7 +26,7 @@ const nextConfig: NextConfig = {
 
     webpackConfig.watchOptions = {
       ...webpackConfig.watchOptions,
-      ignored: [/[\\/]node_modules[\\/]/, /[\\/]\.git[\\/]/, /[\\/]\.next[\\/]/],
+      ignored: /[\\/](node_modules|\.git|\.next)[\\/]/,
     }
 
     return webpackConfig

@@ -1,0 +1,47 @@
+.root {
+  /* Authenticated-only inset; remains stable during successful session refreshes. */
+  height: 40px;
+  font-family: system-ui, sans-serif;
+  line-height: 1.4;
+}
+
+.bar {
+  position: fixed;
+  inset: 0 0 auto;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-inline: 8px;
+  box-sizing: border-box;
+  color: inherit;
+}
+
+.action {
+  color: inherit;
+  flex-shrink: 0;
+}
+
+.action:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: -2px;
+}
+
+.desktop { display: flex; align-items: center; gap: 4px; }
+.mobile { display: none; }
+.account { margin-inline-start: auto; }
+
+:global(html:has([data-frontend-admin-toolbar])) {
+  --zyvavu-admin-toolbar-offset: 40px;
+  scroll-padding-top: var(--zyvavu-admin-toolbar-offset);
+}
+
+@media (max-width: 700px) {
+  .desktop, .userName { display: none; }
+  .mobile { display: block; }
+}
+
+@media print {
+  .root { display: none; }
+  :global(html:has([data-frontend-admin-toolbar])) { scroll-padding-top: 0; }
+}

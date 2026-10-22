@@ -4,6 +4,7 @@ import { getPayload } from 'payload'
 import { cookies, headers } from 'next/headers'
 
 import { RegisterServiceWorker } from '@/components/frontend/RegisterServiceWorker'
+import { FrontendAdminToolbar } from '@/components/frontend/admin-toolbar/FrontendAdminToolbar'
 import { SiteHeader } from '@/components/frontend/SiteHeader'
 import { buildRootLayoutMetadata } from '@/lib/seo'
 import { loadPublicSiteSettings } from '@/lib/site/settings'
@@ -106,6 +107,7 @@ export default async function RootLayout(props: { children: React.ReactNode }) {
       </head>
       <body style={themeVariables('public') as CSSProperties}>
         <ThemeLivePreviewBridge />
+        <FrontendAdminToolbar />
         <RegisterServiceWorker enabled={settings.pwaEnabled} />
         {headerDoc ? (
           <ThemeRenderer
