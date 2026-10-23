@@ -105,9 +105,11 @@
     ],
     "edit-lead-story:column2": [
       {
-        "type": "FeaturedMedia",
+        "type": "Image",
         "props": {
           "id": "edit-lead-media",
+          "src": "https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=max&w=1600&q=85",
+          "alt": "Nhóm cộng tác trong không gian công nghệ — Unsplash",
           "aspectRatio": "4:3",
           "caption": "Tranh minh họa: Chuyển dịch mô hình quản trị doanh nghiệp"
         }

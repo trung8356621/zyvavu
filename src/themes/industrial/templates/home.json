@@ -151,9 +151,11 @@
     ],
     "ind-cols-showcase:column1": [
       {
-        "type": "FeaturedMedia",
+        "type": "Image",
         "props": {
           "id": "ind-showcase-media",
+          "src": "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=max&w=1600&q=85",
+          "alt": "Chi tiết bảng mạch điện tử — Unsplash",
           "aspectRatio": "16:9",
           "caption": "Phân xưởng lắp ráp số 2 tại KCN VSIP II"
         }

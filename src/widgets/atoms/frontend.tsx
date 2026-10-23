@@ -10,6 +10,7 @@ export type AtomProps = {
   text?: string
   src?: string
   alt?: string
+  aspectRatio?: '16:9' | '4:3' | '21:9' | 'auto'
   style?: WidgetSemanticStyle
   dataContext?: ThemeDataContext
 }
@@ -19,6 +20,7 @@ export function AtomPresentation({
   text,
   src,
   alt,
+  aspectRatio,
   style,
   primaryHeading,
   tag,
@@ -27,9 +29,21 @@ export function AtomPresentation({
   const HeadingTag = primaryHeading ? 'h1' : tag || 'h2'
   const node =
     kind === 'Image' ? (
-      <div style={resolved}>
+      <div style={resolved} {...animationAttributes(style?.animation)}>
         {src ? (
-          <img src={src} alt={alt || ''} style={{ maxWidth: '100%', display: 'block' }} />
+          <img
+            src={src}
+            alt={alt || ''}
+            style={{
+              width: '100%',
+              maxWidth: '100%',
+              height: 'auto',
+              display: 'block',
+              borderRadius: 'inherit',
+              aspectRatio: aspectRatio === 'auto' ? undefined : aspectRatio?.replace(':', '/'),
+              objectFit: 'cover',
+            }}
+          />
         ) : (
           text || 'Image not configured'
         )}

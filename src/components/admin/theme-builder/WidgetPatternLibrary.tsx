@@ -66,7 +66,9 @@ export function widgetLibraryCategory(type: string) {
     return 'dynamic'
   if (type === 'Section') return 'sections'
   if (type === 'Columns') return 'layout'
-  if (type === 'TextBlock') return 'text'
+  if (['Heading', 'Text', 'TextBlock'].includes(type)) return 'text'
+  if (type === 'Image') return 'images'
+  if (type === 'Button') return 'buttons'
   return manifest?.category || 'general'
 }
 const LABELS: Record<string, string> = {
