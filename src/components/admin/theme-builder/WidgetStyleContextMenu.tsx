@@ -173,7 +173,9 @@ function WidgetStyleSession({
   const [committedStyle, setCommittedStyle] = useState<WidgetSemanticStyle>(currentStyle || {})
   // 2. draftStyle: Temporary changes inside the Style Editor
   const [draftStyle, setDraftStyle] = useState<WidgetSemanticStyle>(() => currentStyle || {})
+  const pendingDraftPreview = useRef(false)
   const [validationError, setValidationError] = useState<string | null>(null)
+  const [mediaPickerOpened, setMediaPickerOpened] = useState(false)
   const [animationPickerOpened, setAnimationPickerOpened] = useState(false)
   const [shellRevision, setShellRevision] = useState(0)
   // 3. prePaletteDraftRef: Snapshot before opening child Color Palette modal
@@ -280,6 +282,7 @@ function WidgetStyleSession({
   // Real-time draft update that immediately updates the canvas preview without committing to Puck
   const updateDraft = useCallback(
     (partial: Partial<UniversalStyle>) => {
+      pendingDraftPreview.current = true
       setDraftStyle((prev) => {
         const prevNorm = normalizeStyle(prev)
         const merged: WidgetSemanticStyle = {
@@ -295,13 +298,18 @@ function WidgetStyleSession({
             prevNorm.background?.colorToken ||
             prev.backgroundToken,
         }
-        // Broadcast live preview to canvas
-        stylePreviewStore.setPreview(componentId, merged)
         return merged
       })
     },
-    [componentId, normalizeStyle],
+    [normalizeStyle],
   )
+
+  // Notify external canvas subscribers after React commits, never inside a state updater.
+  useEffect(() => {
+    if (!pendingDraftPreview.current) return
+    pendingDraftPreview.current = false
+    stylePreviewStore.setPreview(componentId, draftStyle)
+  }, [componentId, draftStyle])
 
   // Apply Action: Commits draftStyle to Puck document in a single update
   const handleApply = useCallback(() => {
@@ -312,16 +320,18 @@ function WidgetStyleSession({
     }
     setValidationError(null)
     if (onUpdateStyle(draftStyle) === false) return
+    pendingDraftPreview.current = false
     stylePreviewStore.clearPreview(componentId)
     onClose()
   }, [draftStyle, onUpdateStyle, componentId, onClose])
 
   // Cancel Action: Discards unapplied draft and restores canvas appearance
   const handleCancel = useCallback(() => {
+    pendingDraftPreview.current = false
     stylePreviewStore.clearPreview(componentId)
     setDraftStyle(committedStyle)
     onClose()
-  }, [componentId, onClose])
+  }, [componentId, onClose, committedStyle])
 
   // Palette Child Opening
   const handleOpenColorModal = (
@@ -484,7 +494,8 @@ function WidgetStyleSession({
         draggable={true}
         showCloseButton={true}
         closeOnClickOutside={false}
-        closeOnEscape={!animationPickerOpened && !colorModalTarget && !pendingDomain}
+        style={{ visibility: mediaPickerOpened ? 'hidden' : undefined }}
+        closeOnEscape={!mediaPickerOpened && !animationPickerOpened && !colorModalTarget && !pendingDomain}
         zIndex={ADMIN_OVERLAY_LAYERS.STYLE_MODAL}
         footer={
           activeTab ? (
@@ -589,6 +600,7 @@ function WidgetStyleSession({
           {/* 2. BACKGROUND DOMAIN */}
           {activeTab === 'background' && hasBackground && (
             <BackgroundStyleControl
+              onMediaOpenChange={setMediaPickerOpened}
               colorOnly={false}
               value={normalizedDraft.background}
               themeConfig={themeConfig}
@@ -721,14 +733,17 @@ function WidgetStyleSession({
           onSelectToken={(tokenId) => {
             if (!colorModalTarget) return
             const candidate = buildCandidateDraftWithToken(colorModalTarget, tokenId)
+            setDraftStyle(candidate)
             stylePreviewStore.setPreview(componentId, candidate)
           }}
           onChangeGradient={(grad) => {
             const candidate = buildCandidateDraftWithGradient(grad)
+            setDraftStyle(candidate)
             stylePreviewStore.setPreview(componentId, candidate)
           }}
           onChangeMesh={(mesh) => {
             const candidate = buildCandidateDraftWithMesh(mesh)
+            setDraftStyle(candidate)
             stylePreviewStore.setPreview(componentId, candidate)
           }}
           onApplyToken={(tokenId) => {

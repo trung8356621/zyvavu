@@ -1,6 +1,8 @@
 'use client'
 
 import React, { useState } from 'react'
+import { tokenToKebab } from '@/lib/theme-engine/page-settings'
+import { MediaSourcePicker } from '@/components/admin/media/MediaSourcePicker'
 import {
   ActionIcon,
   Badge,
@@ -12,18 +14,15 @@ import {
   Paper,
   SegmentedControl,
   Select,
-  SimpleGrid,
   Slider,
   Stack,
   Switch,
   Text,
   TextInput,
-  Tooltip,
   UnstyledButton,
 } from '@mantine/core'
 import {
   ArrowLeft,
-  Check,
   Film,
   Image as ImageIcon,
   Palette,
@@ -48,48 +47,10 @@ export interface BackgroundStyleControlProps {
   themeConfig?: ThemeConfig
   colorOnly?: boolean
   initialConfiguring?: boolean
+  onMediaOpenChange?: (opened: boolean) => void
   onChange: (val: BackgroundConfig) => void
   onOpenColorModal: (target: 'background' | 'overlay' | 'fallback') => void
 }
-
-export const DEMO_BACKGROUND_IMAGES = [
-  {
-    id: 'demo-1',
-    label: 'Modern Minimal',
-    url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80',
-    attribution: 'Unsplash - Milad Fakurian',
-  },
-  {
-    id: 'demo-2',
-    label: 'Subtle Texture',
-    url: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
-    attribution: 'Unsplash - R Architecture',
-  },
-  {
-    id: 'demo-3',
-    label: 'Dark Gradient Wave',
-    url: 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?auto=format&fit=crop&w=800&q=80',
-    attribution: 'Unsplash - Dynamic Wang',
-  },
-  {
-    id: 'demo-4',
-    label: 'Warm Architectural',
-    url: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=800&q=80',
-    attribution: 'Unsplash - R Architecture',
-  },
-  {
-    id: 'demo-5',
-    label: 'Forest Mist',
-    url: 'https://images.unsplash.com/photo-1511497584788-87676104235f?auto=format&fit=crop&w=800&q=80',
-    attribution: 'Unsplash - Luca Bravo',
-  },
-  {
-    id: 'demo-6',
-    label: 'Abstract Blur',
-    url: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?auto=format&fit=crop&w=800&q=80',
-    attribution: 'Unsplash - Kseniya Lapteva',
-  },
-]
 
 const POSITION_3X3 = [
   { label: 'TL', value: 'top left' },
@@ -109,6 +70,7 @@ export function BackgroundStyleControl({
   themeConfig,
   initialConfiguring = false,
   onChange,
+  onMediaOpenChange,
   onOpenColorModal,
 }: BackgroundStyleControlProps) {
   const mode = value.mode || 'color'
@@ -172,7 +134,12 @@ export function BackgroundStyleControl({
   }
 
   return (
-    <Stack gap="sm">
+    <Stack gap="sm" style={Object.fromEntries(
+      Object.entries(themeConfig?.tokens.colors || {}).flatMap(([key, color]) => color ? [
+        [`--zyvavu-theme-${tokenToKebab(key)}`, color],
+        [`--zyvavu-theme-color-${tokenToKebab(key)}`, color],
+      ] : []),
+    )}>
       {/* 0. PROMINENT BACKGROUND VISUAL PREVIEW (Wix-inspired) */}
       <Box
         style={{
@@ -419,6 +386,9 @@ export function BackgroundStyleControl({
         )}
       </Stack>
 
+      {mode === 'video' && <MediaSourcePicker onOpenChange={onMediaOpenChange} kind="video" onSelect={(media) => update({
+        video: { ...value.video, mediaId: media.id, url: media.url },
+      })} />}
       {/* Mode Switcher */}
       <SegmentedControl
         size="sm"
@@ -568,6 +538,7 @@ export function BackgroundStyleControl({
                           image: {
                             ...value.image,
                             url: '',
+                            mediaId: undefined,
                           },
                         })
                       }
@@ -589,121 +560,15 @@ export function BackgroundStyleControl({
                 }}
               >
                 <Text size="xs" c="dimmed" style={{ fontSize: 12 }}>
-                  No background image selected. Choose from curated styles below or enter a custom
+                  No background image selected. Choose from Media or enter a custom
                   URL.
                 </Text>
               </Paper>
             )}
 
-            {/* Curated Demo Background Gallery */}
-            <Box>
-              <Group justify="space-between" mb={6}>
-                <Text
-                  size="xs"
-                  fw={600}
-                  style={{ fontSize: 12, color: 'var(--mantine-color-text, #17201f)' }}
-                >
-                  Curated Backgrounds
-                </Text>
-                <Text size="xs" c="dimmed" style={{ fontSize: 11 }}>
-                  6 Presets
-                </Text>
-              </Group>
-
-              <SimpleGrid cols={3} spacing={6}>
-                {DEMO_BACKGROUND_IMAGES.map((img) => {
-                  const isSelected = value.image?.url === img.url
-                  return (
-                    <Tooltip
-                      key={img.id}
-                      label={`${img.label} — ${img.attribution}`}
-                      position="top"
-                      withArrow
-                    >
-                      <UnstyledButton
-                        role="button"
-                        aria-label={`Select ${img.label} background`}
-                        onClick={() =>
-                          update({
-                            image: {
-                              ...value.image,
-                              url: img.url,
-                              size: value.image?.size || 'cover',
-                              position: value.image?.position || 'center center',
-                            },
-                          })
-                        }
-                        style={{
-                          position: 'relative',
-                          height: 52,
-                          borderRadius: 6,
-                          overflow: 'hidden',
-                          border: isSelected
-                            ? '2px solid var(--mantine-color-teal-6, #0ca678)'
-                            : '1px solid var(--mantine-color-default-border, #dfe5e2)',
-                          backgroundImage: `url("${img.url}")`,
-                          backgroundSize: 'cover',
-                          backgroundPosition: 'center center',
-                          cursor: 'pointer',
-                          transition: 'transform 0.1s ease, border-color 0.15s ease',
-                        }}
-                        onMouseEnter={(e) => {
-                          if (!isSelected) {
-                            e.currentTarget.style.borderColor =
-                              'var(--mantine-color-teal-4, #20c997)'
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!isSelected) {
-                            e.currentTarget.style.borderColor =
-                              'var(--mantine-color-default-border, #dfe5e2)'
-                          }
-                        }}
-                      >
-                        {isSelected && (
-                          <Box
-                            style={{
-                              position: 'absolute',
-                              top: 3,
-                              right: 3,
-                              backgroundColor: 'var(--mantine-color-teal-6, #0ca678)',
-                              borderRadius: '50%',
-                              width: 16,
-                              height: 16,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              color: '#ffffff',
-                            }}
-                          >
-                            <Check size={10} strokeWidth={3} />
-                          </Box>
-                        )}
-                        <Box
-                          style={{
-                            position: 'absolute',
-                            bottom: 0,
-                            left: 0,
-                            right: 0,
-                            backgroundColor: 'rgba(0, 0, 0, 0.6)',
-                            padding: '2px 4px',
-                          }}
-                        >
-                          <Text
-                            size="xs"
-                            truncate
-                            style={{ color: '#ffffff', fontSize: 10, fontWeight: 500 }}
-                          >
-                            {img.label}
-                          </Text>
-                        </Box>
-                      </UnstyledButton>
-                    </Tooltip>
-                  )
-                })}
-              </SimpleGrid>
-            </Box>
-
+            <MediaSourcePicker onOpenChange={onMediaOpenChange} kind="image" onSelect={(media) => update({
+              image: { ...value.image, mediaId: media.id, url: media.url },
+            })} />
             {/* Custom URL or Media Entry */}
             <Box>
               <TextInput
@@ -716,6 +581,7 @@ export function BackgroundStyleControl({
                     image: {
                       ...value.image,
                       url: e.currentTarget.value,
+                      mediaId: undefined,
                     },
                   })
                 }
@@ -945,6 +811,7 @@ export function BackgroundStyleControl({
                   video: {
                     ...value.video,
                     url: e.currentTarget.value,
+                      mediaId: undefined,
                   },
                 })
               }
@@ -962,6 +829,7 @@ export function BackgroundStyleControl({
                       video: {
                         ...value.video,
                         url: '',
+                            mediaId: undefined,
                       },
                     })
                   }
@@ -1011,6 +879,9 @@ export function BackgroundStyleControl({
               </Badge>
             </Group>
 
+            <MediaSourcePicker onOpenChange={onMediaOpenChange} kind="image" onSelect={(media) => update({
+              video: { ...value.video, posterMediaId: media.id, posterUrl: media.url },
+            })} />
             <TextInput
               size="sm"
               label="Poster Image URL (Preload & Mobile fallback)"
@@ -1021,6 +892,7 @@ export function BackgroundStyleControl({
                   video: {
                     ...value.video,
                     posterUrl: e.currentTarget.value,
+                    posterMediaId: undefined,
                   },
                 })
               }

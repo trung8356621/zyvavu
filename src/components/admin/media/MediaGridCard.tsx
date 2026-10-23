@@ -1,5 +1,6 @@
 'use client'
 
+import NextImage from 'next/image'
 import { Checkbox, Text, Tooltip } from '@mantine/core'
 import { File, FileText, Film, ImageOff } from 'lucide-react'
 import { Link } from '@payloadcms/ui'
@@ -31,7 +32,10 @@ export function MediaGridCard({ doc, href, onToggleSelect, selected }: MediaGrid
   const [broken, setBroken] = useState(false)
   const filename = doc.filename?.trim() || 'Untitled file'
   const kind = mediaFileKind(doc.mimeType)
-  const src = broken ? null : mediaPreviewSrc(doc)
+  const candidate = mediaPreviewSrc(doc)
+  const src = broken
+    ? null
+    : doc.thumbnailURL || (candidate?.startsWith('/api/media/file/') ? candidate : null)
   const dimensions = mediaDimensionsLabel(doc.width, doc.height)
   const checkerboard = prefersTransparencyBackdrop(doc.mimeType)
 
@@ -59,14 +63,27 @@ export function MediaGridCard({ doc, href, onToggleSelect, selected }: MediaGrid
           }
         >
           {src ? (
-            <img
-              alt={doc.alt?.trim() || filename}
-              className="zyvavu-media-card__image"
-              decoding="async"
-              loading="lazy"
-              onError={() => setBroken(true)}
-              src={src}
-            />
+            src.startsWith('/api/media/file/') ? (
+              <NextImage
+                width={240}
+                height={160}
+                sizes="(max-width: 48em) 45vw, 180px"
+                alt={doc.alt?.trim() || filename}
+                className="zyvavu-media-card__image"
+                loading="lazy"
+                onError={() => setBroken(true)}
+                src={src}
+              />
+            ) : (
+              <img
+                alt={doc.alt?.trim() || filename}
+                className="zyvavu-media-card__image"
+                decoding="async"
+                loading="lazy"
+                onError={() => setBroken(true)}
+                src={src}
+              />
+            )
           ) : (
             <span className="zyvavu-media-card__fallback">
               <FallbackIcon kind={kind} />

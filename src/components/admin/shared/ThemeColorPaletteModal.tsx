@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useMemo, useRef, useState } from 'react'
 import {
   ActionIcon,
   Box,
@@ -8,7 +8,6 @@ import {
   Divider,
   Flex,
   Group,
-  NumberInput,
   Paper,
   SegmentedControl,
   Slider,
@@ -86,8 +85,8 @@ export function getThemePaletteSwatches(
     { id: 'shadowSoft', label: 'Shadow Soft', color: c.shadowSoft || '#e6eceb' },
     { id: 'shadowMedium', label: 'Shadow Medium', color: c.shadowMedium || '#bfd0cd' },
     { id: 'shadowStrong', label: 'Shadow Strong', color: c.shadowStrong || '#7a9692' },
-    { id: 'white', label: 'White', color: '#FFFFFF' },
-    { id: 'black', label: 'Black', color: '#000000' },
+    ...(c.white ? [{ id: 'white', label: 'White', color: c.white }] : []),
+    ...(c.black ? [{ id: 'black', label: 'Black', color: c.black }] : []),
   ]
 }
 
@@ -112,7 +111,11 @@ const DEFAULT_MESH: MeshDef = {
  * Reusable Theme Color Palette Modal
  * Extended with Solid, Gradient, and Mesh Gradient tabs referencing theme color tokens.
  */
-export function ThemeColorPaletteModal({
+export function ThemeColorPaletteModal(props: ThemeColorPaletteModalProps) {
+  return props.opened ? <ThemeColorPaletteSession {...props} /> : null
+}
+
+function ThemeColorPaletteSession({
   opened,
   onClose,
   value = '',
@@ -171,18 +174,6 @@ export function ThemeColorPaletteModal({
   // Mesh State
   const [mesh, setMesh] = useState<MeshDef>(meshValue || DEFAULT_MESH)
 
-  useEffect(() => {
-    if (opened) {
-      const resolved = resolveInitialColor(value)
-      initialColorRef.current = resolved
-      initialTokenRef.current = value || 'surface'
-      setSelectedColor(resolved)
-      setSelectedToken(value || 'surface')
-      if (gradientValue) setGradient(gradientValue)
-      if (meshValue) setMesh(meshValue)
-    }
-  }, [opened, value, gradientValue, meshValue])
-
   const normalizedSelected = (selectedColor || '').toLowerCase().trim()
 
   const activeSwatch = useMemo(() => {
@@ -236,11 +227,9 @@ export function ThemeColorPaletteModal({
 
   // Gradient Handlers
   const updateGradient = (updater: (prev: GradientDef) => GradientDef) => {
-    setGradient((prev) => {
-      const next = updater(prev)
-      onChangeGradient?.(next)
-      return next
-    })
+    const next = updater(gradient)
+    setGradient(next)
+    onChangeGradient?.(next)
   }
 
   const handleAddStop = () => {
@@ -273,11 +262,9 @@ export function ThemeColorPaletteModal({
 
   // Mesh Handlers
   const updateMesh = (updater: (prev: MeshDef) => MeshDef) => {
-    setMesh((prev) => {
-      const next = updater(prev)
-      onChangeMesh?.(next)
-      return next
-    })
+    const next = updater(mesh)
+    setMesh(next)
+    onChangeMesh?.(next)
   }
 
   const handleAddMeshPoint = () => {

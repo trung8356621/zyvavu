@@ -1,4 +1,6 @@
 import React from 'react'
+vi.mock('@payloadcms/ui', () => ({ useDocumentDrawer: vi.fn(), useListDrawer: vi.fn() }))
+
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { renderToStaticMarkup } from 'react-dom/server'

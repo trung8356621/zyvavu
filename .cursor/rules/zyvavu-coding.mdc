@@ -12,3 +12,5 @@ Before any coding, debugging or testing, apply all three Skills in `.agents/skil
 For Admin UI, also read `cms-knowledge-pack/skills/cms-admin-design/SKILL.md` and follow the owner's NO PLAYWRIGHT policy.
 
 Do not auto-activate `docs-bulk-update`; it requires a relevant user request.
+
+Read root `AGENTS.md`, including its Unified Color Picker contract, and the linked `docs/style-engine-color-contract.md` before Builder color-control work. These are the shared authority for all agents.

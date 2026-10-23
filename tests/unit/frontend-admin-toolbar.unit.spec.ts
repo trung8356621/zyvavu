@@ -9,6 +9,7 @@ import { resolveToolbar } from '@/lib/frontend-toolbar/server'
 import { GET } from '@/app/api/frontend-admin-toolbar/route'
 import { getPayload } from 'payload'
 import { resolveSeoPageContext } from '@/lib/seo/context'
+import { extractJWT } from '../../node_modules/payload/dist/auth/extractJWT.js'
 
 vi.mock('payload', () => ({
   createLocalReq: vi.fn(async ({ user }) => ({ user })),
@@ -50,6 +51,32 @@ beforeEach(() => vi.clearAllMocks())
 afterEach(() => vi.unstubAllGlobals())
 
 describe('server authorization and navigation', () => {
+  it.each([
+    { 'sec-fetch-site': 'same-origin' },
+    { origin: 'https://zyvavu.test' },
+  ])('preserves cookie auth context for Payload CSRF validation: %j', async (browserHeaders) => {
+    const { payload, auth } = setup()
+    payload.config.csrf = ['https://zyvavu.test']
+    payload.config.auth = { jwtOrder: ['cookie'] } as typeof payload.config.auth
+    const authorized = await auth()
+    auth.mockClear()
+    auth.mockImplementation(async (options) => (
+      extractJWT({ headers: options!.headers, payload }) === 'valid-session'
+        ? authorized
+        : { user: null, permissions: {} } as never
+    ))
+    const req = request()
+    for (const [name, value] of Object.entries(browserHeaders)) req.headers.set(name, value!)
+    req.headers.set('DisableAutologin', 'false')
+    expect((await resolveToolbar(payload, req))?.edit?.href).toBe('/admin/collections/posts/42')
+    expect(auth.mock.calls[0][0]?.headers.get('DisableAutologin')).toBe('true')
+
+    // Cookie alone and untrusted origins must still fail closed.
+    expect(await resolveToolbar(payload, request())).toBeNull()
+    req.headers.set('Origin', 'https://untrusted.test')
+    expect(await resolveToolbar(payload, req)).toBeNull()
+  })
+
   it('omits anonymous visitors without invoking development autoLogin', async () => {
     const { payload, auth } = setup()
     expect(await resolveToolbar(payload, request(''))).toBeNull()
@@ -69,6 +96,8 @@ describe('server authorization and navigation', () => {
     auth.mockResolvedValueOnce({ user: null, permissions: {} } as never)
     expect(await resolveToolbar(payload, request('payload-token=expired'))).toBeNull()
     auth.mockResolvedValueOnce({ user: { role: 'reader' }, permissions: { canAccessAdmin: true } } as never)
+    expect(await resolveToolbar(payload, request())).toBeNull()
+    auth.mockResolvedValueOnce({ user: { role: 'site-admin' }, permissions: { canAccessAdmin: false } } as never)
     expect(await resolveToolbar(payload, request())).toBeNull()
   })
   it('honors action permissions and does not guess conditional document grants', async () => {

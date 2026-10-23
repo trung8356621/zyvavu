@@ -21,7 +21,10 @@ export async function resolveToolbar(payload: Payload, request: Request): Promis
   const cookie = request.headers.get('cookie') || ''
   const cookieName = `${payload.config.cookiePrefix}-token`
   if (!cookie.split(';').some((entry) => entry.trim().startsWith(`${cookieName}=`) && entry.trim() !== `${cookieName}=`)) return null
-  const headers = new Headers({ cookie, DisableAutologin: 'true' })
+  // Payload validates cookie authentication against Origin / Sec-Fetch-Site.
+  // Preserve the browser's headers so a valid same-origin session is recognized.
+  const headers = new Headers(request.headers)
+  headers.set('DisableAutologin', 'true')
   const { user, permissions } = await payload.auth({ headers })
   if (!user || !isSiteStaff(user) || !permissions.canAccessAdmin) return null
 

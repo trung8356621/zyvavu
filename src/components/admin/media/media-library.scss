@@ -153,3 +153,13 @@
     width: 70%;
   }
 }
+
+// Demo catalog is separate from native record query controls and pagination.
+.collection-list--media[data-media-demo] {
+  .list-controls,
+  .zyvavu-media-view-bar,
+  .pagination,
+  .no-results {
+    display: none;
+  }
+}

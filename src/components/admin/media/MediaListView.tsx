@@ -3,7 +3,7 @@
 import type { ListViewClientProps } from 'payload'
 import { Button } from '@mantine/core'
 import { DefaultListView, Link, useBulkUpload, useModal } from '@payloadcms/ui'
-import React, { useSyncExternalStore } from 'react'
+import React, { useState, useSyncExternalStore } from 'react'
 
 import { CollectionListHeader } from '@/components/admin/collections/CollectionListHeader'
 
@@ -61,6 +61,7 @@ function MediaActions({
 }
 
 export function MediaListView(props: ListViewClientProps) {
+  const [demoKind, setDemoKind] = useState<'image' | 'video' | null>(null)
   const view = useSyncExternalStore(
     subscribeMediaLibraryView,
     readMediaLibraryView,
@@ -91,11 +92,11 @@ export function MediaListView(props: ListViewClientProps) {
       }
       BeforeListTable={
         <>
-          <MediaLibraryStage view={view} />
+          <MediaLibraryStage view={view} demoKind={demoKind} onDemoChange={setDemoKind} />
           {props.BeforeListTable}
         </>
       }
-      Table={view === 'table' ? props.Table : null}
+      Table={!demoKind && view === 'table' ? props.Table : null}
     />
   )
 }

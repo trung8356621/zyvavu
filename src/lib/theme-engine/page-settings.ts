@@ -102,6 +102,9 @@ export function resolveColorToken(token?: string, fallback?: string): string | u
   const clean = token.trim()
   if (!clean) return fallback
 
+  if (/^#(?:[0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(clean)) return clean
+  if (clean === 'white' || clean === 'black') return `var(--zyvavu-theme-color-${clean}, ${clean})`
+
   const kebab = tokenToKebab(clean)
 
   if (clean === 'transparent' || clean === 'none') {
@@ -179,7 +182,7 @@ export function sanitizeScopedCss(rawCss?: string, scopeSelector: string = '.zyv
   if (!rawCss || typeof rawCss !== 'string') return ''
 
   // Strip script tags, closing style tags, or javascript: protocols
-  let cleaned = rawCss
+  const cleaned = rawCss
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
     .replace(/<\/style>/gi, '')
     .replace(/javascript\s*:/gi, '')

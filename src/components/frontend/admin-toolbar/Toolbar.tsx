@@ -20,7 +20,7 @@ import styles from './toolbar.module.css'
 
 const rootId = 'zyvavu-frontend-admin-toolbar'
 const getRootElement = () => document.getElementById(rootId) || undefined
-const menuProps = { withinPortal: false, zIndex: ADMIN_OVERLAY_LAYERS.TOOLBAR + 1, position: 'bottom-start' as const }
+const menuProps = { withinPortal: false, zIndex: ADMIN_OVERLAY_LAYERS.FRONTEND_TOOLBAR + 1, position: 'bottom-start' as const }
 
 export default function Toolbar({ data, onLogout }: { data: ToolbarData; onLogout: () => void }) {
   const [loggingOut, setLoggingOut] = useState(false)
@@ -48,7 +48,7 @@ export default function Toolbar({ data, onLogout }: { data: ToolbarData; onLogou
         cssVariablesSelector={`#${rootId}`} deduplicateCssVariables={false} withGlobalClasses={false}
       >
         <nav aria-label="Frontend administration" className={styles.bar}
-          style={{ background: theme.admin.sidebar, zIndex: ADMIN_OVERLAY_LAYERS.TOOLBAR }}>
+          style={{ background: theme.admin.sidebar, zIndex: ADMIN_OVERLAY_LAYERS.FRONTEND_TOOLBAR }}>
           <Button component="a" href={data.dashboard} size="sm" variant="subtle" color="gray"
             className={styles.action} leftSection={<LayoutDashboard size={16} aria-hidden />}>
             Zyvavu

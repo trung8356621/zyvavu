@@ -3,6 +3,11 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, cleanup, fireEvent } from '@testing-library/react'
 import { MantineProvider } from '@mantine/core'
 
+vi.mock('@payloadcms/ui', () => ({
+  useDocumentDrawer: vi.fn(),
+  useListDrawer: vi.fn(),
+}))
+
 vi.mock('@puckeditor/core', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@puckeditor/core')>()
   const mockState = {
@@ -116,6 +121,7 @@ describe('Transactional Style Editing & Overlay Layers', { timeout: 25000 }, () 
     const preview = stylePreviewStore.getPreview(componentId)
     expect(preview).not.toBeNull()
     expect(preview?.backgroundToken).toBe('primary')
+    expect(screen.getByText('Color: primary')).toBeTruthy()
 
     // Document update must NOT be called yet (transactional draft only)
     expect(onUpdateStyle).not.toHaveBeenCalled()
@@ -160,6 +166,7 @@ describe('Transactional Style Editing & Overlay Layers', { timeout: 25000 }, () 
     // Preview should revert to pre-palette draft ('surface')
     const reverted = stylePreviewStore.getPreview(componentId)
     expect(reverted?.backgroundToken).toBe('surface')
+    expect(screen.getByText('Color: surface')).toBeTruthy()
 
     // Now click Cancel in the main Style Editor
     const styleCancelBtn = screen.getByRole('button', { name: /Hủy \/ Cancel/i })
@@ -169,6 +176,31 @@ describe('Transactional Style Editing & Overlay Layers', { timeout: 25000 }, () 
     expect(stylePreviewStore.getPreview(componentId)).toBeNull()
     expect(onUpdateStyle).not.toHaveBeenCalled()
     expect(onClose).toHaveBeenCalled()
+  })
+
+  it('previews repeated pattern changes without notifying canvas during render', () => {
+    const errors = vi.spyOn(console, 'error')
+    const onUpdateStyle = vi.fn()
+    function CanvasSubscriber() {
+      const preview = useWidgetPreviewStyle('pattern-test')
+      return <div data-testid="pattern-preview">{preview?.background?.pattern?.preset || 'none'}</div>
+    }
+    try {
+      render(<React.StrictMode><MantineProvider theme={adminMantineTheme}>
+        <CanvasSubscriber />
+        <WidgetStyleContextMenu domain="background" opened onClose={vi.fn()} anchorEl={null}
+          componentType="Section" componentId="pattern-test" currentStyle={{ background: { mode: 'color', colorToken: 'surface' } }} onUpdateStyle={onUpdateStyle} />
+      </MantineProvider></React.StrictMode>)
+      for (const pattern of ['Dots', 'Grid']) {
+        fireEvent.click(screen.getByLabelText('Background pattern'))
+        fireEvent.click(screen.getByRole('option', { name: pattern }))
+      }
+      expect(screen.getByTestId('pattern-preview').textContent).toBe('grid')
+      expect(onUpdateStyle).not.toHaveBeenCalled()
+      expect(errors.mock.calls.flat().join(' ')).not.toContain('Cannot update a component')
+      fireEvent.click(screen.getByRole('button', { name: /Hủy \/ Cancel/i }))
+      expect(stylePreviewStore.getPreview('pattern-test')).toBeNull()
+    } finally { errors.mockRestore() }
   })
 
   it('commits draft to Puck document and clears preview on Apply', () => {

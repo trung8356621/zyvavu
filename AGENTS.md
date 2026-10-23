@@ -1,5 +1,12 @@
 # Agent instructions
 
+## Unified Color Picker — Mandatory Architecture Contract
+
+- All Theme Builder/Widget Builder color controls must trigger the existing **Theme Background & Palette** shared modal (`ThemeColorPaletteModal`); preserve its approved UI and interactions.
+- Do not create duplicate pickers, replacement modals, standalone palettes, native HTML color inputs, separate HEX inputs, or token selectboxes as picker replacements. Builder selection uses current-theme System Color Tokens only.
+- Restrict visible modes by property: Background Color supports Solid/Gradient/Mesh; text, heading, button text, border, pattern, icon and other foreground colors use Solid only. Other background-like properties require actual renderer/data support before enabling Gradient/Mesh.
+- Read the authoritative [color picker contract](docs/style-engine-color-contract.md) before color-control work; preserve existing preview/Cancel/Apply transactions and Style Engine contracts. Codex, Cursor and Antigravity must use this shared contract.
+
 - Read `README.md` and relevant `cms-knowledge-pack` decisions/skills before modifying source.
 - For any Zyvavu Admin UI, custom view, component, CSS, or navigation task, agents MUST read `cms-knowledge-pack/skills/cms-admin-design/SKILL.md` first.
 - Follow the 10 mandatory Admin UI rules (no competing design system):

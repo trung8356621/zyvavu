@@ -1,9 +1,11 @@
 import type { CollectionConfig } from 'payload'
 
 import { siteStaffAccess } from '@/access/roles'
+import { importDemoEndpoint } from '@/lib/media/import-demo'
 
 export const Media: CollectionConfig = {
   slug: 'media',
+  endpoints: [importDemoEndpoint],
   admin: {
     group: 'Content',
     listSearchableFields: ['filename'],

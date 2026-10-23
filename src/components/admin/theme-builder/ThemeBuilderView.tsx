@@ -1,5 +1,4 @@
 import React from 'react'
-import Link from 'next/link'
 import type { AdminViewServerProps } from 'payload'
 import { getPayload } from 'payload'
 import { Button, Paper, Stack, Text, Title } from '@mantine/core'
@@ -61,7 +60,7 @@ export async function ThemeBuilderView(props: AdminViewServerProps) {
                 Theme Builder is limited to site-admin and system-admin roles.
               </Text>
               <Button
-                component={Link}
+                component="a"
                 href="/admin"
                 variant="light"
                 color="gray"
@@ -152,7 +151,7 @@ export async function ThemeBuilderView(props: AdminViewServerProps) {
             <Text size="sm" c="dimmed">
               An error occurred while loading the Visual Theme Builder: {error?.message || String(error)}
             </Text>
-            <Button component={Link} href="/admin" variant="default">
+            <Button component="a" href="/admin" variant="default">
               Return to Admin Dashboard
             </Button>
           </Stack>
