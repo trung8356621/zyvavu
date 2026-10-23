@@ -83,7 +83,9 @@ export function SectionFrontend({
       <div className="zyvavu-section__overlay" style={layers.overlayStyle} />
 
       {/* 4. Pattern Layer */}
-      <div className="zyvavu-section__pattern" style={layers.patternStyle} />
+      {layers.patternStyle.backgroundImage && (
+        <div aria-hidden="true" className="zyvavu-section__pattern" style={layers.patternStyle} />
+      )}
 
       {/* 5. Container & Content */}
       <div className="zyvavu-section__container" style={layers.containerStyle}>

@@ -34,7 +34,7 @@ export function ItemExcerptFrontend({
         margin: '0 0 12px 0',
         fontSize: '0.95rem',
         lineHeight: 1.6,
-        color: 'var(--zyvavu-theme-text-muted, #64748b)',
+        color: 'var(--zyvavu-inherited-foreground, var(--zyvavu-theme-text-muted, #64748b))',
         display: '-webkit-box',
         WebkitLineClamp: maxLines || 3,
         WebkitBoxOrient: 'vertical',

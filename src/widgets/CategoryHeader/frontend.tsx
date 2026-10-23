@@ -55,7 +55,9 @@ export function CategoryHeaderFrontend({
           margin: '0 0 12px 0',
           fontSize: '2.4rem',
           ...resolveWidgetStyles({ typography: semanticStyle?.typography }),
-          color: resolveWidgetStyles(semanticStyle).color || 'var(--zyvavu-theme-text, inherit)',
+          color:
+            resolveWidgetStyles(semanticStyle).color ||
+            'var(--zyvavu-inherited-foreground, var(--zyvavu-theme-text, inherit))',
         }}
       >
         {title}

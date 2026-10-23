@@ -37,7 +37,7 @@ export function PostContentFrontend({
           style={{
             fontSize: '1.2em',
             fontWeight: 500,
-            color: 'var(--zyvavu-theme-text-muted, #5f7370)',
+            color: 'var(--zyvavu-inherited-foreground, var(--zyvavu-theme-text-muted, #5f7370))',
             marginBottom: '24px',
           }}
         >

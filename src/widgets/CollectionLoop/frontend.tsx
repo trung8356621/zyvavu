@@ -90,7 +90,7 @@ function renderRecords(props: CollectionLoopProps, records: LoopItemRecord[]) {
             margin: '0 0 24px 0',
             fontSize: '1.75rem',
             fontWeight: 700,
-            color: 'var(--zyvavu-theme-text, inherit)',
+            color: 'var(--zyvavu-inherited-foreground, var(--zyvavu-theme-text, inherit))',
           }}
         >
           {heading}
@@ -100,7 +100,7 @@ function renderRecords(props: CollectionLoopProps, records: LoopItemRecord[]) {
       {records.length === 0 ? (
         <p
           className="zyvavu-widget-collection-loop__empty"
-          style={{ color: 'var(--zyvavu-theme-text-muted, #888)', fontStyle: 'italic' }}
+          style={{ color: 'var(--zyvavu-inherited-foreground, var(--zyvavu-theme-text-muted, #888))', fontStyle: 'italic' }}
         >
           {emptyText}
         </p>

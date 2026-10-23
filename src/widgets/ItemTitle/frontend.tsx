@@ -37,7 +37,7 @@ export function ItemTitleFrontend({
         className="zyvavu-item-title__link"
         {...animationAttributes(semanticStyle?.animation)}
         style={{
-          color: resolveWidgetStyles(semanticStyle).color || 'var(--zyvavu-theme-text, inherit)',
+          color: resolveWidgetStyles(semanticStyle).color || 'var(--zyvavu-inherited-foreground, var(--zyvavu-theme-text, inherit))',
           textDecoration: 'none',
           transition: 'color 0.2s ease',
           ...resolveWidgetStyles({
@@ -61,7 +61,7 @@ export function ItemTitleFrontend({
         fontSize: tag === 'h2' ? '1.5rem' : tag === 'h3' ? '1.25rem' : '1.1rem',
         fontWeight: 700,
         lineHeight: 1.35,
-        color: 'var(--zyvavu-theme-text, inherit)',
+        color: 'var(--zyvavu-inherited-foreground, var(--zyvavu-theme-text, inherit))',
         ...resolveWidgetStyles(semanticStyle),
       }}
     >

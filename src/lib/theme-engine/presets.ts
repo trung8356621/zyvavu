@@ -216,7 +216,8 @@ export const BUILTIN_TYPOGRAPHY_PRESETS: TypographyPreset[] = [
     description: 'Instant loading native operating system typography with zero network requests',
     typography: {
       fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-      fontFamilyHeading: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+      fontFamilyHeading:
+        "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
       baseFontSize: '18px',
       baseLineHeight: '1.75',
       h1: { size: '44px', lineHeight: '1.2', weight: '700' },
@@ -247,12 +248,20 @@ export function validateColorString(color: string): boolean {
   }
 
   // rgb/rgba check
-  if (/^rgba?\(\s*(\d{1,3}%?)\s*,\s*(\d{1,3}%?)\s*,\s*(\d{1,3}%?)(?:\s*,\s*(0|1|0?\.\d+))?\s*\)$/i.test(trimmed)) {
+  if (
+    /^rgba?\(\s*(\d{1,3}%?)\s*,\s*(\d{1,3}%?)\s*,\s*(\d{1,3}%?)(?:\s*,\s*(0|1|0?\.\d+))?\s*\)$/i.test(
+      trimmed,
+    )
+  ) {
     return true
   }
 
   // hsl/hsla check
-  if (/^hsla?\(\s*(\d{1,3}(?:deg)?)\s*,\s*(\d{1,3}%)\s*,\s*(\d{1,3}%)(?:\s*,\s*(0|1|0?\.\d+))?\s*\)$/i.test(trimmed)) {
+  if (
+    /^hsla?\(\s*(\d{1,3}(?:deg)?)\s*,\s*(\d{1,3}%)\s*,\s*(\d{1,3}%)(?:\s*,\s*(0|1|0?\.\d+))?\s*\)$/i.test(
+      trimmed,
+    )
+  ) {
     return true
   }
 
@@ -326,6 +335,27 @@ export function calculateContrastRatio(
   }
 
   return { ratio, isReadable, warning }
+}
+
+/** Selects only the theme's two semantic foreground candidates for an opaque solid. */
+export function resolveContrastForegroundToken(
+  solid: string,
+  text: string,
+  background: string,
+): 'text' | 'background' | undefined {
+  // Existing luminance utility accepts HEX. Reject unknown/translucent CSS rather
+  // than claim readability from its permissive legacy parser or rounded ratio.
+  const opaque = (color: string) =>
+    /^#(?:[a-f0-9]{3}|[a-f0-9]{6}|[a-f0-9]{6}ff)$/i.test(color.trim())
+  if (![solid, text, background].every(opaque)) return undefined
+  const luminance = [solid, text, background].map((color) =>
+    getRelativeLuminance(parseColorToRgb(color)!),
+  )
+  const ratio = (candidate: number) =>
+    (Math.max(luminance[0], candidate) + 0.05) / (Math.min(luminance[0], candidate) + 0.05)
+  const current = ratio(luminance[1])
+  if (current >= 4.5) return 'text'
+  return ratio(luminance[2]) > current ? 'background' : 'text'
 }
 
 /**
@@ -411,13 +441,24 @@ export function validateThemeTokens(tokens: unknown): { valid: boolean; errors: 
       for (const h of headings) {
         const item = (typo as any)[h]
         if (item && typeof item === 'object') {
-          if (item.size && (typeof item.size !== 'string' || !/^\d+(\.\d+)?(px|rem|em|%)$/.test(item.size))) {
+          if (
+            item.size &&
+            (typeof item.size !== 'string' || !/^\d+(\.\d+)?(px|rem|em|%)$/.test(item.size))
+          ) {
             errors.push(`Invalid font size format for "${h}": ${item.size}`)
           }
-          if (item.lineHeight && (typeof item.lineHeight !== 'string' || !/^\d+(\.\d+)?(px|rem|em|%)?$/.test(item.lineHeight))) {
+          if (
+            item.lineHeight &&
+            (typeof item.lineHeight !== 'string' ||
+              !/^\d+(\.\d+)?(px|rem|em|%)?$/.test(item.lineHeight))
+          ) {
             errors.push(`Invalid line height format for "${h}": ${item.lineHeight}`)
           }
-          if (item.weight && (typeof item.weight !== 'string' || !/^(normal|bold|bolder|lighter|\d{3})$/.test(item.weight))) {
+          if (
+            item.weight &&
+            (typeof item.weight !== 'string' ||
+              !/^(normal|bold|bolder|lighter|\d{3})$/.test(item.weight))
+          ) {
             errors.push(`Invalid font weight for "${h}": ${item.weight}`)
           }
         }

@@ -6,7 +6,6 @@ import {
   Alert,
   Box,
   Button,
-  Grid,
   Group,
   Image,
   Loader,
@@ -19,7 +18,7 @@ import {
 import { Film, ImageOff } from 'lucide-react'
 import { DemoMediaGallery } from './DemoMediaGallery'
 import { mediaLibraryURL, type LibraryView } from './mediaLibraryQuery'
-import { mediaDimensionsLabel, mediaPreviewSrc, type MediaListDoc } from './mediaThumbnail'
+import { mediaPreviewSrc, type MediaListDoc } from './mediaThumbnail'
 import { MediaLibraryNavigation } from './MediaLibraryNavigation'
 import type { SelectedMedia } from './MediaSourcePicker'
 
@@ -38,6 +37,7 @@ export function MediaBrowser({
   upload?: React.ReactNode
   canImport?: boolean
 }) {
+  const [navigationOpened, setNavigationOpened] = useState(false)
   const [library, setLibrary] = useState<LibraryView>(kind)
   const demo = library.startsWith('demo-')
   const [search, setSearch] = useState('')
@@ -45,7 +45,6 @@ export function MediaBrowser({
   const [result, setResult] = useState<{ docs: MediaListDoc[]; totalPages: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  const [selected, setSelected] = useState<MediaListDoc | null>(null)
   const [retry, setRetry] = useState(0)
 
   useEffect(() => {
@@ -77,20 +76,30 @@ export function MediaBrowser({
   }, [api, kind, search, page, retry, demo])
 
   return (
-    <Stack>
-      <Grid gap="md">
-        <Grid.Col span={{ base: 12, sm: 3 }}>
+    <Stack className="zyvavu-media-browser">
+      <Button
+        hiddenFrom="sm"
+        variant="default"
+        aria-expanded={navigationOpened}
+        onClick={() => setNavigationOpened((opened) => !opened)}
+      >
+        Media categories
+      </Button>
+      <Box className="zyvavu-media-browser__layout">
+        <Box
+          className="zyvavu-media-browser__navigation"
+          display={{ base: navigationOpened ? 'block' : 'none', sm: 'block' }}
+        >
           <MediaLibraryNavigation
             value={library}
             allowedKind={kind}
             onChange={(value) => {
               setLibrary(value)
-              setSelected(null)
               setLoading(true)
             }}
           />
-        </Grid.Col>
-        <Grid.Col span={{ base: 12, sm: 9 }}>
+        </Box>
+        <Box className="zyvavu-media-browser__main">
           {demo ? (
             <DemoMediaGallery kind={kind} api={api} canImport={canImport} onSelect={onSelect} />
           ) : (
@@ -103,7 +112,6 @@ export function MediaBrowser({
                   onChange={(event) => {
                     setSearch(event.currentTarget.value)
                     setPage(1)
-                    setSelected(null)
                     setLoading(true)
                   }}
                 />
@@ -129,7 +137,7 @@ export function MediaBrowser({
                 </Alert>
               ) : result?.docs.length ? (
                 <>
-                  <SimpleGrid cols={{ base: 2, sm: 3 }} spacing="sm">
+                  <SimpleGrid cols={{ base: 2, sm: 3, lg: 4, xl: 5 }} spacing="sm">
                     {result.docs
                       .filter((doc) => doc.mimeType?.startsWith(`${kind}/`))
                       .map((doc) => {
@@ -140,13 +148,19 @@ export function MediaBrowser({
                         return (
                           <Button
                             key={doc.id}
-                            variant={selected?.id === doc.id ? 'light' : 'default'}
+                            variant="default"
                             h="auto"
                             p="xs"
                             aria-label={`Select ${doc.filename || doc.id}`}
-                            aria-pressed={selected?.id === doc.id}
                             disabled={!doc.url}
-                            onClick={() => setSelected(doc)}
+                            onClick={() => {
+                              if (doc.url)
+                                onSelect({
+                                  id: doc.id,
+                                  url: doc.url,
+                                  mimeType: doc.mimeType || undefined,
+                                })
+                            }}
                           >
                             <Stack gap="xs" align="center" miw={0}>
                               {thumbnail ? (
@@ -192,7 +206,6 @@ export function MediaBrowser({
                     value={page}
                     onChange={(value) => {
                       setPage(value)
-                      setSelected(null)
                       setLoading(true)
                     }}
                   />
@@ -206,46 +219,11 @@ export function MediaBrowser({
               )}
             </Stack>
           )}
-        </Grid.Col>
-      </Grid>
-      {selected && (
-        <Stack gap="xs" aria-label="Selected media details">
-          <Text fw={600}>{selected.filename}</Text>
-          <Text size="sm" c="dimmed">
-            {selected.mimeType} · {mediaDimensionsLabel(selected.width, selected.height)}
-          </Text>
-          {kind === 'image' && selected.url && (
-            <Image
-              src={selected.url}
-              alt={selected.alt || ''}
-              h={180}
-              fit="contain"
-              loading="lazy"
-            />
-          )}
-          {kind === 'video' && selected.url && (
-            <video
-              key={selected.id}
-              src={selected.url}
-              controls
-              preload="none"
-              style={{ maxWidth: '100%', maxHeight: 180 }}
-            />
-          )}
-        </Stack>
-      )}
-      <Group justify="flex-end">
+        </Box>
+      </Box>
+      <Group justify="flex-end" className="zyvavu-media-browser__footer">
         <Button variant="default" onClick={onCancel}>
           Cancel
-        </Button>
-        <Button
-          disabled={demo || !selected?.url || loading || !!error}
-          onClick={() => {
-            if (selected?.url && selected.mimeType?.startsWith(`${kind}/`))
-              onSelect({ id: selected.id, url: selected.url, mimeType: selected.mimeType })
-          }}
-        >
-          Use Media
         </Button>
       </Group>
     </Stack>

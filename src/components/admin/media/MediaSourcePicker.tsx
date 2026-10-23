@@ -4,10 +4,18 @@ import React, { useState } from 'react'
 import { Alert, Button, Group, Modal } from '@mantine/core'
 import { useAuth, useConfig, useDocumentDrawer, useListDrawer } from '@payloadcms/ui'
 
+import './media-library.scss'
+import { DemoMediaGallery } from './DemoMediaGallery'
 import { MediaBrowser } from './MediaBrowser'
 import { ADMIN_OVERLAY_LAYERS } from '@/theme/layers'
 
-export type SelectedMedia = { id: number | string; url?: string; mimeType?: string }
+export type SelectedMedia = {
+  id: number | string
+  url?: string
+  mimeType?: string
+  posterUrl?: string
+  posterMediaId?: number | string
+}
 
 // Mount native drawers only on demand; their providers remain owned by Payload.
 function NativeMediaPicker({
@@ -49,7 +57,13 @@ function NativeMediaPicker({
         opened={!list.isDrawerOpen && !document.isDrawerOpen}
         onClose={onClose}
         title={`Choose ${kind}`}
-        size="xl"
+        size="min(90vw, 1400px)"
+        classNames={{ content: 'zyvavu-media-picker', body: 'zyvavu-media-picker__body' }}
+        styles={{
+          content: { height: '88dvh', display: 'flex', flexDirection: 'column' },
+          header: { flexShrink: 0 },
+          body: { flex: 1, minHeight: 0, overflow: 'auto' },
+        }}
         zIndex={ADMIN_OVERLAY_LAYERS.PALETTE_MODAL}
       >
         <MediaBrowser
@@ -66,7 +80,7 @@ function NativeMediaPicker({
             ) : undefined
           }
         />
-        <Group mt="md">
+        <Group mt="md" className="zyvavu-media-picker__actions">
           <Button variant="default" onClick={list.openDrawer}>
             Browse My Media
           </Button>
@@ -111,5 +125,19 @@ export function MediaSourcePicker(props: {
     >
       Choose {props.kind} from Media
     </Button>
+  )
+}
+
+/** Inline Background-tab gallery; importing accepts only the parent's draft. */
+export function BackgroundVideoPresets({ onSelect }: { onSelect: (doc: SelectedMedia) => void }) {
+  const { config } = useConfig()
+  const { permissions } = useAuth()
+  return (
+    <DemoMediaGallery
+      kind="video"
+      api={config.routes.api}
+      canImport={!!permissions?.collections?.media?.create}
+      onSelect={onSelect}
+    />
   )
 }

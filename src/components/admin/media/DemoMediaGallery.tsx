@@ -1,7 +1,18 @@
 'use client'
 
 import React, { useEffect, useRef, useState } from 'react'
-import { Alert, Anchor, Button, Group, Image, Loader, SimpleGrid, Stack, Text } from '@mantine/core'
+import {
+  Alert,
+  Anchor,
+  Button,
+  Group,
+  Image,
+  Loader,
+  SimpleGrid,
+  Stack,
+  Text,
+  UnstyledButton,
+} from '@mantine/core'
 import { DEMO_MEDIA } from '@/lib/media/demo-catalog'
 import type { SelectedMedia } from './MediaSourcePicker'
 
@@ -58,9 +69,11 @@ export function DemoMediaGallery({
   }
   return (
     <Stack>
-      <Text size="sm" c="dimmed">
-        {assets.length} demo {kind}s. Media is imported into your library only when selected.
-      </Text>
+      {!useAfterImport && (
+        <Text size="sm" c="dimmed">
+          {assets.length} demo {kind}s. Media is imported into your library only when selected.
+        </Text>
+      )}
       {!assets.length && (
         <Text>
           No verified demo videos are available yet. Choose My Media, upload a video, or use the
@@ -78,36 +91,56 @@ export function DemoMediaGallery({
       {busy && (
         <Group role="status">
           <Loader size="sm" />
-          <Text>Downloading and optimizing selected media…</Text>
+          <Text>{kind === 'image' ? 'Loading image…' : 'Loading video…'}</Text>
         </Group>
       )}
-      <SimpleGrid cols={{ base: 1, sm: 2 }}>
-        {assets.map((asset) => (
-          <Stack key={asset.id} gap="xs">
-            <Image
-              src={asset.thumbnailURL}
-              alt={asset.label}
-              h={120}
-              fit="contain"
-              loading="lazy"
-            />
-            <Text fw={600}>{asset.label}</Text>
-            <Text size="xs" c="dimmed">
-              {asset.category} · {asset.credit}
-            </Text>
-            <Anchor href={asset.sourcePage} target="_blank" rel="noopener noreferrer" size="xs">
-              Source and usage rights
-            </Anchor>
-            <Button
-              variant="light"
+      <SimpleGrid cols={{ base: 1, sm: 2, lg: 3, xl: 4 }}>
+        {assets.map((asset) =>
+          useAfterImport ? (
+            <UnstyledButton
+              key={asset.id}
+              aria-label={`Use ${asset.label}`}
               disabled={!!busy || !canImport}
-              loading={busy === asset.id}
+              aria-busy={busy === asset.id}
               onClick={() => void importAsset(asset.id)}
             >
-              Import {useAfterImport ? 'and use' : 'to library:'} {asset.label}
-            </Button>
-          </Stack>
-        ))}
+              <Stack gap="xs">
+                <Image src={asset.thumbnailURL} alt="" h={120} fit="cover" loading="lazy" />
+                <Text size="sm" truncate>
+                  {asset.label}
+                </Text>
+              </Stack>
+            </UnstyledButton>
+          ) : (
+            <Stack key={asset.id} gap="xs">
+              <Image
+                src={asset.thumbnailURL}
+                alt={asset.label}
+                h={120}
+                fit="contain"
+                loading="lazy"
+              />
+              <Text fw={600}>{asset.label}</Text>
+              <Text size="xs" c="dimmed">
+                {asset.category} · {asset.credit}
+              </Text>
+              <Anchor href={asset.sourcePage} target="_blank" rel="noopener noreferrer" size="xs">
+                Source
+              </Anchor>
+              <Anchor href={asset.licenseURL} target="_blank" rel="noopener noreferrer" size="xs">
+                {asset.license}
+              </Anchor>
+              <Button
+                variant="light"
+                disabled={!!busy || !canImport}
+                loading={busy === asset.id}
+                onClick={() => void importAsset(asset.id)}
+              >
+                Import {useAfterImport ? 'and use' : 'to library:'} {asset.label}
+              </Button>
+            </Stack>
+          ),
+        )}
       </SimpleGrid>
     </Stack>
   )

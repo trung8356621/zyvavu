@@ -63,7 +63,7 @@ export function RecentPostsFrontend({
           style={{
             margin: '0 0 24px 0',
             fontSize: '1.8rem',
-            color: 'var(--zyvavu-theme-text, inherit)',
+            color: 'var(--zyvavu-inherited-foreground, var(--zyvavu-theme-text, inherit))',
           }}
         >
           {effectiveHeading}
@@ -111,7 +111,7 @@ export function RecentPostsFrontend({
               <div>
                 {dateStr && (
                   <span
-                    style={{ fontSize: '12px', color: 'var(--zyvavu-theme-text-muted, #5f7370)' }}
+                    style={{ fontSize: '12px', color: 'var(--zyvavu-inherited-foreground, var(--zyvavu-theme-text-muted, #5f7370))' }}
                   >
                     {dateStr}
                   </span>
@@ -120,7 +120,7 @@ export function RecentPostsFrontend({
                   <Link
                     href={postUrl}
                     style={{
-                      color: 'var(--zyvavu-theme-text, inherit)',
+                      color: 'var(--zyvavu-inherited-foreground, var(--zyvavu-theme-text, inherit))',
                       textDecoration: 'none',
                     }}
                   >
@@ -132,7 +132,7 @@ export function RecentPostsFrontend({
                     style={{
                       margin: '8px 0 0',
                       fontSize: '14px',
-                      color: 'var(--zyvavu-theme-text-muted, #5f7370)',
+                      color: 'var(--zyvavu-inherited-foreground, var(--zyvavu-theme-text-muted, #5f7370))',
                       lineHeight: 1.6,
                     }}
                   >

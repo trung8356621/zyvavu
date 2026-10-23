@@ -91,16 +91,52 @@ describe('reviewed demo media import', () => {
   it('refuses oversized downloads before creating media', async () => {
     vi.stubGlobal(
       'fetch',
-      vi
-        .fn()
-        .mockResolvedValue(
-          new Response('x', {
-            headers: { 'content-type': 'image/jpeg', 'content-length': '9000000' },
-          }),
-        ),
+      vi.fn().mockResolvedValue(
+        new Response('x', {
+          headers: { 'content-type': 'image/jpeg', 'content-length': '9000000' },
+        }),
+      ),
     )
     const { req, payload } = request()
     expect((await importDemoEndpoint.handler(req)).status).toBe(502)
     expect(payload.create).not.toHaveBeenCalled()
+  })
+  it('imports a bounded MP4 and local poster; reuses both on subsequent selection', async () => {
+    const video = DEMO_MEDIA.find((asset) => asset.kind === 'video')!
+    const poster = await sharp({
+      create: { width: 12, height: 8, channels: 3, background: '#123456' },
+    })
+      .jpeg()
+      .toBuffer()
+    const mp4 = Buffer.from([0, 0, 0, 24, ...Buffer.from('ftypisom'), 0, 0, 0, 0])
+    const fetcher = vi
+      .fn()
+      .mockImplementation(async (url: string) =>
+        url === video.sourceURL
+          ? new Response(mp4, { headers: { 'content-type': 'video/mp4' } })
+          : new Response(poster, { headers: { 'content-type': 'image/jpeg' } }),
+      )
+    vi.stubGlobal('fetch', fetcher)
+    const { req, payload } = request({ id: video.id })
+    const saved = new Map()
+    payload.find.mockImplementation(async (args) => ({
+      docs: saved.has(args.where.filename.equals) ? [saved.get(args.where.filename.equals)] : [],
+    }))
+    payload.create.mockImplementation(async (args) => {
+      const doc = {
+        id: saved.size + 1,
+        url: `/media/${args.file.name}`,
+        mimeType: args.file.mimetype,
+      }
+      saved.set(args.file.name, doc)
+      return doc
+    })
+    const first = await (await importDemoEndpoint.handler(req)).json()
+    expect(first.doc.mimeType).toBe('video/mp4')
+    expect(first.doc.posterUrl).toMatch(/^\/media\/.*\.webp$/)
+    expect(first.doc.posterMediaId).toBe(2)
+    await importDemoEndpoint.handler(req)
+    expect(payload.create).toHaveBeenCalledTimes(2)
+    expect(fetcher).toHaveBeenCalledTimes(2)
   })
 })

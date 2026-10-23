@@ -6,7 +6,7 @@ import type {
   ThemeTokens,
   TypographyPreset,
 } from './types'
-import { validateColorString, validateThemeTokens } from './presets'
+import { resolveContrastForegroundToken, validateColorString, validateThemeTokens } from './presets'
 import { DEFAULT_THEME_ID, getInstalledTheme, normalizeThemeId } from './themes'
 import { getPreviewThemeFromCookie, resolveActiveThemeId } from './resolver'
 
@@ -592,6 +592,16 @@ export function generateThemeCss(themeConfig?: ThemeConfig): string {
       if (typeof val === 'string' && val.trim()) {
         const kebabKey = key.replace(/([a-z0-9]|(?=[A-Z]))([A-Z])/g, '$1-$2').toLowerCase()
         cssVars.push(`--zyvavu-theme-color-${kebabKey}: ${val};`)
+        const foreground = resolveContrastForegroundToken(
+          val,
+          tokens.colors.text,
+          tokens.colors.background,
+        )
+        if (foreground) {
+          cssVars.push(
+            `--zyvavu-theme-foreground-on-${kebabKey}: var(--zyvavu-theme-color-${foreground});`,
+          )
+        }
         if (key === 'primary') cssVars.push(`--zyvavu-theme-primary: ${val};`)
         if (key === 'background') cssVars.push(`--zyvavu-theme-background: ${val};`)
         if (key === 'surface') cssVars.push(`--zyvavu-theme-surface: ${val};`)
@@ -724,7 +734,7 @@ body {
 
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--zyvavu-theme-font-heading, var(--zyvavu-theme-font, inherit));
-  color: var(--zyvavu-theme-text, inherit);
+  color: var(--zyvavu-inherited-foreground, var(--zyvavu-theme-text, inherit));
 }
 
 h1 {

@@ -125,7 +125,9 @@ export const sectionEditor: ComponentConfig<SectionProps> = {
         <div className="zyvavu-section__overlay" style={layers.overlayStyle} />
 
         {/* 4. Pattern Layer */}
-        <div className="zyvavu-section__pattern" style={layers.patternStyle} />
+        {layers.patternStyle.backgroundImage && (
+          <div aria-hidden="true" className="zyvavu-section__pattern" style={layers.patternStyle} />
+        )}
 
         {/* 5. Inner Container with Puck Drop Zone */}
         <div className="zyvavu-section__container" style={layers.containerStyle}>

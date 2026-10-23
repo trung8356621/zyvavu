@@ -1,19 +1,23 @@
 'use client'
 
 import React, { useState } from 'react'
+import { resolveSectionLayerStyles } from '@/lib/style-engine/serializer'
 import { tokenToKebab } from '@/lib/theme-engine/page-settings'
-import { MediaSourcePicker } from '@/components/admin/media/MediaSourcePicker'
 import {
-  ActionIcon,
+  BackgroundVideoPresets,
+  MediaSourcePicker,
+} from '@/components/admin/media/MediaSourcePicker'
+import {
   Badge,
   Box,
   Button,
-  Collapse,
   Divider,
   Group,
   Paper,
   SegmentedControl,
   Select,
+  SimpleGrid,
+  Image,
   Slider,
   Stack,
   Switch,
@@ -21,25 +25,13 @@ import {
   TextInput,
   UnstyledButton,
 } from '@mantine/core'
-import {
-  ArrowLeft,
-  Film,
-  Image as ImageIcon,
-  Palette,
-  RotateCcw,
-  Settings,
-  Sliders,
-  Sparkles,
-  Trash2,
-} from 'lucide-react'
+import { ArrowLeft, Palette, Sliders, Trash2 } from 'lucide-react'
 import type { ThemeConfig } from '@/lib/theme-engine/types'
 import type { BackgroundConfig, BackgroundMode, PatternPreset } from '@/lib/style-engine/types'
 import {
   resolveColorToken,
   serializeGradientCss,
   serializeMeshCss,
-  resolvePatternCss,
-  resolvePatternSize,
 } from '@/lib/style-engine/token-resolver'
 
 export interface BackgroundStyleControlProps {
@@ -49,8 +41,47 @@ export interface BackgroundStyleControlProps {
   initialConfiguring?: boolean
   onMediaOpenChange?: (opened: boolean) => void
   onChange: (val: BackgroundConfig) => void
-  onOpenColorModal: (target: 'background' | 'overlay' | 'fallback') => void
+  onOpenColorModal: (target: 'background' | 'overlay' | 'fallback' | 'pattern') => void
 }
+
+export const DEMO_BACKGROUND_IMAGES = [
+  {
+    id: 'demo-1',
+    label: 'Modern Minimal',
+    url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80',
+    attribution: 'Unsplash - Milad Fakurian',
+  },
+  {
+    id: 'demo-2',
+    label: 'Subtle Texture',
+    url: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
+    attribution: 'Unsplash - R Architecture',
+  },
+  {
+    id: 'demo-3',
+    label: 'Dark Gradient Wave',
+    url: 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?auto=format&fit=crop&w=800&q=80',
+    attribution: 'Unsplash - Dynamic Wang',
+  },
+  {
+    id: 'demo-4',
+    label: 'Warm Architectural',
+    url: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=800&q=80',
+    attribution: 'Unsplash - R Architecture',
+  },
+  {
+    id: 'demo-5',
+    label: 'Forest Mist',
+    url: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=800&q=80',
+    attribution: 'Unsplash',
+  },
+  {
+    id: 'demo-6',
+    label: 'Abstract Blur',
+    url: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?auto=format&fit=crop&w=800&q=80',
+    attribution: 'Unsplash - Kseniya Lapteva',
+  },
+]
 
 const POSITION_3X3 = [
   { label: 'TL', value: 'top left' },
@@ -116,30 +147,27 @@ export function BackgroundStyleControl({
         ? Boolean(value.video?.overlay?.colorToken || value.video?.overlay?.opacity !== undefined)
         : false
 
-  const patternPreset = value.pattern?.preset || value.image?.pattern?.preset || 'none'
+  const pattern: BackgroundConfig['pattern'] = value.pattern || value.image?.pattern
+  const patternPreset = pattern?.preset || 'none'
   const hasPattern = patternPreset !== 'none'
-  const patternOpacity = value.pattern?.opacity ?? value.image?.pattern?.opacity ?? 0.15
-
   const gradientCss = value.gradient ? serializeGradientCss(value.gradient) : undefined
   const meshCss = value.mesh ? serializeMeshCss(value.mesh) : undefined
-  const patternCss = hasPattern ? resolvePatternCss(patternPreset) : undefined
-  const patternSize = hasPattern ? resolvePatternSize(patternPreset) : undefined
-
-  const handleConfigureClick = () => {
-    if (mode === 'color') {
-      onOpenColorModal('background')
-    } else {
-      setIsConfiguring((prev) => !prev)
-    }
-  }
+  const layers = resolveSectionLayerStyles({ background: value })
 
   return (
-    <Stack gap="sm" style={Object.fromEntries(
-      Object.entries(themeConfig?.tokens.colors || {}).flatMap(([key, color]) => color ? [
-        [`--zyvavu-theme-${tokenToKebab(key)}`, color],
-        [`--zyvavu-theme-color-${tokenToKebab(key)}`, color],
-      ] : []),
-    )}>
+    <Stack
+      gap="sm"
+      style={Object.fromEntries(
+        Object.entries(themeConfig?.tokens.colors || {}).flatMap(([key, color]) =>
+          color
+            ? [
+                [`--zyvavu-theme-${tokenToKebab(key)}`, color],
+                [`--zyvavu-theme-color-${tokenToKebab(key)}`, color],
+              ]
+            : [],
+        ),
+      )}
+    >
       {/* 0. PROMINENT BACKGROUND VISUAL PREVIEW (Wix-inspired) */}
       <Box
         style={{
@@ -211,26 +239,12 @@ export function BackgroundStyleControl({
           />
         )}
 
-        {/* Layer 4: Pattern */}
-        {hasPattern && patternCss && (
-          <Box
-            style={{
-              position: 'absolute',
-              inset: 0,
-              zIndex: 4,
-              backgroundImage: patternCss,
-              backgroundSize: (patternSize || 'auto').replace(
-                /([\d.]+)px/g,
-                (_, n) =>
-                  `${Number(n) * (value.pattern?.scale === 'sm' ? 0.5 : value.pattern?.scale === 'lg' ? 2 : 1)}px`,
-              ),
-              color: resolveColorToken(value.pattern?.colorToken || 'text'),
-              opacity: patternOpacity,
-            }}
-          />
+        {/* Same independent overlay style as the editor canvas and public renderer. */}
+        {layers.patternStyle.backgroundImage && (
+          <Box data-background-pattern-overlay style={layers.patternStyle} />
         )}
 
-        {/* Layer 5: Preview Header Bar & Configure Action */}
+        {/* Layer 5: Preview Header Bar */}
         <Box
           style={{
             position: 'absolute',
@@ -303,36 +317,6 @@ export function BackgroundStyleControl({
               )}
             </Group>
           </Group>
-
-          {/* Bottom Action: Prominent Configure / Thiết lập button */}
-          <Group justify="flex-end" style={{ width: '100%', pointerEvents: 'auto' }}>
-            <Button
-              size="xs"
-              color="teal"
-              variant={isConfiguring ? 'light' : 'filled'}
-              leftSection={
-                mode === 'color' ? (
-                  <Palette size={13} />
-                ) : isConfiguring ? (
-                  <ArrowLeft size={13} />
-                ) : (
-                  <Settings size={13} />
-                )
-              }
-              onClick={handleConfigureClick}
-              style={{
-                boxShadow: '0 2px 6px rgba(0,0,0,0.25)',
-                fontWeight: 600,
-                fontSize: 12,
-              }}
-            >
-              {mode === 'color'
-                ? 'Configure / Thiết lập'
-                : isConfiguring
-                  ? 'Done / Hoàn tất'
-                  : 'Configure / Thiết lập'}
-            </Button>
-          </Group>
         </Box>
       </Box>
 
@@ -349,46 +333,56 @@ export function BackgroundStyleControl({
             { value: 'noise', label: 'Subtle texture' },
           ]}
           onChange={(preset) =>
-            update({ pattern: { ...value.pattern, preset: preset as PatternPreset } })
+            update({ pattern: { ...pattern, preset: preset as PatternPreset } })
           }
         />
-        {value.pattern?.preset && value.pattern.preset !== 'none' && (
+        {hasPattern && (
           <>
-            <Select
-              label="Pattern color token"
-              value={value.pattern.colorToken || 'text'}
-              data={Object.keys(
-                themeConfig?.tokens.colors || { text: '', primary: '', border: '' },
-              )}
-              onChange={(token) =>
-                update({ pattern: { ...value.pattern, colorToken: token || undefined } })
-              }
-            />
+            <Button
+              variant="default"
+              leftSection={<Palette size={14} />}
+              onClick={() => onOpenColorModal('pattern')}
+            >
+              Pattern color: {pattern?.colorToken || 'text'}
+            </Button>
             <Text size="sm">Pattern opacity</Text>
             <Slider
               aria-label="Pattern opacity"
               min={0}
               max={100}
-              value={Math.round((value.pattern.opacity ?? 0.15) * 100)}
-              onChange={(opacity) =>
-                update({ pattern: { ...value.pattern, opacity: opacity / 100 } })
-              }
+              value={Math.round((pattern?.opacity ?? 0.15) * 100)}
+              onChange={(opacity) => update({ pattern: { ...pattern, opacity: opacity / 100 } })}
             />
             <Select
               label="Pattern scale"
-              value={value.pattern.scale || 'md'}
+              value={pattern?.scale || 'md'}
               data={['sm', 'md', 'lg']}
               onChange={(scale) =>
-                update({ pattern: { ...value.pattern, scale: scale as 'sm' | 'md' | 'lg' } })
+                update({ pattern: { ...pattern, scale: scale as 'sm' | 'md' | 'lg' } })
               }
             />
           </>
         )}
       </Stack>
 
-      {mode === 'video' && <MediaSourcePicker onOpenChange={onMediaOpenChange} kind="video" onSelect={(media) => update({
-        video: { ...value.video, mediaId: media.id, url: media.url },
-      })} />}
+      {mode === 'video' && (
+        <MediaSourcePicker
+          onOpenChange={onMediaOpenChange}
+          kind="video"
+          onSelect={(media) =>
+            update({
+              video: {
+                ...value.video,
+                mediaId: media.id,
+                url: media.url,
+                ...(!value.video?.posterUrl && media.posterUrl
+                  ? { posterUrl: media.posterUrl, posterMediaId: media.posterMediaId }
+                  : {}),
+              },
+            })
+          }
+        />
+      )}
       {/* Mode Switcher */}
       <SegmentedControl
         size="sm"
@@ -560,15 +554,48 @@ export function BackgroundStyleControl({
                 }}
               >
                 <Text size="xs" c="dimmed" style={{ fontSize: 12 }}>
-                  No background image selected. Choose from Media or enter a custom
-                  URL.
+                  No background image selected. Choose from Media or enter a custom URL.
                 </Text>
               </Paper>
             )}
 
-            <MediaSourcePicker onOpenChange={onMediaOpenChange} kind="image" onSelect={(media) => update({
-              image: { ...value.image, mediaId: media.id, url: media.url },
-            })} />
+            <MediaSourcePicker
+              onOpenChange={onMediaOpenChange}
+              kind="image"
+              onSelect={(media) =>
+                update({
+                  image: { ...value.image, mediaId: media.id, url: media.url },
+                })
+              }
+            />
+            <Text size="sm" fw={600}>
+              Curated Backgrounds · 6 presets
+            </Text>
+            <SimpleGrid cols={3} spacing="xs">
+              {DEMO_BACKGROUND_IMAGES.map((image) => (
+                <UnstyledButton
+                  key={image.id}
+                  aria-label={`Use ${image.label}`}
+                  onClick={() =>
+                    update({
+                      image: {
+                        ...value.image,
+                        url: image.url,
+                        mediaId: undefined,
+                        size: value.image?.size || 'cover',
+                        position: value.image?.position || 'center center',
+                      },
+                    })
+                  }
+                >
+                  <Image src={image.url} alt={image.label} h={64} fit="cover" loading="lazy" />
+                  <Text size="xs">{image.label}</Text>
+                  <Text size="xs" c="dimmed">
+                    {image.attribution}
+                  </Text>
+                </UnstyledButton>
+              ))}
+            </SimpleGrid>
             {/* Custom URL or Media Entry */}
             <Box>
               <TextInput
@@ -801,6 +828,22 @@ export function BackgroundStyleControl({
         (!isConfiguring ? (
           /* Video Quick Selection View */
           <Stack gap="sm">
+            <Text size="sm" fw={600}>
+              Curated Video Backgrounds
+            </Text>
+            <BackgroundVideoPresets
+              onSelect={(media) =>
+                update({
+                  video: {
+                    ...value.video,
+                    mediaId: media.id,
+                    url: media.url,
+                    posterUrl: media.posterUrl || value.video?.posterUrl,
+                    posterMediaId: media.posterMediaId || value.video?.posterMediaId,
+                  },
+                })
+              }
+            />
             <TextInput
               size="sm"
               label="Video URL (MP4 / WebM)"
@@ -811,7 +854,7 @@ export function BackgroundStyleControl({
                   video: {
                     ...value.video,
                     url: e.currentTarget.value,
-                      mediaId: undefined,
+                    mediaId: undefined,
                   },
                 })
               }
@@ -829,7 +872,7 @@ export function BackgroundStyleControl({
                       video: {
                         ...value.video,
                         url: '',
-                            mediaId: undefined,
+                        mediaId: undefined,
                       },
                     })
                   }
@@ -879,9 +922,15 @@ export function BackgroundStyleControl({
               </Badge>
             </Group>
 
-            <MediaSourcePicker onOpenChange={onMediaOpenChange} kind="image" onSelect={(media) => update({
-              video: { ...value.video, posterMediaId: media.id, posterUrl: media.url },
-            })} />
+            <MediaSourcePicker
+              onOpenChange={onMediaOpenChange}
+              kind="image"
+              onSelect={(media) =>
+                update({
+                  video: { ...value.video, posterMediaId: media.id, posterUrl: media.url },
+                })
+              }
+            />
             <TextInput
               size="sm"
               label="Poster Image URL (Preload & Mobile fallback)"

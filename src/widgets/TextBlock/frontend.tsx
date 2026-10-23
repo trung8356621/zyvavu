@@ -38,7 +38,7 @@ export function TextBlockFrontend({
     resolved.color ||
     (semanticStyle?.colorToken
       ? resolveColorToken(semanticStyle.colorToken)
-      : 'var(--zyvavu-theme-text, inherit)')
+      : 'var(--zyvavu-inherited-foreground, var(--zyvavu-theme-text, inherit))')
 
   const visualPreset =
     (typeof semanticStyle?.typography === 'object'
@@ -115,7 +115,7 @@ export function TextBlockFrontend({
           style={{
             margin: '0 0 20px 0',
             lineHeight: 1.7,
-            color: 'var(--zyvavu-theme-text-muted, #5f7370)',
+            color: 'var(--zyvavu-inherited-foreground, var(--zyvavu-theme-text-muted, #5f7370))',
             fontSize: '1.05rem',
             whiteSpace: 'pre-line',
           }}

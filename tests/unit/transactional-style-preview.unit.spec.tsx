@@ -183,16 +183,30 @@ describe('Transactional Style Editing & Overlay Layers', { timeout: 25000 }, () 
     const onUpdateStyle = vi.fn()
     function CanvasSubscriber() {
       const preview = useWidgetPreviewStyle('pattern-test')
-      return <div data-testid="pattern-preview">{preview?.background?.pattern?.preset || 'none'}</div>
+      return (
+        <div data-testid="pattern-preview">{preview?.background?.pattern?.preset || 'none'}</div>
+      )
     }
     try {
-      render(<React.StrictMode><MantineProvider theme={adminMantineTheme}>
-        <CanvasSubscriber />
-        <WidgetStyleContextMenu domain="background" opened onClose={vi.fn()} anchorEl={null}
-          componentType="Section" componentId="pattern-test" currentStyle={{ background: { mode: 'color', colorToken: 'surface' } }} onUpdateStyle={onUpdateStyle} />
-      </MantineProvider></React.StrictMode>)
+      render(
+        <React.StrictMode>
+          <MantineProvider theme={adminMantineTheme}>
+            <CanvasSubscriber />
+            <WidgetStyleContextMenu
+              domain="background"
+              opened
+              onClose={vi.fn()}
+              anchorEl={null}
+              componentType="Section"
+              componentId="pattern-test"
+              currentStyle={{ background: { mode: 'color', colorToken: 'surface' } }}
+              onUpdateStyle={onUpdateStyle}
+            />
+          </MantineProvider>
+        </React.StrictMode>,
+      )
       for (const pattern of ['Dots', 'Grid']) {
-        fireEvent.click(screen.getByLabelText('Background pattern'))
+        fireEvent.click(screen.getByLabelText('Background pattern', { selector: 'input' }))
         fireEvent.click(screen.getByRole('option', { name: pattern }))
       }
       expect(screen.getByTestId('pattern-preview').textContent).toBe('grid')
@@ -200,7 +214,52 @@ describe('Transactional Style Editing & Overlay Layers', { timeout: 25000 }, () 
       expect(errors.mock.calls.flat().join(' ')).not.toContain('Cannot update a component')
       fireEvent.click(screen.getByRole('button', { name: /Hủy \/ Cancel/i }))
       expect(stylePreviewStore.getPreview('pattern-test')).toBeNull()
-    } finally { errors.mockRestore() }
+    } finally {
+      errors.mockRestore()
+    }
+  })
+
+  it('previews pattern tokens in Solid only and rolls back before one parent commit', () => {
+    const onUpdateStyle = vi.fn()
+    render(
+      <MantineProvider theme={adminMantineTheme}>
+        <WidgetStyleContextMenu
+          domain="background"
+          opened
+          onClose={vi.fn()}
+          anchorEl={null}
+          componentType="Section"
+          componentId="pattern-color"
+          currentStyle={{
+            background: {
+              mode: 'color',
+              colorToken: 'surface',
+              pattern: { preset: 'grid', colorToken: 'text' },
+            },
+          }}
+          onUpdateStyle={onUpdateStyle}
+        />
+      </MantineProvider>,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Pattern color: text' }))
+    expect(screen.queryByRole('tab', { name: /Gradient/i })).toBeNull()
+    expect(screen.queryByRole('tab', { name: /Mesh/i })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /Select Primary Brand/i }))
+    expect(stylePreviewStore.getPreview('pattern-color')?.background?.pattern?.colorToken).toBe(
+      'primary',
+    )
+    expect(onUpdateStyle).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: /^Cancel$/i }))
+    expect(stylePreviewStore.getPreview('pattern-color')?.background?.pattern?.colorToken).toBe(
+      'text',
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Pattern color: text' }))
+    fireEvent.click(screen.getByRole('button', { name: /Select Primary Brand/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^Apply$/i }))
+    expect(onUpdateStyle).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: /Áp dụng \/ Apply/i }))
+    expect(onUpdateStyle).toHaveBeenCalledTimes(1)
+    expect(onUpdateStyle.mock.calls[0][0].background.pattern.colorToken).toBe('primary')
   })
 
   it('commits draft to Puck document and clears preview on Apply', () => {

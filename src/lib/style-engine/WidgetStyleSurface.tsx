@@ -32,6 +32,12 @@ export function WidgetStyleSurface({
         minWidth: 0,
         boxSizing: 'border-box',
         ...presentation,
+        color: layers.rootStyle.color,
+        ...({
+          '--zyvavu-inherited-foreground': (layers.rootStyle as Record<string, unknown>)[
+            '--zyvavu-inherited-foreground'
+          ],
+        } as React.CSSProperties),
         ...(style?.dimensions?.contentAlign
           ? {
               display: 'flex',
@@ -59,7 +65,9 @@ export function WidgetStyleSurface({
         )}
       </div>
       <div aria-hidden="true" style={layers.overlayStyle} />
-      <div aria-hidden="true" style={layers.patternStyle} />
+      {layers.patternStyle.backgroundImage && (
+        <div aria-hidden="true" style={layers.patternStyle} />
+      )}
       <div style={{ position: 'relative', zIndex: 10, minWidth: 0 }}>{children}</div>
     </div>
   )
@@ -83,7 +91,8 @@ export function withWidgetStyleSurface(
     if (/gradient\(|url\(/.test(String(nativeBackground)))
       nativeStyle.backgroundImage = String(nativeBackground)
     else
-      nativeStyle.backgroundColor = nativeBackground === 'none' ? 'transparent' : String(nativeBackground)
+      nativeStyle.backgroundColor =
+        nativeBackground === 'none' ? 'transparent' : String(nativeBackground)
   }
   const hasBackground = Boolean(style?.background || style?.backgroundToken)
   const layers = resolveSectionLayerStyles(style, { verticalPadding: 'none' })
@@ -121,10 +130,12 @@ export function withWidgetStyleSurface(
         aria-hidden="true"
         style={{ ...layers.overlayStyle, zIndex: -2, borderRadius: 'inherit' }}
       />
-      <span
-        aria-hidden="true"
-        style={{ ...layers.patternStyle, zIndex: -1, borderRadius: 'inherit' }}
-      />
+      {layers.patternStyle.backgroundImage && (
+        <span
+          aria-hidden="true"
+          style={{ ...layers.patternStyle, zIndex: -1, borderRadius: 'inherit' }}
+        />
+      )}
     </>
   ) : null
   return React.cloneElement(
@@ -135,6 +146,12 @@ export function withWidgetStyleSurface(
       style: {
         ...nativeStyle,
         ...globalStyle,
+        ...({
+          '--zyvavu-inherited-foreground': (layers.rootStyle as Record<string, unknown>)[
+            '--zyvavu-inherited-foreground'
+          ],
+        } as React.CSSProperties),
+        color: nativeStyle.color || layers.rootStyle.color,
         ...(hasBackground
           ? {
               position: props.style?.position || 'relative',

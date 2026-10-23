@@ -181,9 +181,9 @@ function WidgetStyleSession({
   // 3. prePaletteDraftRef: Snapshot before opening child Color Palette modal
   const prePaletteDraftRef = useRef<WidgetSemanticStyle | null>(null)
 
-  // Color Modal Target: 'text' | 'background' | 'overlay' | 'border' | 'fallback' | null
+  // Color Modal Target: 'text' | 'background' | 'overlay' | 'border' | 'fallback' | 'pattern' | null
   const [colorModalTarget, setColorModalTarget] = useState<
-    'text' | 'background' | 'overlay' | 'border' | 'fallback' | null
+    'text' | 'background' | 'overlay' | 'border' | 'fallback' | 'pattern' | null
   >(null)
 
   // Manifest and Style Capability check
@@ -335,7 +335,7 @@ function WidgetStyleSession({
 
   // Palette Child Opening
   const handleOpenColorModal = (
-    target: 'text' | 'background' | 'overlay' | 'border' | 'fallback',
+    target: 'text' | 'background' | 'overlay' | 'border' | 'fallback' | 'pattern',
   ) => {
     if (
       typeof document !== 'undefined' &&
@@ -421,6 +421,18 @@ function WidgetStyleSession({
           }
         }
       }
+      if (target === 'pattern') {
+        return {
+          ...base,
+          background: {
+            ...baseNorm.background,
+            pattern: {
+              ...(baseNorm.background?.pattern || baseNorm.background?.image?.pattern),
+              colorToken: tokenId,
+            },
+          },
+        }
+      }
       if (target === 'border') {
         return {
           ...base,
@@ -495,7 +507,9 @@ function WidgetStyleSession({
         showCloseButton={true}
         closeOnClickOutside={false}
         style={{ visibility: mediaPickerOpened ? 'hidden' : undefined }}
-        closeOnEscape={!mediaPickerOpened && !animationPickerOpened && !colorModalTarget && !pendingDomain}
+        closeOnEscape={
+          !mediaPickerOpened && !animationPickerOpened && !colorModalTarget && !pendingDomain
+        }
         zIndex={ADMIN_OVERLAY_LAYERS.STYLE_MODAL}
         footer={
           activeTab ? (
@@ -694,31 +708,35 @@ function WidgetStyleSession({
           opened={Boolean(colorModalTarget)}
           anchorEl={anchorEl}
           title={
-            colorModalTarget === 'text'
-              ? 'Theme Typography Color'
-              : colorModalTarget === 'overlay'
-                ? 'Theme Overlay Color'
-                : colorModalTarget === 'border'
-                  ? 'Theme Border Color'
-                  : colorModalTarget === 'fallback'
-                    ? 'Theme Fallback Color'
-                    : 'Theme Background & Palette'
+            colorModalTarget === 'pattern'
+              ? 'Theme Pattern Color'
+              : colorModalTarget === 'text'
+                ? 'Theme Typography Color'
+                : colorModalTarget === 'overlay'
+                  ? 'Theme Overlay Color'
+                  : colorModalTarget === 'border'
+                    ? 'Theme Border Color'
+                    : colorModalTarget === 'fallback'
+                      ? 'Theme Fallback Color'
+                      : 'Theme Background & Palette'
           }
           subtitle="Select semantic theme tokens or custom gradients"
           value={
-            colorModalTarget === 'text'
-              ? normalizedDraft.typography?.colorToken || 'text'
-              : colorModalTarget === 'overlay'
-                ? (normalizedDraft.background?.mode === 'image'
-                    ? normalizedDraft.background?.image?.overlay?.colorToken
-                    : normalizedDraft.background?.video?.overlay?.colorToken) || 'text'
-                : colorModalTarget === 'border'
-                  ? normalizedDraft.border?.colorToken || 'border'
-                  : colorModalTarget === 'fallback'
-                    ? (normalizedDraft.background?.mode === 'image'
-                        ? normalizedDraft.background?.image?.fallbackColorToken
-                        : normalizedDraft.background?.video?.fallbackColorToken) || 'surface'
-                    : normalizedDraft.background?.colorToken || 'surface'
+            colorModalTarget === 'pattern'
+              ? normalizedDraft.background?.pattern?.colorToken || 'text'
+              : colorModalTarget === 'text'
+                ? normalizedDraft.typography?.colorToken || 'text'
+                : colorModalTarget === 'overlay'
+                  ? (normalizedDraft.background?.mode === 'image'
+                      ? normalizedDraft.background?.image?.overlay?.colorToken
+                      : normalizedDraft.background?.video?.overlay?.colorToken) || 'text'
+                  : colorModalTarget === 'border'
+                    ? normalizedDraft.border?.colorToken || 'border'
+                    : colorModalTarget === 'fallback'
+                      ? (normalizedDraft.background?.mode === 'image'
+                          ? normalizedDraft.background?.image?.fallbackColorToken
+                          : normalizedDraft.background?.video?.fallbackColorToken) || 'surface'
+                      : normalizedDraft.background?.colorToken || 'surface'
           }
           tokens={themeConfig?.tokens}
           zIndex={ADMIN_OVERLAY_LAYERS.PALETTE_MODAL}

@@ -13,7 +13,7 @@ async function download(asset: DemoAsset) {
     signal: AbortSignal.timeout(20000),
     headers: { 'User-Agent': 'ZyvavuDemoMedia/1.0 (on-demand theme asset import)' },
   })
-  if (!response.ok || !response.headers.get('content-type')?.startsWith('image/'))
+  if (!response.ok || !response.headers.get('content-type')?.startsWith(`${asset.kind}/`))
     throw new Error('Demo source unavailable.')
   if (Number(response.headers.get('content-length')) > MAX_BYTES || !response.body)
     throw new Error('Demo source exceeds download limit.')
@@ -34,7 +34,16 @@ async function download(asset: DemoAsset) {
   return Buffer.concat(chunks)
 }
 
-async function importAsset(req: PayloadRequest, asset: DemoAsset) {
+async function importAsset(
+  req: PayloadRequest,
+  asset: DemoAsset,
+): Promise<{
+  id: number | string
+  url?: string | null
+  mimeType?: string | null
+  posterUrl?: string | null
+  posterMediaId?: number | string
+}> {
   const name = demoFilename(asset)
   const existing = await req.payload.find({
     collection: 'media',
@@ -45,21 +54,43 @@ async function importAsset(req: PayloadRequest, asset: DemoAsset) {
     req,
   })
   const found = existing.docs[0]
-  if (found?.url && found.mimeType === 'image/webp') return found
+  const mimetype = asset.kind === 'video' ? 'video/mp4' : 'image/webp'
+  if (found?.url && found.mimeType === mimetype) return withPoster(req, asset, found)
   const source = await download(asset)
-  const data = await sharp(source, { limitInputPixels: 16000000 })
-    .rotate()
-    .resize({ width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true })
-    .webp({ quality: 78 })
-    .toBuffer()
+  if (asset.kind === 'video' && source.toString('ascii', 4, 8) !== 'ftyp')
+    throw new Error('Invalid demo video.')
+  const data =
+    asset.kind === 'video'
+      ? source
+      : await sharp(source, { limitInputPixels: 16000000 })
+          .rotate()
+          .resize({ width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true })
+          .webp({ quality: 78 })
+          .toBuffer()
   // Payload owns storage, validation and access checks. No direct DB/filesystem writes.
-  return req.payload.create({
+  const doc = await req.payload.create({
     collection: 'media',
     overrideAccess: false,
     req,
     data: { alt: `${asset.label} — ${asset.credit}` },
-    file: { data, name, mimetype: 'image/webp', size: data.length },
+    file: { data, name, mimetype, size: data.length },
   })
+  return withPoster(req, asset, doc)
+}
+
+async function withPoster(
+  req: PayloadRequest,
+  asset: DemoAsset,
+  doc: { id: number | string; url?: string | null; mimeType?: string | null },
+) {
+  if (!asset.posterAssetId) return doc
+  const posterAsset = DEMO_MEDIA.find(
+    (entry) => entry.id === asset.posterAssetId && entry.kind === 'image',
+  )
+  if (!posterAsset) throw new Error('Missing demo poster.')
+  const poster = await importAsset(req, posterAsset)
+  if (!poster.url) throw new Error('Poster import failed.')
+  return { ...doc, posterUrl: poster.url, posterMediaId: poster.id }
 }
 
 export const importDemoEndpoint: Endpoint = {
@@ -73,7 +104,7 @@ export const importDemoEndpoint: Endpoint = {
     } catch {
       return Response.json({ error: 'Invalid request.' }, { status: 400 })
     }
-    const asset = DEMO_MEDIA.find((entry) => entry.id === id && entry.kind === 'image')
+    const asset = DEMO_MEDIA.find((entry) => entry.id === id)
     if (!asset) return Response.json({ error: 'Unknown demo asset.' }, { status: 400 })
     let pending = inFlight.get(req.payload)
     if (!pending) {

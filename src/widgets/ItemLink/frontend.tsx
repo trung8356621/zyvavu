@@ -68,7 +68,7 @@ export function ItemLinkFrontend({
           padding: '8px 16px',
           borderRadius: '4px',
           border: '1px solid var(--zyvavu-theme-border, #cbd5e1)',
-          color: 'var(--zyvavu-theme-text, inherit)',
+          color: 'var(--zyvavu-inherited-foreground, var(--zyvavu-theme-text, inherit))',
           fontWeight: 600,
           fontSize: '0.875rem',
           textDecoration: 'none',

@@ -5,6 +5,7 @@ import { MantineProvider } from '@mantine/core'
 import type { BackgroundConfig } from '@/lib/style-engine/types'
 
 vi.mock('@/components/admin/media/MediaSourcePicker', () => ({
+  BackgroundVideoPresets: () => null,
   MediaSourcePicker: ({ kind, onSelect }: { kind: string; onSelect: (doc: unknown) => void }) => (
     <button
       onClick={() => onSelect({ id: 17, url: `/media/new.${kind === 'image' ? 'webp' : 'mp4'}` })}
@@ -19,13 +20,11 @@ import { atomEditors } from '@/widgets/atoms/editor'
 beforeEach(() => {
   Object.defineProperty(window, 'matchMedia', {
     writable: true,
-    value: vi
-      .fn()
-      .mockImplementation(() => ({
-        matches: false,
-        addEventListener: vi.fn(),
-        removeEventListener: vi.fn(),
-      })),
+    value: vi.fn().mockImplementation(() => ({
+      matches: false,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })),
   })
 })
 afterEach(cleanup)

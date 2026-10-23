@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react'
-import type { UniversalStyle } from './types'
+import { tokenToKebab } from '@/lib/theme-engine/page-settings'
+import type { BackgroundConfig, UniversalStyle } from './types'
 import {
   resolveBorderWidthToken,
   resolveColorToken,
@@ -34,6 +35,23 @@ export interface SectionResolvedLayers {
   }
 }
 
+/** Theme CSS compares each known solid against the two semantic candidates. */
+function inheritedForeground(style: UniversalStyle): CSSProperties {
+  const bg = style.background
+  if (bg?.mode && bg.mode !== 'color') return {}
+  if (bg?.gradient || bg?.mesh) return {}
+  const token = bg?.colorToken || style.backgroundToken
+  if (!token || !/^[a-z][a-z0-9-]*$/i.test(token)) return {}
+  const fallback =
+    token === 'text'
+      ? resolveColorToken('background')
+      : token === 'background'
+        ? resolveColorToken('text')
+        : 'inherit'
+  const color = `var(--zyvavu-theme-foreground-on-${tokenToKebab(token)}, ${fallback})`
+  return { '--zyvavu-inherited-foreground': color, color } as CSSProperties
+}
+
 /**
  * Resolves standard widget styles into a single React CSSProperties object.
  * Used by typography, text, and media widgets on frontend SSR.
@@ -41,7 +59,7 @@ export interface SectionResolvedLayers {
 export function resolveWidgetStyles(style?: UniversalStyle): CSSProperties {
   if (!style) return {}
 
-  const result: CSSProperties = {}
+  const result: CSSProperties = inheritedForeground(style)
   const preset =
     typeof style.typography === 'string' ? style.typography : style.typography?.typography
   if (preset && /^[a-z][a-z0-9-]*$/i.test(preset)) {
@@ -82,7 +100,7 @@ export function resolveWidgetStyles(style?: UniversalStyle): CSSProperties {
   }
 
   // Legacy flat colorToken / align
-  if (style.colorToken && !result.color) {
+  if (style.colorToken && !style.typography?.colorToken) {
     result.color = resolveColorToken(style.colorToken)
   }
   if (style.align && !result.textAlign) {
@@ -258,9 +276,14 @@ export function resolveSectionLayerStyles(
   // 1. Root Section style
   const rootStyle: CSSProperties = {
     position: 'relative',
+    isolation: 'isolate',
     width: '100%',
     overflow: 'hidden',
     boxSizing: 'border-box',
+    ...inheritedForeground(s),
+    ...(s.typography?.colorToken || s.colorToken
+      ? { color: resolveColorToken(s.typography?.colorToken || s.colorToken) }
+      : {}),
   }
 
   const verticalPadding = s.section?.verticalPadding || sectionProps?.verticalPadding || 'md'
@@ -387,19 +410,20 @@ export function resolveSectionLayerStyles(
 
   // Pattern layer
   const patternStyle: CSSProperties = {
+    borderRadius: 'inherit',
     position: 'absolute',
     inset: 0,
     zIndex: 4,
     pointerEvents: 'none',
   }
 
-  const pattern = bg.pattern || bg.image?.pattern
+  const pattern: BackgroundConfig['pattern'] = bg.pattern || bg.image?.pattern
   const patternPreset = pattern?.preset
   if (patternPreset && patternPreset !== 'none') {
     const patCss = resolvePatternCss(patternPreset)
     if (patCss) {
-      const color = resolveColorToken(bg.pattern?.colorToken || 'text')
-      const factor = bg.pattern?.scale === 'sm' ? 0.5 : bg.pattern?.scale === 'lg' ? 2 : 1
+      const color = resolveColorToken(pattern?.colorToken || 'text')
+      const factor = pattern?.scale === 'sm' ? 0.5 : pattern?.scale === 'lg' ? 2 : 1
       patternStyle.backgroundImage = patCss
         .replace(/rgba\(0,\s*0,\s*0,\s*[\d.]+\)/g, color)
         .replace(/([\d.]+)px/g, (_, n) => `${Number(n) * factor}px`)
@@ -457,6 +481,7 @@ export function resolveSectionLayerStyles(
     background: undefined,
     backgroundToken: undefined,
     typography: undefined,
+    colorToken: undefined,
   })
   Object.assign(rootStyle, presentation)
 

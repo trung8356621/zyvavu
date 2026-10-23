@@ -309,3 +309,48 @@ describe('Universal Visual Style Engine', () => {
     })
   })
 })
+
+describe('semantic inherited foreground', () => {
+  it.each([
+    ['text', 'background'],
+    ['background', 'text'],
+  ])('pairs solid %s with %s without changing tokens', (background, foreground) => {
+    const style = { background: { mode: 'color' as const, colorToken: background } }
+    expect(resolveWidgetStyles(style).color).toContain(`--zyvavu-theme-foreground-on-${background}`)
+    expect(resolveWidgetStyles(style).color).toContain(resolveColorToken(foreground))
+    expect(resolveSectionLayerStyles(style).rootStyle.color).toBe(resolveWidgetStyles(style).color)
+    expect(style.background.colorToken).toBe(background)
+  })
+  it('preserves explicit modern and legacy foregrounds', () => {
+    const background = { mode: 'color' as const, colorToken: 'text' }
+    for (const style of [
+      { background, colorToken: 'primary' },
+      { background, typography: { colorToken: 'accent' } },
+    ]) {
+      const expected = resolveColorToken(style.colorToken || style.typography?.colorToken)
+      expect(resolveWidgetStyles(style).color).toBe(expected)
+      expect(resolveSectionLayerStyles(style).rootStyle.color).toBe(expected)
+    }
+  })
+  it('does not infer contrast for media or gradients', () => {
+    for (const background of [
+      { mode: 'image' as const, colorToken: 'text', image: { url: '/image.webp' } },
+      { mode: 'video' as const, colorToken: 'text', video: { url: '/video.mp4' } },
+      {
+        mode: 'color' as const,
+        colorToken: 'text',
+        gradient: {
+          angle: 90,
+          type: 'linear' as const,
+          stops: [
+            { token: 'text', position: 0 },
+            { token: 'background', position: 100 },
+          ],
+        },
+      },
+    ]) {
+      expect(resolveWidgetStyles({ background }).color).toBeUndefined()
+      expect(resolveSectionLayerStyles({ background }).rootStyle.color).toBeUndefined()
+    }
+  })
+})
