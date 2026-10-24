@@ -4,14 +4,20 @@ import type { PayloadRequest } from 'payload'
 import { canonicalPublicOrigin } from '@/lib/site/origin'
 import { resolveActiveThemeId } from '../resolver'
 import { signCaptureTicket, type CaptureTicket } from './server'
-let captureActive = false
+import { measurePatternCapture, PATTERN_CAPTURE_WIDTH } from './capture-bounds'
+let captureQueue: Promise<void> = Promise.resolve()
 export async function capturePatternWebP(
   ticket: CaptureTicket,
   origin = canonicalPublicOrigin(),
   secret = process.env.PAYLOAD_SECRET || '',
 ): Promise<Buffer> {
-  if (captureActive) throw new Error('A thumbnail capture is already running')
-  captureActive = true
+  const previous = captureQueue
+  let release!: () => void
+  captureQueue = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  await previous
+  ticket = { ...ticket, expires: Date.now() + 90000 }
   let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined
   try {
     browser = await chromium.launch({
@@ -19,7 +25,7 @@ export async function capturePatternWebP(
       executablePath: process.env.PATTERN_CHROMIUM_EXECUTABLE_PATH || undefined,
     })
     const context = await browser.newContext({
-      viewport: { width: 1200, height: 800 },
+      viewport: { width: PATTERN_CAPTURE_WIDTH, height: 800 },
       deviceScaleFactor: 2,
       reducedMotion: 'reduce',
       serviceWorkers: 'block',
@@ -45,18 +51,56 @@ export async function capturePatternWebP(
     await page.locator('[data-pattern-capture="ready"]').waitFor({ timeout: 15000 })
     await page.evaluate(async () => {
       await document.fonts.ready
+      for (const image of document.images) image.loading = 'eager'
       await Promise.all([...document.images].map((image) => image.decode().catch(() => {})))
+      const root = document.querySelector<HTMLElement>('[data-pattern-capture="ready"]')!
+      let previous = ''
+      let stable = 0
+      for (let frame = 0; frame < 60; frame++) {
+        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+        const layout = [root, ...root.querySelectorAll('*')].map((element) => {
+          const rect = element.getBoundingClientRect()
+          return [rect.x, rect.y, rect.width, rect.height]
+        })
+        const current = JSON.stringify(layout)
+        stable = current === previous ? stable + 1 : 0
+        if (stable >= 3) return
+        previous = current
+      }
+      throw new Error('Pattern layout did not stabilize before capture')
     })
+    const clip = await page
+      .locator('[data-pattern-capture="ready"]')
+      .evaluate(measurePatternCapture)
+    await page.evaluate(({ width, height }) => {
+      // Shadows do not contribute to scrollHeight. Extend the document without
+      // changing the viewport or the pattern's layout before the full-page clip.
+      const extent = document.createElement('div')
+      extent.setAttribute('aria-hidden', 'true')
+      Object.assign(extent.style, {
+        position: 'absolute',
+        left: `${width - 1}px`,
+        top: `${height - 1}px`,
+        width: '1px',
+        height: '1px',
+        pointerEvents: 'none',
+      })
+      document.body.append(extent)
+    }, clip)
     const screenshot = await page.screenshot({
       type: 'png',
-      clip: { x: 0, y: 0, width: 1200, height: 800 },
+      clip,
+      fullPage: true,
       animations: 'disabled',
       timeout: 15000,
     })
-    return sharp(screenshot).resize(1200, 800).webp({ quality: 90 }).toBuffer()
+    return sharp(screenshot).resize({ width: clip.width }).webp({ quality: 90 }).toBuffer()
   } finally {
-    await browser?.close()
-    captureActive = false
+    try {
+      await browser?.close()
+    } finally {
+      release()
+    }
   }
 }
 export async function generateUserPatternThumbnail(req: PayloadRequest): Promise<Response> {

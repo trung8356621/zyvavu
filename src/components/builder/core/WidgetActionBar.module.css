@@ -1,4 +1,4 @@
-/* Small Puck integration bridge: keep its native actions, sizing and permissions. */
+/* Scoped Puck bridge: preserve native actions/permissions, enlarge the shared surface. */
 .toolbar {
   --puck-actionbar-color-bg: var(--zyvavu-surface);
   --puck-actionbar-color-text: var(--zyvavu-text);
@@ -7,15 +7,48 @@
   --puck-actionbar-color-action-active: var(--zyvavu-primary);
   --puck-actionbar-color-action-disabled: var(--zyvavu-text);
   --puck-actionbar-opacity-text: 1;
-  --puck-actionbar-radius: var(--mantine-radius-default);
+  --puck-actionbar-radius: var(--mantine-radius-lg);
+  --puck-actionbar-action-space: 8px;
+  --puck-actionbar-space-x: 0;
+  --puck-actionbar-space-y: 0;
   --puck-actionbar-font-size: var(--mantine-font-size-sm);
   --puck-color-focus-ring: var(--zyvavu-primary);
 
   color: var(--zyvavu-text);
   background: var(--zyvavu-surface);
   border: 1px solid var(--zyvavu-border);
-  border-radius: var(--mantine-radius-default);
-  box-shadow: var(--mantine-shadow-xs);
+  border-radius: var(--mantine-radius-lg);
+  box-shadow: var(--mantine-shadow-md);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mantine-spacing-xs);
+  padding: var(--mantine-spacing-xs);
+  width: max-content;
+  box-sizing: border-box;
+}
+
+.toolbar > div,
+.toolbar :global([class*='_ActionBar-group_']) {
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.toolbar button {
+  min-width: 36px;
+  min-height: 36px;
+  flex-shrink: 0;
+}
+
+.toolbar button svg {
+  width: 20px;
+  height: 20px;
+}
+
+.toolbar :global([class*='_ActionBar-label_']) {
+  max-width: 10rem;
+  overflow: hidden;
 }
 
 .toolbar button:not(:disabled):not([aria-disabled='true']):hover,
@@ -34,12 +67,84 @@
   outline-offset: -2px;
 }
 
-/* Puck's existing user width variable; only the Blocks library expands the panel. */
+/* Preserve Puck sizing; give the visual library the full available preview width. */
 .libraryHost:has([data-widget-pattern-library]) {
-  --puck-user-sidebar-left-width: var(--zyvavu-builder-library-width, clamp(20rem, 32vw, 28rem));
+  --puck-user-sidebar-left-width: var(--zyvavu-builder-library-width, clamp(28rem, 40vw, 36rem));
 }
 @media (max-width: 765px) {
   .libraryHost:has([data-widget-pattern-library]) {
+    --puck-user-sidebar-left-width: 100%;
+  }
+}
+
+/* Theme Builder only: relocate the existing plugin navigation, keeping Puck's
+   plugin selection, panels, resize behavior and header tools intact. */
+.themeNavigation {
+  --zyvavu-builder-library-width: clamp(28rem, 40vw, 36rem);
+}
+.themeNavigation :global([class*='_PuckLayout-inner_']) {
+  --puck-pluginbar-width: 0px;
+  --puck-user-sidebar-left-width: var(--zyvavu-builder-library-width);
+}
+.themeNavigation :global([class*='_PuckHeader-toggle_']) {
+  display: none;
+}
+.themeNavigation :global([class*='_PuckHeader_']) {
+  padding-inline-start: 0;
+}
+.themeNavigation :global([class*='_PuckLayout-nav_']) {
+  grid-area: header;
+  align-self: stretch;
+  width: var(--zyvavu-builder-library-width);
+  min-width: 0;
+  z-index: 1;
+  border-top: 0;
+}
+.themeNavigation :global([class*='_PuckLayout-header_']) {
+  padding-inline-start: var(--zyvavu-builder-library-width);
+  min-width: 0;
+}
+.themeNavigation :global([class*='_Nav-list_']) {
+  flex-direction: row;
+  align-items: stretch;
+  width: 100%;
+  padding: 0;
+  gap: 0;
+}
+.themeNavigation :global([class*='_NavItem-link_']) {
+  width: 100%;
+  height: 100%;
+  justify-content: center;
+  border: 0;
+  border-bottom: var(--puck-border-width-strong) solid transparent;
+}
+.themeNavigation :global([class*='_NavItem_']) {
+  flex: 1;
+  padding: 0;
+}
+.themeNavigation :global([class*='_NavItem--active_']) > :global([class*='_NavItem-link_']) {
+  border-bottom-color: var(--puck-color-interactive);
+}
+@media (max-width: 765px) and (min-width: 638px) {
+  .themeNavigation {
+    --zyvavu-builder-library-width: min(28rem, 55vw);
+  }
+}
+@media (max-width: 637px) {
+  /* Native mobile Fields and expand/minimize actions remain reachable. */
+  .themeNavigation :global([class*='_PuckLayout-nav_']) {
+    grid-area: sidenav;
+    width: 100%;
+  }
+  .themeNavigation :global([class*='_PuckLayout-header_']) {
+    padding-inline-start: 0;
+  }
+  .themeNavigation :global([class*='_PuckLayout--isExpanded_']) {
+    --zyvavu-mobile-library-height: 55%;
+  }
+  .themeNavigation.themeNavigation :global([class*='_PuckLayout-inner_']) {
+    grid-template-areas: 'sidenav' 'editor' 'left' 'right' 'header';
+    grid-template-rows: auto minmax(0, 1fr) var(--zyvavu-mobile-library-height, 35%) 0 auto;
     --puck-user-sidebar-left-width: 100%;
   }
 }

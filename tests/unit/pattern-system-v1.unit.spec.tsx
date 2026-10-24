@@ -2,6 +2,8 @@ import React from 'react'
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { render, screen, cleanup, act } from '@testing-library/react'
+import { thumbnailCacheKey } from '@/lib/theme-engine/patterns/thumbnail-cache'
+import { getActiveThemeConfig } from '@/lib/theme-engine/styles'
 import { SYSTEM_PATTERNS } from '@/lib/theme-engine/patterns/catalog'
 import {
   validatePatternJSON,
@@ -44,9 +46,30 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 describe('Canonical Pattern V1', () => {
+  it('inserts every static card as independently editable atoms in one Section subtree', () => {
+    for (const record of SYSTEM_PATTERNS.filter((pattern) => pattern.id.startsWith('text-'))) {
+      let serial = 0
+      const instance = instantiatePatternJSON(record, config, () => `atom-${++serial}`)
+      const next = insertWidgetPattern(base, instance, 'home', config)
+      expect(next.content).toHaveLength(1)
+      expect(instance.type).toBe('Section')
+      expect(instance.props.content.map((node: any) => node.type)).toEqual(['Heading', 'Text'])
+      expect(
+        new Set([instance.props.id, ...instance.props.content.map((node: any) => node.props.id)])
+          .size,
+      ).toBe(3)
+      expect(instance.props.content[0].props.style).not.toBe(instance.props.content[1].props.style)
+      expect(() => validatePatternOperation(next, base, 'home', config)).not.toThrow()
+      expect(record.payload.content[0].props.id).not.toBe(instance.props.id)
+    }
+  })
+  it('contains no monolithic TextBlock in any built-in subtree', () => {
+    for (const record of SYSTEM_PATTERNS)
+      expect(JSON.stringify(record.payload)).not.toContain('"type":"TextBlock"')
+  })
   it('ships six genuine designs for every enabled widget type and round-trips real JSON', () => {
     expect(SYSTEM_PATTERNS.length).toBeGreaterThanOrEqual(24)
-    for (const type of ['TextBlock', 'Section', 'Columns', 'FeaturedMedia']) {
+    for (const type of ['Columns', 'FeaturedMedia']) {
       const patterns = SYSTEM_PATTERNS.filter((pattern) => pattern.widgetType === type)
       expect(patterns).toHaveLength(6)
       expect(new Set(patterns.map((pattern) => patternContentHash(pattern))).size).toBe(6)
@@ -55,6 +78,31 @@ describe('Canonical Pattern V1', () => {
       expect(() => validatePatternJSON(pattern)).not.toThrow()
       expect(JSON.parse(JSON.stringify(pattern))).toEqual(pattern)
     }
+  })
+  it('invalidates thumbnail caches for pattern, token and renderer changes', () => {
+    const record = SYSTEM_PATTERNS.find((pattern) => pattern.id === 'section-airy')!
+    const theme = getActiveThemeConfig()
+    const original = thumbnailCacheKey(record, theme, 'renderer-1')
+    expect(thumbnailCacheKey(record, theme, 'renderer-1')).toBe(original)
+    expect(thumbnailCacheKey(record, theme, 'renderer-2')).not.toBe(original)
+    const changed = structuredClone(record)
+    changed.payload.content[0].props.style.spacing.padding.token = 'xl'
+    expect(thumbnailCacheKey(changed, theme, 'renderer-1')).not.toBe(original)
+    const colors = structuredClone(theme)
+    colors.tokens.colors.primary = '#123456'
+    expect(thumbnailCacheKey(record, colors, 'renderer-1')).not.toBe(original)
+    const layouts = SYSTEM_PATTERNS.filter((pattern) =>
+      ['Section', 'Columns'].includes(pattern.widgetType),
+    )
+    expect(layouts).toHaveLength(18)
+    expect(
+      new Set(layouts.map((pattern) => thumbnailCacheKey(pattern, theme, 'renderer-1'))).size,
+    ).toBe(18)
+    expect(
+      layouts.every(
+        (pattern) => pattern.thumbnail?.url === `/api/pattern-thumbnails/${pattern.id}`,
+      ),
+    ).toBe(true)
   })
   it('serializes the full legacy-zone/inline subtree without mutating original data', () => {
     const data = {
@@ -101,7 +149,7 @@ describe('Canonical Pattern V1', () => {
     )
     expect(html).toContain('Nội dung nổi bật')
     expect(html).toContain('Thông tin bổ sung')
-    expect(next.content[0].props.content[0].props.column1).toHaveLength(1)
+    expect(next.content[0].props.content[0].props.column1[0].props.column1).toHaveLength(2)
     expect(inlineSlotsToZones(next).zones).not.toEqual({})
     expect(() =>
       validatePatternOperation(

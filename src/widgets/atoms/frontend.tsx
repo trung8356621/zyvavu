@@ -8,6 +8,8 @@ export type AtomProps = {
   id?: string
   tag?: 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6'
   text?: string
+  href?: string
+  newTab?: boolean
   src?: string
   alt?: string
   aspectRatio?: '16:9' | '4:3' | '21:9' | 'auto'
@@ -24,6 +26,8 @@ export function AtomPresentation({
   style,
   primaryHeading,
   tag,
+  href,
+  newTab,
 }: AtomProps & { kind: AtomType; primaryHeading?: boolean }) {
   const resolved = resolveWidgetStyles(style)
   const HeadingTag = primaryHeading ? 'h1' : tag || 'h2'
@@ -52,6 +56,16 @@ export function AtomPresentation({
       <HeadingTag style={resolved} {...animationAttributes(style?.animation)}>
         {text}
       </HeadingTag>
+    ) : kind === 'Button' && href && !/^(?:javascript|data|vbscript):/i.test(href.trim()) ? (
+      <a
+        href={href}
+        target={newTab ? '_blank' : undefined}
+        rel={newTab ? 'noopener noreferrer' : undefined}
+        style={resolved}
+        {...animationAttributes(style?.animation)}
+      >
+        {text}
+      </a>
     ) : kind === 'Button' ? (
       <button type="button" style={resolved} {...animationAttributes(style?.animation)}>
         {text}

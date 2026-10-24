@@ -3,19 +3,19 @@ import React, { useMemo, useState } from 'react'
 import {
   ActionIcon,
   Alert,
-  Badge,
   Button,
   Divider,
   Group,
   Loader,
   Menu,
   Modal,
-  Paper,
   Select,
   Stack,
   Text,
   TextInput,
   Textarea,
+  UnstyledButton,
+  Tooltip,
 } from '@mantine/core'
 import { createUsePuck } from '@puckeditor/core'
 import {
@@ -29,7 +29,6 @@ import {
   MoreHorizontal,
   Bookmark,
   Eye,
-  Plus,
 } from 'lucide-react'
 import type { TemplateContext, ThemeConfig } from '@/lib/theme-engine/types'
 import { getWidgetManifest } from '@/lib/theme-engine/widget-registry-manifests'
@@ -193,7 +192,12 @@ export function WidgetPatternLibrary({
   )
   const hover = (pattern: WidgetDesignPattern) => {
     clearHover()
-    if (selected && getPermissions({ item: selected }).edit && canApplyWidgetPattern(pattern, selected) && beforeOperation()) {
+    if (
+      selected &&
+      getPermissions({ item: selected }).edit &&
+      canApplyWidgetPattern(pattern, selected) &&
+      beforeOperation()
+    ) {
       hoverId.current = selected.props.id
       stylePreviewStore.setPreview(selected.props.id, {
         ...selected.props.style,
@@ -267,17 +271,20 @@ export function WidgetPatternLibrary({
     }
   }
 
-  const defaultPattern = (type: string): WidgetDesignPattern => ({
-    id: `default:${type}`,
-    version: 1,
-    compatibility: { builderVersion: 1, widgetTypes: [type] },
-    widgetType: type,
-    name: config.components[type].label || type,
-    category: widgetLibraryCategory(type),
-    preview: { kind: 'text', label: type },
-    props: {},
-    tokenReferences: [],
-  })
+  const defaultPattern = (type: string): WidgetDesignPattern =>
+    type === 'TextBlock'
+      ? getWidgetDesignPatterns().find((record) => record.id === 'text-editorial')!
+      : {
+          id: `default:${type}`,
+          version: 1,
+          compatibility: { builderVersion: 1, widgetTypes: [type] },
+          widgetType: type,
+          name: config.components[type].label || type,
+          category: widgetLibraryCategory(type),
+          preview: { kind: 'text', label: type },
+          props: {},
+          tokenReferences: [],
+        }
   const captureSelected = (metadata?: PatternJSON) => {
     if (!selected || !beforeOperation())
       throw new Error('Select a widget and apply or cancel any style draft first.')
@@ -400,33 +407,35 @@ export function WidgetPatternLibrary({
         <nav className={styles.categories} aria-label="Widget categories">
           {categories.map((name) => {
             const Icon = ICONS[name] || LayoutGrid
+            const label =
+              mode === 'theme'
+                ? config.components[types.find((type) => categoryFor(type) === name) || '']
+                    ?.label || name
+                : LABELS[name] || 'Widgets'
             return (
               <React.Fragment key={name}>
-                {name === 'dynamic' && (
-                  <Divider my="sm" label="Dynamic Content" labelPosition="center" />
-                )}
-                <Button
-                  fullWidth
-                  variant={active === name ? 'light' : 'subtle'}
-                  aria-pressed={active === name}
-                  classNames={{
-                    root: styles.categoryTile,
-                    inner: styles.categoryInner,
-                    label: styles.categoryContent,
-                  }}
-                  onClick={() => {
-                    setCategory(name)
-                    setWidgetFilter(null)
-                  }}
+                {name === 'dynamic' && <Divider className={styles.categoryDivider} />}
+                <Tooltip
+                  label={label}
+                  position="right"
+                  withinPortal
+                  zIndex={ADMIN_OVERLAY_LAYERS.ACTIVE_DROPDOWN}
+                  events={{ hover: true, focus: true, touch: false }}
                 >
-                  <Icon size={20} aria-hidden="true" />
-                  <span className={styles.categoryLabel}>
-                    {mode === 'theme'
-                      ? config.components[types.find((type) => categoryFor(type) === name) || '']
-                          ?.label || name
-                      : LABELS[name] || 'Widgets'}
-                  </span>
-                </Button>
+                  <ActionIcon
+                    size="xl"
+                    variant={active === name ? 'light' : 'subtle'}
+                    aria-label={label}
+                    aria-pressed={active === name}
+                    className={styles.categoryTile}
+                    onClick={() => {
+                      setCategory(name)
+                      setWidgetFilter(null)
+                    }}
+                  >
+                    <Icon size={22} aria-hidden="true" />
+                  </ActionIcon>
+                </Tooltip>
               </React.Fragment>
             )
           })}
@@ -476,102 +485,99 @@ export function WidgetPatternLibrary({
                     }
                   : record
                 return (
-                  <Paper
+                  <div
                     key={doc ? `user-${doc.id}` : pattern.id}
-                    withBorder
                     className={styles.card}
-                    onClick={event => { if (!(event.target as HTMLElement).closest('button, a, input')) run(pattern) }}
-                    onMouseEnter={() => hover(pattern)}
-                    onMouseLeave={clearHover}
+                    onMouseEnter={doc ? () => hover(pattern) : undefined}
+                    onMouseLeave={doc ? clearHover : undefined}
                   >
                     <div className={styles.preview}>
                       <PatternThumbnail record={thumbnailRecord} url={doc?.url} />
                     </div>
-                    <div className={styles.overlay}>
-                      <ActionIcon
-                        variant="filled"
-                        aria-label={`Insert ${pattern.name}`}
-                        onClick={() => run(pattern)}
-                      >
-                        <Plus size={18} />
-                      </ActionIcon>
-                      <ActionIcon
-                        variant="default"
-                        aria-label={`Preview ${pattern.name}`}
-                        onClick={() =>
-                          setPreview({
-                            record: thumbnailRecord,
-                            url: doc?.url,
-                            key: doc ? `user-${doc.id}` : pattern.id,
-                          })
-                        }
-                      >
-                        <Eye size={18} />
-                      </ActionIcon>
-                      <Menu withinPortal zIndex={ADMIN_OVERLAY_LAYERS.ACTIVE_DROPDOWN}>
-                        <Menu.Target>
-                          <ActionIcon
-                            variant="default"
-                            aria-label={`More actions for ${pattern.name}`}
-                          >
-                            <MoreHorizontal size={18} />
-                          </ActionIcon>
-                        </Menu.Target>
-                        <Menu.Dropdown>
-                          <Menu.Item
-                            disabled={
-                              !selected ||
-                              !canApplyWidgetPattern(pattern, selected) ||
-                              selected.props.lock?.canEditProps === false
-                            }
-                            onClick={() => run(pattern, true)}
-                          >
-                            Apply design to selected
-                          </Menu.Item>
-                          {doc && (
-                            <>
-                              <Menu.Item
-                                disabled={busy}
-                                onClick={() => setEditor({ record: doc.record, doc })}
-                              >
-                                Edit metadata / Rename
-                              </Menu.Item>
-                              <Menu.Item
-                                disabled={busy || !selected}
-                                onClick={() => setConfirm({ kind: 'update', doc })}
-                              >
-                                Update from selected widget
-                              </Menu.Item>
-                              <Menu.Item
-                                disabled={busy}
-                                onClick={() => {
-                                  setBusy(true)
-                                  void my.thumbnail(doc).finally(() => setBusy(false))
-                                }}
-                              >
-                                Retry thumbnail
-                              </Menu.Item>
-                              <Menu.Item
-                                color="red"
-                                disabled={busy}
-                                onClick={() => setConfirm({ kind: 'delete', doc })}
-                              >
-                                Delete
-                              </Menu.Item>
-                            </>
-                          )}
-                        </Menu.Dropdown>
-                      </Menu>
-                    </div>
-                    <Stack p="sm" gap="xs">
-                      <Text fw={600} size="sm">
-                        {pattern.name}
-                      </Text>
-                      <Badge variant="light" size="sm">
-                        {config.components[pattern.widgetType]?.label || 'Widget'}
-                      </Badge>
-                    </Stack>
-                  </Paper>
+                    <UnstyledButton
+                      className={styles.insertTile}
+                      aria-label={`Insert ${pattern.name}`}
+                      title={doc ? undefined : pattern.name}
+                      onClick={() => run(pattern, doc ? undefined : false)}
+                    >
+                      {doc && (
+                        <Text component="span" fw={600} size="sm">
+                          {pattern.name}
+                        </Text>
+                      )}
+                    </UnstyledButton>
+                    {doc && (
+                      <div className={styles.management}>
+                        <ActionIcon
+                          variant="default"
+                          aria-label={`Preview ${pattern.name}`}
+                          onClick={() =>
+                            setPreview({
+                              record: thumbnailRecord,
+                              url: doc?.url,
+                              key: doc ? `user-${doc.id}` : pattern.id,
+                            })
+                          }
+                        >
+                          <Eye size={18} />
+                        </ActionIcon>
+                        <Menu withinPortal zIndex={ADMIN_OVERLAY_LAYERS.ACTIVE_DROPDOWN}>
+                          <Menu.Target>
+                            <ActionIcon
+                              variant="default"
+                              aria-label={`More actions for ${pattern.name}`}
+                            >
+                              <MoreHorizontal size={18} />
+                            </ActionIcon>
+                          </Menu.Target>
+                          <Menu.Dropdown>
+                            <Menu.Item
+                              disabled={
+                                !selected ||
+                                !canApplyWidgetPattern(pattern, selected) ||
+                                selected.props.lock?.canEditProps === false
+                              }
+                              onClick={() => run(pattern, true)}
+                            >
+                              Apply design to selected
+                            </Menu.Item>
+                            {doc && (
+                              <>
+                                <Menu.Item
+                                  disabled={busy}
+                                  onClick={() => setEditor({ record: doc.record, doc })}
+                                >
+                                  Edit metadata / Rename
+                                </Menu.Item>
+                                <Menu.Item
+                                  disabled={busy || !selected}
+                                  onClick={() => setConfirm({ kind: 'update', doc })}
+                                >
+                                  Update from selected widget
+                                </Menu.Item>
+                                <Menu.Item
+                                  disabled={busy}
+                                  onClick={() => {
+                                    setBusy(true)
+                                    void my.thumbnail(doc).finally(() => setBusy(false))
+                                  }}
+                                >
+                                  Retry thumbnail
+                                </Menu.Item>
+                                <Menu.Item
+                                  color="red"
+                                  disabled={busy}
+                                  onClick={() => setConfirm({ kind: 'delete', doc })}
+                                >
+                                  Delete
+                                </Menu.Item>
+                              </>
+                            )}
+                          </Menu.Dropdown>
+                        </Menu>
+                      </div>
+                    )}
+                  </div>
                 )
               })}
             </div>

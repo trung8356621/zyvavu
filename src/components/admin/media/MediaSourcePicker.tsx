@@ -105,6 +105,8 @@ export function MediaSourcePicker(props: {
   kind: 'image' | 'video'
   onSelect: (doc: SelectedMedia) => void
   onOpenChange?: (opened: boolean) => void
+  triggerLabel?: string
+  disabled?: boolean
 }) {
   const [opened, setOpened] = useState(false)
   return opened ? (
@@ -118,12 +120,13 @@ export function MediaSourcePicker(props: {
   ) : (
     <Button
       variant="default"
+      disabled={props.disabled}
       onClick={() => {
         setOpened(true)
         props.onOpenChange?.(true)
       }}
     >
-      Choose {props.kind} from Media
+      {props.triggerLabel || `Choose ${props.kind} from Media`}
     </Button>
   )
 }

@@ -14,7 +14,7 @@ body {
 }
 [data-pattern-capture] {
   width: 1200px;
-  min-height: 800px;
+  display: flow-root;
 }
 [data-pattern-capture] [data-zyvavu-motion] {
   animation: none !important;

@@ -8,23 +8,25 @@
 }
 .columns {
   display: grid;
-  grid-template-columns: minmax(5rem, 1fr) minmax(0, 3fr);
+  grid-template-columns: 60px minmax(0, 1fr);
   flex: 1;
   min-height: 0;
   overflow: hidden;
 }
 .categories {
-  overflow-y: auto;
-  border-right: 1px solid var(--mantine-color-default-border);
-  padding-right: var(--mantine-spacing-xs);
-}
-.categoryContent {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: var(--mantine-spacing-xs);
-  white-space: normal;
-  text-align: center;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  border-right: 1px solid var(--mantine-color-default-border);
+  padding-block: var(--mantine-spacing-xs);
+}
+.categoryDivider {
+  align-self: stretch;
+  margin-inline: var(--mantine-spacing-xs);
 }
 .results {
   overflow-y: auto;
@@ -40,55 +42,11 @@
   background: var(--mantine-color-gray-0);
   color: var(--mantine-color-text);
 }
-@container (max-width: 19rem) {
-  .columns {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto minmax(0, 1fr);
-  }
-  .categories {
-    display: flex;
-    gap: var(--mantine-spacing-xs);
-    overflow-x: auto;
-    border-right: 0;
-    border-bottom: 1px solid var(--mantine-color-default-border);
-  }
-}
-
 .categoryTile {
-  min-height: calc(
-    2 * var(--mantine-line-height-sm) * var(--mantine-font-size-sm) + 2 *
-      var(--mantine-spacing-sm) + 1.5rem
-  );
-  height: auto;
-  padding: var(--mantine-spacing-sm) var(--mantine-spacing-xs);
-  margin-bottom: var(--mantine-spacing-xs);
-}
-.categoryInner {
-  width: 100%;
-  min-width: 0;
-  justify-content: center;
-}
-.categoryContent {
-  width: 100%;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  overflow: visible;
-}
-.categoryContent svg {
   flex: none;
 }
-.categoryLabel {
-  display: block;
-  width: 100%;
-  white-space: normal;
-  overflow-wrap: normal;
-  word-break: normal;
-  text-align: center;
-  line-height: var(--mantine-line-height-sm);
-  min-height: calc(2 * var(--mantine-line-height-sm) * var(--mantine-font-size-sm));
+.categoryTile[aria-pressed='true'] {
+  box-shadow: inset 2px 0 0 var(--mantine-primary-color-filled);
 }
 .categoryTile:focus-visible {
   outline: 2px solid var(--mantine-primary-color-filled);
@@ -96,54 +54,51 @@
 }
 .cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--mantine-spacing-sm);
 }
 .card {
   position: relative;
   min-width: 0;
-  overflow: hidden;
 }
 .card .preview {
-  height: 10rem;
+  height: auto;
   min-height: 0;
-  padding: var(--mantine-spacing-xs);
+  padding: 0;
   border: 0;
+  background: transparent;
 }
-.card .preview > div {
-  transform-origin: top left;
+.insertTile {
+  display: block;
+  width: 100%;
+  padding-top: var(--mantine-spacing-xs);
+  text-align: start;
 }
-.overlay {
+.insertTile:empty {
+  padding-top: 0;
+}
+.insertTile::after {
+  content: '';
   position: absolute;
-  inset: var(--mantine-spacing-xs) var(--mantine-spacing-xs) auto auto;
-  display: flex;
-  gap: var(--mantine-spacing-xs);
-  opacity: 0;
-  pointer-events: none;
-  padding: var(--mantine-spacing-xs);
+  inset: 0;
   border-radius: var(--mantine-radius-sm);
-  background: var(--mantine-color-body);
-  box-shadow: var(--mantine-shadow-sm);
 }
-.card:hover .overlay,
-.card:focus-within .overlay {
-  opacity: 1;
-  pointer-events: auto;
+.insertTile:focus-visible::after {
+  outline: 2px solid var(--mantine-primary-color-filled);
+  outline-offset: 2px;
 }
-@media (hover: none) {
-  .overlay {
-    opacity: 1;
-    pointer-events: auto;
-  }
+.management {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--mantine-spacing-xs);
+  margin-top: var(--mantine-spacing-xs);
 }
-@media (prefers-reduced-motion: no-preference) {
-  .overlay {
-    transition: opacity 120ms ease;
-  }
+.card:hover .preview,
+.card:focus-within .preview {
+  box-shadow: var(--mantine-shadow-xs);
 }
-@container (max-width:19rem) {
-  .categoryTile {
-    flex: 0 0 6rem;
-    margin-bottom: 0;
-  }
+.preview img {
+  max-width: 100%;
 }

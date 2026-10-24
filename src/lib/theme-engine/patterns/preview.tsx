@@ -45,7 +45,7 @@ export function PatternDocumentPreview({
       data-pattern-capture="ready"
       style={{
         width: '100%',
-        minHeight: '100%',
+        display: 'flow-root',
         boxSizing: 'border-box',
         padding: 'var(--zyvavu-theme-spacing-md,24px)',
       }}

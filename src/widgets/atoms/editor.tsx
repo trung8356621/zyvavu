@@ -52,7 +52,10 @@ export const atomEditors = Object.fromEntries(
                   src: imageSourceField,
                   alt: { type: 'text', label: 'Alternative text' },
                 }
-              : { text: { type: 'textarea', label: 'Content' } },
+              : {
+                  text: { type: 'textarea', label: type === 'Button' ? 'Label' : 'Content' },
+                  ...(type === 'Button' ? { href: { type: 'text', label: 'Link URL' } } : {}),
+                },
           defaultProps: manifest.defaultProps,
           render: (props: React.ComponentProps<typeof Renderer>) =>
             fixed?.atom === 'Image' ? (

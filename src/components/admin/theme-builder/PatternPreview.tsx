@@ -2,7 +2,7 @@
 import { atomManifests } from '@/widgets/atoms/manifests'
 import { createAtomRenderer } from '@/widgets/atoms/frontend'
 import React, { useState } from 'react'
-import { Alert, Button, Modal, Stack, Text } from '@mantine/core'
+import { Alert, Button, Loader, Modal, Stack, Text } from '@mantine/core'
 import { TextBlockFrontend } from '@/widgets/TextBlock/frontend'
 import { PostTitleFrontend } from '@/widgets/PostTitle/frontend'
 import { HeaderActionFrontend } from '@/widgets/HeaderAction/frontend'
@@ -27,7 +27,7 @@ export function LivePatternPreview({ record }: { record: PatternJSON }) {
   const root = record.payload.content[0]
   const Component = SIMPLE[root.type]
   return Component ? (
-    <div style={{ pointerEvents: 'none' }}>
+    <div inert style={{ pointerEvents: 'none' }}>
       <Component
         {...root.props}
         dataContext={{
@@ -43,24 +43,63 @@ export function LivePatternPreview({ record }: { record: PatternJSON }) {
 }
 export function PatternThumbnail({ record, url }: { record: PatternJSON; url?: string | null }) {
   const [failedURL, setFailedURL] = useState<string | null>(null)
+  const [attempt, setAttempt] = useState(0)
+  const [loaded, setLoaded] = useState<string | null>(null)
   if (!isComplexPattern(record)) return <LivePatternPreview record={record} />
-  const source = url || record.thumbnail?.url
-  return source && source !== failedURL ? (
-    <img
-      src={source}
-      alt={record.name}
-      loading="lazy"
-      style={{ display: 'block', width: '100%', height: 'auto' }}
-      onError={() => setFailedURL(source)}
-    />
-  ) : (
-    <Stack p="sm" gap="xs">
-      <Text fw={600}>Preview</Text>
-      <Text size="xs" c="dimmed">
-        {record.thumbnail?.status === 'failed' ? 'Thumbnail unavailable' : 'Thumbnail pending'}
-      </Text>
-      <Text size="xs">{record.description}</Text>
-    </Stack>
+  const base = url || record.thumbnail?.url
+  const source = base ? `${base}${base.includes('?') ? '&' : '?'}retry=${attempt}` : undefined
+  return (
+    <div
+      style={{
+        aspectRatio: loaded === source ? undefined : '3 / 2',
+        position: 'relative',
+        width: '100%',
+        overflow: 'hidden',
+      }}
+    >
+      {source && source !== failedURL ? (
+        <>
+          {loaded !== source && (
+            <div
+              role="status"
+              style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center' }}
+            >
+              <Loader size="sm" aria-label="Preparing thumbnail" />
+            </div>
+          )}
+          <img
+            key={source}
+            src={source}
+            alt={record.name}
+            loading="lazy"
+            width={1200}
+            style={{ display: 'block', width: '100%', height: 'auto' }}
+            onLoad={() => setLoaded(source)}
+            onError={() => setFailedURL(source)}
+          />
+        </>
+      ) : (
+        <Stack p="sm" gap="xs" role="status">
+          <Text size="sm">Thumbnail unavailable</Text>
+          <Text size="xs" c="dimmed">
+            {record.name} · Capture failed. Retry to load this design.
+          </Text>
+          {source && (
+            <Button
+              size="sm"
+              variant="subtle"
+              style={{ position: 'relative', zIndex: 1 }}
+              onClick={(event) => {
+                event.stopPropagation()
+                setAttempt((value) => value + 1)
+              }}
+            >
+              Retry thumbnail
+            </Button>
+          )}
+        </Stack>
+      )}
+    </div>
   )
 }
 export function PatternPreviewModal({

@@ -3,10 +3,53 @@ import { systemDescriptor } from '../widget-contracts'
 import type { UniversalStyle } from '@/lib/style-engine/types'
 import type { ThemeComponentData } from '../types'
 import { collectPatternTokens, type PatternJSON } from './json'
-const text = (id: string, title: string): ThemeComponentData => ({
-  type: 'TextBlock',
-  props: { id, title, content: 'Nội dung của bạn theo phong cách Theme hiện tại.' },
+const text = (
+  id: string,
+  title: string,
+  align: 'left' | 'center' = 'left',
+): ThemeComponentData => ({
+  type: 'Columns',
+  props: {
+    id,
+    distribution: '1',
+    column1: contentAtoms(id, title, 'Nội dung của bạn theo phong cách Theme hiện tại.', { align }),
+  },
 })
+function contentAtoms(
+  id: string,
+  title: string,
+  content: string,
+  typography: UniversalStyle['typography'] = {},
+): ThemeComponentData[] {
+  return [
+    {
+      type: 'Heading',
+      props: {
+        id: `${id}-heading`,
+        text: title,
+        style: {
+          typography: { typography: 'h2', colorToken: 'text', ...typography },
+          spacing: { margin: { topToken: 'none', bottomToken: 'sm' } },
+        },
+      },
+    },
+    {
+      type: 'Text',
+      props: {
+        id: `${id}-body`,
+        text: content,
+        style: {
+          typography: {
+            typography: 'p1',
+            colorToken: 'text',
+            ...(typography.align ? { align: typography.align } : {}),
+          },
+          spacing: { margin: { topToken: 'none', bottomToken: 'md' } },
+        },
+      },
+    },
+  ]
+}
 function pattern(
   type: string,
   id: string,
@@ -15,7 +58,30 @@ function pattern(
   style: UniversalStyle,
   props: Record<string, unknown> = {},
 ): PatternJSON {
-  const payload = { content: [{ type, props: { ...props, id: `${id}-root`, style } }], zones: {} }
+  const composite = type === 'TextBlock'
+  const { typography, ...containerStyle } = style
+  const payload = {
+    content: [
+      composite
+        ? {
+            type: 'Section',
+            props: {
+              id: `${id}-root`,
+              containerWidth: 'full',
+              verticalPadding: 'none',
+              style: containerStyle,
+              content: contentAtoms(
+                id,
+                String(props.title || ''),
+                String(props.content || ''),
+                typography,
+              ),
+            },
+          }
+        : { type, props: { ...props, id: `${id}-root`, style } },
+    ],
+    zones: {},
+  }
   return {
     schemaVersion: 1,
     id,
@@ -29,12 +95,16 @@ function pattern(
           : type === 'FeaturedMedia'
             ? 'dynamic'
             : 'text',
-    widgetType: type,
+    widgetType: composite ? 'Section' : type,
     source: 'system',
-    version: 1,
+    version: ['TextBlock', 'Section', 'Columns'].includes(type) ? 2 : 1,
     payload,
     theme: { tokens: collectPatternTokens(payload) },
-    thumbnail: { version: 1, status: 'pending', url: `/pattern-library/${id}-v1.webp` },
+    thumbnail: {
+      version: ['TextBlock', 'Section', 'Columns'].includes(type) ? 2 : 1,
+      status: 'pending',
+      url: `/api/pattern-thumbnails/${id}`,
+    },
   }
 }
 const padding = (token: string) => ({ padding: { token } })
@@ -141,12 +211,7 @@ const sectionPatterns = [
     { dimensions: { containerWidth: 'narrowWidth' }, spacing: padding('xl') },
     {
       containerWidth: 'narrowWidth',
-      content: [
-        {
-          ...text('center-text', 'Tập trung vào điều quan trọng'),
-          props: { ...text('center-text', 'Tập trung vào điều quan trọng').props, align: 'center' },
-        },
-      ],
+      content: [text('center-text', 'Tập trung vào điều quan trọng', 'center')],
     },
   ),
   pattern(

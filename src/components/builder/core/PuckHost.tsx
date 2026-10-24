@@ -46,6 +46,8 @@ import {
 } from '@/lib/style-engine/domains'
 import { WidgetPatternLibrary } from '@/components/admin/theme-builder/WidgetPatternLibrary'
 import actionBarStyles from './WidgetActionBar.module.css'
+import { ImageQuickAction } from './ImageQuickAction'
+import { useToolbarBoundary } from './useToolbarBoundary'
 
 import { AtomModal, type AtomModalRequest } from '@/components/admin/theme-builder/AtomModals'
 import { ATOM_TYPES, hasThemeLibrary } from '@/lib/theme-engine/widget-contracts'
@@ -221,6 +223,7 @@ function PuckActionBarBridge({
 }) {
   const bridge = React.useContext(EditorBridgeContext)!
   const selectedItem = usePuck((s) => s.selectedItem)
+  const toolbarRef = useToolbarBoundary()
   const itemSelector = usePuck((s) => s.appState?.ui?.itemSelector)
   const appData = usePuck((s) => s.appState?.data)
   const getItemBySelector = usePuck((s) => (s as any).getItemBySelector)
@@ -270,9 +273,14 @@ function PuckActionBarBridge({
 
   return (
     <div
+      ref={toolbarRef}
       className={actionBarStyles.toolbar}
+      onClick={(event) => event.stopPropagation()}
       data-style-open={Boolean(componentId && styleMenuComponentId === componentId)}
     >
+      {rawType === 'Image' && componentId && (
+        <ImageQuickAction key={componentId} id={componentId} beforeOperation={bridge.beforeOperation} />
+      )}
       <ActionBar>
         <ActionBar.Group>
           {parentAction}
@@ -289,7 +297,7 @@ function PuckActionBarBridge({
                     label={STYLE_MODAL_TITLES[domain]}
                     onClick={(event) => handleEditStyleClick(event, domain)}
                   >
-                    <Icon size={14} />
+                    <Icon size={20} />
                   </ActionBar.Action>
                 </span>
               )
@@ -297,8 +305,8 @@ function PuckActionBarBridge({
           {getStyleModalDomains(componentType, resolvedItem?.props?.variant).length > 4 && (
             <Menu withinPortal>
               <Menu.Target>
-                <ActionIcon variant="subtle" size="sm" aria-label="More style actions">
-                  <MoreHorizontal size={14} />
+                <ActionIcon variant="subtle" size="lg" aria-label="More style actions" title="More style actions">
+                  <MoreHorizontal size={20} />
                 </ActionIcon>
               </Menu.Target>
               <Menu.Dropdown>
@@ -319,7 +327,7 @@ function PuckActionBarBridge({
             <ActionBar.Action key={kind} label={kind === 'settings' ? 'Settings' : 'Link'} onClick={event => {
               event.stopPropagation()
               bridge.openAtom({ id: componentId, type: componentType, kind, anchor: event.currentTarget as HTMLElement })
-            }}>{kind === 'settings' ? <Settings size={14} /> : <LinkIcon size={14} />}</ActionBar.Action>
+            }}>{kind === 'settings' ? <Settings size={20} /> : <LinkIcon size={20} />}</ActionBar.Action>
           ))}
           <ActionBar.Separator />
           {children}
@@ -753,7 +761,7 @@ export function PuckHost({
   return (
     <EditorBridgeContext.Provider value={bridgeValue}>
       <Box
-        className={`zyvavu-puck-host-wrapper ${actionBarStyles.libraryHost}`}
+        className={`zyvavu-puck-host-wrapper ${actionBarStyles.libraryHost} ${templateContext ? actionBarStyles.themeNavigation : ''}`}
         style={{
           display: 'flex',
           flexDirection: 'column',
