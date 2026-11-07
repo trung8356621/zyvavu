@@ -10,7 +10,11 @@ import { AtomPresentation, createAtomRenderer } from './frontend'
 import { systemDescriptor } from '@/lib/theme-engine/widget-contracts'
 import { documentBoundHeadingFields, headingTagField } from './heading-fields'
 
-export { documentBoundHeadingFields, headingTagField } from './heading-fields'
+export {
+  boundHeadingTagField,
+  documentBoundHeadingFields,
+  headingTagField,
+} from './heading-fields'
 
 const imageSourceField: CustomField<string> = {
   type: 'custom',

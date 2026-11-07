@@ -6,19 +6,26 @@ import {
   registerOverlayPortal,
 } from '@puckeditor/core'
 import { EditorContent, useEditor } from '@tiptap/react'
+import type { Editor } from '@tiptap/react'
 import { resolveWidgetStyles } from '@/lib/style-engine/serializer'
 import { animationAttributes } from '@/lib/style-engine/animation-presets'
 import { withWidgetStyleSurface } from '@/lib/style-engine/WidgetStyleSurface'
 import type { WidgetSemanticStyle } from '@/lib/theme-engine/types'
 import { commitAtomText } from './commit-atom-text'
 import {
-  escapeHtml,
-  serializeHeadingFromEditor,
-  serializeTextFromEditor,
+  allowsMultilineEnter,
+  serializeInlineFromEditor,
   textEditorContent,
+  type HeadingTag,
   type InlineAtomKind,
 } from './content-model'
-import { headingExtensions, textExtensions } from './extensions'
+import {
+  getPuckComponentRect,
+  isInsideEditingChrome,
+} from './edit-boundary'
+import { inlineContentExtensions } from './extensions'
+import { InlineFormatToolbar } from './InlineFormatToolbar'
+import { InlineLinkModal, type InlineLinkDraft } from './InlineLinkModal'
 import styles from './InlineContentEditor.module.css'
 
 const usePuck = createUsePuck()
@@ -27,19 +34,20 @@ type EditableProps = {
   kind: InlineAtomKind
   id: string
   text?: string
-  tag?: 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6'
+  tag?: HeadingTag
   style?: WidgetSemanticStyle
   children: React.ReactNode
 }
 
 /**
- * Double-click gated inline edit for free Heading/Text atoms.
+ * Double-click gated inline edit for free Heading (H1–H6/P) and legacy Text.
  * Local Tiptap draft only; one Puck replace on commit; Escape cancels.
  */
 export function InlineEditableAtom({ kind, id, text, tag, style, children }: EditableProps) {
   const [editing, setEditing] = React.useState(false)
   const startTextRef = React.useRef(text ?? '')
   const clickPointRef = React.useRef<{ x: number; y: number } | null>(null)
+  const idleRef = React.useRef<HTMLDivElement | null>(null)
   const selected = usePuck((s) => s.selectedItem)
   const getItemById = usePuck((s) => s.getItemById)
   const getSelectorForId = usePuck((s) => s.getSelectorForId)
@@ -64,19 +72,33 @@ export function InlineEditableAtom({ kind, id, text, tag, style, children }: Edi
     clickPointRef.current = null
   }, [])
 
+  const enterEditing = React.useCallback(
+    (event: React.MouseEvent) => {
+      event.preventDefault()
+      event.stopPropagation()
+      startTextRef.current = text ?? ''
+      clickPointRef.current = { x: event.clientX, y: event.clientY }
+      setEditing(true)
+    },
+    [text],
+  )
+
+  React.useEffect(() => {
+    if (editing) return
+    const el = idleRef.current
+    if (!el) return
+    return registerOverlayPortal(el, { disableDragOnFocus: true })
+  }, [editing])
+
   if (!editing) {
     return (
       <div
+        ref={idleRef}
         className={styles.root}
         data-inline-edit="idle"
         data-inline-edit-kind={kind}
-        onDoubleClick={(event) => {
-          event.preventDefault()
-          event.stopPropagation()
-          startTextRef.current = text ?? ''
-          clickPointRef.current = { x: event.clientX, y: event.clientY }
-          setEditing(true)
-        }}
+        data-inline-edit-id={id}
+        onDoubleClick={enterEditing}
       >
         {children}
       </div>
@@ -112,7 +134,7 @@ function ActiveInlineEditor({
   kind: InlineAtomKind
   id: string
   initialText: string
-  tag?: 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6'
+  tag?: HeadingTag
   style?: WidgetSemanticStyle
   clickPoint: { x: number; y: number } | null
   onCommit: (text: string) => void
@@ -121,41 +143,55 @@ function ActiveInlineEditor({
 }) {
   const draftRef = React.useRef(initialText)
   const committedRef = React.useRef(false)
-  const surfaceRef = React.useRef<HTMLDivElement | null>(null)
+  const sessionRef = React.useRef<HTMLDivElement | null>(null)
+  const [surfaceEl, setSurfaceEl] = React.useState<HTMLDivElement | null>(null)
   const mountGenRef = React.useRef(0)
+  const suppressSelectionCommitRef = React.useRef(false)
+  const multiline = allowsMultilineEnter(kind, tag)
+  const [linkDraft, setLinkDraft] = React.useState<InlineLinkDraft | null>(null)
+  const linkOpen = Boolean(linkDraft)
 
   const serialize = React.useCallback(
-    (html: string, plain: string) => {
-      if (kind === 'Heading') return serializeHeadingFromEditor(plain)
-      return serializeTextFromEditor(html)
-    },
-    [kind],
+    (html: string) => serializeInlineFromEditor(html),
+    [],
   )
 
   const finishCommit = React.useCallback(() => {
-    if (committedRef.current) return
+    if (committedRef.current || linkOpen) return
     committedRef.current = true
     onCommit(draftRef.current)
-  }, [onCommit])
+  }, [linkOpen, onCommit])
 
   const finishCancel = React.useCallback(() => {
     if (committedRef.current) return
     committedRef.current = true
+    setLinkDraft(null)
     onCancel()
   }, [onCancel])
 
+  const placeCaretAtPoint = React.useCallback((editor: Editor, x: number, y: number) => {
+    if (editor.isDestroyed) return
+    editor.commands.focus()
+    if (typeof document.elementFromPoint !== 'function') return
+    try {
+      const pos = editor.view.posAtCoords({ left: x, top: y })
+      if (pos) editor.commands.setTextSelection(pos.pos)
+      else editor.commands.setTextSelection(editor.state.doc.content.size)
+    } catch {
+      editor.commands.focus('end')
+    }
+  }, [])
+
   const editor = useEditor({
-    extensions: kind === 'Heading' ? headingExtensions() : textExtensions(),
-    content:
-      kind === 'Heading'
-        ? `<p>${escapeHtml(initialText)}</p>`
-        : textEditorContent(initialText),
+    extensions: inlineContentExtensions(),
+    content: textEditorContent(initialText),
     immediatelyRender: false,
     editorProps: {
       attributes: {
         class: 'tiptap zyvavu-inline-tiptap',
         'data-inline-edit': 'active',
         'data-inline-edit-kind': kind,
+        'data-inline-edit-tag': tag || (kind === 'Text' ? 'p' : 'h2'),
       },
       handleDOMEvents: {
         keydown: (_view, event) => {
@@ -166,10 +202,14 @@ function ActiveInlineEditor({
           if (event.key === 'Escape') {
             event.preventDefault()
             event.stopPropagation()
+            if (linkOpen) {
+              setLinkDraft(null)
+              return true
+            }
             finishCancel()
             return true
           }
-          if (kind === 'Heading' && event.key === 'Enter') {
+          if (!multiline && event.key === 'Enter') {
             event.preventDefault()
             event.stopPropagation()
             finishCommit()
@@ -180,61 +220,90 @@ function ActiveInlineEditor({
       },
     },
     onUpdate: ({ editor: current }) => {
-      draftRef.current = serialize(current.getHTML(), current.getText({ blockSeparator: '\n' }))
+      draftRef.current = serialize(current.getHTML())
     },
   })
 
-  // Seed draft after mount.
   React.useEffect(() => {
     if (!editor) return
-    draftRef.current = serialize(editor.getHTML(), editor.getText({ blockSeparator: '\n' }))
+    draftRef.current = serialize(editor.getHTML())
   }, [editor, serialize])
 
-  // Caret near double-click point.
-  React.useEffect(() => {
-    if (!editor || !clickPoint) return
-    const coords = { left: clickPoint.x, top: clickPoint.y }
-    const pos = editor.view.posAtCoords(coords)
-    requestAnimationFrame(() => {
-      editor.commands.focus()
-      if (pos) editor.commands.setTextSelection(pos.pos)
-    })
-  }, [editor, clickPoint])
-
   React.useEffect(() => {
     if (!editor) return
-    editor.commands.focus()
-  }, [editor])
+    let raf = 0
+    raf = requestAnimationFrame(() => {
+      if (editor.isDestroyed) return
+      if (clickPoint) placeCaretAtPoint(editor, clickPoint.x, clickPoint.y)
+      else editor.commands.focus('end')
+    })
+    return () => cancelAnimationFrame(raf)
+  }, [editor, clickPoint, placeCaretAtPoint])
 
-  // Disable Puck drag while focused.
   React.useEffect(() => {
-    const el = surfaceRef.current
+    const el = sessionRef.current
     if (!el) return
-    return registerOverlayPortal(el, { disableDragOnFocus: true })
+    // Keep drag disabled for the whole session (not only after focus delay).
+    return registerOverlayPortal(el, { disableDrag: true })
   }, [editor])
 
-  // Click outside → commit.
+  /**
+   * Containment uses the visible [data-puck-component] rect (selection outline).
+   * Capture-phase: decide before Puck selection; if the event visually lands in our
+   * outline but DOM-hit a parent, stop it and keep editing.
+   */
   React.useEffect(() => {
     const onPointerDown = (event: PointerEvent) => {
-      const el = surfaceRef.current
-      if (!el) return
-      if (event.target instanceof Node && el.contains(event.target)) return
-      finishCommit()
-    }
-    // Capture so we run before Puck selection handlers clear focus.
-    document.addEventListener('pointerdown', onPointerDown, true)
-    return () => document.removeEventListener('pointerdown', onPointerDown, true)
-  }, [finishCommit])
+      if (linkOpen) return
+      const session = sessionRef.current
+      if (!session) return
+      const boundary = getPuckComponentRect(session)
+      const inside = isInsideEditingChrome(event.clientX, event.clientY, event.target, boundary)
 
-  // Selection moved away (parent flipped editing off or selected another widget).
-  React.useEffect(() => {
-    if (selectedId && selectedId !== id) {
+      if (inside) {
+        suppressSelectionCommitRef.current = true
+        const target = event.target
+        const el = target instanceof Element ? target : null
+        const onChrome = Boolean(
+          el?.closest('[data-inline-edit-toolbar]') || el?.closest('[data-inline-link-modal]'),
+        )
+        const inProse = Boolean(el?.closest('.ProseMirror'))
+        const inSessionDom = target instanceof Node && session.contains(target)
+
+        if (!inSessionDom && !onChrome) {
+          // Blank area of the outline hit a parent — claim the event.
+          event.preventDefault()
+          event.stopPropagation()
+          if (editor && !editor.isDestroyed) placeCaretAtPoint(editor, event.clientX, event.clientY)
+        } else if (inSessionDom && !onChrome && !inProse && editor && !editor.isDestroyed) {
+          // Padding / surface chrome inside our session.
+          placeCaretAtPoint(editor, event.clientX, event.clientY)
+        }
+        return
+      }
+
       finishCommit()
     }
+
+    const onPointerUp = () => {
+      window.setTimeout(() => {
+        suppressSelectionCommitRef.current = false
+      }, 0)
+    }
+
+    document.addEventListener('pointerdown', onPointerDown, true)
+    document.addEventListener('pointerup', onPointerUp, true)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown, true)
+      document.removeEventListener('pointerup', onPointerUp, true)
+    }
+  }, [editor, finishCommit, linkOpen, placeCaretAtPoint])
+
+  React.useEffect(() => {
+    if (suppressSelectionCommitRef.current) return
+    if (selectedId && selectedId !== id) finishCommit()
   }, [finishCommit, id, selectedId])
 
-  // Unmount safety: commit draft unless cancel already ran.
-  // Generation + microtask skips React Strict Mode remount false commits.
   React.useEffect(() => {
     const gen = ++mountGenRef.current
     return () => {
@@ -246,24 +315,67 @@ function ActiveInlineEditor({
     }
   }, [onCommit])
 
-  const resolved = resolveWidgetStyles(style)
-  const HeadingTag = tag || 'h2'
-  const body = (
-    <div ref={surfaceRef} className={styles.surface} data-widget-id={id}>
-      <EditorContent editor={editor} />
-    </div>
+  const openLinkModal = React.useCallback((current: Editor) => {
+    const { from, to } = current.state.selection
+    const existing = current.getAttributes('link').href as string | undefined
+    setLinkDraft({
+      href: existing || '',
+      newTab: current.getAttributes('link').target === '_blank',
+      from,
+      to,
+    })
+  }, [])
+
+  const applyLink = React.useCallback(
+    (draft: InlineLinkDraft) => {
+      if (!editor || editor.isDestroyed) return
+      editor
+        .chain()
+        .focus()
+        .setTextSelection({ from: draft.from, to: draft.to })
+        .extendMarkRange('link')
+        .setLink({
+          href: draft.href,
+          target: draft.newTab ? '_blank' : null,
+        })
+        .run()
+      draftRef.current = serialize(editor.getHTML())
+      setLinkDraft(null)
+    },
+    [editor, serialize],
   )
 
-  const node =
-    kind === 'Heading' ? (
-      <HeadingTag style={resolved} {...animationAttributes(style?.animation)}>
-        {body}
-      </HeadingTag>
-    ) : (
-      <div style={resolved} {...animationAttributes(style?.animation)}>
-        {body}
-      </div>
-    )
+  const resolved = resolveWidgetStyles(style)
+  const Tag = (tag || (kind === 'Text' ? 'p' : 'h2')) as HeadingTag
+  const SemanticTag = Tag as keyof React.JSX.IntrinsicElements
+
+  const node = (
+    <div ref={sessionRef} className={styles.session} data-inline-edit-session={id}>
+      {editor ? (
+        <InlineFormatToolbar editor={editor} anchorEl={surfaceEl} onOpenLink={openLinkModal} />
+      ) : null}
+      <SemanticTag
+        className={styles.semantic}
+        style={resolved}
+        {...animationAttributes(style?.animation)}
+      >
+        <div
+          ref={setSurfaceEl}
+          className={styles.surface}
+          data-widget-id={id}
+        >
+          <EditorContent editor={editor} />
+        </div>
+      </SemanticTag>
+      <InlineLinkModal
+        opened={linkOpen}
+        draft={linkDraft}
+        onChange={setLinkDraft}
+        onApply={applyLink}
+        onClose={() => setLinkDraft(null)}
+      />
+    </div>
+  )
 
   return withWidgetStyleSurface(node, style, id)
 }

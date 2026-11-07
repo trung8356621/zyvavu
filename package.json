@@ -28,6 +28,7 @@
     "@playwright/test": "1.58.2",
     "@puckeditor/core": "^0.23.0",
     "@tiptap/core": "^3.32.0",
+    "@tiptap/extension-link": "3.32.0",
     "@tiptap/extension-underline": "^3.32.0",
     "@tiptap/pm": "^3.32.0",
     "@tiptap/react": "^3.32.0",

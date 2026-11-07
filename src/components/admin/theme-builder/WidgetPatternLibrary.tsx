@@ -159,13 +159,15 @@ export function WidgetPatternLibrary({
   const my = useMyPatterns(search, source === 'user')
   const types = Object.keys(config.components).filter(
     (type) =>
-      mode === 'user' ||
-      (mode === 'theme'
-        ? !!systemDescriptor(type) || type === 'PostContent' || type === 'CollectionLoop'
-        : !systemDescriptor(type) &&
-          !['PostTitle', 'PostContent', 'PostMeta', 'FeaturedMedia', 'CategoryHeader'].includes(
-            type,
-          )),
+      // Free Text atom stays registered for legacy docs but is hidden from new insertions.
+      type !== 'Text' &&
+      (mode === 'user' ||
+        (mode === 'theme'
+          ? !!systemDescriptor(type) || type === 'PostContent' || type === 'CollectionLoop'
+          : !systemDescriptor(type) &&
+            !['PostTitle', 'PostContent', 'PostMeta', 'FeaturedMedia', 'CategoryHeader'].includes(
+              type,
+            ))),
   )
   const categoryFor = (type: string) =>
     mode === 'theme'

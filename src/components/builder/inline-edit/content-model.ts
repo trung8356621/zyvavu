@@ -1,16 +1,25 @@
 /**
- * Heading/Text content contracts for Tiptap inline edit V1.
+ * Unified Heading/Text content contracts for Tiptap inline edit.
  *
- * Heading: always plain string in props.text.
- * Text: unmarked props.text is exact legacy plain text.
- *       Rich Text uses explicit marker + sanitized HTML (never inferred from "<").
+ * Unmarked props.text = exact legacy plain (never inferred from "<").
+ * Rich content: <!--zyvavu-rt:v1--> + sanitized HTML (p/br/marks/links).
  */
 
 export const RICHTEXT_MARKER = '<!--zyvavu-rt:v1-->'
 
-const ALLOWED_TAGS = new Set(['p', 'br', 'strong', 'em', 'b', 'i', 'u', 's'])
+const ALLOWED_TAGS = new Set(['p', 'br', 'strong', 'em', 'b', 'i', 'u', 's', 'a'])
 
 export type InlineAtomKind = 'Heading' | 'Text'
+export type HeadingTag = 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'p'
+
+export function isParagraphTag(tag?: string | null): boolean {
+  return (tag || '').toLowerCase() === 'p'
+}
+
+/** Multi-paragraph Enter behavior for P tags and legacy Text atoms. */
+export function allowsMultilineEnter(kind: InlineAtomKind, tag?: string | null): boolean {
+  return kind === 'Text' || isParagraphTag(tag)
+}
 
 export function isRichTextStored(value: string | undefined | null): boolean {
   return typeof value === 'string' && value.startsWith(RICHTEXT_MARKER)
@@ -31,7 +40,6 @@ export function wrapRichTextHtml(sanitizedHtml: string): string {
   return `${RICHTEXT_MARKER}${sanitizedHtml}`
 }
 
-/** Escape plain text for safe HTML embedding (SSR-safe). */
 export function escapeHtml(text: string): string {
   return text
     .replace(/&/g, '&amp;')
@@ -51,9 +59,27 @@ function decodeBasicEntities(text: string): string {
     .replace(/&amp;/gi, '&')
 }
 
+/** Allow http(s), mailto, relative, hash, query. Reject javascript/data/vbscript. */
+export function sanitizeHref(href: string | undefined | null): string | null {
+  if (href == null) return null
+  const value = href.trim()
+  if (!value) return null
+  if (/^(?:javascript|data|vbscript):/i.test(value)) return null
+  if (/^(?:https?:|mailto:|\/|#|\?)/i.test(value)) return value
+  // Protocol-relative or bare relative path without scheme
+  if (value.startsWith('//')) return `https:${value}`
+  if (!/^[a-z][a-z0-9+.-]*:/i.test(value)) return value
+  return null
+}
+
+function readHrefAttr(rawTag: string): string | null {
+  const match = rawTag.match(/\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i)
+  return sanitizeHref(match?.[1] ?? match?.[2] ?? match?.[3] ?? '')
+}
+
 /**
  * SSR-safe allowlist sanitizer. No window/document.
- * Keeps p/br/strong/em/b/i/u/s only; strips all attributes and other tags (keeps text).
+ * Tags: p/br/strong/em/b/i/u/s/a(href only).
  */
 export function sanitizeTextHtml(input: string): string {
   if (!input) return ''
@@ -105,8 +131,15 @@ export function sanitizeTextHtml(input: string): string {
       continue
     }
 
-    // Void-ish self-close already handled for br; ignore other self-closing noise.
     if (rawTag.endsWith('/')) continue
+
+    if (name === 'a') {
+      const href = readHrefAttr(rawTag)
+      if (!href) continue
+      openStack.push('a')
+      out += `<a href="${escapeHtml(href)}">`
+      continue
+    }
 
     openStack.push(name)
     out += `<${name}>`
@@ -119,7 +152,6 @@ export function sanitizeTextHtml(input: string): string {
   return out
 }
 
-/** Normalize empty / trivial rich HTML back toward a single empty paragraph. */
 export function normalizeTextHtml(html: string): string {
   const sanitized = sanitizeTextHtml(html).trim()
   if (!sanitized || sanitized === '<p></p>' || sanitized === '<p><br /></p>') {
@@ -128,39 +160,34 @@ export function normalizeTextHtml(html: string): string {
   return sanitized
 }
 
-export function headingEditorContent(text: string | undefined | null): string {
-  // Heading is always plain; never treat as HTML.
-  return escapeHtml(text ?? '')
-}
-
 export function textEditorContent(stored: string | undefined | null): string {
   const { mode, content } = unwrapStoredText(stored)
   if (mode === 'html') return normalizeTextHtml(content)
-  // Plain → single paragraph of escaped text; newlines become <br /> for editor UX.
   if (!content) return '<p></p>'
   const parts = content.split(/\n/)
   return `<p>${parts.map(escapeHtml).join('<br />')}</p>`
 }
 
-export function serializeHeadingFromEditor(plainOrHtml: string): string {
-  // Prefer explicit plain extraction: strip tags after sanitize path.
-  return htmlToPlainText(plainOrHtml)
-}
-
-export function serializeTextFromEditor(html: string, opts?: { forcePlain?: boolean }): string {
+/** Unified serialize for Heading (H1–H6/P) and legacy Text. */
+export function serializeInlineFromEditor(html: string, opts?: { forcePlain?: boolean }): string {
   const sanitized = normalizeTextHtml(html)
   if (opts?.forcePlain) return htmlToPlainText(sanitized)
-
-  // If content has no marks and is a single paragraph of text, store as plain for compat.
-  if (isTrivialPlainParagraph(sanitized)) {
-    return htmlToPlainText(sanitized)
-  }
+  if (isTrivialPlainParagraph(sanitized)) return htmlToPlainText(sanitized)
   return wrapRichTextHtml(sanitized)
 }
 
+/** @deprecated use serializeInlineFromEditor */
+export function serializeHeadingFromEditor(plainOrHtml: string): string {
+  return htmlToPlainText(plainOrHtml)
+}
+
+/** @deprecated use serializeInlineFromEditor */
+export function serializeTextFromEditor(html: string, opts?: { forcePlain?: boolean }): string {
+  return serializeInlineFromEditor(html, opts)
+}
+
 function isTrivialPlainParagraph(html: string): boolean {
-  // Single <p>…</p> with only text/br, no marks. Multi-paragraph stays marked rich.
-  if (/<(strong|em|b|i|u|s)\b/i.test(html)) return false
+  if (/<(strong|em|b|i|u|s|a)\b/i.test(html)) return false
   const openCount = (html.match(/<p\b/gi) || []).length
   if (openCount !== 1) return false
   return /^<p>[\s\S]*<\/p>$/i.test(html)
@@ -174,14 +201,9 @@ export function htmlToPlainText(html: string): string {
     .replace(/<\s*p\b[^>]*>/gi, '')
     .replace(/<[^>]+>/g, '')
   text = decodeBasicEntities(text)
-  // Trim trailing newline introduced by closing </p>
   return text.replace(/\n$/, '')
 }
 
-/**
- * Frontend Text render model. Legacy unmarked strings stay exact plain children.
- * Marked rich strings render sanitized HTML only.
- */
 export function resolveTextRender(stored: string | undefined | null): {
   mode: 'plain' | 'html'
   plain?: string

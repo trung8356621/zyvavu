@@ -7,7 +7,7 @@ import { resolveTextRender } from '@/components/builder/inline-edit/content-mode
 import { systemDescriptor, type AtomType } from '@/lib/theme-engine/widget-contracts'
 export type AtomProps = {
   id?: string
-  tag?: 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6'
+  tag?: 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'p'
   text?: string
   href?: string
   newTab?: boolean
@@ -17,6 +17,30 @@ export type AtomProps = {
   style?: WidgetSemanticStyle
   dataContext?: ThemeDataContext
 }
+
+function renderInlineText(
+  Tag: keyof React.JSX.IntrinsicElements,
+  text: string | undefined,
+  resolved: React.CSSProperties,
+  animation: ReturnType<typeof animationAttributes>,
+) {
+  const render = resolveTextRender(text)
+  // Inner span keeps dangerouslySetInnerHTML off the style-surface root
+  // (withWidgetStyleSurface always injects layer children onto the root).
+  if (render.mode === 'html') {
+    return (
+      <Tag style={resolved} {...animation}>
+        <span dangerouslySetInnerHTML={{ __html: render.html || '' }} />
+      </Tag>
+    )
+  }
+  return (
+    <Tag style={resolved} {...animation}>
+      {render.plain}
+    </Tag>
+  )
+}
+
 export function AtomPresentation({
   kind,
   id,
@@ -31,11 +55,12 @@ export function AtomPresentation({
   newTab,
 }: AtomProps & { kind: AtomType; primaryHeading?: boolean }) {
   const resolved = resolveWidgetStyles(style)
-  // Explicit HTML Tag from Fields wins; document-bound titles default to h1.
-  const HeadingTag = tag || (primaryHeading ? 'h1' : 'h2')
+  // Explicit HTML Tag from Fields wins; document-bound titles default to h1 (never P).
+  const HeadingTag = (tag || (primaryHeading ? 'h1' : 'h2')) as keyof React.JSX.IntrinsicElements
+  const anim = animationAttributes(style?.animation)
   const node =
     kind === 'Image' ? (
-      <div style={resolved} {...animationAttributes(style?.animation)}>
+      <div style={resolved} {...anim}>
         {src ? (
           <img
             src={src}
@@ -55,41 +80,24 @@ export function AtomPresentation({
         )}
       </div>
     ) : kind === 'Heading' ? (
-      <HeadingTag style={resolved} {...animationAttributes(style?.animation)}>
-        {text}
-      </HeadingTag>
+      renderInlineText(HeadingTag, text, resolved, anim)
     ) : kind === 'Button' && href && !/^(?:javascript|data|vbscript):/i.test(href.trim()) ? (
       <a
         href={href}
         target={newTab ? '_blank' : undefined}
         rel={newTab ? 'noopener noreferrer' : undefined}
         style={resolved}
-        {...animationAttributes(style?.animation)}
+        {...anim}
       >
         {text}
       </a>
     ) : kind === 'Button' ? (
-      <button type="button" style={resolved} {...animationAttributes(style?.animation)}>
+      <button type="button" style={resolved} {...anim}>
         {text}
       </button>
     ) : (
-      (() => {
-        const render = resolveTextRender(text)
-        if (render.mode === 'html') {
-          return (
-            <div
-              style={resolved}
-              {...animationAttributes(style?.animation)}
-              dangerouslySetInnerHTML={{ __html: render.html || '' }}
-            />
-          )
-        }
-        return (
-          <p style={resolved} {...animationAttributes(style?.animation)}>
-            {render.plain}
-          </p>
-        )
-      })()
+      // Legacy Text atom — keep rendering for saved documents.
+      renderInlineText('p', text, resolved, anim)
     )
   return withWidgetStyleSurface(node, style, id)
 }

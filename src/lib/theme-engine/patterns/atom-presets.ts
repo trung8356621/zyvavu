@@ -3,7 +3,9 @@ import type { PatternJSON } from './json'
 import { collectPatternTokens } from './json'
 
 /** Core atoms shown first in the Widget Library (Patterns category excluded). */
-export const ATOM_LIBRARY_PRIORITY = ['Heading', 'Text', 'Button', 'Image'] as const
+export const ATOM_LIBRARY_PRIORITY = ['Heading', 'Button', 'Image'] as const
+/** Legacy Text remains renderable but is hidden from new library insertions. */
+export const LIBRARY_HIDDEN_ATOM_TYPES = ['Text'] as const
 
 export const LIBRARY_CATEGORY_ORDER = [
   'text',
@@ -201,26 +203,29 @@ export const HEADING_PRESETS: PatternJSON[] = [
   ),
 ]
 
-/** Text: 6 body/copy presets. IDs use `copy-*` to avoid colliding with legacy `text-*` composites. */
+/**
+ * Body/copy presets — insert unified Heading with HTML Tag P.
+ * IDs keep `copy-*` for compatibility; widget type is Heading (Text hidden from library).
+ */
 export const TEXT_PRESETS: PatternJSON[] = [
   atomPattern(
-    'Text',
+    'Heading',
     'copy-body',
     'Body text',
     'Default readable paragraph.',
     { typography: { typography: 'p1', colorToken: 'text' }, spacing: { margin: { bottomToken: 'md' } } },
-    { text: 'Nội dung đoạn văn theo typography của Theme.' },
+    { text: 'Nội dung đoạn văn theo typography của Theme.', tag: 'p' },
   ),
   atomPattern(
-    'Text',
+    'Heading',
     'copy-lead',
     'Lead paragraph',
     'Introductory copy with stronger presence.',
     { typography: { typography: 'h3', colorToken: 'text' }, spacing: { margin: { bottomToken: 'md' } } },
-    { text: 'Một đoạn mở đầu ngắn gọn, rõ ràng và dễ theo dõi.' },
+    { text: 'Một đoạn mở đầu ngắn gọn, rõ ràng và dễ theo dõi.', tag: 'p' },
   ),
   atomPattern(
-    'Text',
+    'Heading',
     'copy-centered',
     'Centered body',
     'Centered supporting paragraph.',
@@ -228,18 +233,18 @@ export const TEXT_PRESETS: PatternJSON[] = [
       typography: { typography: 'p1', colorToken: 'text', align: 'center' },
       spacing: { margin: { bottomToken: 'md' } },
     },
-    { text: 'Thông điệp ngắn đặt giữa khối nội dung.' },
+    { text: 'Thông điệp ngắn đặt giữa khối nội dung.', tag: 'p' },
   ),
   atomPattern(
-    'Text',
+    'Heading',
     'copy-caption',
     'Caption',
     'Small supporting caption text.',
     { typography: { typography: 'p2', colorToken: 'text' }, spacing: { margin: { bottomToken: 'sm' } } },
-    { text: 'Chú thích hoặc ghi chú nhỏ dưới nội dung chính.' },
+    { text: 'Chú thích hoặc ghi chú nhỏ dưới nội dung chính.', tag: 'p' },
   ),
   atomPattern(
-    'Text',
+    'Heading',
     'copy-accent',
     'Accent copy',
     'Primary-colored short statement.',
@@ -247,18 +252,18 @@ export const TEXT_PRESETS: PatternJSON[] = [
       typography: { typography: 'p1', colorToken: 'primary' },
       spacing: { margin: { bottomToken: 'md' } },
     },
-    { text: 'Điểm nhấn theo màu thương hiệu của Theme.' },
+    { text: 'Điểm nhấn theo màu thương hiệu của Theme.', tag: 'p' },
   ),
   atomPattern(
-    'Text',
+    'Heading',
     'copy-compact',
     'Compact copy',
     'Dense paragraph with tight spacing.',
     { typography: { typography: 'p2', colorToken: 'text' }, spacing: { margin: { bottomToken: 'xs' } } },
-    { text: 'Nội dung ngắn, khoảng cách gọn cho bố cục dày.' },
+    { text: 'Nội dung ngắn, khoảng cách gọn cho bố cục dày.', tag: 'p' },
   ),
   atomPattern(
-    'Text',
+    'Heading',
     'copy-surface',
     'Surface body',
     'Paragraph on a padded surface panel.',
@@ -268,10 +273,10 @@ export const TEXT_PRESETS: PatternJSON[] = [
       radius: { radiusToken: 'md' },
       spacing: padding('md'),
     },
-    { text: 'Đoạn văn đặt trên nền surface của Theme, dễ đọc trong bố cục thẻ.' },
+    { text: 'Đoạn văn đặt trên nền surface của Theme, dễ đọc trong bố cục thẻ.', tag: 'p' },
   ),
   atomPattern(
-    'Text',
+    'Heading',
     'copy-tint',
     'Tinted note',
     'Soft primary-tinted supporting copy.',
@@ -281,10 +286,10 @@ export const TEXT_PRESETS: PatternJSON[] = [
       radius: { radiusToken: 'sm' },
       spacing: padding('sm'),
     },
-    { text: 'Ghi chú nhấn nhẹ theo màu primary của Theme.' },
+    { text: 'Ghi chú nhấn nhẹ theo màu primary của Theme.', tag: 'p' },
   ),
   atomPattern(
-    'Text',
+    'Heading',
     'copy-bordered',
     'Bordered quote',
     'Body text with a left accent border.',
@@ -294,10 +299,10 @@ export const TEXT_PRESETS: PatternJSON[] = [
       border: { ...border, side: 'left', widthToken: 'thick', colorToken: 'primary' },
       spacing: padding('sm'),
     },
-    { text: 'Trích dẫn ngắn với đường viền nhấn bên trái.' },
+    { text: 'Trích dẫn ngắn với đường viền nhấn bên trái.', tag: 'p' },
   ),
   atomPattern(
-    'Text',
+    'Heading',
     'copy-pattern',
     'Pattern caption',
     'Caption on a dotted pattern surface.',
@@ -310,10 +315,10 @@ export const TEXT_PRESETS: PatternJSON[] = [
       radius: { radiusToken: 'sm' },
       spacing: padding('sm'),
     },
-    { text: 'Chú thích trên nền họa tiết nhẹ.' },
+    { text: 'Chú thích trên nền họa tiết nhẹ.', tag: 'p' },
   ),
   atomPattern(
-    'Text',
+    'Heading',
     'copy-gradient',
     'Gradient lead',
     'Lead paragraph over a soft gradient.',
@@ -333,7 +338,7 @@ export const TEXT_PRESETS: PatternJSON[] = [
       radius: { radiusToken: 'md' },
       spacing: padding('md'),
     },
-    { text: 'Đoạn mở đầu nổi bật trên nền gradient Theme.' },
+    { text: 'Đoạn mở đầu nổi bật trên nền gradient Theme.', tag: 'p' },
   ),
 ]
 
@@ -538,12 +543,17 @@ export const ATOM_PRESETS: PatternJSON[] = [
 
 export function atomPresetCounts() {
   return {
-    Heading: HEADING_PRESETS.length,
-    Text: TEXT_PRESETS.length,
+    Heading: HEADING_PRESETS.length + TEXT_PRESETS.length,
+    /** Legacy Text type hidden from library; body presets now insert Heading+P. */
+    Text: 0,
     Button: BUTTON_PRESETS.length,
     Image: IMAGE_PRESETS.length,
     Container: CONTAINER_PRESETS.length,
   }
+}
+
+export function isLibraryHiddenAtomType(type: string) {
+  return (LIBRARY_HIDDEN_ATOM_TYPES as readonly string[]).includes(type)
 }
 
 export function sortLibraryCategories(categories: string[]) {

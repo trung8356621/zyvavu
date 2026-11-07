@@ -91,6 +91,7 @@ export function resolveTypographyBasePreset(input: {
 
   const tag = (input.htmlTag || '').toLowerCase()
   if (HEADING_TAGS.has(tag)) return tag
+  if (tag === 'p') return 'p1'
 
   if (input.widgetType === 'Heading') return 'h2'
   if (

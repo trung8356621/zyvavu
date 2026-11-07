@@ -1,9 +1,9 @@
 import StarterKit from '@tiptap/starter-kit'
-import Underline from '@tiptap/extension-underline'
 import type { Extensions } from '@tiptap/react'
+import { sanitizeHref } from './content-model'
 
-/** Minimal Heading schema: single block, no marks that emit HTML into storage. */
-export function headingExtensions(): Extensions {
+/** Shared inline schema for Heading H1–H6/P and legacy Text (StarterKit owns link/underline). */
+export function inlineContentExtensions(): Extensions {
   return [
     StarterKit.configure({
       heading: false,
@@ -14,31 +14,19 @@ export function headingExtensions(): Extensions {
       orderedList: false,
       listItem: false,
       horizontalRule: false,
-      hardBreak: false,
       strike: false,
-      bold: false,
-      italic: false,
       dropcursor: false,
       gapcursor: false,
+      underline: true,
+      link: {
+        openOnClick: false,
+        autolink: true,
+        linkOnPaste: true,
+        HTMLAttributes: {
+          rel: 'noopener noreferrer',
+        },
+        validate: (href: string) => Boolean(sanitizeHref(href)),
+      },
     }),
-  ]
-}
-
-/** Text: paragraphs + hard breaks + basic marks. */
-export function textExtensions(): Extensions {
-  return [
-    StarterKit.configure({
-      heading: false,
-      blockquote: false,
-      codeBlock: false,
-      code: false,
-      bulletList: false,
-      orderedList: false,
-      listItem: false,
-      horizontalRule: false,
-      dropcursor: false,
-      gapcursor: false,
-    }),
-    Underline,
   ]
 }

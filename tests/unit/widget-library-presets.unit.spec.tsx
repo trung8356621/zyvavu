@@ -43,24 +43,26 @@ afterEach(() => {
 
 it('registers the required atom/container preset inventory', () => {
   expect(atomPresetCounts()).toEqual({
-    Heading: 12,
-    Text: 11,
+    Heading: 23,
+    Text: 0,
     Button: 8,
     Image: 4,
     Container: 4,
   })
-  const idPrefix: Record<string, string> = {
-    Heading: 'heading-',
-    Text: 'copy-',
-    Button: 'button-',
-    Image: 'image-',
-    Container: 'container-',
-  }
+  // Body `copy-*` presets now insert Heading+P (free Text hidden from library).
+  expect(
+    SYSTEM_PATTERNS.filter((p) => p.widgetType === 'Heading' && p.id.startsWith('heading-')),
+  ).toHaveLength(12)
+  expect(
+    SYSTEM_PATTERNS.filter((p) => p.widgetType === 'Heading' && p.id.startsWith('copy-')),
+  ).toHaveLength(11)
+  expect(SYSTEM_PATTERNS.filter((p) => p.widgetType === 'Text')).toHaveLength(0)
   for (const [type, count] of Object.entries(atomPresetCounts())) {
+    if (type === 'Heading' || type === 'Text') continue
     const widgetType = type === 'Container' ? 'Section' : type
+    const prefix = `${type.toLowerCase()}-`
     const scoped = SYSTEM_PATTERNS.filter(
-      (pattern) =>
-        pattern.widgetType === widgetType && pattern.id.startsWith(idPrefix[type]),
+      (pattern) => pattern.widgetType === widgetType && pattern.id.startsWith(prefix),
     )
     expect(scoped).toHaveLength(count as number)
   }
@@ -126,6 +128,8 @@ it('opens with Text category first as one continuous Heading+Text library', () =
   expect(screen.getByRole('button', { name: 'Insert Heading' })).toBeTruthy()
   expect(screen.getByRole('button', { name: 'Insert Body text' })).toBeTruthy()
   expect(screen.getByRole('button', { name: 'Insert Surface panel' })).toBeTruthy()
+  // Free Text atom is hidden; body presets insert Heading+P.
+  expect(screen.queryByRole('button', { name: 'Insert Text' })).toBeNull()
   expect(screen.queryByRole('button', { name: /Add Heading/i })).toBeNull()
   fireEvent.click(screen.getByRole('button', { name: 'Insert Display heading' }))
   expect(state.current.dispatch).toHaveBeenCalledOnce()

@@ -2,10 +2,33 @@
   display: contents;
 }
 
+.session {
+  position: relative;
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 1.5em;
+}
+
+.toolbar {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--mantine-radius-sm, 4px);
+  background: var(--mantine-color-body, #fff);
+  border: 1px solid var(--mantine-color-default-border, #dee2e6);
+  box-shadow: var(--mantine-shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.08));
+  pointer-events: auto;
+}
+
 .surface {
   outline: none;
+  display: block;
+  box-sizing: border-box;
   min-width: 0;
   width: 100%;
+  min-height: 1.5em;
   cursor: text;
 }
 
@@ -25,8 +48,9 @@
   text-transform: inherit;
   white-space: inherit;
   word-break: inherit;
-  min-height: 1em;
+  box-sizing: border-box;
   width: 100%;
+  min-height: 1.5em;
 }
 
 .surface :global(.ProseMirror p) {
@@ -37,4 +61,16 @@
 
 .surface :global(.ProseMirror p + p) {
   margin-top: 0.5em;
+}
+
+.surface :global(.ProseMirror a) {
+  color: inherit;
+  text-decoration: underline;
+}
+
+.semantic {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }

@@ -35,10 +35,11 @@ function contentAtoms(
       },
     },
     {
-      type: 'Text',
+      type: 'Heading',
       props: {
         id: `${id}-body`,
         text: content,
+        tag: 'p',
         style: {
           typography: {
             typography: 'p1',
