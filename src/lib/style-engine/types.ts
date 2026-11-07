@@ -18,6 +18,14 @@ export type TextEffectPreset =
 export type LetterSpacingPreset = 'tighter' | 'tight' | 'normal' | 'wide' | 'wider'
 export type LineHeightPreset = 'compact' | 'normal' | 'relaxed' | 'loose'
 export type TextAlign = 'left' | 'center' | 'right' | 'justify'
+/** Theme font role; unset = inherit from HTML tag / theme CSS. */
+export type FontFamilyRole = 'theme' | 'heading'
+export type FontWeightToken = '300' | '400' | '500' | '600' | '700' | '800' | 'normal' | 'bold'
+/** Semantic size source from theme typography tokens (not raw CSS). */
+export type FontSizeToken = string
+export type FontStyleToken = 'normal' | 'italic'
+export type TextDecorationToken = 'none' | 'underline' | 'line-through'
+export type TextTransformToken = 'none' | 'uppercase' | 'lowercase' | 'capitalize'
 
 export interface GradientStop {
   token: string
@@ -168,6 +176,7 @@ export interface SectionPresentationConfig {
 }
 
 export interface TypographyStyleConfig {
+  /** Theme typography preset id (h1–h6, p1–p3). Unset = inherit tag/theme CSS. */
   typography?: string
   colorToken?: string
   align?: TextAlign
@@ -175,6 +184,13 @@ export interface TypographyStyleConfig {
   letterSpacing?: LetterSpacingPreset
   lineHeight?: LineHeightPreset
   verticalText?: boolean
+  /** Explicit overrides; unset keys inherit theme / HTML tag styles. */
+  fontFamily?: FontFamilyRole
+  fontWeight?: FontWeightToken
+  fontSize?: FontSizeToken
+  fontStyle?: FontStyleToken
+  textDecoration?: TextDecorationToken
+  textTransform?: TextTransformToken
 }
 
 /**

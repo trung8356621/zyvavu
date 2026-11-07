@@ -3,6 +3,18 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, cleanup, fireEvent } from '@testing-library/react'
 import { MantineProvider } from '@mantine/core'
 
+vi.mock('@payloadcms/ui', () => ({
+  useDocumentDrawer: vi.fn(() => [vi.fn(), { closeDrawer: vi.fn() }]),
+  useListDrawer: vi.fn(() => [vi.fn(), { closeDrawer: vi.fn() }]),
+  useAuth: vi.fn(() => ({ user: { id: 1 } })),
+  useConfig: vi.fn(() => ({ config: {} })),
+}))
+
+vi.mock('@/components/admin/media/MediaSourcePicker', () => ({
+  MediaSourcePicker: () => null,
+  BackgroundVideoPresets: () => null,
+}))
+
 vi.mock('@puckeditor/core', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@puckeditor/core')>()
   const mockState = {
@@ -180,7 +192,7 @@ describe('Theme Builder Hotfix — Flat Accordion & Style Context Menu', () => {
   })
 
   describe('2. WidgetStyleContextMenu Stability & Capability Filtering', () => {
-    it('renders with initialPosition and displays typography domain for text widget', () => {
+    it('renders with initialPosition; Document Title typography stays Fields-owned', () => {
       const onUpdate = vi.fn()
       const onClose = vi.fn()
 
@@ -199,8 +211,8 @@ describe('Theme Builder Hotfix — Flat Accordion & Style Context Menu', () => {
         </MantineProvider>,
       )
 
-      expect(screen.getByText(/Style actions:.*Title/i)).toBeDefined()
-      expect(screen.getByText('Typography')).toBeDefined()
+      expect(screen.getByRole('dialog', { name: /Style:/i })).toBeDefined()
+      expect(screen.queryByText('Typography')).toBeNull()
       expect(screen.getByText('Layout')).toBeDefined()
       expect(screen.getByText('Background')).toBeDefined()
     })
@@ -224,8 +236,8 @@ describe('Theme Builder Hotfix — Flat Accordion & Style Context Menu', () => {
         </MantineProvider>,
       )
 
-      expect(screen.getByText(/Style actions:.*Title/i)).toBeDefined()
-      expect(screen.getByText('Typography')).toBeDefined()
+      expect(screen.getByRole('dialog', { name: /Style:/i })).toBeDefined()
+      expect(screen.queryByText('Typography')).toBeNull()
       expect(screen.getByText('Layout')).toBeDefined()
     })
 
@@ -248,7 +260,7 @@ describe('Theme Builder Hotfix — Flat Accordion & Style Context Menu', () => {
         </MantineProvider>,
       )
 
-      expect(screen.getByText(/Style actions: Section/i)).toBeDefined()
+      expect(screen.getByRole('dialog', { name: /Style:/i })).toBeDefined()
       expect(screen.queryByText('Typography')).toBeNull()
       expect(screen.getByText('Background')).toBeDefined()
     })
@@ -297,16 +309,12 @@ describe('Theme Builder Hotfix — Flat Accordion & Style Context Menu', () => {
         </MantineProvider>,
       )
 
-      // Find the Accent Highlight swatch button
+      // Find the Accent Highlight swatch button — solid select commits immediately (no Apply).
       const accentButton = screen.getByLabelText(/Select Accent Highlight/i)
       expect(accentButton).toBeDefined()
       fireEvent.click(accentButton)
 
-      // Click Apply
-      const applyBtn = screen.getByRole('button', { name: /^Apply$/i })
-      fireEvent.click(applyBtn)
-
-      // Must call onApplyToken with 'accent' (not 'surface')
+      expect(screen.queryByRole('button', { name: /^Apply$/i })).toBeNull()
       expect(onApplyToken).toHaveBeenCalledWith('accent', expect.any(String))
       expect(onClose).toHaveBeenCalled()
     })
@@ -332,10 +340,8 @@ describe('Theme Builder Hotfix — Flat Accordion & Style Context Menu', () => {
       expect(bgButton).toBeDefined()
       fireEvent.click(bgButton)
 
-      const applyBtn = screen.getByRole('button', { name: /^Apply$/i })
-      fireEvent.click(applyBtn)
-
       expect(onApplyToken).toHaveBeenCalledWith('background', expect.any(String))
+      expect(onClose).toHaveBeenCalled()
     })
   })
 

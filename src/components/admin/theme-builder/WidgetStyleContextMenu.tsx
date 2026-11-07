@@ -1,22 +1,33 @@
 'use client'
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Button, Group, Stack, Modal, Text } from '@mantine/core'
-import { Sliders } from 'lucide-react'
+import { Button, Group, Stack, Text } from '@mantine/core'
+import { Bookmark, Sliders } from 'lucide-react'
 import {
   getStyleModalDomains,
+  orderStyleToolbarDomains,
+  resetStyleGroup,
   STYLE_MODAL_TITLES,
-  resetStyleDomain,
+  type StyleDomainGroup,
   type StyleModalDomain,
 } from '@/lib/style-engine/domains'
-import { replayWidgetAnimation } from '@/lib/style-engine/animation-replay'
+import {
+  cancelWidgetAnimation,
+  replayWidgetAnimation,
+} from '@/lib/style-engine/animation-replay'
+import {
+  createStyleSessionSnapshot,
+  getCancelRestoreStyle,
+  getDomainResetStyle,
+  stylesEqual,
+  type StyleSessionSnapshot,
+} from '@/lib/style-engine/style-session-contract'
 
 import type { ThemeConfig, WidgetSemanticStyle } from '@/lib/theme-engine/types'
 import { getWidgetManifest } from '@/lib/theme-engine/widget-registry-manifests'
 import { SharedDraggableModal } from '@/components/admin/shared/SharedDraggableModal'
 import { ThemeColorPaletteModal } from '@/components/admin/shared/ThemeColorPaletteModal'
 import { ADMIN_OVERLAY_LAYERS } from '@/theme/layers'
-import { stylePreviewStore } from '@/lib/style-engine/preview-store'
 import {
   getComponentStyleCapabilities,
   normalizeComponentType,
@@ -63,7 +74,6 @@ export function computeTranslatedAnchorPosition(
     height: rawRect.height,
   }
 
-  // If anchor is inside an iframe, translate coordinates relative to parent window
   if (win !== window && win.frameElement) {
     const iframeRect = win.frameElement.getBoundingClientRect()
     rect = {
@@ -90,10 +100,7 @@ export function computeTranslatedAnchorPosition(
     }
   }
 
-  // Primary horizontal position: right side of anchor
   let x = rect.right + padding
-
-  // If overflowing right viewport boundary, try placing inward or to the left of anchor
   if (x + width > window.innerWidth - padding) {
     const inwardCandidate = rect.right - width
     const leftCandidate = rect.left - width - padding
@@ -107,15 +114,10 @@ export function computeTranslatedAnchorPosition(
   }
   x = Math.max(padding, Math.min(x, window.innerWidth - width - padding))
 
-  // Vertical position:
   let y = rect.top
-
-  // If anchor top is near or under the top toolbar, position below the anchor
   if (rect.top < minTopToolbarClearance) {
     y = Math.max(minTopToolbarClearance, rect.bottom + 8)
   }
-
-  // Vertical boundary clamping
   if (y + height > window.innerHeight - padding) {
     const topCandidate = rect.top - height - 8
     if (topCandidate >= minTopToolbarClearance) {
@@ -141,7 +143,13 @@ export interface WidgetStyleContextMenuProps {
   componentId: string
   currentStyle?: WidgetSemanticStyle
   themeConfig?: ThemeConfig
-  onUpdateStyle: (style: WidgetSemanticStyle) => boolean | void
+  /** Direct-commit into Puck document (recordHistory handled by host). */
+  onUpdateStyle: (
+    style: WidgetSemanticStyle,
+    options?: { recordHistory?: boolean },
+  ) => boolean | void
+  /** Optional ActionBar-parity pattern save from the right-click domain launcher. */
+  onSaveAsPattern?: () => void
 }
 
 const EMPTY_STYLE: WidgetSemanticStyle = Object.freeze({})
@@ -157,36 +165,66 @@ function WidgetStyleSession({
   requestNonce,
   opened,
   onClose,
-  anchorEl,
-  initialPosition,
   componentType: rawComponentType,
   componentVariant,
   componentId,
   currentStyle = EMPTY_STYLE,
   themeConfig,
   onUpdateStyle,
+  onSaveAsPattern,
 }: WidgetStyleContextMenuProps) {
   const componentType = normalizeComponentType(rawComponentType)
 
-  // Transactional Style States:
-  // 1. committedStyle: Snapshot of the style currently committed in Puck
-  const [committedStyle, setCommittedStyle] = useState<WidgetSemanticStyle>(currentStyle || {})
-  // 2. draftStyle: Temporary changes inside the Style Editor
-  const [draftStyle, setDraftStyle] = useState<WidgetSemanticStyle>(() => currentStyle || {})
-  const pendingDraftPreview = useRef(false)
+  const sessionRef = useRef<StyleSessionSnapshot>(
+    createStyleSessionSnapshot(componentId, currentStyle, domain),
+  )
+  const [liveStyle, setLiveStyle] = useState<WidgetSemanticStyle>(() => currentStyle || {})
   const [validationError, setValidationError] = useState<string | null>(null)
   const [mediaPickerOpened, setMediaPickerOpened] = useState(false)
   const [animationPickerOpened, setAnimationPickerOpened] = useState(false)
   const [shellRevision, setShellRevision] = useState(0)
-  // 3. prePaletteDraftRef: Snapshot before opening child Color Palette modal
-  const prePaletteDraftRef = useRef<WidgetSemanticStyle | null>(null)
-
-  // Color Modal Target: 'text' | 'background' | 'overlay' | 'border' | 'fallback' | 'pattern' | null
+  const prePaletteStyleRef = useRef<WidgetSemanticStyle | null>(null)
+  /** Latest style committed during an open color picker (avoids stale keep-close). */
+  const paletteLiveRef = useRef<WidgetSemanticStyle>(currentStyle || {})
+  const [colorAnchorEl, setColorAnchorEl] = useState<HTMLElement | null>(null)
   const [colorModalTarget, setColorModalTarget] = useState<
     'text' | 'background' | 'overlay' | 'border' | 'fallback' | 'pattern' | null
   >(null)
 
-  // Manifest and Style Capability check
+  const domains = useMemo(
+    () => orderStyleToolbarDomains(getStyleModalDomains(componentType, componentVariant)),
+    [componentType, componentVariant],
+  )
+  /** Focused domain editor — never the old all-domains Accordion. */
+  const [activeDomain, setActiveDomain] = useState<StyleModalDomain | null>(
+    domain || null,
+  )
+
+  const [handledRequest, setHandledRequest] = useState({ domain, requestNonce })
+  if (handledRequest.domain !== domain || handledRequest.requestNonce !== requestNonce) {
+    setHandledRequest({ domain, requestNonce })
+    if (domain) setActiveDomain(domain)
+    else if (requestNonce !== handledRequest.requestNonce) setActiveDomain(null)
+  }
+
+  const focusedDomain = activeDomain && domains.includes(activeDomain) ? activeDomain : null
+
+  // External document sync (Undo/Redo / host refresh) → panel values.
+  useEffect(() => {
+    if (!stylesEqual(liveStyle, currentStyle)) {
+      setLiveStyle(currentStyle || {})
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: follow host SoT only
+  }, [currentStyle])
+
+  const replayCleanup = useRef<(() => void) | null>(null)
+  const stopReplay = useCallback(() => {
+    replayCleanup.current?.()
+    replayCleanup.current = null
+    cancelWidgetAnimation(componentId)
+  }, [componentId])
+  useEffect(() => () => stopReplay(), [stopReplay])
+
   const manifest = useMemo(() => {
     try {
       return getWidgetManifest(componentType)
@@ -212,50 +250,23 @@ function WidgetStyleSession({
     capabilities.includes('shadow') ||
     capabilities.includes('effects')
 
-  const [activeTab, setActiveTab] = useState<StyleModalDomain | null>(domain || null)
-  const [pendingDomain, setPendingDomain] = useState<StyleModalDomain | null>(null)
-  const switchDomain = (next: StyleModalDomain) => {
-    if (next === activeTab) return
-    if (JSON.stringify(draftStyle) !== JSON.stringify(committedStyle)) setPendingDomain(next)
-    else setActiveTab(next)
-  }
-  const [handledRequest, setHandledRequest] = useState({ domain, requestNonce })
-  if (handledRequest.domain !== domain || handledRequest.requestNonce !== requestNonce) {
-    setHandledRequest({ domain, requestNonce })
-    const dirty = JSON.stringify(draftStyle) !== JSON.stringify(committedStyle)
-    if (domain && dirty && domain !== activeTab) setPendingDomain(domain)
-    else if (!dirty) setActiveTab(domain || null)
-    else if (!domain)
-      setValidationError('Apply or cancel this draft before returning to style actions.')
-  }
-  const replayCleanup = useRef<(() => void) | null>(null)
-  useEffect(() => () => replayCleanup.current?.(), [])
-
-  // Snapshot is captured at session mount; unrelated parent rerenders cannot erase a draft.
-  useEffect(() => () => stylePreviewStore.clearPreview(componentId), [componentId])
-
-  // Resolve coordinate position translating iframe offsets if necessary
-  const resolvedPosition = useMemo(() => {
-    if (initialPosition) return initialPosition
-    if (anchorEl) return computeTranslatedAnchorPosition(anchorEl, 360, 500)
-    return undefined
-  }, [initialPosition, anchorEl])
-
-  // Normalization helper
   const normalizeStyle = useCallback((style: WidgetSemanticStyle): UniversalStyle => {
     const s = style as UniversalStyle
+    const typoObject =
+      s.typography && typeof s.typography === 'object'
+        ? s.typography
+        : typeof style.typography === 'string'
+          ? { typography: style.typography }
+          : {}
     return {
       ...s,
       typography: {
+        ...typoObject,
         typography:
-          s.typography?.typography ||
+          typoObject.typography ||
           (typeof style.typography === 'string' ? style.typography : undefined),
-        colorToken: s.typography?.colorToken || style.colorToken,
-        align: s.typography?.align || style.align,
-        effectPreset: s.typography?.effectPreset,
-        letterSpacing: s.typography?.letterSpacing,
-        lineHeight: s.typography?.lineHeight,
-        verticalText: s.typography?.verticalText,
+        colorToken: typoObject.colorToken || style.colorToken,
+        align: typoObject.align || style.align,
       },
       background:
         s.background ||
@@ -275,67 +286,91 @@ function WidgetStyleSession({
     }
   }, [])
 
-  const normalizedDraft: UniversalStyle = useMemo(() => {
-    return normalizeStyle(draftStyle)
-  }, [draftStyle, normalizeStyle])
-
-  // Real-time draft update that immediately updates the canvas preview without committing to Puck
-  const updateDraft = useCallback(
-    (partial: Partial<UniversalStyle>) => {
-      pendingDraftPreview.current = true
-      setDraftStyle((prev) => {
-        const prevNorm = normalizeStyle(prev)
-        const merged: WidgetSemanticStyle = {
-          ...prev,
-          ...prevNorm,
-          ...partial,
-          // Maintain legacy top-level mirrors for backward compatibility
-          colorToken:
-            partial.typography?.colorToken || prevNorm.typography?.colorToken || prev.colorToken,
-          align: partial.typography?.align || prevNorm.typography?.align || prev.align,
-          backgroundToken:
-            partial.background?.colorToken ||
-            prevNorm.background?.colorToken ||
-            prev.backgroundToken,
-        }
-        return merged
-      })
-    },
-    [normalizeStyle],
+  const normalizedLive: UniversalStyle = useMemo(
+    () => normalizeStyle(liveStyle),
+    [liveStyle, normalizeStyle],
   )
 
-  // Notify external canvas subscribers after React commits, never inside a state updater.
+  // Effect / selection changes must not leave a dangling canvas preview.
   useEffect(() => {
-    if (!pendingDraftPreview.current) return
-    pendingDraftPreview.current = false
-    stylePreviewStore.setPreview(componentId, draftStyle)
-  }, [componentId, draftStyle])
+    stopReplay()
+  }, [componentId, normalizedLive.animation?.preset, stopReplay])
 
-  // Apply Action: Commits draftStyle to Puck document in a single update
-  const handleApply = useCallback(() => {
-    const validation = validateUniversalStyle(draftStyle)
-    if (!validation.valid) {
-      setValidationError(validation.errors.join('; '))
-      return
+  const commitStyle = useCallback(
+    (next: WidgetSemanticStyle, options?: { recordHistory?: boolean }) => {
+      const validation = validateUniversalStyle(next)
+      if (!validation.valid) {
+        setValidationError(validation.errors.join('; '))
+        return false
+      }
+      setValidationError(null)
+      paletteLiveRef.current = next
+      setLiveStyle(next)
+      if (onUpdateStyle(next, options) === false) return false
+      return true
+    },
+    [onUpdateStyle],
+  )
+
+  const updatePartial = useCallback(
+    (partial: Partial<UniversalStyle>) => {
+      const prevNorm = normalizeStyle(liveStyle)
+      const merged: WidgetSemanticStyle & Record<string, unknown> = {
+        ...liveStyle,
+        ...prevNorm,
+        ...partial,
+        backgroundToken:
+          partial.background?.colorToken ||
+          prevNorm.background?.colorToken ||
+          liveStyle.backgroundToken,
+      }
+      if (partial.typography !== undefined) {
+        // Typography object is the SoT; clear legacy flats when overrides are removed.
+        merged.typography = partial.typography
+        if (partial.typography?.colorToken) merged.colorToken = partial.typography.colorToken
+        else delete merged.colorToken
+        if (partial.typography?.align) merged.align = partial.typography.align
+        else delete merged.align
+      } else {
+        merged.colorToken =
+          prevNorm.typography?.colorToken || liveStyle.colorToken || merged.colorToken
+        merged.align = prevNorm.typography?.align || liveStyle.align || merged.align
+      }
+      commitStyle(merged)
+    },
+    [liveStyle, normalizeStyle, commitStyle],
+  )
+
+  const handleCancelSession = useCallback(() => {
+    const restore = getCancelRestoreStyle(sessionRef.current)
+    if (!stylesEqual(restore, liveStyle)) {
+      commitStyle(restore)
     }
-    setValidationError(null)
-    if (onUpdateStyle(draftStyle) === false) return
-    pendingDraftPreview.current = false
-    stylePreviewStore.clearPreview(componentId)
     onClose()
-  }, [draftStyle, onUpdateStyle, componentId, onClose])
+  }, [commitStyle, liveStyle, onClose])
 
-  // Cancel Action: Discards unapplied draft and restores canvas appearance
-  const handleCancel = useCallback(() => {
-    pendingDraftPreview.current = false
-    stylePreviewStore.clearPreview(componentId)
-    setDraftStyle(committedStyle)
-    onClose()
-  }, [componentId, onClose, committedStyle])
+  const handleResetDomain = useCallback(
+    (target: StyleModalDomain) => {
+      setShellRevision((value) => value + 1)
+      const next = getDomainResetStyle(liveStyle, target, {
+        sectionClearsShadowEffects: componentType === 'Section',
+      })
+      commitStyle(next)
+    },
+    [liveStyle, componentType, commitStyle],
+  )
 
-  // Palette Child Opening
+  const handleResetGroup = useCallback(
+    (group: StyleDomainGroup) => {
+      setShellRevision((value) => value + 1)
+      commitStyle(resetStyleGroup(liveStyle, group) as WidgetSemanticStyle)
+    },
+    [liveStyle, commitStyle],
+  )
+
   const handleOpenColorModal = (
     target: 'text' | 'background' | 'overlay' | 'border' | 'fallback' | 'pattern',
+    anchor?: HTMLElement | null,
   ) => {
     if (
       typeof document !== 'undefined' &&
@@ -344,23 +379,32 @@ function WidgetStyleSession({
     ) {
       ;(document.activeElement as HTMLElement).blur()
     }
-    prePaletteDraftRef.current = draftStyle
+    prePaletteStyleRef.current = liveStyle
+    paletteLiveRef.current = liveStyle
+    setColorAnchorEl(anchor || null)
     setColorModalTarget(target)
   }
 
-  // Palette Child Close/Cancel: Revert draft and canvas preview back to pre-palette state
-  const handlePaletteCloseOrCancel = useCallback(() => {
-    if (prePaletteDraftRef.current) {
-      stylePreviewStore.setPreview(componentId, prePaletteDraftRef.current)
-      setDraftStyle(prePaletteDraftRef.current)
+  /** Cancel / X / Escape: restore picker-open snapshot without a history step. */
+  const handlePaletteCancel = useCallback(() => {
+    const snapshot = prePaletteStyleRef.current
+    if (snapshot && !stylesEqual(snapshot, paletteLiveRef.current)) {
+      commitStyle(snapshot, { recordHistory: false })
     }
+    setColorAnchorEl(null)
     setColorModalTarget(null)
-  }, [componentId])
+  }, [commitStyle])
 
-  // Helper to build draft with new token selection for live preview
+  /** Outside click / solid finalize: keep live value as one history step. */
+  const handlePaletteKeepClose = useCallback(() => {
+    commitStyle(paletteLiveRef.current, { recordHistory: true })
+    setColorAnchorEl(null)
+    setColorModalTarget(null)
+  }, [commitStyle])
+
   const buildCandidateDraftWithToken = useCallback(
     (target: string, tokenId: string): WidgetSemanticStyle => {
-      const base = draftStyle
+      const base = liveStyle
       const baseNorm = normalizeStyle(base)
       if (target === 'text') {
         return {
@@ -439,7 +483,6 @@ function WidgetStyleSession({
           border: { ...baseNorm.border, colorToken: tokenId },
         }
       }
-      // Background solid color
       return {
         ...base,
         background: {
@@ -452,103 +495,191 @@ function WidgetStyleSession({
         backgroundToken: tokenId,
       }
     },
-    [draftStyle, normalizeStyle],
+    [liveStyle, normalizeStyle],
   )
 
   const buildCandidateDraftWithGradient = useCallback(
-    (gradient: GradientDef): WidgetSemanticStyle => {
-      return {
-        ...draftStyle,
-        background: {
-          ...normalizedDraft.background,
-          mode: 'color',
-          gradient,
-          mesh: undefined,
-        },
-      }
-    },
-    [draftStyle, normalizedDraft],
+    (gradient: GradientDef): WidgetSemanticStyle => ({
+      ...liveStyle,
+      background: {
+        ...normalizedLive.background,
+        mode: 'color',
+        gradient,
+        mesh: undefined,
+      },
+    }),
+    [liveStyle, normalizedLive],
   )
 
   const buildCandidateDraftWithMesh = useCallback(
-    (mesh: MeshDef): WidgetSemanticStyle => {
-      return {
-        ...draftStyle,
-        background: {
-          ...normalizedDraft.background,
-          mode: 'color',
-          mesh,
-          gradient: undefined,
-        },
-      }
-    },
-    [draftStyle, normalizedDraft],
+    (mesh: MeshDef): WidgetSemanticStyle => ({
+      ...liveStyle,
+      background: {
+        ...normalizedLive.background,
+        mode: 'color',
+        mesh,
+        gradient: undefined,
+      },
+    }),
+    [liveStyle, normalizedLive],
   )
 
+  const renderDomainBody = (tab: StyleModalDomain) => {
+    if (tab === 'button' && capabilities.includes('button')) {
+      return (
+        <ButtonStyleControl
+          key={`${componentId}:${shellRevision}`}
+          themeConfig={themeConfig}
+          typography={
+            <TypographyStyleControl
+              value={normalizedLive.typography}
+              themeConfig={themeConfig}
+              widgetType={componentType}
+              onChange={(typography) => updatePartial({ typography })}
+              onResetDomain={() => handleResetDomain('typography')}
+              onOpenColorModal={(el) => handleOpenColorModal('text', el)}
+            />
+          }
+        />
+      )
+    }
+    if (tab === 'animation' && capabilities.includes('animation')) {
+      return (
+        <AnimationPresetPicker
+          inline
+          target={componentType === 'Section' ? 'section' : 'widget'}
+          onOpenChange={setAnimationPickerOpened}
+          value={normalizedLive.animation}
+          onChange={(animation) => {
+            stopReplay()
+            updatePartial({ animation })
+          }}
+          onTestAnimation={(animation) => {
+            stopReplay()
+            const result = replayWidgetAnimation(componentId, animation, { force: true })
+            replayCleanup.current = result.cancel
+            if (result.message?.includes('unavailable') || result.message?.includes('not available')) {
+              setValidationError(result.message)
+            } else {
+              setValidationError(null)
+            }
+            return result.message
+          }}
+        />
+      )
+    }
+    if (tab === 'typography' && hasTypography) {
+      return (
+        <TypographyStyleControl
+          value={normalizedLive.typography}
+          themeConfig={themeConfig}
+          widgetType={componentType}
+          onChange={(typo) => updatePartial({ typography: typo })}
+          onResetDomain={() => handleResetDomain('typography')}
+          onOpenColorModal={(el) => handleOpenColorModal('text', el)}
+        />
+      )
+    }
+    if (tab === 'background' && hasBackground) {
+      return (
+        <BackgroundStyleControl
+          onMediaOpenChange={setMediaPickerOpened}
+          colorOnly={false}
+          value={normalizedLive.background}
+          themeConfig={themeConfig}
+          onChange={(bg) => updatePartial({ background: bg })}
+          onOpenColorModal={(target, el) => handleOpenColorModal(target, el)}
+          onResetGroup={handleResetGroup}
+        />
+      )
+    }
+    if (tab === 'spacing' && hasSpacingOrDimensions) {
+      return (
+        <SpacingDimensionsControl
+          spacing={normalizedLive.spacing}
+          dimensions={normalizedLive.dimensions}
+          showDimensions={capabilities.includes('dimensions') || capabilities.includes('section')}
+          onChangeSpacing={(sp) => updatePartial({ spacing: sp })}
+          onChangeDimensions={(dim) => updatePartial({ dimensions: dim })}
+          onResetGroup={handleResetGroup}
+        />
+      )
+    }
+    if (['borders', 'shadow', 'effects'].includes(tab) && hasBorderOrEffects) {
+      return (
+        <BordersEffectsControl
+          domain={
+            tab === 'borders' && componentType === 'Section'
+              ? 'all'
+              : (tab as 'borders' | 'shadow' | 'effects')
+          }
+          themeConfig={themeConfig}
+          border={normalizedLive.border}
+          radius={normalizedLive.radius}
+          shadow={normalizedLive.shadow}
+          effects={normalizedLive.effects}
+          onChangeBorder={(border) => updatePartial({ border })}
+          onChangeRadius={(radius) => updatePartial({ radius })}
+          onChangeShadow={(shadow) => updatePartial({ shadow })}
+          onChangeEffects={(effects) => updatePartial({ effects })}
+          onOpenColorModal={(el) => handleOpenColorModal('border', el)}
+          onResetGroup={handleResetGroup}
+        />
+      )
+    }
+    return (
+      <Text size="sm" c="dimmed">
+        This domain is not available for {componentType}.
+      </Text>
+    )
+  }
+
   if (!opened) return null
+
+  const panelTitle = focusedDomain
+    ? `${STYLE_MODAL_TITLES[focusedDomain]}: ${manifest?.label || componentType}`
+    : `Style: ${manifest?.label || componentType}`
 
   return (
     <>
       <SharedDraggableModal
         opened={opened}
-        onClose={handleCancel}
-        title={
-          activeTab
-            ? `${STYLE_MODAL_TITLES[activeTab]}: ${manifest?.label || componentType}`
-            : `Style actions: ${manifest?.label || componentType}`
+        onClose={handleCancelSession}
+        title={panelTitle}
+        subtitle={
+          focusedDomain
+            ? 'Changes apply immediately · Cancel restores this session · Reset clears this domain only'
+            : 'Choose a style domain'
         }
-        subtitle="Configure presentation without handwritten CSS"
         headerExtra={<Sliders size={16} color="var(--mantine-color-teal-7, #0e6b66)" />}
         width={360}
-        anchorEl={anchorEl}
-        initialPosition={resolvedPosition}
-        mode="floating"
-        draggable={true}
+        mode="docked"
+        draggable={false}
         showCloseButton={true}
         closeOnClickOutside={false}
         style={{ visibility: mediaPickerOpened ? 'hidden' : undefined }}
-        closeOnEscape={
-          !mediaPickerOpened && !animationPickerOpened && !colorModalTarget && !pendingDomain
-        }
+        closeOnEscape={!mediaPickerOpened && !animationPickerOpened && !colorModalTarget}
         zIndex={ADMIN_OVERLAY_LAYERS.STYLE_MODAL}
         footer={
-          activeTab ? (
-            <Group justify="space-between" w="100%">
-              <Text size="xs" c="dimmed" style={{ fontSize: 12 }}>
-                {componentType}: {componentId}
-              </Text>
-              <Group gap="xs">
-                <Button variant="default" size="xs" onClick={handleCancel}>
-                  Hủy / Cancel
-                </Button>
+          <Group justify="space-between" w="100%">
+            <Text size="xs" c="dimmed" style={{ fontSize: 12 }}>
+              {componentType}: {componentId}
+            </Text>
+            <Group gap="xs">
+              <Button variant="default" size="xs" onClick={handleCancelSession}>
+                Hủy / Cancel
+              </Button>
+              {focusedDomain && (
                 <Button
                   variant="subtle"
                   size="sm"
-                  onClick={() => {
-                    setShellRevision((value) => value + 1)
-                    const next = resetStyleDomain(draftStyle, activeTab!)
-                    if (componentType === 'Section' && activeTab === 'borders') {
-                      delete next.shadow
-                      delete next.effects
-                    }
-                    setDraftStyle(next)
-                    setValidationError(null)
-                    stylePreviewStore.setPreview(componentId, next)
-                  }}
+                  onClick={() => handleResetDomain(focusedDomain)}
                 >
                   Reset domain
                 </Button>
-                <Button
-                  color="teal"
-                  size="xs"
-                  disabled={animationPickerOpened}
-                  onClick={handleApply}
-                >
-                  Áp dụng / Apply
-                </Button>
-              </Group>
+              )}
             </Group>
-          ) : undefined
+          </Group>
         }
       >
         <Stack gap="xs">
@@ -557,156 +688,54 @@ function WidgetStyleSession({
               {validationError}
             </Text>
           )}
-          {!activeTab &&
-            getStyleModalDomains(componentType, componentVariant).map((item) => (
-              <Button key={item} variant="default" onClick={() => switchDomain(item)}>
-                {STYLE_MODAL_TITLES[item]}
-              </Button>
-            ))}
-
-          {activeTab === 'button' && capabilities.includes('button') && (
-            <ButtonStyleControl
-              key={`${componentId}:${shellRevision}`}
-              themeConfig={themeConfig}
-              typography={
-                <TypographyStyleControl
-                  value={normalizedDraft.typography}
-                  themeConfig={themeConfig}
-                  onChange={(typography) => updateDraft({ typography })}
-                  onOpenColorModal={() => handleOpenColorModal('text')}
-                />
-              }
-            />
-          )}
-          {activeTab === 'animation' && capabilities.includes('animation') && (
-            <Stack>
-              <AnimationPresetPicker
-                inline
-                target={componentType === 'Section' ? 'section' : 'widget'}
-                onOpenChange={setAnimationPickerOpened}
-                value={normalizedDraft.animation}
-                onChange={(animation) => updateDraft({ animation })}
-              />
-              <Button
-                disabled={!normalizedDraft.animation || normalizedDraft.animation.preset === 'none'}
-                onClick={() => {
-                  replayCleanup.current?.()
-                  const result = replayWidgetAnimation(componentId, normalizedDraft.animation)
-                  replayCleanup.current = result.cancel
-                  setValidationError(result.message || null)
-                }}
-              >
-                Test Animation
-              </Button>
+          {!focusedDomain ? (
+            <Stack gap="xs" data-testid="style-domain-launcher">
+              <Text size="sm" c="dimmed">
+                Open one style domain at a time.
+              </Text>
+              {domains.map((item) => (
+                <Button
+                  key={item}
+                  variant="light"
+                  fullWidth
+                  justify="space-between"
+                  onClick={() => setActiveDomain(item)}
+                >
+                  {STYLE_MODAL_TITLES[item]}
+                </Button>
+              ))}
+              {onSaveAsPattern && (
+                <Button
+                  variant="default"
+                  fullWidth
+                  leftSection={<Bookmark size={16} />}
+                  onClick={onSaveAsPattern}
+                >
+                  Save as Pattern
+                </Button>
+              )}
             </Stack>
-          )}
-
-          {/* 1. TYPOGRAPHY DOMAIN */}
-          {activeTab === 'typography' && hasTypography && (
-            <TypographyStyleControl
-              value={normalizedDraft.typography}
-              themeConfig={themeConfig}
-              onChange={(typo) => updateDraft({ typography: typo })}
-              onOpenColorModal={() => handleOpenColorModal('text')}
-            />
-          )}
-
-          {/* 2. BACKGROUND DOMAIN */}
-          {activeTab === 'background' && hasBackground && (
-            <BackgroundStyleControl
-              onMediaOpenChange={setMediaPickerOpened}
-              colorOnly={false}
-              value={normalizedDraft.background}
-              themeConfig={themeConfig}
-              onChange={(bg) => updateDraft({ background: bg })}
-              onOpenColorModal={(target) => handleOpenColorModal(target)}
-            />
-          )}
-
-          {/* 3. SPACING & DIMENSIONS DOMAIN */}
-          {activeTab === 'spacing' && hasSpacingOrDimensions && (
-            <SpacingDimensionsControl
-              spacing={normalizedDraft.spacing}
-              dimensions={normalizedDraft.dimensions}
-              showDimensions={
-                capabilities.includes('dimensions') || capabilities.includes('section')
-              }
-              onChangeSpacing={(sp) => updateDraft({ spacing: sp })}
-              onChangeDimensions={(dim) => updateDraft({ dimensions: dim })}
-            />
-          )}
-
-          {/* 4. BORDERS & EFFECTS DOMAIN */}
-          {['borders', 'shadow', 'effects'].includes(activeTab || '') && hasBorderOrEffects && (
-            <BordersEffectsControl
-              domain={
-                activeTab === 'borders' && componentType === 'Section'
-                  ? 'all'
-                  : (activeTab as 'borders' | 'shadow' | 'effects')
-              }
-              themeConfig={themeConfig}
-              border={normalizedDraft.border}
-              radius={normalizedDraft.radius}
-              shadow={normalizedDraft.shadow}
-              effects={normalizedDraft.effects}
-              onChangeBorder={(border) => updateDraft({ border })}
-              onChangeRadius={(radius) => updateDraft({ radius })}
-              onChangeShadow={(shadow) => updateDraft({ shadow })}
-              onChangeEffects={(effects) => updateDraft({ effects })}
-              onOpenColorModal={() => handleOpenColorModal('border')}
-            />
+          ) : (
+            <Stack gap="xs" data-style-domain={focusedDomain}>
+              {domains.length > 1 && (
+                <Button
+                  variant="subtle"
+                  size="xs"
+                  onClick={() => setActiveDomain(null)}
+                  aria-label="Back to style domains"
+                >
+                  All domains
+                </Button>
+              )}
+              {renderDomainBody(focusedDomain)}
+            </Stack>
           )}
         </Stack>
       </SharedDraggableModal>
 
-      <Modal
-        opened={Boolean(pendingDomain)}
-        onClose={() => setPendingDomain(null)}
-        title="Unapplied changes"
-        zIndex={ADMIN_OVERLAY_LAYERS.PALETTE_MODAL}
-      >
-        <Stack>
-          <Text>Apply or discard the current domain before opening another.</Text>
-          <Group>
-            <Button variant="default" onClick={() => setPendingDomain(null)}>
-              Continue editing
-            </Button>
-            <Button
-              variant="subtle"
-              onClick={() => {
-                setDraftStyle(committedStyle)
-                stylePreviewStore.clearPreview(componentId)
-                setActiveTab(pendingDomain)
-                setPendingDomain(null)
-              }}
-            >
-              Discard
-            </Button>
-            <Button
-              onClick={() => {
-                const result = validateUniversalStyle(draftStyle)
-                if (!result.valid) {
-                  setValidationError(result.errors.join('; '))
-                  setPendingDomain(null)
-                  return
-                }
-                if (onUpdateStyle(draftStyle) === false) return
-                setCommittedStyle(draftStyle)
-                stylePreviewStore.clearPreview(componentId)
-                setActiveTab(pendingDomain)
-                setPendingDomain(null)
-              }}
-            >
-              Apply and continue
-            </Button>
-          </Group>
-        </Stack>
-      </Modal>
-      {/* Unified Color / Gradient / Mesh Modal (Child Transactional Selection) */}
       {colorModalTarget && (
         <ThemeColorPaletteModal
           opened={Boolean(colorModalTarget)}
-          anchorEl={anchorEl}
           title={
             colorModalTarget === 'pattern'
               ? 'Theme Pattern Color'
@@ -720,23 +749,24 @@ function WidgetStyleSession({
                       ? 'Theme Fallback Color'
                       : 'Theme Background & Palette'
           }
-          subtitle="Select semantic theme tokens or custom gradients"
+          subtitle="Select theme tokens · changes apply immediately · Cancel restores this picker"
+          anchorEl={colorAnchorEl}
           value={
             colorModalTarget === 'pattern'
-              ? normalizedDraft.background?.pattern?.colorToken || 'text'
+              ? normalizedLive.background?.pattern?.colorToken || 'text'
               : colorModalTarget === 'text'
-                ? normalizedDraft.typography?.colorToken || 'text'
+                ? normalizedLive.typography?.colorToken || 'text'
                 : colorModalTarget === 'overlay'
-                  ? (normalizedDraft.background?.mode === 'image'
-                      ? normalizedDraft.background?.image?.overlay?.colorToken
-                      : normalizedDraft.background?.video?.overlay?.colorToken) || 'text'
+                  ? (normalizedLive.background?.mode === 'image'
+                      ? normalizedLive.background?.image?.overlay?.colorToken
+                      : normalizedLive.background?.video?.overlay?.colorToken) || 'text'
                   : colorModalTarget === 'border'
-                    ? normalizedDraft.border?.colorToken || 'border'
+                    ? normalizedLive.border?.colorToken || 'border'
                     : colorModalTarget === 'fallback'
-                      ? (normalizedDraft.background?.mode === 'image'
-                          ? normalizedDraft.background?.image?.fallbackColorToken
-                          : normalizedDraft.background?.video?.fallbackColorToken) || 'surface'
-                      : normalizedDraft.background?.colorToken || 'surface'
+                      ? (normalizedLive.background?.mode === 'image'
+                          ? normalizedLive.background?.image?.fallbackColorToken
+                          : normalizedLive.background?.video?.fallbackColorToken) || 'surface'
+                      : normalizedLive.background?.colorToken || 'surface'
           }
           tokens={themeConfig?.tokens}
           zIndex={ADMIN_OVERLAY_LAYERS.PALETTE_MODAL}
@@ -744,47 +774,22 @@ function WidgetStyleSession({
           supportedModes={
             colorModalTarget === 'background' ? ['solid', 'gradient', 'mesh'] : ['solid']
           }
-          gradientValue={normalizedDraft.background?.gradient}
-          meshValue={normalizedDraft.background?.mesh}
-          onClose={handlePaletteCloseOrCancel}
-          onCancel={handlePaletteCloseOrCancel}
+          gradientValue={normalizedLive.background?.gradient}
+          meshValue={normalizedLive.background?.mesh}
+          onClose={handlePaletteKeepClose}
+          onCancel={handlePaletteCancel}
           onSelectToken={(tokenId) => {
             if (!colorModalTarget) return
-            const candidate = buildCandidateDraftWithToken(colorModalTarget, tokenId)
-            setDraftStyle(candidate)
-            stylePreviewStore.setPreview(componentId, candidate)
+            // Ephemeral while picker open; keep-close records one history step.
+            commitStyle(buildCandidateDraftWithToken(colorModalTarget, tokenId), {
+              recordHistory: false,
+            })
           }}
           onChangeGradient={(grad) => {
-            const candidate = buildCandidateDraftWithGradient(grad)
-            setDraftStyle(candidate)
-            stylePreviewStore.setPreview(componentId, candidate)
+            commitStyle(buildCandidateDraftWithGradient(grad), { recordHistory: false })
           }}
           onChangeMesh={(mesh) => {
-            const candidate = buildCandidateDraftWithMesh(mesh)
-            setDraftStyle(candidate)
-            stylePreviewStore.setPreview(componentId, candidate)
-          }}
-          onApplyToken={(tokenId) => {
-            if (!colorModalTarget) return
-            const candidate = buildCandidateDraftWithToken(colorModalTarget, tokenId)
-            setDraftStyle(candidate)
-            stylePreviewStore.setPreview(componentId, candidate)
-            prePaletteDraftRef.current = candidate
-            setColorModalTarget(null)
-          }}
-          onApplyGradient={(gradient: GradientDef) => {
-            const candidate = buildCandidateDraftWithGradient(gradient)
-            setDraftStyle(candidate)
-            stylePreviewStore.setPreview(componentId, candidate)
-            prePaletteDraftRef.current = candidate
-            setColorModalTarget(null)
-          }}
-          onApplyMesh={(mesh: MeshDef) => {
-            const candidate = buildCandidateDraftWithMesh(mesh)
-            setDraftStyle(candidate)
-            stylePreviewStore.setPreview(componentId, candidate)
-            prePaletteDraftRef.current = candidate
-            setColorModalTarget(null)
+            commitStyle(buildCandidateDraftWithMesh(mesh), { recordHistory: false })
           }}
         />
       )}

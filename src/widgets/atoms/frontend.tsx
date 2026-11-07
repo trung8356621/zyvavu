@@ -3,6 +3,7 @@ import type { ThemeDataContext, WidgetSemanticStyle } from '@/lib/theme-engine/t
 import { resolveWidgetStyles } from '@/lib/style-engine/serializer'
 import { withWidgetStyleSurface } from '@/lib/style-engine/WidgetStyleSurface'
 import { animationAttributes } from '@/lib/style-engine/animation-presets'
+import { resolveTextRender } from '@/components/builder/inline-edit/content-model'
 import { systemDescriptor, type AtomType } from '@/lib/theme-engine/widget-contracts'
 export type AtomProps = {
   id?: string
@@ -30,7 +31,8 @@ export function AtomPresentation({
   newTab,
 }: AtomProps & { kind: AtomType; primaryHeading?: boolean }) {
   const resolved = resolveWidgetStyles(style)
-  const HeadingTag = primaryHeading ? 'h1' : tag || 'h2'
+  // Explicit HTML Tag from Fields wins; document-bound titles default to h1.
+  const HeadingTag = tag || (primaryHeading ? 'h1' : 'h2')
   const node =
     kind === 'Image' ? (
       <div style={resolved} {...animationAttributes(style?.animation)}>
@@ -71,9 +73,23 @@ export function AtomPresentation({
         {text}
       </button>
     ) : (
-      <p style={resolved} {...animationAttributes(style?.animation)}>
-        {text}
-      </p>
+      (() => {
+        const render = resolveTextRender(text)
+        if (render.mode === 'html') {
+          return (
+            <div
+              style={resolved}
+              {...animationAttributes(style?.animation)}
+              dangerouslySetInnerHTML={{ __html: render.html || '' }}
+            />
+          )
+        }
+        return (
+          <p style={resolved} {...animationAttributes(style?.animation)}>
+            {render.plain}
+          </p>
+        )
+      })()
     )
   return withWidgetStyleSurface(node, style, id)
 }
@@ -127,9 +143,12 @@ export function createAtomRenderer(type: string) {
         style={props.style}
         kind={descriptor.atom}
         primaryHeading={descriptor.role === 'document.title' || descriptor.role === 'archive.title'}
+        tag={props.tag}
         text={text}
         src={src}
         alt={alt}
+        href={props.href}
+        newTab={props.newTab}
       />
     )
   }

@@ -25,17 +25,19 @@ export function CategoryHeaderFrontend({
   const isTag = dataContext?.archive?.taxonomyType === 'tag'
   const title = customTitle || dataContext?.archive?.title || (isTag ? 'Thẻ' : 'Chuyên Mục')
   const description = customDescription || dataContext?.archive?.description
+  const resolved = resolveWidgetStyles(semanticStyle)
+  const effectiveAlign = resolved.textAlign || semanticStyle?.align || align
 
   return withWidgetStyleSurface(
     <div
       className="zyvavu-widget-category-header"
       {...animationAttributes(semanticStyle?.animation)}
       style={{
-        textAlign: align,
+        textAlign: effectiveAlign,
         padding: '32px 0 24px',
         borderBottom: '1px solid var(--zyvavu-theme-border, #dfe5e2)',
         marginBottom: '32px',
-        ...resolveWidgetStyles(semanticStyle),
+        ...resolved,
       }}
     >
       <div
@@ -70,8 +72,8 @@ export function CategoryHeaderFrontend({
             fontSize: '1.1rem',
             color: 'var(--zyvavu-theme-text-muted, #5f7370)',
             maxWidth: '700px',
-            marginLeft: align === 'center' ? 'auto' : 0,
-            marginRight: align === 'center' ? 'auto' : 0,
+            marginLeft: effectiveAlign === 'center' ? 'auto' : 0,
+            marginRight: effectiveAlign === 'center' ? 'auto' : 0,
           }}
         >
           {description}

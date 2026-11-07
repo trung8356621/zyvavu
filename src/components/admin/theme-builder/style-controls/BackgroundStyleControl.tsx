@@ -8,6 +8,7 @@ import {
   MediaSourcePicker,
 } from '@/components/admin/media/MediaSourcePicker'
 import {
+  Accordion,
   Badge,
   Box,
   Button,
@@ -26,6 +27,7 @@ import {
   UnstyledButton,
 } from '@mantine/core'
 import { ArrowLeft, Palette, Sliders, Trash2 } from 'lucide-react'
+import type { StyleDomainGroup } from '@/lib/style-engine/domains'
 import type { ThemeConfig } from '@/lib/theme-engine/types'
 import type { BackgroundConfig, BackgroundMode, PatternPreset } from '@/lib/style-engine/types'
 import {
@@ -33,6 +35,7 @@ import {
   serializeGradientCss,
   serializeMeshCss,
 } from '@/lib/style-engine/token-resolver'
+import { PATTERN_SCALE_LABELS } from '@/lib/style-engine/semantic-preset-labels'
 
 export interface BackgroundStyleControlProps {
   value?: BackgroundConfig
@@ -41,7 +44,11 @@ export interface BackgroundStyleControlProps {
   initialConfiguring?: boolean
   onMediaOpenChange?: (opened: boolean) => void
   onChange: (val: BackgroundConfig) => void
-  onOpenColorModal: (target: 'background' | 'overlay' | 'fallback' | 'pattern') => void
+  onOpenColorModal: (
+    target: 'background' | 'overlay' | 'fallback' | 'pattern',
+    anchor?: HTMLElement | null,
+  ) => void
+  onResetGroup?: (group: StyleDomainGroup) => void
 }
 
 export const DEMO_BACKGROUND_IMAGES = [
@@ -103,9 +110,11 @@ export function BackgroundStyleControl({
   onChange,
   onMediaOpenChange,
   onOpenColorModal,
+  onResetGroup,
 }: BackgroundStyleControlProps) {
   const mode = value.mode || 'color'
   const [isConfiguring, setIsConfiguring] = useState<boolean>(initialConfiguring)
+  const [groups, setGroups] = useState<string[]>(['pattern'])
 
   const update = (partial: Partial<BackgroundConfig>) => {
     onChange({
@@ -320,84 +329,40 @@ export function BackgroundStyleControl({
         </Box>
       </Box>
 
+      {/* Surface: Color / Image / Video stay open — enough controls without nesting Media. */}
       <Stack gap="xs">
-        <Select
-          label="Background pattern"
-          value={value.pattern?.preset || value.image?.pattern?.preset || 'none'}
-          data={[
-            { value: 'none', label: 'None' },
-            { value: 'dots', label: 'Dots' },
-            { value: 'grid', label: 'Grid' },
-            { value: 'stripes', label: 'Horizontal lines' },
-            { value: 'diagonal', label: 'Diagonal stripes' },
-            { value: 'noise', label: 'Subtle texture' },
-          ]}
-          onChange={(preset) =>
-            update({ pattern: { ...pattern, preset: preset as PatternPreset } })
-          }
-        />
-        {hasPattern && (
-          <>
+        <Group justify="space-between" align="center">
+          <Text size="sm" fw={600}>
+            Surface
+          </Text>
+          {onResetGroup && (
             <Button
-              variant="default"
-              leftSection={<Palette size={14} />}
-              onClick={() => onOpenColorModal('pattern')}
+              variant="subtle"
+              size="compact-xs"
+              aria-label="Reset Surface"
+              onClick={() => onResetGroup('surface')}
             >
-              Pattern color: {pattern?.colorToken || 'text'}
+              Reset group
             </Button>
-            <Text size="sm">Pattern opacity</Text>
-            <Slider
-              aria-label="Pattern opacity"
-              min={0}
-              max={100}
-              value={Math.round((pattern?.opacity ?? 0.15) * 100)}
-              onChange={(opacity) => update({ pattern: { ...pattern, opacity: opacity / 100 } })}
-            />
-            <Select
-              label="Pattern scale"
-              value={pattern?.scale || 'md'}
-              data={['sm', 'md', 'lg']}
-              onChange={(scale) =>
-                update({ pattern: { ...pattern, scale: scale as 'sm' | 'md' | 'lg' } })
-              }
-            />
-          </>
-        )}
+          )}
+        </Group>
+        <SegmentedControl
+          size="sm"
+          fullWidth
+          value={mode}
+          onChange={(val) => {
+            update({ mode: val as BackgroundMode })
+            setIsConfiguring(false)
+          }}
+          data={[
+            { label: 'Color', value: 'color' },
+            { label: 'Image', value: 'image', disabled: colorOnly },
+            { label: 'Video', value: 'video', disabled: colorOnly },
+          ]}
+        />
       </Stack>
 
-      {mode === 'video' && (
-        <MediaSourcePicker
-          onOpenChange={onMediaOpenChange}
-          kind="video"
-          onSelect={(media) =>
-            update({
-              video: {
-                ...value.video,
-                mediaId: media.id,
-                url: media.url,
-                ...(!value.video?.posterUrl && media.posterUrl
-                  ? { posterUrl: media.posterUrl, posterMediaId: media.posterMediaId }
-                  : {}),
-              },
-            })
-          }
-        />
-      )}
-      {/* Mode Switcher */}
-      <SegmentedControl
-        size="sm"
-        fullWidth
-        value={mode}
-        onChange={(val) => {
-          update({ mode: val as BackgroundMode })
-          setIsConfiguring(false)
-        }}
-        data={[
-          { label: 'Color', value: 'color' },
-          { label: 'Image', value: 'image', disabled: colorOnly },
-          { label: 'Video', value: 'video', disabled: colorOnly },
-        ]}
-      />
+      {/* Mode-specific surface editors (Color / Image / Video) — conditional within Surface */}
 
       {/* 1. COLOR MODE: Simplified directly-clickable swatch card */}
       {mode === 'color' && (
@@ -414,7 +379,7 @@ export function BackgroundStyleControl({
             role="button"
             tabIndex={0}
             aria-label="Change Palette"
-            onClick={() => onOpenColorModal('background')}
+            onClick={(event) => onOpenColorModal('background', event.currentTarget)}
             style={{
               width: '100%',
               borderRadius: 8,
@@ -671,7 +636,7 @@ export function BackgroundStyleControl({
                   variant="light"
                   color="teal"
                   leftSection={<Palette size={13} />}
-                  onClick={() => onOpenColorModal('fallback')}
+                  onClick={(event) => onOpenColorModal('fallback', event.currentTarget)}
                 >
                   Change
                 </Button>
@@ -778,7 +743,7 @@ export function BackgroundStyleControl({
                   size="xs"
                   variant="subtle"
                   color="teal"
-                  onClick={() => onOpenColorModal('overlay')}
+                  onClick={(event) => onOpenColorModal('overlay', event.currentTarget)}
                 >
                   Change Color
                 </Button>
@@ -840,6 +805,22 @@ export function BackgroundStyleControl({
                     url: media.url,
                     posterUrl: media.posterUrl || value.video?.posterUrl,
                     posterMediaId: media.posterMediaId || value.video?.posterMediaId,
+                  },
+                })
+              }
+            />
+            <MediaSourcePicker
+              onOpenChange={onMediaOpenChange}
+              kind="video"
+              onSelect={(media) =>
+                update({
+                  video: {
+                    ...value.video,
+                    mediaId: media.id,
+                    url: media.url,
+                    ...(!value.video?.posterUrl && media.posterUrl
+                      ? { posterUrl: media.posterUrl, posterMediaId: media.posterMediaId }
+                      : {}),
                   },
                 })
               }
@@ -973,7 +954,7 @@ export function BackgroundStyleControl({
                   variant="light"
                   color="teal"
                   leftSection={<Palette size={13} />}
-                  onClick={() => onOpenColorModal('fallback')}
+                  onClick={(event) => onOpenColorModal('fallback', event.currentTarget)}
                 >
                   Change
                 </Button>
@@ -1009,7 +990,7 @@ export function BackgroundStyleControl({
                   size="xs"
                   variant="subtle"
                   color="teal"
-                  onClick={() => onOpenColorModal('overlay')}
+                  onClick={(event) => onOpenColorModal('overlay', event.currentTarget)}
                 >
                   Change Color
                 </Button>
@@ -1053,6 +1034,87 @@ export function BackgroundStyleControl({
             </Box>
           </Stack>
         ))}
+
+      {/* Pattern overlay — meaningful control set, single Accordion group */}
+      <Accordion
+        multiple
+        value={groups}
+        onChange={setGroups}
+        variant="separated"
+        chevronPosition="left"
+      >
+        <Accordion.Item value="pattern">
+          <Accordion.Control>
+            <Text size="sm" fw={600}>
+              Pattern
+            </Text>
+          </Accordion.Control>
+          <Accordion.Panel>
+            <Stack gap="xs">
+              {onResetGroup && (
+                <Group justify="flex-end">
+                  <Button
+                    variant="subtle"
+                    size="compact-xs"
+                    aria-label="Reset Pattern"
+                    onClick={() => onResetGroup('pattern')}
+                  >
+                    Reset group
+                  </Button>
+                </Group>
+              )}
+              <Select
+                label="Style"
+                aria-label="Background pattern"
+                value={value.pattern?.preset || value.image?.pattern?.preset || 'none'}
+                data={[
+                  { value: 'none', label: 'None' },
+                  { value: 'dots', label: 'Dots' },
+                  { value: 'grid', label: 'Grid' },
+                  { value: 'stripes', label: 'Horizontal lines' },
+                  { value: 'diagonal', label: 'Diagonal stripes' },
+                  { value: 'noise', label: 'Subtle texture' },
+                ]}
+                onChange={(preset) =>
+                  update({ pattern: { ...pattern, preset: preset as PatternPreset } })
+                }
+              />
+              {hasPattern && (
+                <>
+                  <Button
+                    variant="default"
+                    leftSection={<Palette size={14} />}
+                    onClick={(event) => onOpenColorModal('pattern', event.currentTarget)}
+                  >
+                    Pattern color: {pattern?.colorToken || 'text'}
+                  </Button>
+                  <Text size="sm">Pattern opacity</Text>
+                  <Slider
+                    aria-label="Pattern opacity"
+                    min={0}
+                    max={100}
+                    value={Math.round((pattern?.opacity ?? 0.15) * 100)}
+                    onChange={(opacity) =>
+                      update({ pattern: { ...pattern, opacity: opacity / 100 } })
+                    }
+                  />
+                  <Select
+                    label="Pattern scale"
+                    value={pattern?.scale || 'md'}
+                    data={(['sm', 'md', 'lg'] as const).map((value) => ({
+                      value,
+                      label: PATTERN_SCALE_LABELS[value],
+                    }))}
+                    onChange={(scale) =>
+                      update({ pattern: { ...pattern, scale: scale as 'sm' | 'md' | 'lg' } })
+                    }
+                  />
+                </>
+              )}
+            </Stack>
+          </Accordion.Panel>
+        </Accordion.Item>
+      </Accordion>
     </Stack>
   )
 }

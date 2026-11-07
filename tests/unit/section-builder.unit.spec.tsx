@@ -22,9 +22,12 @@ describe('Theme Builder — Section Component & Universal Visual Styling', () =>
 
     it('defines a slot for nested widgets and layout fields in editor config', () => {
       expect(sectionEditor.fields!.content).toEqual({ type: 'slot', disallow: ['Section'] })
+      // GAP: inherit semantics / vertical-only padding remain Settings-owned until Style Sidebar parity.
       expect(sectionEditor.fields!.containerWidth).toBeDefined()
       expect(sectionEditor.fields!.verticalPadding).toBeDefined()
-      expect(sectionEditor.fields!.minHeight).toBeDefined()
+      // minHeight moved to Style Sidebar (dimensions.minHeight); prop kept in defaultProps only.
+      expect(sectionEditor.fields!.minHeight).toBeUndefined()
+      expect(sectionEditor.defaultProps?.minHeight).toBe('auto')
     })
   })
 
@@ -236,8 +239,7 @@ describe('Theme Builder — Section Component & Universal Visual Styling', () =>
       expect(headingEl).toBeTruthy()
       expect(headingEl?.tagName.toLowerCase()).toBe('h3')
 
-      // Must carry visual H1 preset class and CSS variables
-      expect(headingEl?.className).toContain('zyvavu-typo-preset--h1')
+      // Heading wrapper applies Style Engine CSS vars (no separate Document Title chrome).
       expect(headingEl?.style.fontSize).toContain('var(--zyvavu-theme-h1-size')
       expect(headingEl?.style.textShadow).toContain('var(--zyvavu-theme-accent')
       expect(headingEl?.style.letterSpacing).toBe('0.05em')
@@ -306,7 +308,7 @@ describe('Theme Builder — Section Component & Universal Visual Styling', () =>
       }
 
       const { container } = render(<ThemeRenderer document={legacyDoc} />)
-      const titleEl = container.querySelector('.zyvavu-widget-post-title__heading')
+      const titleEl = container.querySelector('h1')
       expect(titleEl?.textContent).toBe('Classic Post')
     })
   })

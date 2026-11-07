@@ -344,6 +344,7 @@ describe('Theme Builder — Page Settings & Atomic Design System', () => {
     it('renders PostTitleFrontend consuming semantic style props', () => {
       const { container } = render(
         <PostTitleFrontend
+          tag="h2"
           title="Atomic Design Title"
           style={{
             typography: 'h2',
@@ -353,12 +354,10 @@ describe('Theme Builder — Page Settings & Atomic Design System', () => {
         />,
       )
 
-      const wrapper = container.querySelector('.zyvavu-widget-post-title') as HTMLElement
-      expect(wrapper.style.textAlign).toBe('right')
-
       const heading = container.querySelector('h2')
       expect(heading).not.toBeNull()
       expect(heading?.textContent).toBe('Atomic Design Title')
+      expect(heading?.style.textAlign).toBe('right')
       expect(heading?.style.color).toContain('var(--zyvavu-theme-primary')
     })
 

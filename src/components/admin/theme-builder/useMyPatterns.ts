@@ -18,12 +18,14 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
     ...init,
     headers: { 'content-type': 'application/json', ...init?.headers },
   })
-  const body = await response.json()
+  const body = await response.json().catch(() => ({}))
   if (!response.ok)
     throw new Error(
-      body.errors?.[0]?.message || body.message || `Request failed (${response.status})`,
+      (body as { errors?: { message?: string }[]; message?: string }).errors?.[0]?.message ||
+        (body as { message?: string }).message ||
+        `Request failed (${response.status})`,
     )
-  return body
+  return body as T
 }
 export function useMyPatterns(search: string, enabled: boolean) {
   const [revision, setRevision] = useState(0)
@@ -38,13 +40,8 @@ export function useMyPatterns(search: string, enabled: boolean) {
   useEffect(() => {
     if (!enabled) return
     const controller = new AbortController()
-    const params = new URLSearchParams({
-      limit: '50',
-      depth: '0',
-      sort: '-updatedAt',
-      'where[name][like]': search,
-    })
-    request<{ docs: MyPatternDocument[]; totalPages: number }>(`/api/widget-patterns?${params}`, {
+    const params = new URLSearchParams({ search })
+    request<{ docs: MyPatternDocument[]; totalPages: number }>(`/api/user-patterns?${params}`, {
       signal: controller.signal,
     })
       .then((result) =>
@@ -53,7 +50,7 @@ export function useMyPatterns(search: string, enabled: boolean) {
           revision,
           docs: result.docs,
           page: 1,
-          totalPages: result.totalPages,
+          totalPages: result.totalPages || 1,
           error: '',
         }),
       )
@@ -77,7 +74,7 @@ export function useMyPatterns(search: string, enabled: boolean) {
     }))
   const save = async (record: PatternJSON, id?: string | number) => {
     const result = await request<{ doc: MyPatternDocument }>(
-      `/api/widget-patterns${id !== undefined ? `/${id}` : ''}`,
+      `/api/user-patterns${id !== undefined ? `/${id}` : ''}`,
       {
         method: id !== undefined ? 'PATCH' : 'POST',
         body: JSON.stringify({
@@ -92,43 +89,18 @@ export function useMyPatterns(search: string, enabled: boolean) {
     setRevision((value) => value + 1)
     return result.doc
   }
+  /** File-backed V1 stores JSON only; live preview replaces thumbnails. */
   const thumbnail = async (doc: MyPatternDocument) => {
-    try {
-      const result = await request<{ doc: MyPatternDocument }>(
-        `/api/widget-patterns/${doc.id}/thumbnail`,
-        { method: 'POST' },
-      )
-      upsert(result.doc)
-      setRevision((value) => value + 1)
-      return true
-    } catch {
-      upsert({ ...doc, thumbnailStatus: 'failed', url: null })
-      setRevision((value) => value + 1)
-      return false
-    }
+    upsert({ ...doc, thumbnailStatus: 'pending', url: null })
+    return false
   }
   const remove = async (id: string | number) => {
-    await request(`/api/widget-patterns/${id}`, { method: 'DELETE' })
+    await request(`/api/user-patterns/${id}`, { method: 'DELETE' })
     setState((previous) => ({ ...previous, docs: previous.docs.filter((doc) => doc.id !== id) }))
     setRevision((value) => value + 1)
   }
   const loadMore = async () => {
-    const params = new URLSearchParams({
-      limit: '50',
-      depth: '0',
-      sort: '-updatedAt',
-      page: String(state.page + 1),
-      'where[name][like]': search,
-    })
-    const result = await request<{ docs: MyPatternDocument[]; page: number; totalPages: number }>(
-      `/api/widget-patterns?${params}`,
-    )
-    setState((previous) => ({
-      ...previous,
-      docs: [...previous.docs, ...result.docs],
-      page: result.page,
-      totalPages: result.totalPages,
-    }))
+    /* File store returns the full filtered list in one page. */
   }
   return {
     ...state,

@@ -63,6 +63,19 @@ export function resolveShadowToken(token?: string): string | undefined {
   }
 }
 
+export function resolveFontFamily(
+  role?: import('./types').FontFamilyRole,
+): string | undefined {
+  if (role === 'theme') return 'var(--zyvavu-theme-font)'
+  if (role === 'heading') return 'var(--zyvavu-theme-font-heading, var(--zyvavu-theme-font))'
+  return undefined
+}
+
+export function resolveFontSizeToken(token?: string): string | undefined {
+  if (!token || !/^[a-z][a-z0-9-]*$/i.test(token)) return undefined
+  return `var(--zyvavu-theme-${token}-size)`
+}
+
 export function resolveLetterSpacing(preset?: LetterSpacingPreset): string | undefined {
   switch (preset) {
     case 'tighter':

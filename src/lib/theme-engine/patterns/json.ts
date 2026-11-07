@@ -198,6 +198,11 @@ export function collectPatternTokens(value: unknown): string[] {
   walk(value)
   return [...tokens].sort()
 }
+/** True when the widget type is in the pattern serialize allowlist. */
+export function canSaveWidgetType(type: string): boolean {
+  return Object.hasOwn(PATTERN_SLOTS, type)
+}
+
 export function serializeSelectedPattern(
   data: Data,
   id: string,
@@ -278,6 +283,7 @@ export const SIMPLE_PATTERN_TYPES = [
   'Heading',
   'Text',
   'Button',
+  'Image',
   'DocumentTitle',
   'DocumentDate',
   'DocumentCategory',
@@ -292,9 +298,18 @@ export const SIMPLE_PATTERN_TYPES = [
   'ItemLink',
 ]
 export function isComplexPattern(record: PatternJSON) {
+  const root = record.payload.content[0]
+  // Empty Section shells without thumbnail metadata (Container presets) stay HTML/CSS.
+  if (
+    record.widgetType === 'Section' &&
+    (!Array.isArray(root?.props?.content) || root.props.content.length === 0) &&
+    !record.thumbnail
+  ) {
+    return false
+  }
   return (
     !SIMPLE_PATTERN_TYPES.includes(record.widgetType) ||
-    PATTERN_SLOTS[record.widgetType]?.some((slot) => record.payload.content[0].props[slot]?.length)
+    PATTERN_SLOTS[record.widgetType]?.some((slot) => root?.props?.[slot]?.length)
   )
 }
 

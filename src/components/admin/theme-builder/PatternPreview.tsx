@@ -1,7 +1,7 @@
 'use client'
 import { atomManifests } from '@/widgets/atoms/manifests'
 import { createAtomRenderer } from '@/widgets/atoms/frontend'
-import React, { useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Alert, Button, Loader, Modal, Stack, Text } from '@mantine/core'
 import { TextBlockFrontend } from '@/widgets/TextBlock/frontend'
 import { PostTitleFrontend } from '@/widgets/PostTitle/frontend'
@@ -12,6 +12,7 @@ import { ItemExcerptFrontend } from '@/widgets/ItemExcerpt/frontend'
 import { ItemLinkFrontend } from '@/widgets/ItemLink/frontend'
 import type { PatternJSON } from '@/lib/theme-engine/patterns/json'
 import { isComplexPattern } from '@/lib/theme-engine/patterns/json'
+import { resolveWidgetStyles } from '@/lib/style-engine/serializer'
 import { ADMIN_OVERLAY_LAYERS } from '@/theme/layers'
 const SIMPLE: Record<string, React.ComponentType<any>> = {
   ...Object.fromEntries(Object.keys(atomManifests).map((type) => [type, createAtomRenderer(type)])),
@@ -25,6 +26,21 @@ const SIMPLE: Record<string, React.ComponentType<any>> = {
 }
 export function LivePatternPreview({ record }: { record: PatternJSON }) {
   const root = record.payload.content[0]
+  if (
+    root.type === 'Section' &&
+    (!Array.isArray(root.props.content) || root.props.content.length === 0)
+  ) {
+    return (
+      <div
+        inert
+        style={{
+          pointerEvents: 'none',
+          minHeight: '4.5rem',
+          ...resolveWidgetStyles(root.props.style),
+        }}
+      />
+    )
+  }
   const Component = SIMPLE[root.type]
   return Component ? (
     <div inert style={{ pointerEvents: 'none' }}>
@@ -41,23 +57,68 @@ export function LivePatternPreview({ record }: { record: PatternJSON }) {
     <Text>Live preview is available through the protected preview route.</Text>
   )
 }
-export function PatternThumbnail({ record, url }: { record: PatternJSON; url?: string | null }) {
+
+function useNearViewport(enabled: boolean) {
+  const ref = useRef<HTMLDivElement | null>(null)
+  const [visible, setVisible] = useState(!enabled)
+  useEffect(() => {
+    if (!enabled || visible) return
+    const node = ref.current
+    if (!node) return
+    if (typeof IntersectionObserver === 'undefined') {
+      setVisible(true)
+      return
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setVisible(true)
+          observer.disconnect()
+        }
+      },
+      { rootMargin: '120px 0px', threshold: 0.01 },
+    )
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [enabled, visible])
+  return { ref, visible }
+}
+
+export function PatternThumbnail({
+  record,
+  url,
+  eager = false,
+}: {
+  record: PatternJSON
+  url?: string | null
+  /** When true, skip IntersectionObserver deferral (e.g. preview modal). */
+  eager?: boolean
+}) {
   const [failedURL, setFailedURL] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
   const [loaded, setLoaded] = useState<string | null>(null)
-  if (!isComplexPattern(record)) return <LivePatternPreview record={record} />
+  const complex = isComplexPattern(record)
+  const { ref, visible } = useNearViewport(complex && !eager)
+
+  if (!complex) return <LivePatternPreview record={record} />
+
   const base = url || record.thumbnail?.url
   const source = base ? `${base}${base.includes('?') ? '&' : '?'}retry=${attempt}` : undefined
+  const showImage = visible && source && source !== failedURL
+
   return (
     <div
+      ref={ref}
       style={{
         aspectRatio: loaded === source ? undefined : '3 / 2',
         position: 'relative',
         width: '100%',
         overflow: 'hidden',
+        minHeight: '7rem',
+        background: 'var(--mantine-color-gray-0)',
       }}
     >
-      {source && source !== failedURL ? (
+      {showImage ? (
         <>
           {loaded !== source && (
             <div
@@ -72,13 +133,16 @@ export function PatternThumbnail({ record, url }: { record: PatternJSON; url?: s
             src={source}
             alt={record.name}
             loading="lazy"
+            decoding="async"
+            fetchPriority="low"
             width={1200}
+            height={800}
             style={{ display: 'block', width: '100%', height: 'auto' }}
             onLoad={() => setLoaded(source)}
             onError={() => setFailedURL(source)}
           />
         </>
-      ) : (
+      ) : visible ? (
         <Stack p="sm" gap="xs" role="status">
           <Text size="sm">Thumbnail unavailable</Text>
           <Text size="xs" c="dimmed">
@@ -98,6 +162,8 @@ export function PatternThumbnail({ record, url }: { record: PatternJSON; url?: s
             </Button>
           )}
         </Stack>
+      ) : (
+        <div role="status" aria-label={`${record.name} thumbnail deferred`} />
       )}
     </div>
   )
@@ -134,7 +200,7 @@ export function PatternPreviewModal({
           />
         ) : (
           <>
-            <PatternThumbnail record={record} url={url} />
+            <PatternThumbnail record={record} url={url} eager />
             <Button onClick={() => setLive(true)}>View with active theme</Button>
             <Alert>Live preview loads only when requested. It does not open another editor.</Alert>
           </>

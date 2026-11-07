@@ -5,7 +5,7 @@ import { ActionIcon, Box, Group, Paper, Portal, Text } from '@mantine/core'
 import { GripHorizontal, X } from 'lucide-react'
 import { ADMIN_OVERLAY_LAYERS } from '@/theme/layers'
 
-export type ModalPresentationMode = 'floating' | 'dialog'
+export type ModalPresentationMode = 'floating' | 'dialog' | 'docked'
 
 export interface SharedDraggableModalProps {
   opened: boolean
@@ -22,6 +22,8 @@ export interface SharedDraggableModalProps {
   mode?: ModalPresentationMode
   withBackdrop?: boolean
   closeOnClickOutside?: boolean
+  /** When set, outside click uses this instead of onClose (e.g. keep vs cancel). */
+  onClickOutside?: () => void
   closeOnEscape?: boolean
   zIndex?: number
   className?: string
@@ -56,6 +58,8 @@ export function clampModalPosition(
 
 /**
  * Calculates initial viewport-clamped coordinate next to the anchor element.
+ * Prefer the side with room; when the anchor sits in the right half (Style sidebar),
+ * place the floating picker to the left so it stays beside the control.
  */
 export function computeAnchorPosition(
   anchor: HTMLElement | null,
@@ -74,26 +78,27 @@ export function computeAnchorPosition(
   }
 
   const rect = anchor.getBoundingClientRect()
+  const leftCandidate = rect.left - width - padding
+  const rightCandidate = rect.right + padding
+  const preferLeft =
+    rect.left > window.innerWidth * 0.45 || rightCandidate + width > window.innerWidth - padding
 
-  // Primary position: right side of anchor
-  let x = rect.right + padding
-  let y = rect.top
-
-  // If overflowing right viewport boundary, try placing to the left of anchor
-  if (x + width > window.innerWidth - padding) {
-    const leftCandidate = rect.left - width - padding
-    if (leftCandidate >= padding) {
-      x = leftCandidate
-    } else {
-      x = Math.max(padding, window.innerWidth - width - padding)
-    }
+  let x: number
+  if (preferLeft && leftCandidate >= padding) {
+    x = leftCandidate
+  } else if (rightCandidate + width <= window.innerWidth - padding) {
+    x = rightCandidate
+  } else if (leftCandidate >= padding) {
+    x = leftCandidate
+  } else {
+    x = Math.max(padding, window.innerWidth - width - padding)
   }
 
-  // Vertical boundary clamping: keep header and modal within visible screen
+  let y = rect.top
   if (y + height > window.innerHeight - padding) {
     y = Math.max(padding, window.innerHeight - height - padding)
   }
-  y = Math.max(padding, y)
+  y = Math.max(padding, Math.min(y, window.innerHeight - padding))
 
   return { x, y }
 }
@@ -124,6 +129,7 @@ export function SharedDraggableModal({
   mode = 'floating',
   withBackdrop = mode === 'dialog',
   closeOnClickOutside = mode === 'dialog',
+  onClickOutside,
   closeOnEscape = true,
   zIndex = ADMIN_OVERLAY_LAYERS.STYLE_MODAL,
   className,
@@ -131,6 +137,8 @@ export function SharedDraggableModal({
   headerExtra,
   subHeader,
 }: SharedDraggableModalProps) {
+  const isDocked = mode === 'docked'
+  const effectiveDraggable = isDocked ? false : draggable
   const [viewport, setViewport] = useState(() => ({
     width: typeof window === 'undefined' ? 0 : window.innerWidth,
     height: typeof window === 'undefined' ? 0 : window.innerHeight,
@@ -213,7 +221,7 @@ export function SharedDraggableModal({
 
   // Header Drag Pointer Handlers
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!draggable) return
+    if (!effectiveDraggable) return
 
     // Never initiate dragging from buttons, inputs or explicitly marked interactive elements
     const target = e.target as HTMLElement
@@ -344,12 +352,12 @@ export function SharedDraggableModal({
         return
       }
 
-      onClose()
+      ;(onClickOutside || onClose)()
     }
 
     document.addEventListener('mousedown', handleDocumentClick)
     return () => document.removeEventListener('mousedown', handleDocumentClick)
-  }, [opened, closeOnClickOutside, anchorEl, onClose])
+  }, [opened, closeOnClickOutside, anchorEl, onClose, onClickOutside])
 
   if (!opened) return null
 
@@ -370,31 +378,57 @@ export function SharedDraggableModal({
         />
       )}
 
-      {/* Draggable Style Modal Card */}
+      {/* Style panel: floating/dialog card or fixed right dock */}
       <Paper
         ref={modalRef}
         withBorder
-        radius="sm"
-        shadow="sm"
+        radius={isDocked ? 0 : 'sm'}
+        shadow={isDocked ? 'xs' : 'sm'}
         className={className}
-        style={{
-          position: 'fixed',
-          left: position.x,
-          top: position.y,
-          width,
-          maxWidth: 'calc(100vw - 24px)',
-          maxHeight: Math.max(0, viewport.height - position.y - 12),
-          display: 'flex',
-          flexDirection: 'column',
-          zIndex,
-          backgroundColor: 'var(--mantine-color-body, #ffffff)',
-          borderColor: 'var(--mantine-color-default-border, #e5e7eb)',
-          boxShadow: '0 4px 14px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.04)',
-          overflow: 'hidden',
-          transition: isDragging ? 'none' : 'box-shadow 0.15s ease',
-          pointerEvents: 'auto',
-          ...style,
-        }}
+        style={
+          isDocked
+            ? {
+                position: 'fixed',
+                top: 0,
+                right: 0,
+                bottom: 0,
+                width,
+                maxWidth: 'min(100vw, 420px)',
+                height: '100%',
+                maxHeight: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                zIndex,
+                backgroundColor: 'var(--mantine-color-body, #ffffff)',
+                borderColor: 'var(--mantine-color-default-border, #e5e7eb)',
+                borderLeft: '1px solid var(--mantine-color-default-border, #e5e7eb)',
+                borderTop: 'none',
+                borderBottom: 'none',
+                borderRight: 'none',
+                boxShadow: '-4px 0 16px rgba(0, 0, 0, 0.06)',
+                overflow: 'hidden',
+                pointerEvents: 'auto',
+                ...style,
+              }
+            : {
+                position: 'fixed',
+                left: position.x,
+                top: position.y,
+                width,
+                maxWidth: 'calc(100vw - 24px)',
+                maxHeight: Math.max(0, viewport.height - position.y - 12),
+                display: 'flex',
+                flexDirection: 'column',
+                zIndex,
+                backgroundColor: 'var(--mantine-color-body, #ffffff)',
+                borderColor: 'var(--mantine-color-default-border, #e5e7eb)',
+                boxShadow: '0 4px 14px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.04)',
+                overflow: 'hidden',
+                transition: isDragging ? 'none' : 'box-shadow 0.15s ease',
+                pointerEvents: 'auto',
+                ...style,
+              }
+        }
         role="dialog"
         aria-modal={withBackdrop}
         aria-label={typeof title === 'string' ? title : undefined}
@@ -410,14 +444,14 @@ export function SharedDraggableModal({
             justifyContent: 'space-between',
             borderBottom: '1px solid var(--mantine-color-default-border, #e5e7eb)',
             backgroundColor: 'var(--mantine-color-gray-0, #f8f9fa)',
-            cursor: draggable ? (isDragging ? 'grabbing' : 'grab') : 'default',
+            cursor: effectiveDraggable ? (isDragging ? 'grabbing' : 'grab') : 'default',
             userSelect: 'none',
             touchAction: 'none',
             flexShrink: 0,
           }}
         >
           <Group gap={6} style={{ minWidth: 0, flex: 1 }}>
-            {draggable && (
+            {effectiveDraggable && (
               <GripHorizontal
                 size={16}
                 color="var(--mantine-color-dimmed, #868e96)"

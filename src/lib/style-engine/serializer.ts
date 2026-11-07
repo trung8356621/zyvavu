@@ -5,6 +5,8 @@ import {
   resolveBorderWidthToken,
   resolveColorToken,
   resolveContainerWidth,
+  resolveFontFamily,
+  resolveFontSizeToken,
   resolveLetterSpacing,
   resolveLineHeight,
   resolvePatternCss,
@@ -72,7 +74,7 @@ export function resolveWidgetStyles(style?: UniversalStyle): CSSProperties {
       : 'var(--zyvavu-theme-font)'
   }
 
-  // 1. Typography
+  // 1. Typography — explicit overrides win over preset / theme CSS inheritance
   if (style.typography) {
     const typo = style.typography
     if (typo.colorToken) {
@@ -97,6 +99,14 @@ export function resolveWidgetStyles(style?: UniversalStyle): CSSProperties {
       if (fx.textShadow) result.textShadow = fx.textShadow
       if (fx.WebkitTextStroke) (result as any).WebkitTextStroke = fx.WebkitTextStroke
     }
+    const family = resolveFontFamily(typo.fontFamily)
+    if (family) result.fontFamily = family
+    if (typo.fontWeight) result.fontWeight = typo.fontWeight as CSSProperties['fontWeight']
+    const size = resolveFontSizeToken(typo.fontSize)
+    if (size) result.fontSize = size
+    if (typo.fontStyle) result.fontStyle = typo.fontStyle
+    if (typo.textDecoration) result.textDecoration = typo.textDecoration
+    if (typo.textTransform) result.textTransform = typo.textTransform
   }
 
   // Legacy flat colorToken / align

@@ -3,6 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { MantineProvider } from '@mantine/core'
+
+vi.mock('@/components/admin/media/MediaSourcePicker', () => ({
+  MediaSourcePicker: () => null,
+  BackgroundVideoPresets: () => null,
+}))
 import { getEditorConfigForContext } from '@/lib/theme-engine/widget-registry-editor'
 import { getFrontendWidget } from '@/lib/theme-engine/widget-registry-frontend'
 import { getStyleModalDomains, resetStyleDomain } from '@/lib/style-engine/domains'
@@ -203,7 +208,7 @@ describe('Visual Builder UX V2 contracts', () => {
     act(() => stylePreviewStore.clearPreview('stable'))
     expect(view.container.querySelector('.zyvavu-widget-text__title')).toBe(heading)
   })
-  it('guards domain switching until the active draft is resolved', async () => {
+  it('allows domain switching without an Apply gate under direct-commit', async () => {
     const base = {
       opened: true,
       anchorEl: null,
@@ -211,7 +216,7 @@ describe('Visual Builder UX V2 contracts', () => {
       componentId: 'switch',
       currentStyle: { background: { colorToken: 'primary' } },
       onClose: vi.fn(),
-      onUpdateStyle: vi.fn(),
+      onUpdateStyle: vi.fn(() => true),
     }
     const view = render(
       <MantineProvider>
@@ -219,15 +224,15 @@ describe('Visual Builder UX V2 contracts', () => {
       </MantineProvider>,
     )
     fireEvent.click(screen.getByRole('button', { name: 'Reset domain' }))
+    expect(base.onUpdateStyle).toHaveBeenCalled()
     view.rerender(
       <MantineProvider>
         <WidgetStyleContextMenu {...base} domain="animation" requestNonce={1} />
       </MantineProvider>,
     )
-    expect(await screen.findByText('Unapplied changes')).toBeTruthy()
-    expect(base.onUpdateStyle).not.toHaveBeenCalled()
-    fireEvent.click(screen.getByRole('button', { name: 'Discard' }))
-    expect(stylePreviewStore.getPreview('switch')).toBeNull()
+    expect(screen.queryByText('Unapplied changes')).toBeNull()
+    expect(await screen.findByTestId('animation-library-page')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Fade' }))
     expect(await screen.findByRole('button', { name: 'Test Animation' })).toBeTruthy()
   })
   it('replays a scoped widget inside the Puck iframe', () => {
@@ -289,9 +294,11 @@ describe('Visual Builder UX V2 contracts', () => {
     window.matchMedia = vi.fn().mockReturnValue({ matches: true })
     replayAnimation(element, effect)
     expect(animate).toHaveBeenCalledTimes(1)
+    replayAnimation(element, effect, { force: true })
+    expect(animate).toHaveBeenCalledTimes(2)
   })
-  it('opens one independent domain with Apply/Cancel and preserves unrelated fields on Reset', () => {
-    const apply = vi.fn()
+  it('opens Style accordion with Cancel/Reset and preserves unrelated fields on Reset', () => {
+    const apply = vi.fn(() => true)
     const original = {
       typography: { typography: 'h2' },
       background: { mode: 'color' as const, colorToken: 'primary' },
@@ -312,11 +319,10 @@ describe('Visual Builder UX V2 contracts', () => {
     )
     expect(screen.getByRole('dialog').getAttribute('aria-label')).toContain('Background:')
     expect(screen.queryByRole('tab', { name: 'Type' })).toBeNull()
+    expect(screen.queryByText('Layout')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Reset domain' }))
-    expect(stylePreviewStore.getPreview('t')?.typography).toEqual(original.typography)
-    expect(apply).not.toHaveBeenCalled()
-    fireEvent.click(screen.getByRole('button', { name: /Apply/ }))
-    expect(apply).toHaveBeenCalledWith({ typography: original.typography })
+    expect(apply.mock.calls.at(-1)?.[0]).toEqual({ typography: original.typography })
+    expect(screen.queryByRole('button', { name: /Áp dụng \/ Apply/i })).toBeNull()
   })
   it('plays hover/focus samples on the sample element only and keeps Scroll disabled', () => {
     const animate = vi.fn().mockReturnValue({ cancel: vi.fn(), onfinish: null })
@@ -329,9 +335,9 @@ describe('Visual Builder UX V2 contracts', () => {
     )
     fireEvent.focus(screen.getByRole('button', { name: 'Fade' }))
     expect(animate).toHaveBeenCalled()
-    expect(
-      screen.getByRole('tab', { name: 'Scroll (shell)' }).getAttribute('data-disabled'),
-    ).not.toBeNull()
+    fireEvent.click(screen.getByRole('tab', { name: 'Scroll' }))
+    expect(screen.getByTestId('animation-scroll-shell-note')).toBeTruthy()
+    expect(screen.getByTestId('animation-library-page')).toBeTruthy()
     HTMLElement.prototype.animate = previous
   })
 })

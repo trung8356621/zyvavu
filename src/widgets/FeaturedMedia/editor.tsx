@@ -19,14 +19,7 @@ export const featuredMediaEditor: ComponentConfig<FeaturedMediaProps> = {
         { label: 'Auto', value: 'auto' },
       ],
     },
-    rounded: {
-      type: 'radio',
-      label: 'Rounded Corners',
-      options: [
-        { label: 'Yes', value: true },
-        { label: 'No', value: false },
-      ],
-    },
+    // rounded → Style Sidebar (radius). Prop retained for saved-data compatibility.
   },
   defaultProps: {
     aspectRatio: '16:9',

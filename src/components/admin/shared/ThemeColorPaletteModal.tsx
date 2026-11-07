@@ -184,45 +184,29 @@ function ThemeColorPaletteSession({
     return swatches.find((s) => s.color.toLowerCase().trim() === normalizedSelected)
   }, [swatches, selectedToken, normalizedSelected])
 
+  const keepClose = () => {
+    // Selection already live-committed; dismiss without rollback.
+    onClose()
+  }
+
   const handleSelectColor = (hex: string, tokenId: string) => {
     setSelectedToken(tokenId)
     setSelectedColor(hex)
     onChange?.(hex)
     onSelectToken?.(tokenId, hex)
+    // Legacy Apply callers: solid selection finalizes immediately (no Apply button).
+    onApply?.(hex)
+    onApplyToken?.(tokenId, hex)
+    keepClose()
   }
 
   const handleCancelClick = () => {
-    const originalColor = initialColorRef.current
-    const originalToken = initialTokenRef.current
-    setSelectedColor(originalColor)
-    setSelectedToken(originalToken)
-    onChange?.(originalColor)
-    onCancel?.()
-    onClose()
-  }
-
-  const handleApplyClick = () => {
-    if (activeTab === 'gradient') {
-      const css = serializeGradientCss(gradient)
-      onApplyGradient?.(gradient)
-      if (css) onApply?.(css)
-      onClose()
-      return
-    }
-
-    if (activeTab === 'mesh') {
-      const css = serializeMeshCss(mesh)
-      onApplyMesh?.(mesh)
-      if (css) onApply?.(css)
-      onClose()
-      return
-    }
-
-    // Solid
-    const tokenId = selectedToken || activeSwatch?.id || 'primary'
-    onApply?.(selectedColor)
-    onApplyToken?.(tokenId, selectedColor)
-    onClose()
+    setSelectedColor(initialColorRef.current)
+    setSelectedToken(initialTokenRef.current)
+    // Owner restores scoped snapshot and closes (Cancel / X / Escape).
+    // Do not call keepClose after onCancel — that would record a keep-history step after restore.
+    if (onCancel) onCancel()
+    else onClose()
   }
 
   // Gradient Handlers
@@ -315,16 +299,14 @@ function ThemeColorPaletteSession({
       mode="floating"
       draggable={true}
       showCloseButton={true}
-      closeOnClickOutside={false}
+      closeOnClickOutside={true}
+      onClickOutside={keepClose}
       closeOnEscape={true}
       zIndex={zIndex}
       footer={
         <Group grow gap="xs">
           <Button variant="default" size="sm" onClick={handleCancelClick}>
             Cancel
-          </Button>
-          <Button color="teal" size="sm" onClick={handleApplyClick}>
-            Apply
           </Button>
         </Group>
       }

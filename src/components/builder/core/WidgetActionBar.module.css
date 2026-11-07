@@ -67,9 +67,14 @@
   outline-offset: -2px;
 }
 
-/* Preserve Puck sizing; give the visual library the full available preview width. */
+/* Rail stays in layout flow; expanded library overlays the canvas (not the sidebar width). */
 .libraryHost:has([data-widget-pattern-library]) {
-  --puck-user-sidebar-left-width: var(--zyvavu-builder-library-width, clamp(28rem, 40vw, 36rem));
+  --zyvavu-builder-library-rail-width: 60px;
+  --puck-user-sidebar-left-width: var(--zyvavu-builder-library-rail-width);
+}
+.libraryHost:has([data-widget-pattern-library]) :global([class*='_PuckLayout-leftSideBar_']),
+.libraryHost:has([data-widget-pattern-library]) :global([class*='_PuckLayout-left_']) {
+  overflow: visible;
 }
 @media (max-width: 765px) {
   .libraryHost:has([data-widget-pattern-library]) {
@@ -80,11 +85,13 @@
 /* Theme Builder only: relocate the existing plugin navigation, keeping Puck's
    plugin selection, panels, resize behavior and header tools intact. */
 .themeNavigation {
-  --zyvavu-builder-library-width: clamp(28rem, 40vw, 36rem);
+  --zyvavu-builder-library-rail-width: 60px;
+  --zyvavu-builder-plugin-nav-width: min(14rem, 28vw);
+  --zyvavu-builder-library-width: var(--zyvavu-builder-library-rail-width);
 }
 .themeNavigation :global([class*='_PuckLayout-inner_']) {
   --puck-pluginbar-width: 0px;
-  --puck-user-sidebar-left-width: var(--zyvavu-builder-library-width);
+  --puck-user-sidebar-left-width: var(--zyvavu-builder-library-rail-width);
 }
 .themeNavigation :global([class*='_PuckHeader-toggle_']) {
   display: none;
@@ -95,13 +102,13 @@
 .themeNavigation :global([class*='_PuckLayout-nav_']) {
   grid-area: header;
   align-self: stretch;
-  width: var(--zyvavu-builder-library-width);
+  width: var(--zyvavu-builder-plugin-nav-width);
   min-width: 0;
   z-index: 1;
   border-top: 0;
 }
 .themeNavigation :global([class*='_PuckLayout-header_']) {
-  padding-inline-start: var(--zyvavu-builder-library-width);
+  padding-inline-start: var(--zyvavu-builder-plugin-nav-width);
   min-width: 0;
 }
 .themeNavigation :global([class*='_Nav-list_']) {
@@ -127,7 +134,7 @@
 }
 @media (max-width: 765px) and (min-width: 638px) {
   .themeNavigation {
-    --zyvavu-builder-library-width: min(28rem, 55vw);
+    --zyvavu-builder-plugin-nav-width: min(12rem, 40vw);
   }
 }
 @media (max-width: 637px) {

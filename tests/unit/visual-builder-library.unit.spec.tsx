@@ -1,10 +1,13 @@
 import React from 'react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MantineProvider } from '@mantine/core'
 const state = vi.hoisted(() => ({ current: null as any }))
 vi.mock('@puckeditor/core', () => ({
   createUsePuck: () => (selector: (value: any) => unknown) => selector(state.current),
+}))
+vi.mock('@/components/admin/media/MediaSourcePicker', () => ({
+  MediaSourcePicker: () => null,
 }))
 import { getEditorConfigForContext } from '@/lib/theme-engine/widget-registry-editor'
 import { stylePreviewStore } from '@/lib/style-engine/preview-store'
@@ -30,7 +33,7 @@ it('renders registry categories and inserts a real pattern as one Puck operation
   )
   expect(screen.getByRole('navigation', { name: 'Widget categories' })).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: 'Sections' }))
-  expect(screen.getByText('Airy section')).toBeTruthy()
+  expect(screen.getByRole('button', { name: 'Insert Airy section' })).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: 'Insert Airy section' }))
   expect(state.current.dispatch).toHaveBeenCalledOnce()
   const operation = state.current.dispatch.mock.calls[0][0]
@@ -71,6 +74,48 @@ it('opens My Patterns as a standalone modal without changing Puck data', async (
   expect(state.current.dispatch).not.toHaveBeenCalled()
   vi.unstubAllGlobals()
 })
+it('keeps the category rail and overlays results without a full-width Save as Pattern header', () => {
+  render(
+    <MantineProvider>
+      <WidgetPatternLibrary context="home" beforeOperation={() => true} />
+    </MantineProvider>,
+  )
+  const library = document.querySelector('[data-widget-pattern-library]') as HTMLElement
+  expect(library.getAttribute('data-layout')).toBe('overlay')
+  expect(library.getAttribute('data-expanded')).toBe('true')
+  expect(screen.getByRole('region', { name: 'Widget library' })).toBeTruthy()
+  expect(screen.getAllByRole('button', { name: 'Collapse library' }).length).toBeGreaterThan(0)
+  expect(screen.queryByRole('button', { name: 'Save as Pattern' })).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: 'Collapse library', expanded: true }))
+  expect(library.getAttribute('data-expanded')).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: 'Sections' }))
+  expect(library.getAttribute('data-expanded')).toBe('true')
+  expect(screen.getByRole('button', { name: 'Insert Airy section' })).toBeTruthy()
+})
+it('persists overlay width locally across remount', async () => {
+  window.localStorage.setItem('zyvavu.builder.libraryOverlayWidth', '500')
+  const { unmount } = render(
+    <MantineProvider>
+      <WidgetPatternLibrary context="home" beforeOperation={() => true} />
+    </MantineProvider>,
+  )
+  await waitFor(() =>
+    expect(
+      (screen.getByRole('region', { name: 'Widget library' }) as HTMLElement).style.width,
+    ).toBe('500px'),
+  )
+  unmount()
+  render(
+    <MantineProvider>
+      <WidgetPatternLibrary context="home" beforeOperation={() => true} />
+    </MantineProvider>,
+  )
+  await waitFor(() =>
+    expect(
+      (screen.getByRole('region', { name: 'Widget library' }) as HTMLElement).style.width,
+    ).toBe('500px'),
+  )
+})
 it('groups Theme by fixed role and previews hover without document writes', () => {
   state.current.config = getEditorConfigForContext('single')
   const title = { type: 'DocumentTitle', props: { id: 'title', binding: 'document.title', role: 'document.title' } }
@@ -78,7 +123,7 @@ it('groups Theme by fixed role and previews hover without document writes', () =
   state.current.appState.data = { root: { props: {} }, content: [{ type: 'Section', props: { id: 'section', content: [title, { type: 'PostContent', props: { id: 'body' } }] } }] }
   render(<MantineProvider><WidgetPatternLibrary context="single" mode="theme" beforeOperation={() => true} /></MantineProvider>)
   fireEvent.click(screen.getByRole('button', { name: 'Document Title' }))
-  const card = screen.getByText('Document Title Accent').closest('[data-with-border]')!
+  const card = screen.getByRole('button', { name: 'Insert Document Title Accent' }).closest('div')!
   fireEvent.mouseEnter(card)
   expect(stylePreviewStore.getPreview('title')).not.toBeNull()
   expect(state.current.dispatch).not.toHaveBeenCalled()

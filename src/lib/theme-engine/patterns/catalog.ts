@@ -1,8 +1,9 @@
 import { atomManifests } from '@/widgets/atoms/manifests'
-import { systemDescriptor } from '../widget-contracts'
+import { ATOM_TYPES, systemDescriptor } from '../widget-contracts'
 import type { UniversalStyle } from '@/lib/style-engine/types'
 import type { ThemeComponentData } from '../types'
 import { collectPatternTokens, type PatternJSON } from './json'
+import { ATOM_PRESETS } from './atom-presets'
 const text = (
   id: string,
   title: string,
@@ -335,9 +336,12 @@ const LEGACY_SYSTEM_PATTERNS: readonly PatternJSON[] = [
   ),
 ]
 
-export const SYSTEM_PATTERNS: PatternJSON[] = [
-  ...LEGACY_SYSTEM_PATTERNS,
-  ...Object.entries(atomManifests).flatMap(([type, manifest]) =>
+const CORE_ATOMS = new Set<string>(ATOM_TYPES)
+
+/** Theme/system-block presentation presets only — core atoms use ATOM_PRESETS. */
+const systemBlockPatterns: PatternJSON[] = Object.entries(atomManifests)
+  .filter(([type]) => !CORE_ATOMS.has(type))
+  .flatMap(([type, manifest]) =>
     ['text', 'primary'].map((color, index) => {
       const record = pattern(
         type,
@@ -357,5 +361,10 @@ export const SYSTEM_PATTERNS: PatternJSON[] = [
       record.category = systemDescriptor(type)?.role || 'general'
       return record
     }),
-  ),
+  )
+
+export const SYSTEM_PATTERNS: PatternJSON[] = [
+  ...ATOM_PRESETS,
+  ...LEGACY_SYSTEM_PATTERNS,
+  ...systemBlockPatterns,
 ]

@@ -1,78 +1,40 @@
-import { withWidgetStyleSurface } from '@/lib/style-engine/WidgetStyleSurface'
-import { animationAttributes } from '@/lib/style-engine/animation-presets'
 import React from 'react'
 import type { ThemeDataContext, WidgetSemanticStyle } from '@/lib/theme-engine/types'
-import { resolveWidgetStyles } from '@/lib/style-engine/serializer'
-import { resolveColorToken } from '@/lib/style-engine/token-resolver'
+import { AtomPresentation } from '@/widgets/atoms/frontend'
 
+/**
+ * Document Title (legacy type `PostTitle`) — thin Heading wrapper.
+ * Content is document-bound / preview-only; style + tag reuse Heading rendering.
+ */
 export type PostTitleProps = {
   id?: string
   tag?: 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6'
+  /** @deprecated Preserved for saved data; not shown in Fields. */
   align?: 'left' | 'center' | 'right'
+  /** @deprecated Preserved for saved data; not shown in Fields. */
   variant?: 'default' | 'accent' | 'subtle'
   style?: WidgetSemanticStyle
+  /** Preview/editor fallback only — never a Fields Content control. */
   title?: string
   dataContext?: ThemeDataContext
 }
 
 export function PostTitleFrontend({
-  id: surfaceId,
-  tag,
-  align = 'left',
-  variant = 'default',
-  style: semanticStyle,
+  id,
+  tag = 'h1',
+  style,
   title: customTitle,
   dataContext,
 }: PostTitleProps) {
-  const title = customTitle || dataContext?.document?.title || 'Untitled Document'
-
-  // Visual typography preset from Style Engine
-  const visualPreset =
-    (typeof semanticStyle?.typography === 'object'
-      ? semanticStyle.typography?.typography
-      : semanticStyle?.typography) || 'h1'
-
-  // Independent Semantic HTML tag from Widget Settings (with fallback to visual heading preset or 'h1')
-  const HeadingTag = (tag ||
-    (typeof visualPreset === 'string' && visualPreset.startsWith('h')
-      ? visualPreset
-      : 'h1')) as keyof React.JSX.IntrinsicElements
-
-  const resolved = resolveWidgetStyles(semanticStyle)
-  const effectiveAlign = resolved.textAlign || semanticStyle?.align || align
-
-  const defaultColor =
-    variant === 'accent' ? 'var(--zyvavu-theme-primary, var(--zyvavu-primary, #0e6b66))' : 'inherit'
-
-  return withWidgetStyleSurface(
-    <div
-      className={`zyvavu-widget-post-title zyvavu-widget-post-title--${variant}`}
-      {...animationAttributes(semanticStyle?.animation)}
-      style={{
-        textAlign: effectiveAlign,
-        marginBottom: '1.5rem',
-        ...resolveWidgetStyles(semanticStyle),
-      }}
-    >
-      <HeadingTag
-        className={`zyvavu-widget-post-title__heading zyvavu-typo-preset--${visualPreset}`}
-        style={{
-          margin: 0,
-          color: resolved.color || defaultColor,
-          fontSize: `var(--zyvavu-theme-${visualPreset}-size, var(--zyvavu-theme-h1-size, 44px))`,
-          lineHeight: resolved.lineHeight || `var(--zyvavu-theme-${visualPreset}-line-height, 1.2)`,
-          fontWeight: `var(--zyvavu-theme-${visualPreset}-weight, 700)`,
-          letterSpacing:
-            resolved.letterSpacing || `var(--zyvavu-theme-${visualPreset}-letter-spacing, normal)`,
-          writingMode: resolved.writingMode,
-          textShadow: resolved.textShadow,
-          WebkitTextStroke: (resolved as any).WebkitTextStroke,
-        }}
-      >
-        {title}
-      </HeadingTag>
-    </div>,
-    semanticStyle,
-    surfaceId,
+  const title = dataContext?.document?.title || customTitle || 'Untitled Document'
+  return (
+    <AtomPresentation
+      kind="Heading"
+      id={id}
+      tag={tag}
+      text={title}
+      style={style}
+      primaryHeading
+    />
   )
 }

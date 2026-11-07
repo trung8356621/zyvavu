@@ -21,9 +21,13 @@ import {
   Play,
   LayoutGrid,
   Square,
+  Type,
+  Sparkles,
+  Circle,
   MoreHorizontal,
-  Settings,
   Link as LinkIcon,
+  Bookmark,
+  type LucideIcon,
 } from 'lucide-react'
 
 import { CURRENT_BUILDER_VERSION, validateBuilderDocument } from './document'
@@ -41,16 +45,41 @@ import {
 import { stylePreviewStore } from '@/lib/style-engine/preview-store'
 import {
   getStyleModalDomains,
+  orderStyleToolbarDomains,
   STYLE_MODAL_TITLES,
   type StyleModalDomain,
 } from '@/lib/style-engine/domains'
+
+const STYLE_DOMAIN_ICONS: Record<StyleModalDomain, LucideIcon> = {
+  animation: Play,
+  background: Palette,
+  spacing: LayoutGrid,
+  borders: Square,
+  typography: Type,
+  shadow: Circle,
+  effects: Sparkles,
+  button: Sliders,
+}
+import {
+  createPuckHistoryCoordinator,
+  dispatchDocumentData,
+} from '@/lib/style-engine/editor-history'
 import { WidgetPatternLibrary } from '@/components/admin/theme-builder/WidgetPatternLibrary'
+import {
+  canSaveSelectedAsPattern,
+  SaveAsPatternDialog,
+} from '@/components/admin/theme-builder/SaveAsPatternDialog'
 import actionBarStyles from './WidgetActionBar.module.css'
 import { ImageQuickAction } from './ImageQuickAction'
 import { useToolbarBoundary } from './useToolbarBoundary'
-
-import { AtomModal, type AtomModalRequest } from '@/components/admin/theme-builder/AtomModals'
-import { ATOM_TYPES, hasThemeLibrary } from '@/lib/theme-engine/widget-contracts'
+import {
+  ATOM_SETTINGS_DICTIONARY,
+  ATOM_SETTINGS_PANEL_ATTR,
+  focusAtomSettingsPanel,
+  planBuilderPanelNavigation,
+} from './atom-settings'
+import { BuilderChromeProvider } from './editor-bridge'
+import { hasThemeLibrary } from '@/lib/theme-engine/widget-contracts'
 
 const usePuck = createUsePuck()
 
@@ -70,6 +99,7 @@ interface PuckApi {
   canEdit: (id: string) => boolean
   dispatch: (action: any) => void
   getAppState: () => any
+  getHistory?: () => any
   findItem?: (id: string) => ReturnType<typeof findItemAndSelector>
 }
 
@@ -85,7 +115,11 @@ type StyleMenuRequest = {
 }
 
 type EditorBridgeValue = {
-  openAtom: (request: AtomModalRequest) => void
+  /** Opens native Puck Fields panel (official Atom Settings). */
+  openAtomSettings: () => void
+  openSaveAsPattern: () => void
+  closeSaveAsPattern: () => void
+  saveAsPatternOpened: boolean
   registerApi: (api: PuckApi) => void
   select: (id: string | undefined) => void
   openStyle: (request: StyleMenuRequest) => void
@@ -93,6 +127,7 @@ type EditorBridgeValue = {
   templateContext?: string
   themeConfig?: ThemeConfig
   beforeOperation: () => boolean
+  history?: ReturnType<typeof createPuckHistoryCoordinator>
 }
 
 const EditorBridgeContext = React.createContext<EditorBridgeValue | null>(null)
@@ -103,6 +138,12 @@ function StablePuckOverride({ children }: { children: React.ReactNode }) {
   return (
     <PuckBridge onRegisterApi={bridge.registerApi} onSelectionChange={bridge.select}>
       {children}
+      <SaveAsPatternDialog
+        opened={bridge.saveAsPatternOpened}
+        onClose={bridge.closeSaveAsPattern}
+        context={bridge.templateContext}
+        beforeOperation={bridge.beforeOperation}
+      />
     </PuckBridge>
   )
 }
@@ -145,12 +186,29 @@ function StableIframeOverride({ children }: { children: React.ReactNode }) {
     </>
   )
 }
+
+/** Marks native Puck Fields so Atom Settings gear can focus the real panel. */
+function StableFieldsOverride({
+  children,
+}: {
+  children: React.ReactNode
+  isLoading?: boolean
+  itemSelector?: unknown
+}) {
+  return (
+    <div {...{ [ATOM_SETTINGS_PANEL_ATTR]: 'true' }} tabIndex={-1} style={{ outline: 'none' }}>
+      {children}
+    </div>
+  )
+}
+
 const PUCK_OVERRIDES = {
   components: StableLibraryOverride,
   iframe: StableIframeOverride,
   headerActions: () => <React.Fragment />,
   puck: StablePuckOverride,
   actionBar: StableActionBarOverride,
+  fields: StableFieldsOverride,
 }
 
 function PuckBridge({
@@ -164,6 +222,7 @@ function PuckBridge({
 }) {
   const appState = usePuck((s) => s.appState)
   const dispatch = usePuck((s) => s.dispatch)
+  const history = usePuck((s) => s.history)
   const getItemById = usePuck((s) => s.getItemById)
   const getSelectorForId = usePuck((s) => s.getSelectorForId)
   const getPermissions = usePuck((s) => s.getPermissions)
@@ -189,13 +248,14 @@ function PuckBridge({
       canEdit: (id) => Boolean(getPermissions({ item: getItemById(id) }).edit),
       dispatch,
       getAppState: () => appStateRef.current,
+      getHistory: () => history,
       findItem: (id) => {
         const item = getItemById?.(id)
         const selector = getSelectorForId?.(id)
         return item && selector ? { item, selector } : null
       },
     })
-  }, [dispatch, onRegisterApi, getItemById, getSelectorForId, getPermissions])
+  }, [dispatch, history, onRegisterApi, getItemById, getSelectorForId, getPermissions])
 
   return <>{children}</>
 }
@@ -287,10 +347,12 @@ function PuckActionBarBridge({
           {label && <ActionBar.Label label={label} />}
         </ActionBar.Group>
         <ActionBar.Group>
-          {getStyleModalDomains(componentType, resolvedItem?.props?.variant)
+          {orderStyleToolbarDomains(
+            getStyleModalDomains(componentType, resolvedItem?.props?.variant),
+          )
             .slice(0, 4)
-            .map((domain, index) => {
-              const Icon = [Play, Palette, LayoutGrid, Square][index]
+            .map((domain) => {
+              const Icon = STYLE_DOMAIN_ICONS[domain]
               return (
                 <span key={domain} className={actionBarStyles.styleTrigger}>
                   <ActionBar.Action
@@ -302,33 +364,55 @@ function PuckActionBarBridge({
                 </span>
               )
             })}
-          {getStyleModalDomains(componentType, resolvedItem?.props?.variant).length > 4 && (
-            <Menu withinPortal>
-              <Menu.Target>
-                <ActionIcon variant="subtle" size="lg" aria-label="More style actions" title="More style actions">
-                  <MoreHorizontal size={20} />
-                </ActionIcon>
-              </Menu.Target>
-              <Menu.Dropdown>
-                {getStyleModalDomains(componentType, resolvedItem?.props?.variant)
-                  .slice(4)
-                  .map((domain) => (
-                    <Menu.Item
-                      key={domain}
-                      onClick={(event) => handleEditStyleClick(event, domain)}
-                    >
-                      {STYLE_MODAL_TITLES[domain]}
-                    </Menu.Item>
-                  ))}
-              </Menu.Dropdown>
-            </Menu>
+          <Menu withinPortal>
+            <Menu.Target>
+              <ActionIcon
+                variant="subtle"
+                size="lg"
+                aria-label="More actions"
+                title="More actions"
+              >
+                <MoreHorizontal size={20} />
+              </ActionIcon>
+            </Menu.Target>
+            <Menu.Dropdown>
+              {orderStyleToolbarDomains(
+                getStyleModalDomains(componentType, resolvedItem?.props?.variant),
+              )
+                .slice(4)
+                .map((domain) => (
+                  <Menu.Item
+                    key={domain}
+                    onClick={(event) => handleEditStyleClick(event, domain)}
+                  >
+                    {STYLE_MODAL_TITLES[domain]}
+                  </Menu.Item>
+                ))}
+              <Menu.Item
+                leftSection={<Bookmark size={16} />}
+                disabled={!canSaveSelectedAsPattern(componentType)}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  bridge.openSaveAsPattern()
+                }}
+              >
+                Save as Pattern
+              </Menu.Item>
+            </Menu.Dropdown>
+          </Menu>
+          {/* Primary widget settings live in native Puck Fields on selection — no gear. */}
+          {componentType === 'Button' && (
+            <ActionBar.Action
+              key="atom-link"
+              label="Link"
+              onClick={(event) => {
+                event.stopPropagation()
+                bridge.openAtomSettings()
+              }}
+            >
+              <LinkIcon size={20} />
+            </ActionBar.Action>
           )}
-          {(ATOM_TYPES as readonly string[]).includes(componentType) && (['settings', 'link'] as const).map(kind => (
-            <ActionBar.Action key={kind} label={kind === 'settings' ? 'Settings' : 'Link'} onClick={event => {
-              event.stopPropagation()
-              bridge.openAtom({ id: componentId, type: componentType, kind, anchor: event.currentTarget as HTMLElement })
-            }}>{kind === 'settings' ? <Settings size={20} /> : <LinkIcon size={20} />}</ActionBar.Action>
-          ))}
           <ActionBar.Separator />
           {children}
         </ActionBar.Group>
@@ -402,7 +486,6 @@ export function PuckHost({
   themeConfig,
   templateContext,
 }: PuckHostProps) {
-  const [atomModal, setAtomModal] = useState<AtomModalRequest | null>(null)
   const [localDoc, setLocalDoc] = useState<BuilderDocument>(document)
   const [validationError, setValidationError] = useState<string | null>(null)
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false)
@@ -486,11 +569,19 @@ export function PuckHost({
   const [activeStyleMenu, setActiveStyleMenu] = useState<
     (StyleMenuRequest & { opened: boolean }) | null
   >(null)
+  const [saveAsPatternOpened, setSaveAsPatternOpened] = useState(false)
 
   const puckApiRef = React.useRef<PuckApi | null>(null)
 
   const handleRegisterPuckApi = useCallback((api: PuckApi) => {
     puckApiRef.current = api
+  }, [])
+
+  const setPuckRightSidebar = useCallback((visible: boolean) => {
+    puckApiRef.current?.dispatch({
+      type: 'setUi',
+      ui: { rightSideBarVisible: visible },
+    })
   }, [])
 
   const handleOpenStyleMenu = useCallback(
@@ -503,7 +594,7 @@ export function PuckHost({
       anchorEl,
       initialPosition,
     }: StyleMenuRequest) => {
-      // Reopening the active editor must not erase its live preview.
+      // Same widget: retarget domain accordion without resetting the session baseline.
       if (activeStyleMenu?.opened && activeStyleMenu.componentId === componentId) {
         setActiveStyleMenu((previous) =>
           previous
@@ -512,37 +603,43 @@ export function PuckHost({
         )
         return
       }
-      if (activeStyleMenu && stylePreviewStore.getPreview(activeStyleMenu.componentId)) {
-        setValidationError('Apply or cancel the active style draft before editing another widget.')
-        return
-      }
       const item = puckApiRef.current?.findItem?.(componentId)?.item
       if (item?.props?.lock?.canEditProps === false || !puckApiRef.current?.canEdit(componentId)) {
         setValidationError('This widget is locked against edits.')
         return
       }
+      // Direct-commit sessions do not hold a separate draft; clear pattern hover previews only.
       stylePreviewStore.clearPreview()
+      // Style and Atom Settings are mutually exclusive on the right edge.
+      const plan = planBuilderPanelNavigation('style', {
+        styleOpen: Boolean(activeStyleMenu?.opened),
+        atomSettingsVisible: Boolean(puckApiRef.current?.getAppState()?.ui?.rightSideBarVisible),
+      })
+      setPuckRightSidebar(plan.rightSideBarVisible)
       setActiveStyleMenu({
         opened: true,
         domain,
         componentType,
         componentVariant,
         componentId,
-        currentStyle,
+        currentStyle:
+          (item?.props?.style as WidgetSemanticStyle) || currentStyle || EMPTY_STYLE,
         anchorEl,
         initialPosition,
       })
     },
-    [activeStyleMenu],
+    [activeStyleMenu, setPuckRightSidebar],
   )
 
   const handleCloseStyleMenu = useCallback(() => {
     stylePreviewStore.clearPreview()
     setActiveStyleMenu(null)
-  }, [])
+    // Restore Atom Settings (Puck Fields) when leaving Style.
+    setPuckRightSidebar(true)
+  }, [setPuckRightSidebar])
 
   const handleUpdateWidgetStyle = useCallback(
-    (newStyle: WidgetSemanticStyle) => {
+    (newStyle: WidgetSemanticStyle, options?: { recordHistory?: boolean }) => {
       if (!activeStyleMenu) return false
       const { componentId } = activeStyleMenu
       const api = puckApiRef.current
@@ -551,7 +648,7 @@ export function PuckHost({
         setValidationError('This widget is unavailable or locked against edits.')
         return false
       }
-      stylePreviewStore.clearPreview()
+      stylePreviewStore.clearPreview(componentId)
 
       const updateItem = (item: any) => {
         if (
@@ -584,9 +681,9 @@ export function PuckHost({
       }
 
       if (api) {
-        api.dispatch({
-          type: 'setData',
-          data: (prev: Data) => ({
+        dispatchDocumentData(
+          api.dispatch,
+          (prev: Data) => ({
             ...prev,
             root: updateItem(prev.root),
             content: (prev.content || []).map(updateItem),
@@ -597,7 +694,8 @@ export function PuckHost({
               ]),
             ),
           }),
-        })
+          { recordHistory: options?.recordHistory !== false },
+        )
       }
 
       setActiveStyleMenu((prev) => (prev ? { ...prev, currentStyle: newStyle } : null))
@@ -633,14 +731,6 @@ export function PuckHost({
       e.preventDefault()
       e.stopPropagation()
 
-      if (
-        activeStyleMenu &&
-        activeStyleMenu.componentId !== compId &&
-        stylePreviewStore.getPreview(activeStyleMenu.componentId)
-      ) {
-        setValidationError('Apply or cancel the active style draft before editing another widget.')
-        return
-      }
       // Select clicked component in Puck UI
       api.dispatch({
         type: 'setUi',
@@ -723,10 +813,8 @@ export function PuckHost({
   }, [activeStyleMenu, handleOpenStyleMenu])
 
   const handleSelectionChange = useCallback((id: string | undefined) => {
-    setAtomModal(previous => previous && previous.id !== id ? null : previous)
     setActiveStyleMenu((previous) => {
       if (previous && previous.componentId !== id) {
-        if (stylePreviewStore.getPreview(previous.componentId)) return previous
         stylePreviewStore.clearPreview(previous.componentId)
         return null
       }
@@ -734,16 +822,83 @@ export function PuckHost({
     })
   }, [])
 
+  const openAtomSettings = useCallback(() => {
+    const api = puckApiRef.current
+    const styleOpen = Boolean(activeStyleMenu?.opened)
+    const atomSettingsVisible = Boolean(api?.getAppState()?.ui?.rightSideBarVisible)
+    const plan = planBuilderPanelNavigation('atom-settings', {
+      styleOpen,
+      atomSettingsVisible,
+    })
+
+    if (plan.closeStyle) {
+      stylePreviewStore.clearPreview()
+      setActiveStyleMenu(null)
+    }
+
+    const revealAndFocus = () => {
+      setPuckRightSidebar(true)
+      // Focus after Puck applies sidebar visibility.
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          focusAtomSettingsPanel(document)
+        })
+      })
+    }
+
+    if (plan.pulseAtomSettings) {
+      // Fields already visible: hide→show so the gear has a visible effect.
+      setPuckRightSidebar(false)
+      window.requestAnimationFrame(() => {
+        revealAndFocus()
+      })
+      return
+    }
+
+    revealAndFocus()
+  }, [activeStyleMenu?.opened, setPuckRightSidebar])
+
+  const openSaveAsPattern = useCallback(() => {
+    setSaveAsPatternOpened(true)
+  }, [])
+  const closeSaveAsPattern = useCallback(() => {
+    setSaveAsPatternOpened(false)
+  }, [])
+
+  // After Undo/Redo, resync open Style sidebar from the live document (Canvas–Panel sync).
+  React.useEffect(() => {
+    if (!activeStyleMenu?.opened) return
+    const api = puckApiRef.current
+    if (!api?.findItem) return
+    const found = api.findItem(activeStyleMenu.componentId)
+    const nextStyle = (found?.item?.props?.style as WidgetSemanticStyle) || EMPTY_STYLE
+    setActiveStyleMenu((previous) => {
+      if (!previous) return previous
+      if (JSON.stringify(previous.currentStyle || {}) === JSON.stringify(nextStyle || {})) {
+        return previous
+      }
+      return { ...previous, currentStyle: nextStyle }
+    })
+  }, [localDoc, activeStyleMenu?.opened, activeStyleMenu?.componentId])
+
+  const historyCoordinator = React.useMemo(
+    () => createPuckHistoryCoordinator(() => puckApiRef.current?.getHistory?.() || null),
+    [],
+  )
+
   const bridgeValue: EditorBridgeValue = {
-    openAtom: setAtomModal,
+    openAtomSettings,
+    openSaveAsPattern,
+    closeSaveAsPattern,
+    saveAsPatternOpened,
     templateContext,
     themeConfig,
-    beforeOperation: () =>
-      !activeStyleMenu || !stylePreviewStore.getPreview(activeStyleMenu.componentId),
+    beforeOperation: () => true,
     registerApi: handleRegisterPuckApi,
     select: handleSelectionChange,
     openStyle: handleOpenStyleMenu,
     styleComponentId: activeStyleMenu?.opened ? activeStyleMenu.componentId : undefined,
+    history: historyCoordinator,
   }
   const activeViewports = desktopOnly ? DESKTOP_ONLY_VIEWPORT : viewports || RESPONSIVE_VIEWPORTS
   const puckUi = useMemo(
@@ -759,6 +914,7 @@ export function PuckHost({
   const plugins = useMemo(() => [pageSettingsPlugin, ...(hasThemeLibrary(templateContext) ? [{ name: 'theme', label: 'Theme', icon: <Palette size={16} />, render: StableThemeLibraryOverride }] : [])], [pageSettingsPlugin, templateContext])
 
   return (
+    <BuilderChromeProvider themeConfig={themeConfig}>
     <EditorBridgeContext.Provider value={bridgeValue}>
       <Box
         className={`zyvavu-puck-host-wrapper ${actionBarStyles.libraryHost} ${templateContext ? actionBarStyles.themeNavigation : ''}`}
@@ -854,13 +1010,12 @@ export function PuckHost({
             plugins={plugins}
             viewports={activeViewports}
             ui={puckUi}
+            dictionary={ATOM_SETTINGS_DICTIONARY}
             overrides={PUCK_OVERRIDES}
             onPublish={handlePublish}
             onChange={handlePuckChange}
           />
         </Box>
-
-        {atomModal && <AtomModal request={atomModal} onClose={() => { atomModal.anchor.focus({ preventScroll: true }); setAtomModal(null) }} />}
 
         {/* Stable Floating Style Context Menu (Owned outside transient Puck ActionBar) */}
         {activeStyleMenu?.opened && (
@@ -877,9 +1032,18 @@ export function PuckHost({
             currentStyle={activeStyleMenu.currentStyle}
             themeConfig={themeConfig}
             onUpdateStyle={handleUpdateWidgetStyle}
+            onSaveAsPattern={
+              canSaveSelectedAsPattern(activeStyleMenu.componentType)
+                ? () => {
+                    handleCloseStyleMenu()
+                    openSaveAsPattern()
+                  }
+                : undefined
+            }
           />
         )}
       </Box>
     </EditorBridgeContext.Provider>
+  </BuilderChromeProvider>
   )
 }

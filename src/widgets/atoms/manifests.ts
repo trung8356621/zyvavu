@@ -13,7 +13,11 @@ export const atomManifests: Record<string, WidgetManifest> = Object.fromEntries(
       defaultProps:
         id === 'Image'
           ? { src: '', alt: '' }
-          : { text: id === 'Heading' ? 'Heading' : id === 'Button' ? 'Button' : 'Your text' },
+          : id === 'Heading'
+            ? { text: 'Heading', tag: 'h2' }
+            : id === 'Button'
+              ? { text: 'Button', href: '', newTab: false }
+              : { text: 'Your text' },
     },
   ]),
   ...Object.entries(SYSTEM_BLOCKS).map(([id, descriptor]) => [

@@ -47,7 +47,10 @@ vi.mock('@puckeditor/core', () => ({
 vi.mock('@/lib/theme-engine/widget-registry-manifests', () => ({
   getWidgetManifest: () => ({ label: 'Section', capabilities: [] }),
 }))
-vi.mock('@/lib/theme-engine/widget-contracts', () => ({ systemDescriptor: () => undefined }))
+vi.mock('@/lib/theme-engine/widget-contracts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/theme-engine/widget-contracts')>()
+  return { ...actual, systemDescriptor: () => undefined }
+})
 vi.mock('@/lib/theme-engine/widget-patterns', () => ({
   getWidgetDesignPatterns: () => [state.pattern],
   instantiatePattern: state.instantiate,
@@ -58,14 +61,19 @@ vi.mock('@/lib/theme-engine/widget-patterns', () => ({
   walkPatternDocument: () => {},
   designPatternFromJSON: () => state.pattern,
 }))
-vi.mock('@/lib/theme-engine/patterns/json', () => ({
-  serializeSelectedPattern: vi.fn(),
-  validatePatternJSON: vi.fn(),
-}))
+vi.mock('@/lib/theme-engine/patterns/json', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/theme-engine/patterns/json')>()
+  return {
+    ...actual,
+    serializeSelectedPattern: vi.fn(),
+    validatePatternJSON: vi.fn(),
+  }
+})
 vi.mock('@/lib/style-engine/preview-store', () => ({
   stylePreviewStore: { setPreview: state.hover, clearPreview: vi.fn() },
 }))
 vi.mock('@/components/admin/theme-builder/PatternPreview', () => ({
+  LivePatternPreview: () => <span>Live preview</span>,
   PatternThumbnail: () => <span>Design thumbnail</span>,
   PatternPreviewModal: () => <div>Pattern modal</div>,
 }))
@@ -101,6 +109,7 @@ function library(mode: 'blocks' | 'user' = 'blocks', allowed = true) {
 }
 describe('Pattern library interaction', () => {
   it('inserts once through the existing validation/dispatch path even with a compatible selection', () => {
+    state.selected = null
     library()
     const tile = screen.getByRole('button', { name: 'Insert Airy section' })
     expect(tile.tagName).toBe('BUTTON') // Native Enter/Space activation; no custom keyboard handler.
@@ -126,16 +135,18 @@ describe('Pattern library interaction', () => {
     expect(screen.getByText('Apply or cancel the active style draft first.')).toBeTruthy()
   })
   it('retains My Patterns management and preview separately from the insert button', async () => {
+    state.selected = { type: 'Section', props: { id: 'selected' } }
     library('user')
+    expect(screen.getByLabelText('Preview Airy section')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'More actions for Airy section' }))
-    expect(await screen.findByRole('menuitem', { name: 'Edit metadata / Rename' })).toBeTruthy()
+    const rename = await screen.findByRole('menuitem', { name: 'Edit metadata / Rename', hidden: true })
+    expect(rename).toBeTruthy()
+    expect(screen.getByRole('menuitem', { name: 'Delete', hidden: true })).toBeTruthy()
     expect(
-      await screen.findByRole('menuitem', { name: 'Update from selected widget' }),
+      screen.getByRole('menuitem', { name: 'Update from selected widget', hidden: true }),
     ).toBeTruthy()
-    expect(await screen.findByRole('menuitem', { name: 'Delete' })).toBeTruthy()
-    fireEvent.click(await screen.findByRole('menuitem', { name: 'Retry thumbnail' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Retry thumbnail', hidden: true }))
     expect(state.thumbnail).toHaveBeenCalledTimes(1)
     expect(state.insert).not.toHaveBeenCalled()
-    expect(screen.getByLabelText('Preview Airy section')).toBeTruthy()
   })
 })

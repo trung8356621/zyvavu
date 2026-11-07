@@ -1,6 +1,6 @@
 import React from 'react'
 import type { UniversalStyle } from './types'
-import { animationAttributes } from './animation-presets'
+import { animationAttributes, animationCssVars } from './animation-presets'
 import { resolveSectionLayerStyles, resolveWidgetStyles } from './serializer'
 
 /** Shared editor/SSR surface. Typography stays on the widget's own text renderer. */
@@ -32,6 +32,7 @@ export function WidgetStyleSurface({
         minWidth: 0,
         boxSizing: 'border-box',
         ...presentation,
+        ...animationCssVars(style?.animation),
         color: layers.rootStyle.color,
         ...({
           '--zyvavu-inherited-foreground': (layers.rootStyle as Record<string, unknown>)[
@@ -146,6 +147,7 @@ export function withWidgetStyleSurface(
       style: {
         ...nativeStyle,
         ...globalStyle,
+        ...animationCssVars(style?.animation),
         ...({
           '--zyvavu-inherited-foreground': (layers.rootStyle as Record<string, unknown>)[
             '--zyvavu-inherited-foreground'

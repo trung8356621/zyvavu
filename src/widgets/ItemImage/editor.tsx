@@ -26,10 +26,7 @@ export const itemImageEditor: ComponentConfig<ItemImageProps> = {
         { label: 'Natural / Auto', value: 'auto' },
       ],
     },
-    borderRadius: {
-      type: 'text',
-      label: 'Border Radius (e.g. 4px, 8px, 0px)',
-    },
+    // borderRadius → Style Sidebar (radius). Prop retained for saved-data compatibility.
     linkToPost: {
       type: 'radio',
       label: 'Link to Post/URL',

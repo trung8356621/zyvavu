@@ -4,6 +4,12 @@ import type { WidgetManifest } from '@/lib/theme-engine/types'
 
 /**
  * Built-in style capability mappings for core widgets.
+ *
+ * Ownership: Style Sidebar is the primary editor for domains listed here.
+ * Puck Widget Settings must not re-expose equivalent Style controls when a
+ * domain already covers the property (see widget-settings-cleanup tests).
+ * Content / semantic / behavior props stay in Settings; persisted props are
+ * never deleted solely because Settings UI was removed.
  */
 export const COMPONENT_STYLE_CAPABILITIES: Record<string, StyleDomain[]> = {
   Heading: ['typography'],
@@ -21,7 +27,8 @@ export const COMPONENT_STYLE_CAPABILITIES: Record<string, StyleDomain[]> = {
     'animation',
   ],
   Columns: ['spacing', 'dimensions', 'border', 'shadow', 'effects', 'animation'],
-  PostTitle: ['typography', 'spacing', 'dimensions', 'border', 'shadow', 'effects', 'animation'],
+  // Same as Heading — Document Title is a thin Heading wrapper (globals still applied).
+  PostTitle: ['typography'],
   PostContent: ['typography', 'spacing', 'dimensions', 'border', 'shadow', 'effects', 'animation'],
   PostMeta: ['typography', 'spacing', 'dimensions', 'border', 'shadow', 'effects', 'animation'],
   TextBlock: [

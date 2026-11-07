@@ -19,15 +19,7 @@ export const textBlockEditor: ComponentConfig<TextBlockProps> = {
       type: 'textarea',
       label: 'Body Text',
     },
-    align: {
-      type: 'radio',
-      label: 'Alignment',
-      options: [
-        { label: 'Left', value: 'left' },
-        { label: 'Center', value: 'center' },
-        { label: 'Right', value: 'right' },
-      ],
-    },
+    // align → Style Sidebar (typography.align). Prop retained for saved-data compatibility.
     ctaLabel: {
       type: 'text',
       label: 'Button Label',

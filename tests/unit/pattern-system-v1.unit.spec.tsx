@@ -2,6 +2,10 @@ import React from 'react'
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { render, screen, cleanup, act } from '@testing-library/react'
+
+vi.mock('@/components/admin/media/MediaSourcePicker', () => ({
+  MediaSourcePicker: () => null,
+}))
 import { thumbnailCacheKey } from '@/lib/theme-engine/patterns/thumbnail-cache'
 import { getActiveThemeConfig } from '@/lib/theme-engine/styles'
 import { SYSTEM_PATTERNS } from '@/lib/theme-engine/patterns/catalog'
@@ -94,14 +98,15 @@ describe('Canonical Pattern V1', () => {
     const layouts = SYSTEM_PATTERNS.filter((pattern) =>
       ['Section', 'Columns'].includes(pattern.widgetType),
     )
-    expect(layouts).toHaveLength(18)
+    // Section/Columns layouts: legacy 6+6 plus Container Section presets.
+    expect(layouts.length).toBeGreaterThanOrEqual(18)
     expect(
       new Set(layouts.map((pattern) => thumbnailCacheKey(pattern, theme, 'renderer-1'))).size,
-    ).toBe(18)
+    ).toBe(layouts.length)
     expect(
-      layouts.every(
-        (pattern) => pattern.thumbnail?.url === `/api/pattern-thumbnails/${pattern.id}`,
-      ),
+      layouts
+        .filter((pattern) => !pattern.id.startsWith('container-'))
+        .every((pattern) => pattern.thumbnail?.url === `/api/pattern-thumbnails/${pattern.id}`),
     ).toBe(true)
   })
   it('serializes the full legacy-zone/inline subtree without mutating original data', () => {
@@ -331,7 +336,7 @@ describe('Pattern privacy and durability', () => {
       .fn()
       .mockReturnValue({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() })
     const record = {
-      ...SYSTEM_PATTERNS.find((pattern) => pattern.widgetType === 'Section')!,
+      ...SYSTEM_PATTERNS.find((pattern) => pattern.id === 'section-airy')!,
       thumbnail: { version: 1, status: 'failed' as const },
     }
     render(

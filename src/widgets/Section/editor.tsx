@@ -12,6 +12,7 @@ import { useWidgetPreviewStyle } from '@/lib/style-engine/preview-store'
 export const sectionEditor: ComponentConfig<SectionProps> = {
   label: 'Section Container',
   fields: {
+    // GAP: Style Sidebar dimensions.containerWidth lacks "inherit" page/theme semantics.
     containerWidth: {
       type: 'select',
       label: 'Container Width',
@@ -23,6 +24,8 @@ export const sectionEditor: ComponentConfig<SectionProps> = {
         { label: 'Full Width', value: 'full' },
       ],
     },
+    // GAP: Style Sidebar spacing.padding is all-sides; Section uses vertical-only
+    // via props.verticalPadding / style.section.verticalPadding.
     verticalPadding: {
       type: 'select',
       label: 'Vertical Padding',
@@ -35,17 +38,7 @@ export const sectionEditor: ComponentConfig<SectionProps> = {
         { label: 'Extra Large (xl)', value: 'xl' },
       ],
     },
-    minHeight: {
-      type: 'select',
-      label: 'Minimum Height',
-      options: [
-        { label: 'Auto (Content Fit)', value: 'auto' },
-        { label: 'Small (200px)', value: 'sm' },
-        { label: 'Medium (400px)', value: 'md' },
-        { label: 'Large (600px)', value: 'lg' },
-        { label: 'Full Screen (100vh)', value: 'screen' },
-      ],
-    },
+    // minHeight → Style Sidebar (dimensions.minHeight). Prop retained for compatibility.
     content: {
       type: 'slot',
       disallow: ['Section'],

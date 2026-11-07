@@ -143,6 +143,14 @@ describe('Style expansion contracts', () => {
     ).toEqual({})
     expect(ANIMATION_CSS).toContain('prefers-reduced-motion: no-preference')
     expect(ANIMATION_CSS).not.toContain('visibility: hidden')
+    expect(
+      animationAttributes({
+        preset: 'fade',
+        trigger: 'entrance',
+        target: 'widget',
+        options: { durationSec: 1.2 },
+      })['data-zyvavu-duration'],
+    ).toBe('1.2')
   })
 
   it('applies actual styles to text, box, media and CTA renderers while retaining URLs/tags', () => {
@@ -230,7 +238,7 @@ describe('Style expansion contracts', () => {
       preset: 'fade',
       trigger: 'entrance',
       target: 'widget',
-      options: undefined,
+      options: { durationSec: 1.2, delaySec: 0 },
     })
   })
 
@@ -253,8 +261,6 @@ describe('Style expansion contracts', () => {
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(onClose).toHaveBeenCalledOnce()
     expect(screen.queryByRole('button', { name: 'Use animation' })).toBeNull()
-    expect(
-      (screen.getByRole('button', { name: 'Áp dụng / Apply' }) as HTMLButtonElement).disabled,
-    ).toBe(false)
+    expect(screen.queryByRole('button', { name: 'Áp dụng / Apply' })).toBeNull()
   })
 })

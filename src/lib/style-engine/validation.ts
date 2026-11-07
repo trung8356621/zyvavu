@@ -13,6 +13,11 @@ const VALID_PATTERN_PRESETS = ['none', 'dots', 'grid', 'diagonal', 'stripes', 'n
 const VALID_TEXT_EFFECTS = ['none', 'shadow-soft', 'shadow-hard', 'outline', 'glow', 'subtle-depth']
 const VALID_LETTER_SPACING = ['tighter', 'tight', 'normal', 'wide', 'wider']
 const VALID_LINE_HEIGHT = ['compact', 'normal', 'relaxed', 'loose']
+const VALID_FONT_FAMILY = ['theme', 'heading']
+const VALID_FONT_WEIGHT = ['300', '400', '500', '600', '700', '800', 'normal', 'bold']
+const VALID_FONT_STYLE = ['normal', 'italic']
+const VALID_TEXT_DECORATION = ['none', 'underline', 'line-through']
+const VALID_TEXT_TRANSFORM = ['none', 'uppercase', 'lowercase', 'capitalize']
 
 /**
  * Validates a UniversalStyle object against Atomic Design System rules.
@@ -82,6 +87,36 @@ export function validateUniversalStyle(style: unknown): StyleValidationResult {
 
       if (typo.lineHeight && !VALID_LINE_HEIGHT.includes(typo.lineHeight)) {
         errors.push(`Invalid line height preset "${typo.lineHeight}"`)
+      }
+
+      if (typo.fontFamily && !VALID_FONT_FAMILY.includes(typo.fontFamily)) {
+        errors.push(`Invalid font family role "${typo.fontFamily}"`)
+      }
+
+      if (typo.fontWeight && !VALID_FONT_WEIGHT.includes(String(typo.fontWeight))) {
+        errors.push(`Invalid font weight "${typo.fontWeight}"`)
+      }
+
+      if (typo.fontSize && typeof typo.fontSize === 'string') {
+        if (typo.fontSize.includes('px') || typo.fontSize.includes('rem') || typo.fontSize.includes('%')) {
+          errors.push(
+            `Direct font size "${typo.fontSize}" is not permitted. Use a semantic size token (e.g. "h1", "p1").`,
+          )
+        } else if (!/^[a-z][a-z0-9-]*$/i.test(typo.fontSize)) {
+          errors.push(`Invalid font size token "${typo.fontSize}"`)
+        }
+      }
+
+      if (typo.fontStyle && !VALID_FONT_STYLE.includes(typo.fontStyle)) {
+        errors.push(`Invalid font style "${typo.fontStyle}"`)
+      }
+
+      if (typo.textDecoration && !VALID_TEXT_DECORATION.includes(typo.textDecoration)) {
+        errors.push(`Invalid text decoration "${typo.textDecoration}"`)
+      }
+
+      if (typo.textTransform && !VALID_TEXT_TRANSFORM.includes(typo.textTransform)) {
+        errors.push(`Invalid text transform "${typo.textTransform}"`)
       }
     }
   }

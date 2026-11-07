@@ -21,6 +21,10 @@ import { createUsePuck } from '@puckeditor/core'
 
 import type { PageSettings, ThemeConfig } from '@/lib/theme-engine/types'
 import { resolveColorToken, isLegacySystemDefaultLayout } from '@/lib/theme-engine/page-settings'
+import {
+  CONTAINER_WIDTH_LABELS,
+  SPACING_TOKEN_LABELS,
+} from '@/lib/style-engine/semantic-preset-labels'
 import { ThemeColorPaletteModal } from '@/components/admin/shared/ThemeColorPaletteModal'
 
 const usePuck = createUsePuck()
@@ -46,12 +50,6 @@ export function PageSettingsPanel({ themeConfig, templateName }: PageSettingsPan
   const customCSS = pageSettings.customCSS || ''
   const customJS = pageSettings.customJS || ''
 
-  const themeTokens = themeConfig?.tokens
-  const themeContainerWidth = themeTokens?.layout?.containerWidth || '1200px'
-  const themeNarrowWidth = themeTokens?.layout?.narrowWidth || '800px'
-  const themeWideWidth = themeTokens?.layout?.wideWidth || '1400px'
-  const themeSpacing = themeTokens?.layout?.pageSpacing || themeTokens?.layout?.spacing || 'md'
-  const themeAlign = themeTokens?.layout?.alignment || themeTokens?.layout?.contentAlignment || 'left'
 
   const isLegacyDefault = isLegacySystemDefaultLayout(rawLayout)
   const currentContainerWidth = (!isLegacyDefault && rawLayout?.containerWidth) || 'inherit'
@@ -449,11 +447,11 @@ export function PageSettingsPanel({ themeConfig, templateName }: PageSettingsPan
                     })
                   }}
                   data={[
-                    { value: 'inherit', label: `Inherit Theme (${themeContainerWidth})` },
-                    { value: 'containerWidth', label: `Standard Container (${themeContainerWidth})` },
-                    { value: 'narrowWidth', label: `Narrow Container (${themeNarrowWidth})` },
-                    { value: 'wideWidth', label: `Wide Container (${themeWideWidth})` },
-                    { value: 'full', label: 'Full Width (100%)' },
+                    { value: 'inherit', label: CONTAINER_WIDTH_LABELS.inherit },
+                    { value: 'containerWidth', label: CONTAINER_WIDTH_LABELS.containerWidth },
+                    { value: 'narrowWidth', label: CONTAINER_WIDTH_LABELS.narrowWidth },
+                    { value: 'wideWidth', label: CONTAINER_WIDTH_LABELS.wideWidth },
+                    { value: 'full', label: CONTAINER_WIDTH_LABELS.full },
                   ]}
                 />
 
@@ -472,13 +470,11 @@ export function PageSettingsPanel({ themeConfig, templateName }: PageSettingsPan
                     })
                   }}
                   data={[
-                    { value: 'inherit', label: `Inherit Theme (${themeSpacing.toUpperCase()})` },
-                    { value: 'none', label: 'None (0px)' },
-                    { value: 'xs', label: `Extra Small (${themeTokens?.spacing?.xs || '4px'})` },
-                    { value: 'sm', label: `Small (${themeTokens?.spacing?.sm || '8px'})` },
-                    { value: 'md', label: `Medium (${themeTokens?.spacing?.md || '16px'})` },
-                    { value: 'lg', label: `Large (${themeTokens?.spacing?.lg || '24px'})` },
-                    { value: 'xl', label: `Extra Large (${themeTokens?.spacing?.xl || '40px'})` },
+                    { value: 'inherit', label: 'Inherit Theme' },
+                    ...(['none', 'xs', 'sm', 'md', 'lg', 'xl'] as const).map((value) => ({
+                      value,
+                      label: SPACING_TOKEN_LABELS[value],
+                    })),
                   ]}
                 />
 
@@ -500,7 +496,7 @@ export function PageSettingsPanel({ themeConfig, templateName }: PageSettingsPan
                       })
                     }
                     data={[
-                      { label: `Inherit (${themeAlign})`, value: 'inherit' },
+                      { label: 'Inherit Theme', value: 'inherit' },
                       { label: 'Left', value: 'left' },
                       { label: 'Center', value: 'center' },
                       { label: 'Right', value: 'right' },

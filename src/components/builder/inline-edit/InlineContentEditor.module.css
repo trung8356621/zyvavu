@@ -1,0 +1,40 @@
+.root {
+  display: contents;
+}
+
+.surface {
+  outline: none;
+  min-width: 0;
+  width: 100%;
+  cursor: text;
+}
+
+.surface :global(.tiptap),
+.surface :global(.ProseMirror) {
+  outline: none;
+  border: none;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  line-height: inherit;
+  text-align: inherit;
+  text-decoration: inherit;
+  text-transform: inherit;
+  white-space: inherit;
+  word-break: inherit;
+  min-height: 1em;
+  width: 100%;
+}
+
+.surface :global(.ProseMirror p) {
+  margin: 0;
+  font: inherit;
+  color: inherit;
+}
+
+.surface :global(.ProseMirror p + p) {
+  margin-top: 0.5em;
+}

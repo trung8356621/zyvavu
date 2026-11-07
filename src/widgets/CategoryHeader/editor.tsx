@@ -6,16 +6,8 @@ import { CategoryHeaderFrontend, type CategoryHeaderProps } from './frontend'
 
 export const categoryHeaderEditor: ComponentConfig<CategoryHeaderProps> = {
   label: 'Category Archive Header',
-  fields: {
-    align: {
-      type: 'radio',
-      label: 'Alignment',
-      options: [
-        { label: 'Left', value: 'left' },
-        { label: 'Center', value: 'center' },
-      ],
-    },
-  },
+  // align → Style Sidebar (typography.align). Prop retained for saved-data compatibility.
+  fields: {},
   defaultProps: {
     align: 'left',
   },

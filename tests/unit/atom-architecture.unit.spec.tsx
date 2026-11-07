@@ -1,8 +1,7 @@
 import React from 'react'
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { render, screen, fireEvent, cleanup } from '@testing-library/react'
-import { MantineProvider } from '@mantine/core'
+import { render, cleanup } from '@testing-library/react'
 import {
   ATOM_TYPES,
   SYSTEM_BLOCKS,
@@ -28,7 +27,16 @@ import {
 import { SYSTEM_PATTERNS } from '@/lib/theme-engine/patterns/catalog'
 import { serializeSelectedPattern, validatePatternJSON } from '@/lib/theme-engine/patterns/json'
 import { AtomModal } from '@/components/admin/theme-builder/AtomModals'
+import {
+  ATOM_SETTINGS_DICTIONARY,
+  ATOM_SETTINGS_LABEL,
+} from '@/components/builder/core/atom-settings'
 import { ThemeRenderer } from '@/lib/theme-engine/renderer'
+
+vi.mock('@/components/admin/media/MediaSourcePicker', () => ({
+  MediaSourcePicker: () => null,
+}))
+import { atomEditors } from '@/widgets/atoms/editor'
 import category from '@/themes/default/templates/category.json'
 import type { ThemeTemplateDocument } from '@/lib/theme-engine/types'
 beforeEach(() => {
@@ -179,35 +187,30 @@ describe('Atom and role architecture', () => {
     expect(homeHeadingWarning(home)).toContain('Saving is allowed')
     expect(validateThemeTemplateDocument(home, 'home').valid).toBe(true)
   })
-  it.each(ATOM_TYPES)(
-    '%s opens its own Settings shell and the shared Link shell without document mutation',
-    (type) => {
-      const doc = createRoleTemplate('single')
-      const before = JSON.stringify(doc)
-      const anchor = document.createElement('button')
-      let closed = 0
-      const props = {
-        request: { id: 'atom-1', type, kind: 'settings' as const, anchor },
-        onClose: () => {
-          closed++
-        },
-      }
-      const view = render(
-        <MantineProvider>
-          <AtomModal {...props} />
-        </MantineProvider>,
-      )
-      expect(screen.getByText(`${type} Settings`)).toBeDefined()
-      const close = screen.getByLabelText(/close/i)
-      fireEvent.click(close)
-      expect(closed).toBe(1)
-      view.rerender(
-        <MantineProvider>
-          <AtomModal {...props} request={{ ...props.request, kind: 'link' }} />
-        </MantineProvider>,
-      )
-      expect(screen.getByText('Link')).toBeDefined()
-      expect(JSON.stringify(doc)).toBe(before)
-    },
-  )
+  it('repurposes Puck Fields as Atom Settings and does not mount a parallel modal', () => {
+    expect(ATOM_SETTINGS_LABEL).toBe('Atom Settings')
+    expect(ATOM_SETTINGS_DICTIONARY['plugin-fields']).toBe(ATOM_SETTINGS_LABEL)
+    const anchor = document.createElement('button')
+    const { container } = render(
+      <AtomModal
+        request={{ id: 'atom-1', type: 'Heading', kind: 'settings', anchor }}
+        onClose={() => {}}
+      />,
+    )
+    expect(container.innerHTML).toBe('')
+  })
+
+  it('exposes Content/Semantic/Behavior fields on free atoms via Atom Settings', () => {
+    expect(atomEditors.Heading.config.fields.text).toBeDefined()
+    expect(atomEditors.Heading.config.fields.tag).toBeDefined()
+    expect(atomEditors.Text.config.fields.text).toBeDefined()
+    expect(atomEditors.Button.config.fields.text).toBeDefined()
+    expect(atomEditors.Button.config.fields.href).toBeDefined()
+    expect(atomEditors.Button.config.fields.newTab).toBeDefined()
+    expect(atomEditors.Image.config.fields.src).toBeDefined()
+    expect(atomEditors.Image.config.fields.alt).toBeDefined()
+    // Style duplicates must not appear in atom field definitions
+    expect(atomEditors.Heading.config.fields.align).toBeUndefined()
+    expect(atomEditors.Text.config.fields.color).toBeUndefined()
+  })
 })

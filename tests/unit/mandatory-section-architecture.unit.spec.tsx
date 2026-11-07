@@ -437,7 +437,7 @@ describe('Mandatory Section Architecture & 3 Bundled Themes Refactor', () => {
     const sectionEl = container.querySelector('#styled-sec')
     expect(sectionEl).toBeTruthy()
 
-    const headingEl = container.querySelector('.zyvavu-widget-post-title__heading')
+    const headingEl = container.querySelector('h1')
     expect(headingEl).toBeTruthy()
     expect(headingEl?.textContent).toBe('Styled Child Article')
   })
