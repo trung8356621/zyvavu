@@ -17,11 +17,7 @@ export {
   unwrapStoredText,
   wrapRichTextHtml,
 } from './content-model'
-export {
-  computeToolbarPosition,
-  isInsideEditingChrome,
-  pointInRect,
-} from './edit-boundary'
+export { computeToolbarPosition } from './edit-boundary'
 export { commitAtomText } from './commit-atom-text'
 export { InlineEditableAtom } from './InlineEditableAtom'
 export { inlineContentExtensions } from './extensions'

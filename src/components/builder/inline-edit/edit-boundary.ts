@@ -7,23 +7,7 @@ export type RectLike = {
   height: number
 }
 
-export function pointInRect(x: number, y: number, rect: RectLike | null | undefined, pad = 0): boolean {
-  if (!rect) return false
-  return (
-    x >= rect.left - pad &&
-    x <= rect.right + pad &&
-    y >= rect.top - pad &&
-    y <= rect.bottom + pad
-  )
-}
-
-/** Visible Puck widget box — matches the selection outline the user sees. */
-export function getPuckComponentRect(from: Element | null): DOMRect | null {
-  if (!from) return null
-  const host = from.closest('[data-puck-component]')
-  return host instanceof HTMLElement ? host.getBoundingClientRect() : null
-}
-
+/** Position a portaled toolbar relative to the editor surface (flip when clipped). */
 export function computeToolbarPosition(
   anchor: RectLike,
   toolbar: { width: number; height: number },
@@ -41,19 +25,4 @@ export function computeToolbarPosition(
   let left = anchor.left
   left = Math.max(8, Math.min(left, viewport.width - toolbar.width - 8))
   return { top, left, placement }
-}
-
-export function isInsideEditingChrome(
-  x: number,
-  y: number,
-  target: EventTarget | null,
-  boundary: RectLike | null,
-  opts?: { pad?: number },
-): boolean {
-  if (target instanceof Element) {
-    if (target.closest('[data-inline-edit-toolbar]')) return true
-    if (target.closest('[data-inline-link-modal]')) return true
-    if (target.closest('[data-inline-edit-session]')) return true
-  }
-  return pointInRect(x, y, boundary, opts?.pad ?? 0)
 }

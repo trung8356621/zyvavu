@@ -1,38 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import {
-  computeToolbarPosition,
-  isInsideEditingChrome,
-  pointInRect,
-} from '@/components/builder/inline-edit/edit-boundary'
+import { computeToolbarPosition } from '@/components/builder/inline-edit/edit-boundary'
+import { inlineContentExtensions } from '@/components/builder/inline-edit/extensions'
 
-describe('inline edit boundary helpers', () => {
-  const box = { top: 100, left: 50, right: 350, bottom: 160, width: 300, height: 60 }
-
-  it('pointInRect matches inclusive bounds with optional pad', () => {
-    expect(pointInRect(50, 100, box)).toBe(true)
-    expect(pointInRect(349, 159, box)).toBe(true)
-    expect(pointInRect(49, 100, box)).toBe(false)
-    expect(pointInRect(49, 100, box, 1)).toBe(true)
-  })
-
-  it('isInsideEditingChrome treats puck outline geometry as inside', () => {
-    expect(isInsideEditingChrome(200, 130, null, box)).toBe(true)
-    expect(isInsideEditingChrome(10, 10, null, box)).toBe(false)
-  })
-
-  it('isInsideEditingChrome treats toolbar / link modal targets as inside', () => {
-    const toolbar = document.createElement('div')
-    toolbar.setAttribute('data-inline-edit-toolbar', 'true')
-    document.body.appendChild(toolbar)
-    const modal = document.createElement('div')
-    modal.setAttribute('data-inline-link-modal', 'true')
-    document.body.appendChild(modal)
-    expect(isInsideEditingChrome(0, 0, toolbar, null)).toBe(true)
-    expect(isInsideEditingChrome(0, 0, modal, null)).toBe(true)
-    toolbar.remove()
-    modal.remove()
-  })
-
+describe('inline edit toolbar positioning', () => {
   it('computeToolbarPosition prefers above and flips below when clipped', () => {
     const toolbar = { width: 140, height: 32 }
     const viewport = { width: 800, height: 600 }
@@ -58,5 +28,15 @@ describe('inline edit boundary helpers', () => {
       viewport,
     )
     expect(nearRight.left + toolbar.width).toBeLessThanOrEqual(viewport.width - 8)
+  })
+})
+
+describe('inline edit editor schema (canvas-only)', () => {
+  it('disables StarterKit heading so the canvas editor stays paragraph-based', () => {
+    const extensions = inlineContentExtensions({ multiline: false })
+    const starter = extensions[0] as { name: string; options: { heading: false | object } }
+    expect(starter.name).toBe('starterKit')
+    expect(starter.options.heading).toBe(false)
+    expect(extensions.map((ext) => ext.name)).not.toContain('heading')
   })
 })

@@ -2,8 +2,23 @@ import StarterKit from '@tiptap/starter-kit'
 import type { Extensions } from '@tiptap/react'
 import { sanitizeHref } from './content-model'
 
-/** Shared inline schema for Heading H1–H6/P and legacy Text (StarterKit owns link/underline). */
-export function inlineContentExtensions(): Extensions {
+const linkOptions = {
+  openOnClick: false,
+  autolink: true,
+  linkOnPaste: true,
+  HTMLAttributes: {
+    rel: 'noopener noreferrer',
+  },
+  validate: (href: string) => Boolean(sanitizeHref(href)),
+}
+
+/**
+ * Editor schema for the canvas only (not published HTML).
+ * H1–H6: single paragraph block (Enter commits in the keymap).
+ * P / legacy Text: multi-paragraph.
+ * Never wrap this document inside a real <h1>–<h6> in the editor tree.
+ */
+export function inlineContentExtensions(opts?: { multiline?: boolean }): Extensions {
   return [
     StarterKit.configure({
       heading: false,
@@ -17,16 +32,9 @@ export function inlineContentExtensions(): Extensions {
       strike: false,
       dropcursor: false,
       gapcursor: false,
+      hardBreak: opts?.multiline !== false,
       underline: true,
-      link: {
-        openOnClick: false,
-        autolink: true,
-        linkOnPaste: true,
-        HTMLAttributes: {
-          rel: 'noopener noreferrer',
-        },
-        validate: (href: string) => Boolean(sanitizeHref(href)),
-      },
+      link: linkOptions,
     }),
   ]
 }

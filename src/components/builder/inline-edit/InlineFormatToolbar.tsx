@@ -10,17 +10,19 @@ import { computeToolbarPosition } from './edit-boundary'
 import styles from './InlineContentEditor.module.css'
 
 /**
- * Fixed-position formatting chrome portaled to document.body so ancestor
- * overflow cannot clip it. Flip above/below the editor bounds.
+ * Fixed-position formatting chrome portaled to the editor document body so
+ * ancestor overflow cannot clip it. Flips above/below the editor bounds.
  */
 export function InlineFormatToolbar({
   editor,
   anchorEl,
   onOpenLink,
+  onMetrics,
 }: {
   editor: Editor
   anchorEl: HTMLElement | null
   onOpenLink: (editor: Editor) => void
+  onMetrics?: (next: { mounted: boolean; rect: DOMRect | null }) => void
 }) {
   const toolbarRef = React.useRef<HTMLDivElement | null>(null)
   const [pos, setPos] = React.useState<{ top: number; left: number; placement: 'above' | 'below' }>({
@@ -28,6 +30,9 @@ export function InlineFormatToolbar({
     left: 0,
     placement: 'above',
   })
+  const portalTarget =
+    anchorEl?.ownerDocument?.body ||
+    (typeof document !== 'undefined' ? document.body : undefined)
 
   const updatePosition = React.useCallback(() => {
     const toolbar = toolbarRef.current
@@ -35,12 +40,17 @@ export function InlineFormatToolbar({
     if (!toolbar || !anchor) return
     const anchorRect = anchor.getBoundingClientRect()
     const toolbarRect = toolbar.getBoundingClientRect()
+    const view = anchor.ownerDocument.defaultView || window
     const next = computeToolbarPosition(
       anchorRect,
       { width: toolbarRect.width || 140, height: toolbarRect.height || 32 },
-      { width: window.innerWidth, height: window.innerHeight },
+      { width: view.innerWidth, height: view.innerHeight },
     )
-    setPos(next)
+    setPos((prev) =>
+      prev.top === next.top && prev.left === next.left && prev.placement === next.placement
+        ? prev
+        : next,
+    )
   }, [anchorEl])
 
   React.useLayoutEffect(() => {
@@ -49,22 +59,30 @@ export function InlineFormatToolbar({
 
   React.useEffect(() => {
     updatePosition()
-    window.addEventListener('resize', updatePosition)
-    window.addEventListener('scroll', updatePosition, true)
+    const view = anchorEl?.ownerDocument?.defaultView || window
+    view.addEventListener('resize', updatePosition)
+    view.addEventListener('scroll', updatePosition, true)
     return () => {
-      window.removeEventListener('resize', updatePosition)
-      window.removeEventListener('scroll', updatePosition, true)
+      view.removeEventListener('resize', updatePosition)
+      view.removeEventListener('scroll', updatePosition, true)
     }
-  }, [updatePosition])
+  }, [anchorEl, updatePosition])
 
   React.useEffect(() => {
     const el = toolbarRef.current
     if (!el) return
-    return registerOverlayPortal(el, { disableDrag: true })
-  }, [])
+    onMetrics?.({ mounted: true, rect: el.getBoundingClientRect() })
+    const cleanup = registerOverlayPortal(el, { disableDrag: true })
+    return () => {
+      onMetrics?.({ mounted: false, rect: null })
+      cleanup?.()
+    }
+  }, [onMetrics])
+
+  if (!portalTarget) return null
 
   return (
-    <Portal>
+    <Portal target={portalTarget}>
       <div
         ref={toolbarRef}
         className={styles.toolbar}
@@ -74,7 +92,9 @@ export function InlineFormatToolbar({
           position: 'fixed',
           top: pos.top,
           left: pos.left,
-          zIndex: ADMIN_OVERLAY_LAYERS.TOOLBAR + 5,
+          // Above Puck canvas chrome; TOOLBAR(20) was invisible under builder layers.
+          zIndex: ADMIN_OVERLAY_LAYERS.ACTIVE_DROPDOWN,
+          pointerEvents: 'auto',
         }}
       >
         <ToolbarButton
@@ -122,7 +142,7 @@ function ToolbarButton({
   children: React.ReactNode
 }) {
   return (
-    <Tooltip label={label} withArrow openDelay={400}>
+    <Tooltip label={label} withArrow openDelay={400} zIndex={ADMIN_OVERLAY_LAYERS.NOTIFICATIONS}>
       <ActionIcon
         size="sm"
         variant={active ? 'light' : 'subtle'}
@@ -130,6 +150,7 @@ function ToolbarButton({
         aria-pressed={active}
         onMouseDown={(event) => {
           event.preventDefault()
+          event.stopPropagation()
         }}
         onClick={(event) => {
           event.preventDefault()

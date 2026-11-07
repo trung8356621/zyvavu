@@ -19,13 +19,14 @@ import {
   type HeadingTag,
   type InlineAtomKind,
 } from './content-model'
-import {
-  getPuckComponentRect,
-  isInsideEditingChrome,
-} from './edit-boundary'
 import { inlineContentExtensions } from './extensions'
 import { InlineFormatToolbar } from './InlineFormatToolbar'
 import { InlineLinkModal, type InlineLinkDraft } from './InlineLinkModal'
+import {
+  classifyPointerTarget,
+  pathSummary,
+  traceInlineEdit,
+} from './inline-edit-trace'
 import styles from './InlineContentEditor.module.css'
 
 const usePuck = createUsePuck()
@@ -41,7 +42,15 @@ type EditableProps = {
 
 /**
  * Double-click gated inline edit for free Heading (H1–H6/P) and legacy Text.
- * Local Tiptap draft only; one Puck replace on commit; Escape cancels.
+ *
+ * Canvas editor DOM is a full-width session + ProseMirror (not heading > div > p).
+ * Published frontend keeps real semantic tags via AtomPresentation.
+ *
+ * Boundary model (DOM, not geometry):
+ * - Section Container = ancestor puck component / dropzone
+ * - Puck Heading host = `[data-puck-component="<id>"]`
+ * - Edit session = `[data-inline-edit-session]`
+ * Clicks inside the Heading host must not commit; bubbled Section reselection is ignored.
  */
 export function InlineEditableAtom({ kind, id, text, tag, style, children }: EditableProps) {
   const [editing, setEditing] = React.useState(false)
@@ -55,6 +64,11 @@ export function InlineEditableAtom({ kind, id, text, tag, style, children }: Edi
 
   const commit = React.useCallback(
     (nextText: string) => {
+      traceInlineEdit({
+        phase: 'commit',
+        id,
+        detail: { nextLen: nextText.length },
+      })
       commitAtomText(
         { getItemById, getSelectorForId, dispatch },
         id,
@@ -68,9 +82,10 @@ export function InlineEditableAtom({ kind, id, text, tag, style, children }: Edi
   )
 
   const cancel = React.useCallback(() => {
+    traceInlineEdit({ phase: 'cancel', id })
     setEditing(false)
     clickPointRef.current = null
-  }, [])
+  }, [id])
 
   const enterEditing = React.useCallback(
     (event: React.MouseEvent) => {
@@ -78,9 +93,14 @@ export function InlineEditableAtom({ kind, id, text, tag, style, children }: Edi
       event.stopPropagation()
       startTextRef.current = text ?? ''
       clickPointRef.current = { x: event.clientX, y: event.clientY }
+      traceInlineEdit({
+        phase: 'enter',
+        id,
+        detail: { selectedId: selected?.props?.id },
+      })
       setEditing(true)
     },
-    [text],
+    [id, selected?.props?.id, text],
   )
 
   React.useEffect(() => {
@@ -146,7 +166,6 @@ function ActiveInlineEditor({
   const sessionRef = React.useRef<HTMLDivElement | null>(null)
   const [surfaceEl, setSurfaceEl] = React.useState<HTMLDivElement | null>(null)
   const mountGenRef = React.useRef(0)
-  const suppressSelectionCommitRef = React.useRef(false)
   const multiline = allowsMultilineEnter(kind, tag)
   const [linkDraft, setLinkDraft] = React.useState<InlineLinkDraft | null>(null)
   const linkOpen = Boolean(linkDraft)
@@ -156,11 +175,19 @@ function ActiveInlineEditor({
     [],
   )
 
-  const finishCommit = React.useCallback(() => {
-    if (committedRef.current || linkOpen) return
-    committedRef.current = true
-    onCommit(draftRef.current)
-  }, [linkOpen, onCommit])
+  const finishCommit = React.useCallback(
+    (reason: string) => {
+      if (committedRef.current || linkOpen) return
+      committedRef.current = true
+      traceInlineEdit({
+        phase: 'finishCommit',
+        id,
+        detail: { reason, selectedId },
+      })
+      onCommit(draftRef.current)
+    },
+    [id, linkOpen, onCommit, selectedId],
+  )
 
   const finishCancel = React.useCallback(() => {
     if (committedRef.current) return
@@ -169,21 +196,8 @@ function ActiveInlineEditor({
     onCancel()
   }, [onCancel])
 
-  const placeCaretAtPoint = React.useCallback((editor: Editor, x: number, y: number) => {
-    if (editor.isDestroyed) return
-    editor.commands.focus()
-    if (typeof document.elementFromPoint !== 'function') return
-    try {
-      const pos = editor.view.posAtCoords({ left: x, top: y })
-      if (pos) editor.commands.setTextSelection(pos.pos)
-      else editor.commands.setTextSelection(editor.state.doc.content.size)
-    } catch {
-      editor.commands.focus('end')
-    }
-  }, [])
-
   const editor = useEditor({
-    extensions: inlineContentExtensions(),
+    extensions: inlineContentExtensions({ multiline }),
     content: textEditorContent(initialText),
     immediatelyRender: false,
     editorProps: {
@@ -212,7 +226,7 @@ function ActiveInlineEditor({
           if (!multiline && event.key === 'Enter') {
             event.preventDefault()
             event.stopPropagation()
-            finishCommit()
+            finishCommit('enter-key')
             return true
           }
           return false
@@ -234,74 +248,109 @@ function ActiveInlineEditor({
     let raf = 0
     raf = requestAnimationFrame(() => {
       if (editor.isDestroyed) return
-      if (clickPoint) placeCaretAtPoint(editor, clickPoint.x, clickPoint.y)
-      else editor.commands.focus('end')
+      editor.commands.focus('end')
+      if (!clickPoint) return
+      try {
+        const pos = editor.view.posAtCoords({ left: clickPoint.x, top: clickPoint.y })
+        if (pos) editor.commands.setTextSelection(pos.pos)
+      } catch {
+        // keep end focus
+      }
     })
     return () => cancelAnimationFrame(raf)
-  }, [editor, clickPoint, placeCaretAtPoint])
+  }, [editor, clickPoint])
 
+  // Portal PE restore + stop Puck drag on the session. Also stop *click* bubble so
+  // parent Section DraggableComponent does not reselect and unmount this editor.
   React.useEffect(() => {
-    const el = sessionRef.current
-    if (!el) return
-    // Keep drag disabled for the whole session (not only after focus delay).
-    return registerOverlayPortal(el, { disableDrag: true })
+    const session = sessionRef.current
+    if (!session) return
+    const cleanupPortal = registerOverlayPortal(session, { disableDrag: true })
+    const stopClick = (event: Event) => {
+      event.stopPropagation()
+    }
+    session.addEventListener('click', stopClick, true)
+    return () => {
+      cleanupPortal?.()
+      session.removeEventListener('click', stopClick, true)
+    }
   }, [editor])
 
-  /**
-   * Containment uses the visible [data-puck-component] rect (selection outline).
-   * Capture-phase: decide before Puck selection; if the event visually lands in our
-   * outline but DOM-hit a parent, stop it and keep editing.
-   */
+  React.useEffect(() => {
+    traceInlineEdit({
+      phase: 'active-mount',
+      id,
+      detail: {
+        selectedId,
+        hasEditor: Boolean(editor),
+        sessionRect: sessionRef.current?.getBoundingClientRect().toJSON?.() ?? null,
+        puckHostId: sessionRef.current
+          ?.closest('[data-puck-component]')
+          ?.getAttribute('data-puck-component'),
+      },
+    })
+    return () => {
+      traceInlineEdit({ phase: 'active-unmount', id, detail: { selectedId } })
+    }
+  }, [editor, id, selectedId])
+
+  // Outside = outside the Puck Heading host (not merely outside ProseMirror/session box).
   React.useEffect(() => {
     const onPointerDown = (event: PointerEvent) => {
       if (linkOpen) return
       const session = sessionRef.current
       if (!session) return
-      const boundary = getPuckComponentRect(session)
-      const inside = isInsideEditingChrome(event.clientX, event.clientY, event.target, boundary)
+      const puckHost =
+        (session.closest(`[data-puck-component="${CSS.escape(id)}"]`) as HTMLElement | null) ||
+        (session.closest('[data-puck-component]') as HTMLElement | null)
+      const target = event.target
+      const classified = classifyPointerTarget(target, session)
 
-      if (inside) {
-        suppressSelectionCommitRef.current = true
-        const target = event.target
-        const el = target instanceof Element ? target : null
-        const onChrome = Boolean(
-          el?.closest('[data-inline-edit-toolbar]') || el?.closest('[data-inline-link-modal]'),
-        )
-        const inProse = Boolean(el?.closest('.ProseMirror'))
-        const inSessionDom = target instanceof Node && session.contains(target)
+      traceInlineEdit({
+        phase: 'pointerdown',
+        id,
+        detail: {
+          ...classified,
+          path: pathSummary(event),
+          selectedIdBefore: selectedId,
+        },
+      })
 
-        if (!inSessionDom && !onChrome) {
-          // Blank area of the outline hit a parent — claim the event.
-          event.preventDefault()
-          event.stopPropagation()
-          if (editor && !editor.isDestroyed) placeCaretAtPoint(editor, event.clientX, event.clientY)
-        } else if (inSessionDom && !onChrome && !inProse && editor && !editor.isDestroyed) {
-          // Padding / surface chrome inside our session.
-          placeCaretAtPoint(editor, event.clientX, event.clientY)
-        }
+      if (target instanceof Node && puckHost?.contains(target)) {
+        // Keep editing; native ProseMirror handles caret when hit lands in .ProseMirror.
         return
       }
-
-      finishCommit()
+      if (
+        target instanceof Element &&
+        (target.closest('[data-inline-edit-toolbar]') ||
+          target.closest('[data-inline-link-modal]'))
+      ) {
+        return
+      }
+      finishCommit('pointerdown-outside-heading-host')
     }
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => document.removeEventListener('pointerdown', onPointerDown)
+  }, [finishCommit, id, linkOpen, selectedId])
 
-    const onPointerUp = () => {
-      window.setTimeout(() => {
-        suppressSelectionCommitRef.current = false
-      }, 0)
-    }
-
-    document.addEventListener('pointerdown', onPointerDown, true)
-    document.addEventListener('pointerup', onPointerUp, true)
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown, true)
-      document.removeEventListener('pointerup', onPointerUp, true)
-    }
-  }, [editor, finishCommit, linkOpen, placeCaretAtPoint])
-
+  // Commit on real selection change to a non-ancestor component.
+  // Ignore Section (ancestor) reselection caused by bubbled clicks.
   React.useEffect(() => {
-    if (suppressSelectionCommitRef.current) return
-    if (selectedId && selectedId !== id) finishCommit()
+    if (!selectedId || selectedId === id) return
+    const session = sessionRef.current
+    const host = session?.closest('[data-puck-component]') as HTMLElement | null
+    const doc = host?.ownerDocument || document
+    const selectedEl = doc.querySelector(
+      `[data-puck-component="${CSS.escape(selectedId)}"]`,
+    ) as HTMLElement | null
+    const selectedIsAncestor = Boolean(selectedEl && host && selectedEl.contains(host))
+    traceInlineEdit({
+      phase: 'selection-change',
+      id,
+      detail: { selectedId, selectedIsAncestor },
+    })
+    if (selectedIsAncestor) return
+    finishCommit('selectedItem-changed')
   }, [finishCommit, id, selectedId])
 
   React.useEffect(() => {
@@ -310,10 +359,11 @@ function ActiveInlineEditor({
       queueMicrotask(() => {
         if (mountGenRef.current !== gen || committedRef.current) return
         committedRef.current = true
+        traceInlineEdit({ phase: 'unmount-commit', id })
         onCommit(draftRef.current)
       })
     }
-  }, [onCommit])
+  }, [id, onCommit])
 
   const openLinkModal = React.useCallback((current: Editor) => {
     const { from, to } = current.state.selection
@@ -345,28 +395,46 @@ function ActiveInlineEditor({
     [editor, serialize],
   )
 
+  const onToolbarMetrics = React.useCallback(
+    (next: { mounted: boolean; rect: DOMRect | null }) => {
+      const rect = next.rect
+        ? {
+            top: Math.round(next.rect.top),
+            left: Math.round(next.rect.left),
+            width: Math.round(next.rect.width),
+            height: Math.round(next.rect.height),
+          }
+        : null
+      traceInlineEdit({
+        phase: 'toolbar-metrics',
+        id,
+        detail: { mounted: next.mounted, rect },
+      })
+    },
+    [id],
+  )
+
   const resolved = resolveWidgetStyles(style)
-  const Tag = (tag || (kind === 'Text' ? 'p' : 'h2')) as HeadingTag
-  const SemanticTag = Tag as keyof React.JSX.IntrinsicElements
 
   const node = (
-    <div ref={sessionRef} className={styles.session} data-inline-edit-session={id}>
+    <div
+      ref={sessionRef}
+      className={styles.session}
+      data-inline-edit-session={id}
+      style={resolved}
+      {...animationAttributes(style?.animation)}
+    >
       {editor ? (
-        <InlineFormatToolbar editor={editor} anchorEl={surfaceEl} onOpenLink={openLinkModal} />
+        <InlineFormatToolbar
+          editor={editor}
+          anchorEl={surfaceEl}
+          onOpenLink={openLinkModal}
+          onMetrics={onToolbarMetrics}
+        />
       ) : null}
-      <SemanticTag
-        className={styles.semantic}
-        style={resolved}
-        {...animationAttributes(style?.animation)}
-      >
-        <div
-          ref={setSurfaceEl}
-          className={styles.surface}
-          data-widget-id={id}
-        >
-          <EditorContent editor={editor} />
-        </div>
-      </SemanticTag>
+      <div ref={setSurfaceEl} className={styles.surface} data-widget-id={id}>
+        <EditorContent editor={editor} />
+      </div>
       <InlineLinkModal
         opened={linkOpen}
         draft={linkDraft}
