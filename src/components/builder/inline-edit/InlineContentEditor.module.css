@@ -15,13 +15,50 @@
 
 .toolbar {
   display: inline-flex;
-  gap: 2px;
-  padding: 2px;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
   border-radius: var(--mantine-radius-sm, 4px);
   background: var(--mantine-color-body, #fff);
   border: 1px solid var(--mantine-color-default-border, #dee2e6);
   box-shadow: var(--mantine-shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.08));
   pointer-events: auto;
+}
+
+.toolbar :global(.mantine-ActionIcon-root) {
+  width: 30px;
+  height: 30px;
+}
+
+.toolbar :global(.mantine-ActionIcon-root[data-active='true']),
+.toolbar :global(.mantine-ActionIcon-root[aria-pressed='true']) {
+  background: var(--mantine-color-teal-light, rgba(14, 107, 102, 0.12));
+  color: var(--mantine-color-teal-7, #0e6b66);
+}
+
+/* Compact Link Editor accordion (docked Style shell). */
+.linkEditor {
+  min-width: 0;
+}
+
+.linkAccordionItem {
+  border-color: var(--mantine-color-default-border, #dee2e6);
+}
+
+.linkAccordionControl {
+  padding: 8px 10px;
+}
+
+.linkAccordionLabel {
+  width: 100%;
+}
+
+.linkAccordionPanel {
+  padding: 0;
+}
+
+.linkAccordionContent {
+  padding: 8px 10px 10px;
 }
 
 .surface {

@@ -1,17 +1,22 @@
 'use client'
 
 import React from 'react'
-import { ActionIcon, Portal, Tooltip } from '@mantine/core'
+import { createPortal } from 'react-dom'
+import { ActionIcon, Tooltip } from '@mantine/core'
 import { Bold, Italic, Link2, Underline as UnderlineIcon } from 'lucide-react'
 import { registerOverlayPortal } from '@puckeditor/core'
 import type { Editor } from '@tiptap/react'
 import { ADMIN_OVERLAY_LAYERS } from '@/theme/layers'
-import { computeToolbarPosition } from './edit-boundary'
+import { computeToolbarPosition, mapElementRectToWindow } from './edit-boundary'
 import styles from './InlineContentEditor.module.css'
 
 /**
- * Fixed-position formatting chrome portaled to the editor document body so
- * ancestor overflow cannot clip it. Flips above/below the editor bounds.
+ * Floating B/I/U/Link chrome.
+ *
+ * Always portaled into the builder (parent) document body and positioned with
+ * parent-viewport coordinates. When the editor lives in Puck's preview iframe,
+ * anchor rects are mapped through frameElement offsets — never mix iframe-local
+ * client rects with parent fixed positioning.
  */
 export function InlineFormatToolbar({
   editor,
@@ -25,108 +30,143 @@ export function InlineFormatToolbar({
   onMetrics?: (next: { mounted: boolean; rect: DOMRect | null }) => void
 }) {
   const toolbarRef = React.useRef<HTMLDivElement | null>(null)
-  const [pos, setPos] = React.useState<{ top: number; left: number; placement: 'above' | 'below' }>({
+  const [pos, setPos] = React.useState<{
+    top: number
+    left: number
+    placement: 'above' | 'below'
+    ready: boolean
+  }>({
     top: 0,
     left: 0,
     placement: 'above',
+    ready: false,
   })
-  const portalTarget =
-    anchorEl?.ownerDocument?.body ||
-    (typeof document !== 'undefined' ? document.body : undefined)
 
   const updatePosition = React.useCallback(() => {
     const toolbar = toolbarRef.current
     const anchor = anchorEl
     if (!toolbar || !anchor) return
-    const anchorRect = anchor.getBoundingClientRect()
+
+    // Portal lives in the builder window; map iframe anchors into that space.
+    const portalWin = window
+    const anchorRect = mapElementRectToWindow(anchor, portalWin)
     const toolbarRect = toolbar.getBoundingClientRect()
-    const view = anchor.ownerDocument.defaultView || window
     const next = computeToolbarPosition(
       anchorRect,
       { width: toolbarRect.width || 140, height: toolbarRect.height || 32 },
-      { width: view.innerWidth, height: view.innerHeight },
+      { width: portalWin.innerWidth, height: portalWin.innerHeight },
+      8,
     )
     setPos((prev) =>
-      prev.top === next.top && prev.left === next.left && prev.placement === next.placement
+      prev.ready &&
+      prev.top === next.top &&
+      prev.left === next.left &&
+      prev.placement === next.placement
         ? prev
-        : next,
+        : { ...next, ready: true },
     )
-  }, [anchorEl])
+    onMetrics?.({ mounted: true, rect: toolbar.getBoundingClientRect() })
+  }, [anchorEl, onMetrics])
+
+  const setToolbarNode = React.useCallback(
+    (node: HTMLDivElement | null) => {
+      toolbarRef.current = node
+      if (!node) {
+        onMetrics?.({ mounted: false, rect: null })
+        return
+      }
+      // Mantine-less portal: ref attaches on the same commit — measure immediately.
+      requestAnimationFrame(() => updatePosition())
+    },
+    [onMetrics, updatePosition],
+  )
 
   React.useLayoutEffect(() => {
     updatePosition()
   }, [updatePosition, editor.state.selection.from, editor.state.selection.to])
 
   React.useEffect(() => {
-    updatePosition()
-    const view = anchorEl?.ownerDocument?.defaultView || window
-    view.addEventListener('resize', updatePosition)
-    view.addEventListener('scroll', updatePosition, true)
+    if (!anchorEl) return
+    const portalWin = window
+    const anchorWin = anchorEl.ownerDocument.defaultView
+    const frame = anchorWin?.frameElement ?? null
+
+    const schedule = () => {
+      requestAnimationFrame(updatePosition)
+    }
+
+    portalWin.addEventListener('resize', schedule)
+    portalWin.addEventListener('scroll', schedule, true)
+    anchorWin?.addEventListener('resize', schedule)
+    anchorWin?.addEventListener('scroll', schedule, true)
+
+    const ro = new ResizeObserver(schedule)
+    ro.observe(anchorEl)
+    if (frame instanceof Element) ro.observe(frame)
+
+    schedule()
     return () => {
-      view.removeEventListener('resize', updatePosition)
-      view.removeEventListener('scroll', updatePosition, true)
+      portalWin.removeEventListener('resize', schedule)
+      portalWin.removeEventListener('scroll', schedule, true)
+      anchorWin?.removeEventListener('resize', schedule)
+      anchorWin?.removeEventListener('scroll', schedule, true)
+      ro.disconnect()
     }
   }, [anchorEl, updatePosition])
 
   React.useEffect(() => {
     const el = toolbarRef.current
     if (!el) return
-    onMetrics?.({ mounted: true, rect: el.getBoundingClientRect() })
-    const cleanup = registerOverlayPortal(el, { disableDrag: true })
-    return () => {
-      onMetrics?.({ mounted: false, rect: null })
-      cleanup?.()
-    }
-  }, [onMetrics])
+    return registerOverlayPortal(el, { disableDrag: true })
+  }, [pos.ready])
 
-  if (!portalTarget) return null
+  if (typeof document === 'undefined') return null
 
-  return (
-    <Portal target={portalTarget}>
-      <div
-        ref={toolbarRef}
-        className={styles.toolbar}
-        data-inline-edit-toolbar="true"
-        data-placement={pos.placement}
-        style={{
-          position: 'fixed',
-          top: pos.top,
-          left: pos.left,
-          // Above Puck canvas chrome; TOOLBAR(20) was invisible under builder layers.
-          zIndex: ADMIN_OVERLAY_LAYERS.ACTIVE_DROPDOWN,
-          pointerEvents: 'auto',
-        }}
-      >
+  return createPortal(
+    <div
+      ref={setToolbarNode}
+      className={styles.toolbar}
+      data-inline-edit-toolbar="true"
+      data-placement={pos.placement}
+      style={{
+        position: 'fixed',
+        top: pos.top,
+        left: pos.left,
+        zIndex: ADMIN_OVERLAY_LAYERS.ACTIVE_DROPDOWN,
+        pointerEvents: 'auto',
+        visibility: pos.ready ? 'visible' : 'hidden',
+      }}
+    >
         <ToolbarButton
           label="Bold"
           active={editor.isActive('bold')}
           onAction={() => editor.chain().focus().toggleBold().run()}
         >
-          <Bold size={14} />
+          <Bold size={15} strokeWidth={2.25} />
         </ToolbarButton>
         <ToolbarButton
           label="Italic"
           active={editor.isActive('italic')}
           onAction={() => editor.chain().focus().toggleItalic().run()}
         >
-          <Italic size={14} />
+          <Italic size={15} strokeWidth={2.25} />
         </ToolbarButton>
         <ToolbarButton
           label="Underline"
           active={editor.isActive('underline')}
           onAction={() => editor.chain().focus().toggleUnderline().run()}
         >
-          <UnderlineIcon size={14} />
+          <UnderlineIcon size={15} strokeWidth={2.25} />
         </ToolbarButton>
         <ToolbarButton
           label="Link"
           active={editor.isActive('link')}
           onAction={() => onOpenLink(editor)}
         >
-          <Link2 size={14} />
+          <Link2 size={15} strokeWidth={2.25} />
         </ToolbarButton>
-      </div>
-    </Portal>
+    </div>,
+    document.body,
   )
 }
 
@@ -144,10 +184,12 @@ function ToolbarButton({
   return (
     <Tooltip label={label} withArrow openDelay={400} zIndex={ADMIN_OVERLAY_LAYERS.NOTIFICATIONS}>
       <ActionIcon
-        size="sm"
+        size="md"
         variant={active ? 'light' : 'subtle'}
+        color={active ? 'teal' : 'gray'}
         aria-label={label}
         aria-pressed={active}
+        data-active={active ? 'true' : undefined}
         onMouseDown={(event) => {
           event.preventDefault()
           event.stopPropagation()

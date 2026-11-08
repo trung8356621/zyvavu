@@ -1,0 +1,6 @@
+[mcp_servers.cms-knowledge]
+command = "node"
+args = ["D:/zyvavu/cms-knowledge-pack/mcp/server.mjs"]
+
+[mcp_servers.cms-knowledge.env]
+CMS_KNOWLEDGE_ROOT = 'D:\zyvavu\cms-knowledge-pack'

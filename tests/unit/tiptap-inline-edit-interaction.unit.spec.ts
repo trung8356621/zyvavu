@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { computeToolbarPosition } from '@/components/builder/inline-edit/edit-boundary'
+import {
+  computeToolbarPosition,
+  mapElementRectToWindow,
+} from '@/components/builder/inline-edit/edit-boundary'
 import { inlineContentExtensions } from '@/components/builder/inline-edit/extensions'
 
 describe('inline edit toolbar positioning', () => {
@@ -10,14 +13,16 @@ describe('inline edit toolbar positioning', () => {
       { top: 120, left: 40, right: 340, bottom: 180, width: 300, height: 60 },
       toolbar,
       viewport,
+      8,
     )
     expect(above.placement).toBe('above')
-    expect(above.top).toBeLessThan(120)
+    expect(above.top).toBe(120 - 32 - 8)
 
     const nearTop = computeToolbarPosition(
       { top: 20, left: 40, right: 340, bottom: 80, width: 300, height: 60 },
       toolbar,
       viewport,
+      8,
     )
     expect(nearTop.placement).toBe('below')
     expect(nearTop.top).toBeGreaterThanOrEqual(80)
@@ -28,6 +33,78 @@ describe('inline edit toolbar positioning', () => {
       viewport,
     )
     expect(nearRight.left + toolbar.width).toBeLessThanOrEqual(viewport.width - 8)
+  })
+
+  it('mapElementRectToWindow offsets iframe-local rects into the parent viewport', () => {
+    const parentWin = window
+    const frame = document.createElement('iframe')
+    Object.defineProperty(frame, 'offsetWidth', { value: 400 })
+    Object.defineProperty(frame, 'offsetHeight', { value: 300 })
+    frame.getBoundingClientRect = () =>
+      ({
+        left: 200,
+        top: 80,
+        width: 400,
+        height: 300,
+        right: 600,
+        bottom: 380,
+        x: 200,
+        y: 80,
+        toJSON() {
+          return this
+        },
+      }) as DOMRect
+
+    const iframeWin = {
+      frameElement: frame,
+    } as unknown as Window
+
+    const el = document.createElement('div')
+    Object.defineProperty(el, 'ownerDocument', {
+      value: { defaultView: iframeWin },
+    })
+    el.getBoundingClientRect = () =>
+      ({
+        left: 40,
+        top: 60,
+        width: 120,
+        height: 24,
+        right: 160,
+        bottom: 84,
+        x: 40,
+        y: 60,
+        toJSON() {
+          return this
+        },
+      }) as DOMRect
+
+    const mapped = mapElementRectToWindow(el, parentWin)
+    expect(mapped.left).toBe(240)
+    expect(mapped.top).toBe(140)
+    expect(mapped.width).toBe(120)
+    expect(mapped.height).toBe(24)
+  })
+
+  it('mapElementRectToWindow is identity when element is already in target window', () => {
+    const el = document.createElement('div')
+    document.body.appendChild(el)
+    el.getBoundingClientRect = () =>
+      ({
+        left: 10,
+        top: 20,
+        width: 30,
+        height: 40,
+        right: 40,
+        bottom: 60,
+        x: 10,
+        y: 20,
+        toJSON() {
+          return this
+        },
+      }) as DOMRect
+    const mapped = mapElementRectToWindow(el, window)
+    expect(mapped).toEqual({ top: 20, left: 10, right: 40, bottom: 60, width: 30, height: 40 })
+    el.remove()
   })
 })
 

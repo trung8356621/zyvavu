@@ -21,7 +21,12 @@ import {
 } from './content-model'
 import { inlineContentExtensions } from './extensions'
 import { InlineFormatToolbar } from './InlineFormatToolbar'
-import { InlineLinkModal, type InlineLinkDraft } from './InlineLinkModal'
+import { InlineLinkEditor } from './InlineLinkEditor'
+import {
+  createLinkDraftFromMark,
+  resolveLinkMarkFromDraft,
+  type LinkEditorDraft,
+} from './link-editor-model'
 import {
   classifyPointerTarget,
   pathSummary,
@@ -167,7 +172,7 @@ function ActiveInlineEditor({
   const [surfaceEl, setSurfaceEl] = React.useState<HTMLDivElement | null>(null)
   const mountGenRef = React.useRef(0)
   const multiline = allowsMultilineEnter(kind, tag)
-  const [linkDraft, setLinkDraft] = React.useState<InlineLinkDraft | null>(null)
+  const [linkDraft, setLinkDraft] = React.useState<LinkEditorDraft | null>(null)
   const linkOpen = Boolean(linkDraft)
 
   const serialize = React.useCallback(
@@ -176,13 +181,15 @@ function ActiveInlineEditor({
   )
 
   const finishCommit = React.useCallback(
-    (reason: string) => {
-      if (committedRef.current || linkOpen) return
+    (reason: string, opts?: { ignoreLinkGuard?: boolean }) => {
+      if (committedRef.current) return
+      // Link panel blocks outside-commit; widget switch may discard link then commit text.
+      if (linkOpen && !opts?.ignoreLinkGuard) return
       committedRef.current = true
       traceInlineEdit({
         phase: 'finishCommit',
         id,
-        detail: { reason, selectedId },
+        detail: { reason, selectedId, linkOpen },
       })
       onCommit(draftRef.current)
     },
@@ -335,6 +342,7 @@ function ActiveInlineEditor({
 
   // Commit on real selection change to a non-ancestor component.
   // Ignore Section (ancestor) reselection caused by bubbled clicks.
+  // Link draft is discarded (never silently applied) before session commit.
   React.useEffect(() => {
     if (!selectedId || selectedId === id) return
     const session = sessionRef.current
@@ -347,11 +355,13 @@ function ActiveInlineEditor({
     traceInlineEdit({
       phase: 'selection-change',
       id,
-      detail: { selectedId, selectedIsAncestor },
+      detail: { selectedId, selectedIsAncestor, linkOpen },
     })
     if (selectedIsAncestor) return
-    finishCommit('selectedItem-changed')
-  }, [finishCommit, id, selectedId])
+    // Explicit policy: discard uncommitted Link draft; commit text session once.
+    if (linkOpen) setLinkDraft(null)
+    finishCommit('selectedItem-changed', { ignoreLinkGuard: true })
+  }, [finishCommit, id, linkOpen, selectedId])
 
   React.useEffect(() => {
     const gen = ++mountGenRef.current
@@ -367,33 +377,54 @@ function ActiveInlineEditor({
 
   const openLinkModal = React.useCallback((current: Editor) => {
     const { from, to } = current.state.selection
-    const existing = current.getAttributes('link').href as string | undefined
-    setLinkDraft({
-      href: existing || '',
-      newTab: current.getAttributes('link').target === '_blank',
-      from,
-      to,
-    })
+    const attrs = current.getAttributes('link') as {
+      href?: string
+      target?: string
+      rel?: string
+    }
+    // Preserve Tiptap selection range while the docked Link Editor is open.
+    setLinkDraft(
+      createLinkDraftFromMark(
+        { from, to },
+        { href: attrs.href, target: attrs.target, rel: attrs.rel },
+      ),
+    )
   }, [])
 
   const applyLink = React.useCallback(
-    (draft: InlineLinkDraft) => {
+    (draft: LinkEditorDraft) => {
       if (!editor || editor.isDestroyed) return
-      editor
+      const resolved = resolveLinkMarkFromDraft(draft)
+      if (!resolved) return
+      const chain = editor
         .chain()
         .focus()
         .setTextSelection({ from: draft.from, to: draft.to })
         .extendMarkRange('link')
-        .setLink({
-          href: draft.href,
-          target: draft.newTab ? '_blank' : null,
-        })
-        .run()
+      if (resolved.unset) {
+        chain.unsetLink().run()
+      } else {
+        chain
+          .setLink({
+            href: resolved.href || '',
+            target: resolved.target,
+            rel: resolved.rel,
+          })
+          .run()
+      }
       draftRef.current = serialize(editor.getHTML())
       setLinkDraft(null)
     },
     [editor, serialize],
   )
+
+  const cancelLink = React.useCallback(() => {
+    // Cancel restores prior mark state by never mutating the editor draft.
+    setLinkDraft(null)
+    if (editor && !editor.isDestroyed) {
+      editor.commands.focus()
+    }
+  }, [editor])
 
   const onToolbarMetrics = React.useCallback(
     (next: { mounted: boolean; rect: DOMRect | null }) => {
@@ -435,12 +466,12 @@ function ActiveInlineEditor({
       <div ref={setSurfaceEl} className={styles.surface} data-widget-id={id}>
         <EditorContent editor={editor} />
       </div>
-      <InlineLinkModal
+      <InlineLinkEditor
         opened={linkOpen}
         draft={linkDraft}
         onChange={setLinkDraft}
         onApply={applyLink}
-        onClose={() => setLinkDraft(null)}
+        onCancel={cancelLink}
       />
     </div>
   )

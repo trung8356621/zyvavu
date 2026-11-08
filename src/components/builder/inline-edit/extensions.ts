@@ -6,9 +6,7 @@ const linkOptions = {
   openOnClick: false,
   autolink: true,
   linkOnPaste: true,
-  HTMLAttributes: {
-    rel: 'noopener noreferrer',
-  },
+  HTMLAttributes: {},
   validate: (href: string) => Boolean(sanitizeHref(href)),
 }
 

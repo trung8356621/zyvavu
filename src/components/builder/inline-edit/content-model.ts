@@ -59,13 +59,13 @@ function decodeBasicEntities(text: string): string {
     .replace(/&amp;/gi, '&')
 }
 
-/** Allow http(s), mailto, relative, hash, query. Reject javascript/data/vbscript. */
+/** Allow http(s), mailto, tel, relative, hash, query. Reject javascript/data/vbscript. */
 export function sanitizeHref(href: string | undefined | null): string | null {
   if (href == null) return null
   const value = href.trim()
   if (!value) return null
   if (/^(?:javascript|data|vbscript):/i.test(value)) return null
-  if (/^(?:https?:|mailto:|\/|#|\?)/i.test(value)) return value
+  if (/^(?:https?:|mailto:|tel:|\/|#|\?)/i.test(value)) return value
   // Protocol-relative or bare relative path without scheme
   if (value.startsWith('//')) return `https:${value}`
   if (!/^[a-z][a-z0-9+.-]*:/i.test(value)) return value
