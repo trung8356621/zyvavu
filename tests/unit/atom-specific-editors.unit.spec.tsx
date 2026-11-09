@@ -99,7 +99,7 @@ describe('Atom-specific editors (Button / Image)', () => {
     expect(screen.getByRole('button', { name: 'Change image' })).toBeTruthy()
   })
 
-  it('Button/Image link draft maps href + newTab through shared Link model', () => {
+  it('Button/Image/Video link draft maps href + newTab through shared Link model', () => {
     const draft = createLinkDraftFromMark(
       { from: 0, to: 0 },
       { href: 'https://zyvavu.test/page', target: '_blank', rel: null },
@@ -108,6 +108,19 @@ describe('Atom-specific editors (Button / Image)', () => {
     expect(resolved?.href).toBe('https://zyvavu.test/page')
     expect(resolved?.target).toBe('_blank')
     expect(isSafeMediaHref('javascript:alert(1)')).toBe(false)
+  })
+
+  it('Video Fields keep source/poster/playback; Link stays ActionBar-owned like Image', () => {
+    const fields = atomEditors.Video.config.fields as Record<string, unknown>
+    expect(fields.src).toBeTruthy()
+    expect(fields.posterUrl).toBeTruthy()
+    expect(fields.controls).toBeTruthy()
+    expect(fields.autoplay).toBeTruthy()
+    expect(fields.href).toBeUndefined()
+    expect(fields.newTab).toBeUndefined()
+    expect(
+      getStyleModalDomains('Video').some((d) => d === 'background'),
+    ).toBe(false)
   })
 
   it('Canvas/frontend share Image appearance + Button Design semantics', () => {

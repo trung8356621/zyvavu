@@ -1,6 +1,6 @@
 # Wix Implementation Progress
 
-Checkpoint after **Atom-Specific Editors** on top of V4 Advanced Widgets / V3 hardening.
+Checkpoint after **Coverage Completion batch** (Video ActionBar + Gallery item Fields + ItemImage parity + Nov 11 acceptance pack).  
 Do **not** treat unit PASS as UI VERIFIED.
 
 ## Baseline
@@ -8,6 +8,7 @@ Do **not** treat unit PASS as UI VERIFIED.
 - Branch: `codex/style-engine-feature-expansion`
 - Start HEAD: `f82e8af` (no commit/push)
 - Workspace: `D:\workspace-2026\zyvavu`
+- Research: Behavior Contract · Regression Matrix · E298 · `docs/wix-research-coverage-matrix.md`
 - Owner checklist: `docs/visual-builder-owner-acceptance.md`
 
 ## Batch / phase status
@@ -15,70 +16,62 @@ Do **not** treat unit PASS as UI VERIFIED.
 | Item | Status | Notes |
 | --- | --- | --- |
 | V3 Batches 1–11 | DONE (code) | UI NOT VERIFIED |
-| V3 gate (64 tests) | PASS | Re-run before V4 |
+| V3 gate | PASS | Focused units |
 | **V4 Phase 1 Image** | **DONE** | fit/position/caption/link/mediaId |
-| **V4 Phase 2 Video** | **DONE** | New Video atom + Media Library |
-| **V4 Phase 3 Content** | **PARTIAL** | TextBlock `ctaNewTab`; composition patterns |
-| **V4 Phase 4 Gallery** | **DONE (V1)** | Flex/Grid gallery, no masonry |
-| **V4 Phase 5 Mega Menu** | **AUDIT ONLY** | Regression-first; no engine rewrite |
-| **V4 Phase 6 Data-bound** | **PARTIAL** | FeaturedMedia fit/aspect parity |
-| **V4 Phase 7 Patterns** | **DONE (selective)** | Hero CTA, testimonial, gallery section |
-| V4 Phase 8–9 Responsive/Perf | PARTIAL | Reuses V1; lazy img; no autoplay in library |
+| **V4 Phase 2 Video** | **DONE** | Video atom + **ActionBar Change Video + Link** |
+| **V4 Phase 3 Content** | **DONE (selective)** | TextBlock `ctaNewTab`; composition patterns |
+| **V4 Phase 4 Gallery** | **DONE (V1)** | Grid + **per-item alt/caption/href/replace Fields** |
+| **V4 Phase 5 Mega Menu** | **AUDIT ONLY** | No engine rewrite |
+| **V4 Phase 6 Data-bound** | **DONE (parity)** | FeaturedMedia + **ItemImage** fit/aspect |
+| **V4 Phase 7 Patterns** | **DONE (selective)** | Hero/Testimonial/Gallery + Batch 11 |
+| V4 Phase 8–9 Responsive/Perf | PARTIAL | PO V1 responsive; lazy img; no library autoplay |
 | V4 Phase 10 Regression | PARTIAL | Focused units PASS; UI NOT VERIFIED |
-| **Atom-Specific Editors** | **DONE (code)** | Button Design + Image Editor + Link host |
+| **Atom-Specific Editors** | **DONE (code)** | Button / Image / Link host |
+| **Coverage matrix** | **DONE** | `docs/wix-research-coverage-matrix.md` |
 
 ---
 
-## V4 implemented
+## This batch (coverage completion)
 
-### Image atom
-- Fields: `src` (+ `mediaId` via picker/Quick Action), `alt`, `aspectRatio`, `objectFit`, `objectPosition`, `caption`, `href`, `newTab`
-- Renders `<figure>` + optional link; rejects `javascript:`/`data:` hrefs
-- Empty default `src` (presets may use sample SVG for library cards only)
+### Video ActionBar (E287)
+- `ImageQuickAction` supports `kind: 'Image' | 'Video'`
+- Video ActionBar: **Change Video** + shared **Link** (`AtomWidgetLinkHost`)
+- Poster auto-fill when Media returns `posterUrl`
 
-### Video atom (new)
-- Atom type `Video` in `ATOM_TYPES` (auto-allowed on home/page/single/category)
-- Fields: source + poster (Media Library), aspect/fit/position, caption, link, controls/loop/muted/autoplay
-- Autoplay forces mute; library presets keep `src: ''` and `autoplay: false`
-- Reduced-motion: global video hide + content poster reveal (`ANIMATION_CSS`)
+### Gallery per-item Fields (E277 V1; organizer OUT)
+- Per-item preview, Replace, Remove, Alt, Caption, Link URL
+- Add images + Clear all retained
+- Frontend already renders caption/href; unsafe `javascript:`/`data:` rejected
 
-### Gallery widget (new)
-- `Gallery` registered in manifests/editor/frontend + policy
-- Props: `items[]`, `columns` 2–4, `gapToken`, `aspectRatio`, `objectFit`
-- CSS Grid only — no masonry / organizer backend
+### ItemImage data-bound parity
+- `objectFit` Fields + serializer
+- Portrait `3:4` aspect (with FeaturedMedia)
 
-### Patterns
-- `section-hero-cta`, `section-testimonial`, `section-gallery`
-- Prior V3 layouts retained (media-start/end, feature-grid, CTA, editorial)
-
-### TextBlock / FeaturedMedia
-- TextBlock Settings exposes `ctaNewTab`
-- FeaturedMedia: square/portrait aspects + `objectFit`
+### Docs
+- Coverage matrix created
+- Owner acceptance regrouped A–L for Nov 11
 
 ---
 
-## Atom-Specific Editors (this checkpoint)
+## Coverage rollup (source-verified)
 
-### Button
-- **Fields:** Label only (`text`)
-- **Link:** ActionBar → canonical `AtomWidgetLinkHost` / `InlineLinkEditor` (`href` + `newTab`)
-- **Design:** Style dock `button` first — Normal (Background/Text/Border/Radius/Shadow) + Hover (Background/Text/Border/Shadow/Layout opacity·transform)
-- **Reused:** Theme tokens, shared `ThemeColorPaletteModal`, existing Spacing/Animation docks
-- **Unavailable:** Icon; Normal Layout (no empty disabled shells)
+| Status | Count |
+| --- | ---: |
+| Audited research rows | 54 |
+| IMPLEMENTED | 28 |
+| PARTIAL | 9 |
+| MISSING (verified + in-scope) | 0 |
+| BLOCKED | 5 |
+| OUT_OF_SCOPE | 12 |
 
-### Image
-- **Fields:** Compact `ImageEditorPanel` (preview / Change / Remove / Alt / Caption / Aspect / Fit / Position)
-- **Link:** Same ActionBar Link Editor (not duplicated in Fields)
-- **Style dock:** Spacing / Borders / Animation (+ Shadow/Effects when capable) — no Background chrome duplicate
-- **Media:** Existing Payload `MediaSourcePicker` + ActionBar `ImageQuickAction`; `mediaId` retained
+### Remaining safe engineering (none required before Nov 11 UI)
+- No additional VERIFIED+IN_SCOPE MISSING rows after this batch.
+- PARTIAL items are intentional product limits or research-gated (Scroll shell, Mega Menu audit, Section Fields width/padding, TextBlock Style ownership, responsive beyond V1).
+- BLOCKED: Button Icon/Layout, Wrapping/Overflow UI, full-width CTA, production migrate, Scroll/Mouse animation catalogs.
 
-### Heading / Text
-- Unchanged unified H1–H6/P + Fields Typography + Tiptap; legacy Text still renders; bound titles read-only
+---
 
-### Navigation
-- Selection → Widget Settings; Style/Link mutually exclusive; Close restores Atom Settings focus; dirty Style drafts use existing Apply/Cancel/Reset
-
-## Tests (Atom editors + related)
+## Tests (this checkpoint)
 
 ```
 pnpm exec vitest run \
@@ -90,26 +83,28 @@ pnpm exec vitest run \
   tests/unit/tiptap-link-editor.unit.spec.ts
 ```
 
-**46/46 PASS** · CODE / TEST VERIFIED · **UI NOT VERIFIED**
+**49/49 PASS** · CODE / TEST VERIFIED · **UI NOT VERIFIED**
 
 ### Known unrelated / blocked
 - Pre-existing `tsc`: AnimationPresetPicker, TipTap extensions, domains generics, PostTitle fields
-- `mega-menu-builder.unit.spec.ts` may fail suite import when `react-image-crop` CSS loads via Media picker graph — not modified this batch
+- `mega-menu-builder.unit.spec.ts` CSS import flake via Media picker graph — not modified
+- Production build / migrate: BLOCKED by policy
 
 ---
 
 ## Unsupported Wix behaviors (explicit)
 
-- Wix Gallery Organizer / masonry / complex gallery animations
+- Wix Gallery Organizer / masonry / complex gallery animations (TC-B11+)
 - Video hosting backend
 - Absolute canvas positioning
 - Rewriting Mega Menu engine
-- Second navigation or media database
 - Button Icon / Normal Layout chrome
-- Pattern Library expansion (explicitly out of this atom-editors task)
+- Scroll/Mouse animation full catalogs
+- Wrapping/Overflow typography (research-gated)
+- Full-width CTA width=100% without style contract
 
 ## Next exact task
 
-1. Owner UI acceptance: Button Design + Image Editor + Link at 1366×768 / 1920×1080.
-2. Optional: Gallery per-item caption/href editors beyond Media add; Video ActionBar quick replace.
-3. Mega Menu: run suite with CSS mock if CI flakes; no rewrite.
+1. **Nov 11 PO consolidated UI acceptance** using `docs/visual-builder-owner-acceptance.md` groups A–L.
+2. Agent fixes only FAIL items after owner screenshots/notes.
+3. Commit only when PO requests.

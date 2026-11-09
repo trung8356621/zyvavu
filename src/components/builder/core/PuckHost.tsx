@@ -346,7 +346,20 @@ function PuckActionBarBridge({
       data-style-open={Boolean(componentId && styleMenuComponentId === componentId)}
     >
       {rawType === 'Image' && componentId && (
-        <ImageQuickAction key={componentId} id={componentId} beforeOperation={bridge.beforeOperation} />
+        <ImageQuickAction
+          key={componentId}
+          id={componentId}
+          kind="Image"
+          beforeOperation={bridge.beforeOperation}
+        />
+      )}
+      {rawType === 'Video' && componentId && (
+        <ImageQuickAction
+          key={`video-${componentId}`}
+          id={componentId}
+          kind="Video"
+          beforeOperation={bridge.beforeOperation}
+        />
       )}
       <ActionBar>
         <ActionBar.Group>
@@ -408,7 +421,10 @@ function PuckActionBarBridge({
             </Menu.Dropdown>
           </Menu>
           {/* Primary widget settings live in native Puck Fields on selection — no gear. */}
-          {(componentType === 'Button' || componentType === 'Image') && componentId && (
+          {(componentType === 'Button' ||
+            componentType === 'Image' ||
+            componentType === 'Video') &&
+            componentId && (
             <ActionBar.Action
               key="atom-link"
               label="Link"

@@ -10,7 +10,8 @@ export type ItemImageProps = {
   id?: string
 
   style?: UniversalStyle
-  aspectRatio?: '16:9' | '4:3' | '1:1' | 'auto'
+  aspectRatio?: '16:9' | '4:3' | '1:1' | '3:4' | 'auto'
+  objectFit?: 'cover' | 'contain' | 'fill' | 'none'
   borderRadius?: string
   linkToPost?: boolean
   className?: string
@@ -21,6 +22,7 @@ export function ItemImageFrontend({
   id: surfaceId,
   style: semanticStyle,
   aspectRatio = '16:9',
+  objectFit = 'cover',
   borderRadius = '4px',
   linkToPost = true,
   className = '',
@@ -31,10 +33,11 @@ export function ItemImageFrontend({
   const imageAlt = item?.image?.alt || item?.title || 'Item image'
   const postUrl = item?.url || '#'
 
-  const ratioMap = {
+  const ratioMap: Record<string, string> = {
     '16:9': '56.25%',
     '4:3': '75%',
     '1:1': '100%',
+    '3:4': '133.33%',
     auto: 'auto',
   }
   const paddingBottom = ratioMap[aspectRatio] || '56.25%'
@@ -49,7 +52,7 @@ export function ItemImageFrontend({
         left: 0,
         width: '100%',
         height: '100%',
-        objectFit: 'cover',
+        objectFit: objectFit || 'cover',
         display: 'block',
       }}
     />

@@ -14,7 +14,7 @@ type WidgetItem = {
 }
 
 /**
- * Widget-level Link Editor for Button / Image props.href + props.newTab.
+ * Widget-level Link Editor for Button / Image / Video props.href + props.newTab.
  * Reuses the canonical docked Link Editor — not a second URL system.
  * Hosted outside Puck ActionBar; receives document APIs from PuckHost.
  */

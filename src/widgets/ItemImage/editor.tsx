@@ -23,7 +23,18 @@ export const itemImageEditor: ComponentConfig<ItemImageProps> = {
         { label: '16:9 Widescreen', value: '16:9' },
         { label: '4:3 Standard', value: '4:3' },
         { label: '1:1 Square', value: '1:1' },
+        { label: '3:4 Portrait', value: '3:4' },
         { label: 'Natural / Auto', value: 'auto' },
+      ],
+    },
+    objectFit: {
+      type: 'select',
+      label: 'Object fit',
+      options: [
+        { label: 'Cover', value: 'cover' },
+        { label: 'Contain', value: 'contain' },
+        { label: 'Fill', value: 'fill' },
+        { label: 'None', value: 'none' },
       ],
     },
     // borderRadius → Style Sidebar (radius). Prop retained for saved-data compatibility.
@@ -38,6 +49,7 @@ export const itemImageEditor: ComponentConfig<ItemImageProps> = {
   },
   defaultProps: {
     aspectRatio: '16:9',
+    objectFit: 'cover',
     borderRadius: '4px',
     linkToPost: true,
   },

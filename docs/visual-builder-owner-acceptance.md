@@ -1,69 +1,51 @@
-# Visual Builder — Owner Acceptance Checklist
+# Visual Builder — Owner Acceptance Pack (Nov 11)
 
-Prepared for the post–Nov 11 token-reset visual pass.
-Status labels: **DONE** / **PARTIAL** / **BLOCKED** / **NOT_STARTED**.
+One consolidated visual/functional pass.  
+Status labels: **DONE** / **PARTIAL** / **BLOCKED** / **NOT_STARTED**.  
 Verification: **CODE VERIFIED** / **TEST VERIFIED** / **UI VERIFIED** / **UI NOT VERIFIED**.
 
 Branch: `codex/style-engine-feature-expansion` · Workspace: `D:\workspace-2026\zyvavu`  
-No commit/push in this workstream.
+Canonical: `https://zyvavu.test` (port 3107) · Viewports: **1366×768**, **1920×1080**.  
+No commit/push in this workstream. Coverage: `docs/wix-research-coverage-matrix.md`.
 
 ---
 
-## 1. Completed features (code)
+## 1. Code status snapshot
 
 | Area | Status | Verification |
 | --- | --- | --- |
-| Typography Fields + semantic presets + tag independence | DONE | CODE / TEST VERIFIED · UI NOT VERIFIED |
-| Borders / linked radius / spacing / effects | DONE | CODE / TEST VERIFIED · UI NOT VERIFIED |
-| Button Design V1 Normal/Hover | DONE | CODE / TEST VERIFIED · UI NOT VERIFIED |
-| Responsive V1 (fontSize/lineHeight/align/spacing) | DONE | CODE / TEST VERIFIED · UI NOT VERIFIED |
-| Widget Library density + Button/Image presets | DONE | CODE / TEST VERIFIED · UI NOT VERIFIED |
-| Section/Pattern structure previews (Batch 5.3) | DONE | CODE / TEST VERIFIED · UI NOT VERIFIED |
-| Link Editor destinations + Apply/Cancel/Escape | DONE | CODE / TEST VERIFIED · UI NOT VERIFIED |
-| Background layers + shared palette | DONE | CODE / TEST VERIFIED · UI NOT VERIFIED |
-| Animation entrance/hover/loop + non-mutating replay | DONE | CODE / TEST VERIFIED · UI NOT VERIFIED |
-| Settings ownership (Heading/P, bound titles, Button) | DONE | CODE / TEST VERIFIED · UI NOT VERIFIED |
-| Batch 11 Image square/portrait + Section layouts | DONE | CODE / TEST VERIFIED · UI NOT VERIFIED |
-| V4 Image fit/position/caption/link | DONE | CODE / TEST VERIFIED · UI NOT VERIFIED |
-| V4 Video atom | DONE | CODE / TEST VERIFIED · UI NOT VERIFIED |
-| V4 Gallery grid | DONE | CODE / TEST VERIFIED · UI NOT VERIFIED |
-| V4 Hero/Testimonial/Gallery patterns | DONE | CODE / TEST VERIFIED · UI NOT VERIFIED |
-| Atom Button focused editor (Label + Link + Design) | DONE | CODE / TEST VERIFIED · UI NOT VERIFIED |
-| Atom Image focused editor (Source/Appearance + Link) | DONE | CODE / TEST VERIFIED · UI NOT VERIFIED |
-| Atom Link host (Button/Image → InlineLinkEditor) | DONE | CODE / TEST VERIFIED · UI NOT VERIFIED |
+| Typography Fields + semantic presets + tag independence | DONE | CODE / TEST · UI NOT VERIFIED |
+| Borders / linked radius / spacing / effects | DONE | CODE / TEST · UI NOT VERIFIED |
+| Button Design V1 Normal/Hover | DONE | CODE / TEST · UI NOT VERIFIED |
+| Responsive V1 (fontSize/lineHeight/align/spacing) | DONE | CODE / TEST · UI NOT VERIFIED |
+| Widget / Pattern Library | DONE | CODE / TEST · UI NOT VERIFIED |
+| Link Editor destinations + Apply/Cancel/Escape | DONE | CODE / TEST · UI NOT VERIFIED |
+| Background layers + shared palette | DONE | CODE / TEST · UI NOT VERIFIED |
+| Animation Entrance/Hover/Loop + non-mutating replay | DONE | CODE / TEST · UI NOT VERIFIED |
+| Image / Video / Gallery V1 | DONE | CODE / TEST · UI NOT VERIFIED |
+| Video ActionBar Change Video + Link | DONE | CODE / TEST · UI NOT VERIFIED |
+| Gallery per-item Fields (alt/caption/href) | DONE | CODE / TEST · UI NOT VERIFIED |
+| FeaturedMedia + ItemImage fit/aspect | DONE | CODE / TEST · UI NOT VERIFIED |
+| Atom Button / Image focused editors | DONE | CODE / TEST · UI NOT VERIFIED |
 
----
-
-## 2. Remaining / partial
+### Remaining / blocked (do not expand before UI FAIL)
 
 | Item | Status | Notes |
 | --- | --- | --- |
-| Wrapping / Overflow typography | NOT_STARTED | Needs verified Wix Text research |
-| Button Icon + Normal Layout | BLOCKED | Tabs hidden; validation rejects unfinished Icon |
-| Scroll animation | BLOCKED | Shell-only by design |
-| Section width/padding Style parity | PARTIAL | Still Fields-owned (`inherit` semantics) |
-| TextBlock typography in Style (not Fields) | PARTIAL | Documented ownership |
-| Gallery per-item caption/href Fields UI | PARTIAL | Props supported; add-flow via Media picker |
-| Video ActionBar quick replace | NOT_STARTED | Image Quick Action only today |
-| Wix Gallery masonry / organizer | NOT_STARTED | Explicitly out of scope |
-| Mega Menu engine rewrite | NOT_STARTED | Regression-first; leave working engine |
-| Full-width CTA button preset | NOT_STARTED | No safe width=100% style contract |
-| Pre-existing `tsc` (AnimationPresetPicker, TipTap extensions, domains generics, PostTitle fields) | PARTIAL | Unrelated; not rewritten |
-| Production build / migrate | BLOCKED | Avoid Payload migrate side effects |
+| Wrapping / Overflow typography | BLOCKED | Research-gated |
+| Button Icon + Normal Layout | BLOCKED | Validation rejects unfinished Icon |
+| Scroll / Mouse animation | BLOCKED / OUT | Shell-only by design |
+| Section width/padding Style parity | PARTIAL | Fields-owned `inherit` |
+| TextBlock typography Style ownership | PARTIAL | Documented Style vs Fields |
+| Gallery organizer / masonry | OUT_OF_SCOPE | TC-B11+ |
+| Mega Menu engine rewrite | OUT_OF_SCOPE | Audit-only |
+| Full-width CTA width=100% | BLOCKED | No safe style contract |
+| Pre-existing `tsc` debt | PARTIAL | Unrelated; separate PR |
+| Production migrate / build | BLOCKED | Policy |
 
 ---
 
-## 3. Known limitations
-
-- UI visual PASS requires owner login + manual inspection (no Playwright).
-- TipTap Undo of Link Apply is editor History; Puck history commits on text session end.
-- My Patterns file-backed V1: thumbnails stay `pending`; live structure preview is the fallback.
-- Image aspect ratios now include `1:1` and `3:4`; legacy docs without the prop remain valid.
-- Responsive CSS is scoped via `data-zyvavu-style-id` only for explicit tablet/mobile overrides.
-
----
-
-## 4. Automated tests (latest focused run)
+## 2. Automated tests (pre-acceptance)
 
 ```
 pnpm exec vitest run \
@@ -75,82 +57,134 @@ pnpm exec vitest run \
   tests/unit/tiptap-link-editor.unit.spec.ts
 ```
 
-**Result:** 6 files · **46/46 PASS** · TEST VERIFIED (atom editors checkpoint)  
-**TypeScript:** Atom-editor touched files clean of new errors; pre-existing unrelated `domains.ts` / AnimationPresetPicker / TipTap errors remain (see §2).
+**Result:** **49/49 PASS** · TEST VERIFIED · **UI NOT VERIFIED**
 
 ---
 
-## 5. UI tests requiring owner login
+## 3. Manual workflow checks (Nov 11)
 
-Target viewports: **1366×768**, **1920×1080**. Canonical: `https://zyvavu.test` (port 3107).
+Mark each: PASS / FAIL / SKIP. Attach screenshot notes for FAIL.
 
-### A. Widget / Pattern Library
+### A. Widget Library
 
-1. Open Theme Builder → Blocks.
-2. Scan Heading, Button, Image, Video, Gallery, Sections.
-3. Confirm previews are compact (no giant cards / clipping). Video cards must not autoplay.
-4. Insert: `image-square`, `video-standard`, Gallery widget, `section-hero-cta`, `section-testimonial`, `section-gallery`, `section-media-start`.
-5. Undo each insert; Redo once.
-6. Resize library overlay; collapse/reopen.
+| # | Steps | Expected | Evidence | Status |
+| --- | --- | --- | --- | --- |
+| A1 | Theme Builder → Blocks; scan Heading, Button, Image, Video, Gallery, Sections | Compact preview cards; no giant clipping; Video cards do not autoplay | E01 / library | UI NOT VERIFIED |
+| A2 | Insert `image-square`, `video-standard`, Gallery, `section-hero-cta`, `section-testimonial`, `section-gallery` | Inserts succeed; unique IDs | V4 P7 | UI NOT VERIFIED |
+| A3 | Undo each insert; Redo once | History restores correctly | E08 / E259 | UI NOT VERIFIED |
+| A4 | Resize library overlay; Escape collapse; reopen category | Overlay clamps; canvas not crushed | PO library | UI NOT VERIFIED |
 
-### A2. Image / Video / Gallery Settings
+### B. Heading / Text / Tiptap
 
-1. Image: single compact Fields panel — preview, Change/Remove, alt, caption, aspect, fit, position.
-2. Image ActionBar Link → shared Link Editor; Cancel restores Fields focus. No duplicate href field in Fields.
-3. Image ActionBar Change Image + Style Borders/Spacing; Canvas ↔ frontend parity after Save/Reload.
-4. Video: pick Media Library video + poster; controls on; autoplay off by default; enable reduced motion and confirm poster remains.
-5. Gallery: add 3+ images from Media Library; columns 2/3/4; gap; frontend parity.
+| # | Steps | Expected | Evidence | Status |
+| --- | --- | --- | --- | --- |
+| B1 | Single-click Heading → Fields Content + Tag + Typography | Settings visible; no duplicate Typography Style dock | E147 | UI NOT VERIFIED |
+| B2 | Double-click → Bold/Italic/Underline | Marks apply; Escape cancels session | PO Tiptap | UI NOT VERIFIED |
+| B3 | Document Title / Category Title | No Content; no inline edit; tag+typography only | PO bound titles | UI NOT VERIFIED |
 
-### A3. Button focused editor
+### C. Button
 
-1. Select Button → Fields show Label only.
-2. ActionBar Link → destination + open behavior → Apply/Cancel/Undo.
-3. Button Design first in Style toolbar → Normal/Hover groups (no Icon tab) → theme color tokens → Save/Reload.
-4. Confirm Spacing/Animation remain available; Background/Borders style docks are absent for Button.
+| # | Steps | Expected | Evidence | Status |
+| --- | --- | --- | --- | --- |
+| C1 | Select Button → Fields show Label only | No href/newTab in Fields | E108 / atom editors | UI NOT VERIFIED |
+| C2 | ActionBar Link → Page/Web/Email/Phone → Apply / Cancel | Apply persists; Cancel restores | E130–E131 / E196–E198 | UI NOT VERIFIED |
+| C3 | Style → Button Design first → Normal/Hover theme colors | No Icon tab; Spacing/Animation remain | E112 / E121 | UI NOT VERIFIED |
+| C4 | Save template → Reload | Button Design survives | E64 | UI NOT VERIFIED |
 
-### B. Tiptap + Link
+### D. Image / Video / Gallery
 
-1. Double-click Heading/P → Bold/Italic/Underline.
-2. Select text → Link → Page / Web / Email / Phone Apply.
-3. Confirm unavailable destinations cannot activate.
-4. Escape vs Cancel; reopen existing link.
-5. Outside click commits; Escape cancels session.
+| # | Steps | Expected | Evidence | Status |
+| --- | --- | --- | --- | --- |
+| D1 | Image Fields: preview, Change/Remove, alt, caption, aspect, fit, position | Single compact panel | E261 | UI NOT VERIFIED |
+| D2 | Image ActionBar Change Image + Link; Cancel Link restores Fields | Shared Link Editor; no duplicate href Fields | E274–E276 / E130 | UI NOT VERIFIED |
+| D3 | Video: Media Library source + poster; controls on; autoplay off | Reduced motion shows poster | E287 / reduced-motion | UI NOT VERIFIED |
+| D4 | Video ActionBar Change Video + Link | Source updates; link Apply/Cancel | E287 | UI NOT VERIFIED |
+| D5 | Gallery: add 3+ images; edit per-item alt/caption/href; columns 2/3/4 | Captions/links on frontend; no organizer UI | E277 V1 | UI NOT VERIFIED |
+| D6 | Image/Video/Gallery Save → Reload → frontend route | Parity with canvas | E64 | UI NOT VERIFIED |
 
-### C. Style domains
+### E. Section / Container / Columns
 
-1. Select Section → Background (solid/gradient/pattern) → Apply/Cancel/Reset.
-2. Borders linked → unlinked → reopen.
-3. Button Design Normal/Hover → Save template → Reload.
-4. Animation Test replay → confirm Undo stack unchanged.
-5. Typography/Spacing Tablet/Mobile overrides → Reset property → Save/Reload.
+| # | Steps | Expected | Evidence | Status |
+| --- | --- | --- | --- | --- |
+| E1 | Insert Section layouts (media-start, feature-grid, CTA, editorial) | Nested structure intact | Batch 11 / E250 | UI NOT VERIFIED |
+| E2 | Section Background solid/gradient/pattern → Apply/Cancel/Reset | Session Cancel restores; domain Reset scoped | E64 / PO Style UX | UI NOT VERIFIED |
+| E3 | Columns gap/alignment if present | No absolute positioning tools | Flex/Grid-first | UI NOT VERIFIED |
+| E4 | Section `containerWidth` / `verticalPadding` in Fields | Still Fields-owned (`inherit`) — expected PARTIAL | ownership doc | UI NOT VERIFIED |
 
-### D. Responsive canvas / frontend
+### F. Typography
 
-1. Set tablet fontSize + mobile spacing on a Heading.
-2. Preview tablet/mobile widths if available.
-3. Publish/preview frontend route; confirm cascade and no style leakage between duplicate widgets.
+| # | Steps | Expected | Evidence | Status |
+| --- | --- | --- | --- | --- |
+| F1 | Heading typography Select shows semantic labels only | No raw px/token suffixes on closed Select | PO semantic labels | UI NOT VERIFIED |
+| F2 | Edit size/weight/color; property Reset | Clears override only; theme inheritance returns | E292–E295 | UI NOT VERIFIED |
+| F3 | Change HTML Tag H2↔P independently of style | Typography not forced by tag | E147 | UI NOT VERIFIED |
 
-### E. Settings ownership
+### G. Background / Border / Effects
 
-1. Single-click → Widget Settings.
-2. Open Background/Layout/Borders → close → Fields visible/focused.
-3. Document Title: no Content, no inline edit; tag + typography only.
+| # | Steps | Expected | Evidence | Status |
+| --- | --- | --- | --- | --- |
+| G1 | Background Color → shared Theme palette Solid/Gradient/Mesh | No native color input / duplicate picker | Color contract | UI NOT VERIFIED |
+| G2 | Borders linked → unlink one side → relink | Linked edit fans out; relock keeps asymmetry until edit | E203 / E209 / E50 | UI NOT VERIFIED |
+| G3 | Shadow OFF → edit → OFF → ON | Params retained | E51 / E218 | UI NOT VERIFIED |
+| G4 | Effects/Blur where capable | Unsupported combinations rejected | validation | UI NOT VERIFIED |
+
+### H. Responsive
+
+| # | Steps | Expected | Evidence | Status |
+| --- | --- | --- | --- | --- |
+| H1 | Heading: Tablet fontSize + Mobile spacing overrides | Desktop base unchanged | E265 / PO V1 | UI NOT VERIFIED |
+| H2 | Preview narrow widths / frontend media queries | Cascade applies; no leakage across duplicate widgets | serializer `data-zyvavu-style-id` | UI NOT VERIFIED |
+| H3 | Reset property on responsive override | Clears override only | PO Reset | UI NOT VERIFIED |
+
+### I. Link Editor
+
+| # | Steps | Expected | Evidence | Status |
+| --- | --- | --- | --- | --- |
+| I1 | Tiptap Link → destinations; unavailable stay disabled | Only None/Page/Web/Email/Phone selectable | E192 | UI NOT VERIFIED |
+| I2 | Escape = Cancel; Apply restores frozen selection | Draft discarded on Escape | E196–E198 | UI NOT VERIFIED |
+| I3 | Button/Image/Video ActionBar Link | Same docked editor | atom link host | UI NOT VERIFIED |
+
+### J. Animation
+
+| # | Steps | Expected | Evidence | Status |
+| --- | --- | --- | --- | --- |
+| J1 | Entrance Fade + Loop Breathe; Test Animation | Finite replay; Undo stack unchanged | E219–E227 | UI NOT VERIFIED |
+| J2 | Reduced motion enabled | No playback; content remains | reduced-motion | UI NOT VERIFIED |
+| J3 | Scroll category | Shell/disabled — expected | E213 shell | UI NOT VERIFIED |
+
+### K. Theme Customize
+
+| # | Steps | Expected | Evidence | Status |
+| --- | --- | --- | --- | --- |
+| K1 | Change theme typography/color tokens | Inheriting widgets update without persisted overrides | E60 / theme | UI NOT VERIFIED |
+| K2 | Mega Menu animations still work | No regression from Style Engine work | Mega Menu audit | UI NOT VERIFIED |
+
+### L. Save / Reload / Undo / Redo
+
+| # | Steps | Expected | Evidence | Status |
+| --- | --- | --- | --- | --- |
+| L1 | Style Apply then Undo/Redo | Canvas + reopened panel agree | E214 / E284 / PO | UI NOT VERIFIED |
+| L2 | Dirty Style draft → switch widget → resolve | Explicit resolve; no silent loss | Style session | UI NOT VERIFIED |
+| L3 | Save template → full reload → reopen widgets | Styles/media/links persist | E64 / CB-SAVE | UI NOT VERIFIED |
+| L4 | Frontend published/preview route | Matches editor resolved styles | E64 | UI NOT VERIFIED |
 
 ---
 
-## 6. Suggested correction order (after visual pass)
+## 4. Known limitations (expected)
 
-1. Any insertion/preview regressions for new Section layouts.
-2. Link selection/focus issues on real canvas.
-3. Responsive canvas ↔ frontend mismatches.
-4. Remaining label/contrast density issues.
-5. Only then consider Wrapping/Overflow or Icon Button (research-gated).
+- TipTap Undo of Link Apply is editor History; Puck history commits on text session end.
+- My Patterns file-backed V1: thumbnails may stay `pending`; structure preview is fallback.
+- Responsive CSS only for explicit tablet/mobile overrides.
+- Gallery has no drag-reorder organizer (OUT_OF_SCOPE).
 
 ---
 
-## 7. Exact next engineering task (post-acceptance)
+## 5. Post-acceptance correction order
 
-1. Owner marks UI items PASS/FAIL with screenshots.
-2. Agent fixes FAIL items only.
-3. Optional: clean pre-existing `tsc` debt in a separate scoped PR.
-4. Commit only when PO requests.
+1. Insertion/preview regressions  
+2. Link selection/focus on real canvas  
+3. Responsive canvas ↔ frontend mismatches  
+4. Density/contrast labels  
+5. Only then consider research-gated Wrapping/Overflow or Icon Button  
+
+Commit only when PO requests.

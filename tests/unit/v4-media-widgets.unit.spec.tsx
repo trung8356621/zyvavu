@@ -9,6 +9,7 @@ vi.mock('@/components/admin/media/MediaSourcePicker', () => ({
 
 import { createAtomRenderer } from '@/widgets/atoms/frontend'
 import { GalleryFrontend } from '@/widgets/Gallery/frontend'
+import { galleryEditor } from '@/widgets/Gallery/editor'
 import { VIDEO_PRESETS, IMAGE_PRESETS } from '@/lib/theme-engine/patterns/atom-presets'
 import { SYSTEM_PATTERNS } from '@/lib/theme-engine/patterns/catalog'
 import {
@@ -87,7 +88,7 @@ describe('V4 — Image / Video / Gallery', () => {
     }
   })
 
-  it('Gallery renders CSS grid items without autoplaying media', () => {
+  it('Gallery renders CSS grid items with caption/href and rejects unsafe links', () => {
     const html = renderToStaticMarkup(
       <GalleryFrontend
         id="gal-1"
@@ -95,14 +96,27 @@ describe('V4 — Image / Video / Gallery', () => {
         gapToken="md"
         aspectRatio="1:1"
         items={[
-          { id: 'a', src: '/pattern-library/media-sample.svg', alt: 'A' },
+          {
+            id: 'a',
+            src: '/pattern-library/media-sample.svg',
+            alt: 'A',
+            caption: 'Shot A',
+          },
           { id: 'b', src: '/pattern-library/media-sample.svg', alt: 'B', href: 'https://ok.test' },
+          {
+            id: 'c',
+            src: '/pattern-library/media-sample.svg',
+            href: 'javascript:alert(1)',
+          },
         ]}
       />,
     )
     expect(html).toContain('grid-template-columns:repeat(3')
     expect(html).toContain('pattern-library/media-sample.svg')
     expect(html).toContain('href="https://ok.test"')
+    expect(html).toContain('Shot A')
+    expect(html).toContain('<figcaption')
+    expect(html).not.toContain('javascript:')
     expect(html).not.toContain('<video')
   })
 
@@ -121,5 +135,37 @@ describe('V4 — Image / Video / Gallery', () => {
   it('Image presets retain sample src for library only; empty Image default has no sample', () => {
     expect(IMAGE_PRESETS.every((p) => p.payload.content[0].props.src)).toBe(true)
     expect(getWidgetManifest('Image')?.defaultProps?.src).toBe('')
+  })
+
+  it('Gallery Fields expose per-item alt/caption/href editor (no organizer)', () => {
+    const fields = galleryEditor.fields as Record<string, { label?: string }>
+    expect(fields.items?.label).toBe('Gallery images')
+    expect(fields.columns).toBeTruthy()
+    expect(fields.gapToken).toBeTruthy()
+    expect(fields.aspectRatio).toBeTruthy()
+    expect(fields.objectFit).toBeTruthy()
+  })
+
+  it('ItemImage supports portrait aspect + objectFit like FeaturedMedia', async () => {
+    const { ItemImageFrontend } = await import('@/widgets/ItemImage/frontend')
+    const html = renderToStaticMarkup(
+      <ItemImageFrontend
+        id="item-img-1"
+        aspectRatio="3:4"
+        objectFit="contain"
+        linkToPost={false}
+        dataContext={{
+          type: 'home',
+          item: {
+            title: 'Post',
+            url: '/post',
+            image: { url: '/pattern-library/media-sample.svg', alt: 'Thumb' },
+          },
+        }}
+      />,
+    )
+    expect(html).toContain('object-fit:contain')
+    expect(html).toContain('padding-bottom:133.33%')
+    expect(html).toContain('pattern-library/media-sample.svg')
   })
 })
