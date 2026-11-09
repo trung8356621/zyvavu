@@ -140,4 +140,15 @@ describe('link editor model — 9 destinations', () => {
     expect(sanitizeHref('mailto:a@b.com')).toBe('mailto:a@b.com')
     expect(sanitizeHref('javascript:alert(1)')).toBeNull()
   })
+
+  it('Cancel contract — draft discard leaves resolved mark null for unsupported switches', () => {
+    // UI Accordion.Control is disabled for unsupported destinations; Apply also gated.
+    const stuck = switchLinkDestination(
+      baseDraft({ destination: 'web', url: 'https://keep.test' }),
+      'section',
+    )
+    expect(stuck.destination).toBe('section')
+    expect(resolveLinkMarkFromDraft(stuck)).toBeNull()
+    expect(canApplyLinkDraft(stuck)).toBe(false)
+  })
 })

@@ -6,6 +6,7 @@ import { postTitleManifest } from '@/widgets/PostTitle/manifest'
 import { postContentManifest } from '@/widgets/PostContent/manifest'
 import { postMetaManifest } from '@/widgets/PostMeta/manifest'
 import { featuredMediaManifest } from '@/widgets/FeaturedMedia/manifest'
+import { galleryManifest } from '@/widgets/Gallery/manifest'
 import { columnsManifest } from '@/widgets/Columns/manifest'
 import { textBlockManifest } from '@/widgets/TextBlock/manifest'
 import { recentPostsManifest } from '@/widgets/RecentPosts/manifest'
@@ -31,6 +32,7 @@ const defaultManifestRegistry: Record<string, WidgetManifest> = {
   PostContent: postContentManifest,
   PostMeta: postMetaManifest,
   FeaturedMedia: featuredMediaManifest,
+  Gallery: galleryManifest,
   Columns: columnsManifest,
   TextBlock: textBlockManifest,
   RecentPosts: recentPostsManifest,

@@ -28,10 +28,8 @@ import { ItemExcerptFrontend } from '@/widgets/ItemExcerpt/frontend'
 import { ItemImageFrontend } from '@/widgets/ItemImage/frontend'
 import { ColumnsFrontend } from '@/widgets/Columns/frontend'
 import { FeaturedMediaFrontend } from '@/widgets/FeaturedMedia/frontend'
-import {
-  ButtonStyleControl,
-  BUTTON_STYLE_GROUPS,
-} from '@/components/admin/theme-builder/style-controls/ButtonStyleControl'
+import { ButtonStyleControl } from '@/components/admin/theme-builder/style-controls/ButtonStyleControl'
+import { BUTTON_NORMAL_SUPPORTED } from '@/lib/style-engine/button-style'
 import { AnimationPresetPicker } from '@/components/admin/shared/AnimationPresetPicker'
 import type { UniversalStyle } from '@/lib/style-engine/types'
 import { WidgetStyleContextMenu } from '@/components/admin/theme-builder/WidgetStyleContextMenu'
@@ -118,9 +116,32 @@ describe('Style expansion contracts', () => {
     { radius: { corners: { topLeft: '20px' } } },
     { shadow: { layers: ['custom-css'] } },
     { animation: { preset: 'scroll-fade', trigger: 'scroll', target: 'widget' } },
-    { button: { version: 1, normal: { preset: 'theme' } } },
+    { button: { version: 1, normal: { icon: { visible: true } } } },
   ])('rejects unsupported or raw style values: %j', (style) => {
     expect(validateUniversalStyle(style).valid).toBe(false)
+  })
+
+  it('accepts supported Button Design normal/hover tokens', () => {
+    expect(
+      validateUniversalStyle({
+        button: {
+          version: 1,
+          normal: {
+            preset: 'theme',
+            background: { mode: 'color', colorToken: 'primary' },
+            border: { style: 'solid', widthToken: 'thin', colorToken: 'border' },
+            radius: { radiusToken: 'md' },
+            shadow: { shadowToken: 'shadowSoft' },
+          },
+          hover: {
+            background: { mode: 'color', colorToken: 'accent' },
+            text: { colorToken: 'background' },
+            transform: 'lift',
+            opacity: 0.9,
+          },
+        },
+      }).valid,
+    ).toBe(true)
   })
 
   it('uses a single animation registry with compatible legacy dropdown values', () => {
@@ -202,22 +223,31 @@ describe('Style expansion contracts', () => {
     expect(container.querySelector('h2')?.getAttribute('style')).toContain('theme-text')
   })
 
-  it('shows all seven button groups, independent local samples and explicit shell status', () => {
+  it('shows supported Normal groups and persists Normal/Hover independently', () => {
+    const onChange = vi.fn()
     render(
       <MantineProvider>
-        <ButtonStyleControl />
+        <ButtonStyleControl value={{ version: 1 }} onChange={onChange} />
       </MantineProvider>,
     )
-    for (const name of BUTTON_STYLE_GROUPS) expect(screen.getByRole('tab', { name })).toBeTruthy()
-    expect(screen.getByText(/Shell samples are local and are not saved/)).toBeTruthy()
-    const sample = screen.getByRole('combobox', { name: 'Theme Button Presets (sample)' })
-    fireEvent.click(sample)
-    fireEvent.click(screen.getByRole('option', { name: 'outline' }))
-    expect((sample as HTMLInputElement).value).toBe('outline')
+    for (const name of BUTTON_NORMAL_SUPPORTED) expect(screen.getByRole('tab', { name })).toBeTruthy()
+    expect(screen.queryByRole('tab', { name: 'Icon' })).toBeNull()
+    expect(screen.queryByRole('tab', { name: 'Layout' })).toBeNull()
+    expect(screen.getByText(/Icon and Normal Layout are not available yet/)).toBeTruthy()
+    const preset = screen.getByRole('combobox', { name: 'Preset' })
+    fireEvent.click(preset)
+    fireEvent.click(screen.getByRole('option', { name: 'Outline' }))
+    expect(onChange).toHaveBeenCalled()
+    const afterNormal = onChange.mock.calls.at(-1)?.[0]
+    expect(afterNormal.normal.preset).toBe('outline')
+
     fireEvent.click(screen.getByRole('radio', { name: 'Hover' }))
-    expect((sample as HTMLInputElement).value).toBe('')
-    fireEvent.click(screen.getByRole('radio', { name: 'Normal' }))
-    expect((sample as HTMLInputElement).value).toBe('outline')
+    fireEvent.click(screen.getByRole('tab', { name: 'Layout' }))
+    fireEvent.click(screen.getByRole('combobox', { name: 'Hover transform' }))
+    fireEvent.click(screen.getByRole('option', { name: 'Lift' }))
+    const afterHover = onChange.mock.calls.at(-1)?.[0]
+    expect(afterHover.hover.transform).toBe('lift')
+    expect(afterHover.normal.preset).toBe('outline')
   })
 
   it('does not apply an animation picker draft on Cancel', () => {

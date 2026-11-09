@@ -1,7 +1,17 @@
 import React from 'react'
 import type { UniversalStyle } from './types'
 import { animationAttributes, animationCssVars } from './animation-presets'
+import {
+  responsiveStyleIdProps,
+  serializeResponsiveStyleSheet,
+} from './responsive-style'
 import { resolveSectionLayerStyles, resolveWidgetStyles } from './serializer'
+
+function ResponsiveStyleTag({ id, style }: { id?: string; style?: UniversalStyle }) {
+  const css = serializeResponsiveStyleSheet(id, style)
+  if (!css) return null
+  return <style data-zyvavu-responsive-css={id || ''}>{css}</style>
+}
 
 /** Shared editor/SSR surface. Typography stays on the widget's own text renderer. */
 export function WidgetStyleSurface({
@@ -25,6 +35,7 @@ export function WidgetStyleSurface({
   return (
     <div
       data-widget-style-surface={id}
+      {...responsiveStyleIdProps(id)}
       {...animationAttributes(style?.animation)}
       style={{
         position: 'relative',
@@ -51,6 +62,7 @@ export function WidgetStyleSurface({
           : {}),
       }}
     >
+      <ResponsiveStyleTag id={id} style={style} />
       <div aria-hidden="true" style={layers.baseColorStyle} />
       <div aria-hidden="true" style={layers.mediaStyle}>
         {layers.videoConfig?.url && (
@@ -143,6 +155,7 @@ export function withWidgetStyleSurface(
     element as React.ReactElement<Record<string, unknown>>,
     {
       'data-widget-style-surface': id || '',
+      ...responsiveStyleIdProps(id),
       ...animationAttributes(style?.animation),
       style: {
         ...nativeStyle,
@@ -168,6 +181,7 @@ export function withWidgetStyleSurface(
           : {}),
       },
     },
+    <ResponsiveStyleTag id={id} style={style} />,
     background,
     props.children,
   )

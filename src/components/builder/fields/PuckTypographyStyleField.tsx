@@ -9,7 +9,7 @@ import { ThemeColorPaletteModal } from '@/components/admin/shared/ThemeColorPale
 import { useBuilderChrome } from '@/components/builder/core/editor-bridge'
 import { ADMIN_OVERLAY_LAYERS } from '@/theme/layers'
 import { resetStyleDomain } from '@/lib/style-engine/domains'
-import type { TypographyStyleConfig } from '@/lib/style-engine/types'
+import type { ResponsiveConfig, TypographyStyleConfig } from '@/lib/style-engine/types'
 import type { WidgetSemanticStyle } from '@/lib/theme-engine/types'
 
 const usePuck = createUsePuck()
@@ -79,6 +79,17 @@ export function PuckTypographyStyleFieldRender({
     [onChange, readOnly],
   )
 
+  const commitResponsive = useCallback(
+    (next: ResponsiveConfig | undefined) => {
+      if (readOnly) return
+      const base = { ...(liveRef.current || {}) } as WidgetSemanticStyle & Record<string, unknown>
+      if (next && Object.keys(next).length) base.responsive = next
+      else delete base.responsive
+      onChange(base as WidgetSemanticStyle)
+    },
+    [onChange, readOnly],
+  )
+
   const handleResetDomain = useCallback(() => {
     if (readOnly) return
     onChange(resetStyleDomain(liveRef.current || {}, 'typography') as WidgetSemanticStyle)
@@ -93,6 +104,8 @@ export function PuckTypographyStyleFieldRender({
         widgetType={widgetType}
         onChange={commitTypography}
         onResetDomain={handleResetDomain}
+        responsive={(value?.responsive || liveRef.current?.responsive) as ResponsiveConfig | undefined}
+        onChangeResponsive={commitResponsive}
         onOpenColorModal={(el) => {
           if (readOnly) return
           preColorRef.current = liveRef.current

@@ -35,7 +35,10 @@ import {
   serializeGradientCss,
   serializeMeshCss,
 } from '@/lib/style-engine/token-resolver'
-import { PATTERN_SCALE_LABELS } from '@/lib/style-engine/semantic-preset-labels'
+import {
+  colorTokenLabel,
+  PATTERN_SCALE_LABELS,
+} from '@/lib/style-engine/semantic-preset-labels'
 
 export interface BackgroundStyleControlProps {
   value?: BackgroundConfig
@@ -285,7 +288,7 @@ export function BackgroundStyleControl({
                   ? `Mesh (${value.mesh.points?.length || 0} pts)`
                   : value.gradient
                     ? `Gradient (${value.gradient.type})`
-                    : `Color: ${currentColorToken}`
+                    : `Color: ${colorTokenLabel(currentColorToken)}`
                 : mode === 'image'
                   ? value.image?.url
                     ? `Image: ${value.image.size || 'cover'}`

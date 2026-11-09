@@ -129,9 +129,28 @@ export function BordersEffectsControl({
                 <Switch
                   label="Link border sides"
                   checked={border.linked !== false}
-                  onChange={(event) =>
-                    onChangeBorder({ ...border, linked: event.currentTarget.checked })
-                  }
+                  onChange={(event) => {
+                    const linked = event.currentTarget.checked
+                    if (linked) {
+                      // Keep per-side values in data; serializer ignores them while linked.
+                      onChangeBorder({ ...border, linked: true })
+                      return
+                    }
+                    const seedStyle = border.style && border.style !== 'none' ? border.style : 'solid'
+                    const seedWidth = border.widthToken || 'thin'
+                    const seedColor = border.colorToken
+                    const sides = { ...(border.sides || {}) }
+                    for (const side of ['top', 'right', 'bottom', 'left'] as const) {
+                      if (!sides[side] || !Object.values(sides[side] || {}).some(Boolean)) {
+                        sides[side] = {
+                          style: seedStyle,
+                          widthToken: seedWidth,
+                          ...(seedColor ? { colorToken: seedColor } : {}),
+                        }
+                      }
+                    }
+                    onChangeBorder({ ...border, linked: false, sides })
+                  }}
                 />
                 {border.linked === false &&
                   (['top', 'right', 'bottom', 'left'] as const).map((side) => {
@@ -144,11 +163,16 @@ export function BordersEffectsControl({
                     return (
                       <Group key={side} grow align="flex-end">
                         <Select
-                          label={`${side} border`}
+                          label={`${side} style`}
                           clearable
                           placeholder="Inherit"
                           value={value.style || null}
-                          data={['none', 'solid', 'dashed', 'dotted']}
+                          data={[
+                            { value: 'none', label: 'None' },
+                            { value: 'solid', label: 'Solid' },
+                            { value: 'dashed', label: 'Dashed' },
+                            { value: 'dotted', label: 'Dotted' },
+                          ]}
                           onChange={(style) =>
                             update({ style: (style as BorderConfig['style']) || undefined })
                           }
@@ -157,7 +181,10 @@ export function BordersEffectsControl({
                           label={`${side} width`}
                           clearable
                           value={value.widthToken || null}
-                          data={['thin', 'medium', 'thick']}
+                          data={['thin', 'medium', 'thick'].map((token) => ({
+                            value: token,
+                            label: BORDER_WIDTH_LABELS[token],
+                          }))}
                           onChange={(widthToken) => update({ widthToken: widthToken || undefined })}
                         />
                         <Select
@@ -243,32 +270,62 @@ export function BordersEffectsControl({
                 <Switch
                   label="Link radius corners"
                   checked={radius.linked !== false}
-                  onChange={(event) =>
-                    onChangeRadius({ ...radius, linked: event.currentTarget.checked })
-                  }
+                  onChange={(event) => {
+                    const linked = event.currentTarget.checked
+                    if (linked) {
+                      // Preserve asymmetric corners for undo / unlink; serializer uses radiusToken while linked.
+                      onChangeRadius({ ...radius, linked: true })
+                      return
+                    }
+                    const seed = radius.radiusToken && radius.radiusToken !== 'none' ? radius.radiusToken : 'md'
+                    const corners = { ...(radius.corners || {}) }
+                    for (const corner of ['topLeft', 'topRight', 'bottomRight', 'bottomLeft'] as const) {
+                      if (!corners[corner]) corners[corner] = seed
+                    }
+                    onChangeRadius({ ...radius, linked: false, corners })
+                  }}
                 />
                 {radius.linked === false &&
-                  (['topLeft', 'topRight', 'bottomRight', 'bottomLeft'] as const).map((corner) => (
-                    <Select
-                      key={corner}
-                      label={`${corner} radius`}
-                      clearable
-                      placeholder="Inherit"
-                      value={radius.corners?.[corner] || null}
-                      data={[
+                  (['topLeft', 'topRight', 'bottomRight', 'bottomLeft'] as const).map((corner) => {
+                    const labels: Record<string, string> = {
+                      topLeft: 'Top left',
+                      topRight: 'Top right',
+                      bottomRight: 'Bottom right',
+                      bottomLeft: 'Bottom left',
+                    }
+                    const radiusKeys = Array.from(
+                      new Set([
                         'none',
-                        ...Object.keys(
-                          themeConfig?.tokens.radius || { sm: '', md: '', lg: '', pill: '' },
-                        ),
-                      ]}
-                      onChange={(value) =>
-                        onChangeRadius({
-                          ...radius,
-                          corners: { ...radius.corners, [corner]: value || undefined },
-                        })
-                      }
-                    />
-                  ))}
+                        'sm',
+                        'md',
+                        'lg',
+                        'pill',
+                        ...Object.keys(themeConfig?.tokens.radius || {}),
+                      ]),
+                    )
+                    return (
+                      <Select
+                        key={corner}
+                        label={labels[corner]}
+                        clearable
+                        placeholder="Inherit"
+                        value={radius.corners?.[corner] || null}
+                        data={radiusKeys.map((value) => ({
+                          value,
+                          label: RADIUS_SCALE_LABELS[value] || value,
+                        }))}
+                        onChange={(value) => {
+                          const nextCorners = { ...(radius.corners || {}) }
+                          if (value) nextCorners[corner] = value
+                          else delete nextCorners[corner]
+                          onChangeRadius({
+                            ...radius,
+                            corners: Object.keys(nextCorners).length ? nextCorners : undefined,
+                          })
+                        }}
+                      />
+                    )
+                  })}
               </Stack>
             </Accordion.Panel>
           </Accordion.Item>
@@ -293,9 +350,9 @@ export function BordersEffectsControl({
             }
             data={[
               { value: 'none', label: 'None' },
-              { value: 'shadowSoft', label: 'Soft Shadow (Subtle)' },
-              { value: 'shadowMedium', label: 'Medium Shadow (Elevated)' },
-              { value: 'shadowStrong', label: 'Strong Shadow (High)' },
+              { value: 'shadowSoft', label: 'Soft' },
+              { value: 'shadowMedium', label: 'Medium' },
+              { value: 'shadowStrong', label: 'Strong' },
             ]}
           />
           <Button

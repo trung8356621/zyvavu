@@ -1,0 +1,127 @@
+.previewRoot {
+  pointer-events: none;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.sectionPreview,
+.sectionNested {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  box-sizing: border-box;
+  border-radius: var(--mantine-radius-sm);
+}
+
+.sectionLayer {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.sectionContent {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.emptySlot {
+  height: 28px;
+  border-radius: 4px;
+  border: 1px dashed color-mix(in srgb, var(--mantine-color-dimmed) 55%, transparent);
+  background: color-mix(in srgb, var(--mantine-color-body) 55%, transparent);
+}
+
+.columnsPreview {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  max-height: 96px;
+  overflow: hidden;
+}
+
+.columnCell {
+  min-width: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--mantine-color-body) 70%, transparent);
+  border: 1px solid color-mix(in srgb, var(--mantine-color-default-border) 80%, transparent);
+}
+
+.slotPlaceholder {
+  height: 22px;
+  border-radius: 3px;
+  border: 1px dashed color-mix(in srgb, var(--mantine-color-dimmed) 50%, transparent);
+  font-size: 10px;
+  color: var(--mantine-color-dimmed);
+  display: grid;
+  place-items: center;
+}
+
+.atomScale {
+  transform: scale(0.82);
+  transform-origin: top left;
+  width: 122%;
+  max-height: 48px;
+  overflow: hidden;
+}
+
+.compositeFallback {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 96px;
+  overflow: hidden;
+}
+
+.thumbnailFrame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  overflow: hidden;
+  min-height: 4.5rem;
+  max-height: 7.5rem;
+  background: var(--mantine-color-gray-0);
+  border-radius: var(--mantine-radius-sm);
+}
+
+.thumbnailFallback {
+  width: 100%;
+  min-height: 0;
+  max-height: 7.5rem;
+  overflow: hidden;
+}
+
+.thumbnailImage {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+}
+
+.thumbnailLoader {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+
+.thumbnailDeferred {
+  width: 100%;
+  height: 100%;
+  min-height: 4.5rem;
+}

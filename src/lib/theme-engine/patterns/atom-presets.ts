@@ -3,7 +3,7 @@ import type { PatternJSON } from './json'
 import { collectPatternTokens } from './json'
 
 /** Core atoms shown first in the Widget Library (Patterns category excluded). */
-export const ATOM_LIBRARY_PRIORITY = ['Heading', 'Button', 'Image'] as const
+export const ATOM_LIBRARY_PRIORITY = ['Heading', 'Button', 'Image', 'Video'] as const
 /** Legacy Text remains renderable but is hidden from new library insertions. */
 export const LIBRARY_HIDDEN_ATOM_TYPES = ['Text'] as const
 
@@ -11,6 +11,7 @@ export const LIBRARY_CATEGORY_ORDER = [
   'text',
   'buttons',
   'images',
+  'media',
   'general',
   'layout',
   'sections',
@@ -33,7 +34,9 @@ function atomPattern(
       ? 'buttons'
       : type === 'Image'
         ? 'images'
-        : 'text',
+        : type === 'Video'
+          ? 'media'
+          : 'text',
 ): PatternJSON {
   const payload = {
     content: [{ type, props: { ...props, id: `${id}-root`, style } }],
@@ -342,116 +345,155 @@ export const TEXT_PRESETS: PatternJSON[] = [
   ),
 ]
 
-/** Button: 8 presentation presets via UniversalStyle (no Button Engine). */
+/** Button presets — reuse Button renderer + Button Design V1 (`style.button`) + theme tokens. */
 export const BUTTON_PRESETS: PatternJSON[] = [
   atomPattern(
     'Button',
+    'button-default',
+    'Default Button',
+    'Theme filled default action.',
+    {
+      typography: { typography: 'p1', align: 'center' },
+      spacing: padding('sm'),
+      button: {
+        version: 1,
+        normal: { preset: 'theme', radius: { radiusToken: 'md' } },
+        hover: { transform: 'lift', opacity: 0.92 },
+      },
+    },
+    { text: 'Button' },
+  ),
+  atomPattern(
+    'Button',
     'button-primary',
-    'Primary button',
+    'Filled',
     'Filled primary call to action.',
     {
-      typography: { typography: 'p1', colorToken: 'surface', align: 'center' },
-      background: { colorToken: 'primary' },
-      radius: { radiusToken: 'md' },
+      typography: { typography: 'p1', align: 'center' },
       spacing: padding('sm'),
+      button: {
+        version: 1,
+        normal: {
+          preset: 'theme',
+          radius: { radiusToken: 'md' },
+          shadow: { shadowToken: 'shadowSoft' },
+        },
+        hover: { transform: 'lift' },
+      },
     },
     { text: 'Bắt đầu' },
   ),
   atomPattern(
     'Button',
-    'button-secondary',
-    'Secondary button',
-    'Surface-filled secondary action.',
-    {
-      typography: { typography: 'p1', colorToken: 'text', align: 'center' },
-      background: { colorToken: 'surface' },
-      border,
-      radius: { radiusToken: 'md' },
-      spacing: padding('sm'),
-    },
-    { text: 'Tìm hiểu thêm' },
-  ),
-  atomPattern(
-    'Button',
     'button-outline',
-    'Outline button',
+    'Outline',
     'Transparent with primary outline.',
     {
-      typography: { typography: 'p1', colorToken: 'primary', align: 'center' },
-      border: { ...border, colorToken: 'primary' },
-      radius: { radiusToken: 'md' },
+      typography: { typography: 'p1', align: 'center' },
       spacing: padding('sm'),
+      button: {
+        version: 1,
+        normal: { preset: 'outline', radius: { radiusToken: 'md' } },
+        hover: {
+          background: { mode: 'color', colorToken: 'primary' },
+          text: { colorToken: 'surface' },
+        },
+      },
     },
     { text: 'Xem chi tiết' },
   ),
   atomPattern(
     'Button',
-    'button-pill',
-    'Pill button',
-    'Soft pill-shaped action.',
+    'button-soft',
+    'Soft',
+    'Soft surface fill with light border.',
     {
-      typography: { typography: 'p1', colorToken: 'surface', align: 'center' },
-      background: { colorToken: 'primary' },
-      radius: { radiusToken: 'pill' },
+      typography: { typography: 'p1', colorToken: 'text', align: 'center' },
       spacing: padding('sm'),
+      button: {
+        version: 1,
+        normal: {
+          background: { mode: 'color', colorToken: 'surface' },
+          border: { style: 'solid', widthToken: 'thin', colorToken: 'border' },
+          radius: { radiusToken: 'md' },
+        },
+        hover: { background: { mode: 'color', colorToken: 'background' } },
+      },
+    },
+    { text: 'Tìm hiểu thêm' },
+  ),
+  atomPattern(
+    'Button',
+    'button-pill',
+    'Rounded',
+    'Pill-shaped filled action.',
+    {
+      typography: { typography: 'p1', align: 'center' },
+      spacing: padding('sm'),
+      button: {
+        version: 1,
+        normal: { preset: 'theme', radius: { radiusToken: 'pill' } },
+        hover: { transform: 'grow' },
+      },
     },
     { text: 'Đăng ký' },
   ),
   atomPattern(
     'Button',
     'button-large',
-    'Large CTA',
+    'CTA',
     'Spacious call-to-action button.',
     {
-      typography: { typography: 'h3', colorToken: 'surface', align: 'center' },
-      background: { colorToken: 'primary' },
-      radius: { radiusToken: 'lg' },
+      typography: { typography: 'h3', align: 'center' },
       spacing: padding('md'),
-      shadow: { shadowToken: 'shadowSoft' },
+      button: {
+        version: 1,
+        normal: {
+          preset: 'theme',
+          radius: { radiusToken: 'lg' },
+          shadow: { shadowToken: 'shadowMedium' },
+        },
+        hover: { transform: 'lift', opacity: 0.95 },
+      },
     },
     { text: 'Mua ngay' },
   ),
   atomPattern(
     'Button',
     'button-compact',
-    'Compact button',
+    'Compact',
     'Small dense action control.',
     {
-      typography: { typography: 'p2', colorToken: 'surface', align: 'center' },
-      background: { colorToken: 'primary' },
-      radius: { radiusToken: 'sm' },
+      typography: { typography: 'p2', align: 'center' },
       spacing: padding('xs'),
+      button: {
+        version: 1,
+        normal: { preset: 'theme', radius: { radiusToken: 'sm' } },
+      },
     },
     { text: 'OK' },
   ),
   atomPattern(
     'Button',
-    'button-accent-frame',
-    'Accent frame',
-    'Thick primary border on surface.',
-    {
-      typography: { typography: 'p1', colorToken: 'primary', align: 'center' },
-      background: { colorToken: 'surface' },
-      border: { ...border, colorToken: 'primary', widthToken: 'thick' },
-      radius: { radiusToken: 'md' },
-      spacing: padding('sm'),
-    },
-    { text: 'Liên hệ' },
-  ),
-  atomPattern(
-    'Button',
     'button-ghost',
-    'Ghost button',
+    'Ghost',
     'Minimal text-like action.',
     {
       typography: { typography: 'p1', colorToken: 'primary', align: 'center' },
       spacing: padding('xs'),
+      button: {
+        version: 1,
+        normal: { radius: { radiusToken: 'sm' } },
+        hover: { opacity: 0.8 },
+      },
     },
     { text: 'Bỏ qua' },
   ),
 ]
 
-/** Image: 4 lightweight layout presets (no remote thumbnails). */
+const IMAGE_SAMPLE = '/pattern-library/media-sample.svg'
+
+/** Image: aspect/frame presets with local sample thumbnail (no second asset backend). */
 export const IMAGE_PRESETS: PatternJSON[] = [
   atomPattern(
     'Image',
@@ -459,7 +501,23 @@ export const IMAGE_PRESETS: PatternJSON[] = [
     'Landscape image',
     'Widescreen media frame.',
     { radius: { radiusToken: 'sm' } },
-    { src: '', alt: '', aspectRatio: '16:9', text: 'Image · 16:9' },
+    { src: IMAGE_SAMPLE, alt: 'Sample landscape', aspectRatio: '16:9' },
+  ),
+  atomPattern(
+    'Image',
+    'image-square',
+    'Square image',
+    'Equal crop for galleries and avatars.',
+    { radius: { radiusToken: 'md' } },
+    { src: IMAGE_SAMPLE, alt: 'Sample square', aspectRatio: '1:1' },
+  ),
+  atomPattern(
+    'Image',
+    'image-portrait',
+    'Portrait image',
+    'Tall media frame for people and products.',
+    { radius: { radiusToken: 'sm' } },
+    { src: IMAGE_SAMPLE, alt: 'Sample portrait', aspectRatio: '3:4' },
   ),
   atomPattern(
     'Image',
@@ -467,7 +525,7 @@ export const IMAGE_PRESETS: PatternJSON[] = [
     'Rounded frame',
     'Soft-corner media frame.',
     { radius: { radiusToken: 'lg' }, shadow: { shadowToken: 'shadowSoft' } },
-    { src: '', alt: '', aspectRatio: '4:3', text: 'Image · 4:3' },
+    { src: IMAGE_SAMPLE, alt: 'Sample rounded', aspectRatio: '4:3' },
   ),
   atomPattern(
     'Image',
@@ -475,15 +533,59 @@ export const IMAGE_PRESETS: PatternJSON[] = [
     'Banner image',
     'Wide panoramic media frame.',
     {},
-    { src: '', alt: '', aspectRatio: '21:9', text: 'Image · 21:9' },
+    { src: IMAGE_SAMPLE, alt: 'Sample banner', aspectRatio: '21:9' },
   ),
   atomPattern(
     'Image',
     'image-framed',
     'Framed image',
     'Bordered media presentation.',
-    { border, radius: { radiusToken: 'md' }, spacing: padding('sm'), background: { colorToken: 'surface' } },
-    { src: '', alt: '', aspectRatio: '16:9', text: 'Image · framed' },
+    {
+      border,
+      radius: { radiusToken: 'md' },
+      spacing: padding('sm'),
+      background: { colorToken: 'surface' },
+    },
+    { src: IMAGE_SAMPLE, alt: 'Sample framed', aspectRatio: '16:9' },
+  ),
+]
+
+/** Video: lightweight library cards — never autoplay in preview (defaultProps). */
+export const VIDEO_PRESETS: PatternJSON[] = [
+  atomPattern(
+    'Video',
+    'video-standard',
+    'Standard video',
+    'Muted controls, 16:9 frame. Select a real Media Library video after insert.',
+    { radius: { radiusToken: 'md' } },
+    {
+      src: '',
+      posterUrl: IMAGE_SAMPLE,
+      alt: 'Video',
+      aspectRatio: '16:9',
+      objectFit: 'cover',
+      controls: true,
+      autoplay: false,
+      muted: true,
+      loop: false,
+    },
+  ),
+  atomPattern(
+    'Video',
+    'video-square',
+    'Square video',
+    'Square frame for short-form clips. No library autoplay.',
+    { radius: { radiusToken: 'lg' }, shadow: { shadowToken: 'shadowSoft' } },
+    {
+      src: '',
+      posterUrl: IMAGE_SAMPLE,
+      alt: 'Square video',
+      aspectRatio: '1:1',
+      objectFit: 'cover',
+      controls: true,
+      autoplay: false,
+      muted: true,
+    },
   ),
 ]
 
@@ -538,6 +640,7 @@ export const ATOM_PRESETS: PatternJSON[] = [
   ...TEXT_PRESETS,
   ...BUTTON_PRESETS,
   ...IMAGE_PRESETS,
+  ...VIDEO_PRESETS,
   ...CONTAINER_PRESETS,
 ]
 
@@ -548,6 +651,7 @@ export function atomPresetCounts() {
     Text: 0,
     Button: BUTTON_PRESETS.length,
     Image: IMAGE_PRESETS.length,
+    Video: VIDEO_PRESETS.length,
     Container: CONTAINER_PRESETS.length,
   }
 }

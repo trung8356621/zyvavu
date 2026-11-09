@@ -161,11 +161,27 @@ export interface EffectsConfig {
   blendMode?: 'normal' | 'multiply' | 'screen' | 'overlay' | 'darken' | 'lighten'
 }
 
+/**
+ * Explicit breakpoint overrides only (never persist computed desktop defaults).
+ * V1 supports typography size/line-height/align and spacing.
+ * hide/stack flags are legacy visibility helpers — do not reuse for style overrides.
+ */
+export interface ResponsiveStyleOverride {
+  typography?: Pick<TypographyStyleConfig, 'fontSize' | 'lineHeight' | 'align'>
+  spacing?: SpacingConfig
+  /** Legacy flat align when widgets store align outside typography. */
+  align?: TextAlign
+}
+
 export interface ResponsiveConfig {
   hideOnMobile?: boolean
   hideOnTablet?: boolean
   hideOnDesktop?: boolean
   stackOnMobile?: boolean
+  /** Desktop base remains root UniversalStyle fields; tablet stores overrides only. */
+  tablet?: ResponsiveStyleOverride
+  /** Mobile overrides win over tablet inside max-width: mobileMax. */
+  mobile?: ResponsiveStyleOverride
 }
 
 export interface SectionPresentationConfig {
@@ -218,7 +234,7 @@ export interface UniversalStyle {
   align?: TextAlign
 }
 
-/** Reserved contract: no frontend effects until explicitly supported by a renderer. */
+/** Button Design V1 — Normal/Hover appearance; Icon + Normal Layout remain shell-only. */
 export interface ButtonStyleShell {
   version: 1
   normal?: ButtonShellState

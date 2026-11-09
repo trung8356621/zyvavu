@@ -8,7 +8,8 @@ import type { ThemeDataContext } from '@/lib/theme-engine/types'
 export type FeaturedMediaProps = {
   style?: UniversalStyle
   id?: string
-  aspectRatio?: '16:9' | '4:3' | '21:9' | 'auto'
+  aspectRatio?: '16:9' | '4:3' | '21:9' | '1:1' | '3:4' | 'auto'
+  objectFit?: 'cover' | 'contain' | 'fill' | 'none'
   rounded?: boolean
   src?: string
   alt?: string
@@ -19,6 +20,7 @@ export function FeaturedMediaFrontend({
   id: surfaceId,
   style: semanticStyle,
   aspectRatio = '16:9',
+  objectFit = 'cover',
   rounded = true,
   src: customSrc,
   alt: customAlt,
@@ -53,7 +55,7 @@ export function FeaturedMediaFrontend({
           width: '100%',
           height: 'auto',
           aspectRatio: aspectRatio === 'auto' ? undefined : aspectRatio.replace(':', '/'),
-          objectFit: 'cover',
+          objectFit: objectFit || 'cover',
           display: 'block',
         }}
       />

@@ -71,6 +71,7 @@ import {
 } from '@/components/admin/theme-builder/SaveAsPatternDialog'
 import actionBarStyles from './WidgetActionBar.module.css'
 import { ImageQuickAction } from './ImageQuickAction'
+import { AtomWidgetLinkHost } from '@/components/builder/inline-edit/AtomWidgetLinkHost'
 import { useToolbarBoundary } from './useToolbarBoundary'
 import {
   ATOM_SETTINGS_DICTIONARY,
@@ -109,6 +110,8 @@ type StyleMenuRequest = {
   componentType: string
   componentVariant?: string
   componentId: string
+  /** Semantic HTML tag (Heading/ItemTitle/…) — independent of style.typography overrides. */
+  htmlTag?: string | null
   currentStyle: WidgetSemanticStyle
   anchorEl: HTMLElement | null
   initialPosition?: { x: number; y: number }
@@ -117,6 +120,8 @@ type StyleMenuRequest = {
 type EditorBridgeValue = {
   /** Opens native Puck Fields panel (official Atom Settings). */
   openAtomSettings: () => void
+  /** Opens canonical Link Editor for Button/Image widget props. */
+  openAtomLink: (componentId: string) => void
   openSaveAsPattern: () => void
   closeSaveAsPattern: () => void
   saveAsPatternOpened: boolean
@@ -276,6 +281,7 @@ function PuckActionBarBridge({
     componentType: string
     componentVariant?: string
     componentId: string
+    htmlTag?: string | null
     currentStyle: WidgetSemanticStyle
     anchorEl: HTMLElement
     initialPosition: { x: number; y: number }
@@ -325,6 +331,7 @@ function PuckActionBarBridge({
       componentType,
       componentVariant: resolvedItem?.props?.variant,
       componentId,
+      htmlTag: typeof resolvedItem?.props?.tag === 'string' ? resolvedItem.props.tag : null,
       currentStyle,
       anchorEl: anchor,
       initialPosition: initialPos,
@@ -401,13 +408,13 @@ function PuckActionBarBridge({
             </Menu.Dropdown>
           </Menu>
           {/* Primary widget settings live in native Puck Fields on selection — no gear. */}
-          {componentType === 'Button' && (
+          {(componentType === 'Button' || componentType === 'Image') && componentId && (
             <ActionBar.Action
               key="atom-link"
               label="Link"
               onClick={(event) => {
                 event.stopPropagation()
-                bridge.openAtomSettings()
+                bridge.openAtomLink(componentId)
               }}
             >
               <LinkIcon size={20} />
@@ -590,6 +597,7 @@ export function PuckHost({
       componentType,
       componentVariant,
       componentId,
+      htmlTag,
       currentStyle,
       anchorEl,
       initialPosition,
@@ -610,18 +618,26 @@ export function PuckHost({
       }
       // Direct-commit sessions do not hold a separate draft; clear pattern hover previews only.
       stylePreviewStore.clearPreview()
+      setAtomLinkId(null)
       // Style and Atom Settings are mutually exclusive on the right edge.
       const plan = planBuilderPanelNavigation('style', {
         styleOpen: Boolean(activeStyleMenu?.opened),
         atomSettingsVisible: Boolean(puckApiRef.current?.getAppState()?.ui?.rightSideBarVisible),
       })
       setPuckRightSidebar(plan.rightSideBarVisible)
+      const resolvedTag =
+        typeof item?.props?.tag === 'string'
+          ? item.props.tag
+          : typeof htmlTag === 'string'
+            ? htmlTag
+            : null
       setActiveStyleMenu({
         opened: true,
         domain,
         componentType,
         componentVariant,
         componentId,
+        htmlTag: resolvedTag,
         currentStyle:
           (item?.props?.style as WidgetSemanticStyle) || currentStyle || EMPTY_STYLE,
         anchorEl,
@@ -636,6 +652,12 @@ export function PuckHost({
     setActiveStyleMenu(null)
     // Restore Atom Settings (Puck Fields) when leaving Style.
     setPuckRightSidebar(true)
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        // Avoid the BuilderDocument prop named `document`.
+        focusAtomSettingsPanel(window.document)
+      })
+    })
   }, [setPuckRightSidebar])
 
   const handleUpdateWidgetStyle = useCallback(
@@ -767,6 +789,7 @@ export function PuckHost({
         componentType: item.type,
         componentVariant: item.props?.variant,
         componentId: item.props?.id || compId,
+        htmlTag: typeof item.props?.tag === 'string' ? item.props.tag : null,
         currentStyle: (item.props?.style as WidgetSemanticStyle) || {},
         anchorEl: componentEl,
         initialPosition: initialPos,
@@ -812,7 +835,10 @@ export function PuckHost({
     }
   }, [activeStyleMenu, handleOpenStyleMenu])
 
+  const [atomLinkId, setAtomLinkId] = useState<string | null>(null)
+
   const handleSelectionChange = useCallback((id: string | undefined) => {
+    setAtomLinkId((previous) => (previous && previous !== id ? null : previous))
     setActiveStyleMenu((previous) => {
       if (previous && previous.componentId !== id) {
         stylePreviewStore.clearPreview(previous.componentId)
@@ -821,6 +847,15 @@ export function PuckHost({
       return previous
     })
   }, [])
+
+  const openAtomLink = useCallback(
+    (componentId: string) => {
+      stylePreviewStore.clearPreview()
+      setActiveStyleMenu(null)
+      setAtomLinkId(componentId)
+    },
+    [],
+  )
 
   const openAtomSettings = useCallback(() => {
     const api = puckApiRef.current
@@ -831,6 +866,7 @@ export function PuckHost({
       atomSettingsVisible,
     })
 
+    setAtomLinkId(null)
     if (plan.closeStyle) {
       stylePreviewStore.clearPreview()
       setActiveStyleMenu(null)
@@ -841,7 +877,7 @@ export function PuckHost({
       // Focus after Puck applies sidebar visibility.
       window.requestAnimationFrame(() => {
         window.requestAnimationFrame(() => {
-          focusAtomSettingsPanel(document)
+          focusAtomSettingsPanel(window.document)
         })
       })
     }
@@ -865,19 +901,22 @@ export function PuckHost({
     setSaveAsPatternOpened(false)
   }, [])
 
-  // After Undo/Redo, resync open Style sidebar from the live document (Canvas–Panel sync).
+  // After Undo/Redo / Fields edits, resync open Style sidebar from the live document.
   React.useEffect(() => {
     if (!activeStyleMenu?.opened) return
     const api = puckApiRef.current
     if (!api?.findItem) return
     const found = api.findItem(activeStyleMenu.componentId)
     const nextStyle = (found?.item?.props?.style as WidgetSemanticStyle) || EMPTY_STYLE
+    const nextTag =
+      typeof found?.item?.props?.tag === 'string' ? found.item.props.tag : null
     setActiveStyleMenu((previous) => {
       if (!previous) return previous
-      if (JSON.stringify(previous.currentStyle || {}) === JSON.stringify(nextStyle || {})) {
-        return previous
-      }
-      return { ...previous, currentStyle: nextStyle }
+      const styleSame =
+        JSON.stringify(previous.currentStyle || {}) === JSON.stringify(nextStyle || {})
+      const tagSame = (previous.htmlTag || null) === nextTag
+      if (styleSame && tagSame) return previous
+      return { ...previous, currentStyle: nextStyle, htmlTag: nextTag }
     })
   }, [localDoc, activeStyleMenu?.opened, activeStyleMenu?.componentId])
 
@@ -888,6 +927,7 @@ export function PuckHost({
 
   const bridgeValue: EditorBridgeValue = {
     openAtomSettings,
+    openAtomLink,
     openSaveAsPattern,
     closeSaveAsPattern,
     saveAsPatternOpened,
@@ -1029,6 +1069,7 @@ export function PuckHost({
             componentType={activeStyleMenu.componentType}
             componentVariant={activeStyleMenu.componentVariant}
             componentId={activeStyleMenu.componentId}
+            htmlTag={activeStyleMenu.htmlTag}
             currentStyle={activeStyleMenu.currentStyle}
             themeConfig={themeConfig}
             onUpdateStyle={handleUpdateWidgetStyle}
@@ -1042,6 +1083,27 @@ export function PuckHost({
             }
           />
         )}
+        <AtomWidgetLinkHost
+          componentId={atomLinkId}
+          opened={Boolean(atomLinkId)}
+          onClose={() => {
+            setAtomLinkId(null)
+            // Restore Widget Settings after Link Editor Cancel/Apply.
+            setPuckRightSidebar(true)
+            window.requestAnimationFrame(() => {
+              window.requestAnimationFrame(() => {
+                focusAtomSettingsPanel(window.document)
+              })
+            })
+          }}
+          getItem={(id) => puckApiRef.current?.findItem?.(id)?.item || null}
+          getSelector={(id) => {
+            const selector = puckApiRef.current?.findItem?.(id)?.selector
+            if (!selector || typeof selector.zone !== 'string') return null
+            return { index: selector.index, zone: selector.zone }
+          }}
+          dispatch={(action) => puckApiRef.current?.dispatch(action)}
+        />
       </Box>
     </EditorBridgeContext.Provider>
   </BuilderChromeProvider>

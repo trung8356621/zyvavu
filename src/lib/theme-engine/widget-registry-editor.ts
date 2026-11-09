@@ -34,6 +34,9 @@ import { postMetaEditor } from '@/widgets/PostMeta/editor'
 import { featuredMediaManifest } from '@/widgets/FeaturedMedia/manifest'
 import { featuredMediaEditor } from '@/widgets/FeaturedMedia/editor'
 
+import { galleryManifest } from '@/widgets/Gallery/manifest'
+import { galleryEditor } from '@/widgets/Gallery/editor'
+
 import { columnsManifest } from '@/widgets/Columns/manifest'
 import { columnsEditor } from '@/widgets/Columns/editor'
 
@@ -97,6 +100,7 @@ const defaultEditorRegistry: Record<string, EditorWidgetEntry> = {
   PostContent: { manifest: postContentManifest, config: postContentEditor },
   PostMeta: { manifest: postMetaManifest, config: postMetaEditor },
   FeaturedMedia: { manifest: featuredMediaManifest, config: featuredMediaEditor },
+  Gallery: { manifest: galleryManifest, config: galleryEditor },
   Columns: { manifest: columnsManifest, config: columnsEditor },
   TextBlock: { manifest: textBlockManifest, config: textBlockEditor },
   RecentPosts: { manifest: recentPostsManifest, config: recentPostsEditor },

@@ -97,7 +97,10 @@ export function InlineLinkEditor({
           value={draft.destination}
           onChange={(value) => {
             if (!value) return
-            onChange(switchLinkDestination(draft, value as LinkDestination))
+            const next = value as LinkDestination
+            // Unavailable destinations stay visible but must not become active.
+            if (!isDestinationEnabled(next)) return
+            onChange(switchLinkDestination(draft, next))
             setSeoOpen(false)
           }}
           classNames={{
@@ -112,7 +115,7 @@ export function InlineLinkEditor({
             const support = LINK_DESTINATION_SUPPORT[destination]
             return (
               <Accordion.Item key={destination} value={destination}>
-                <Accordion.Control>
+                <Accordion.Control disabled={!support.enabled}>
                   <Group justify="space-between" gap="xs" wrap="nowrap">
                     <Text size="sm" fw={500}>
                       {LINK_DESTINATION_LABELS[destination]}
@@ -308,7 +311,7 @@ function SeoFields({
       >
         SEO rel
       </Button>
-      <Collapse in={open}>
+      <Collapse expanded={open}>
         <Stack gap={4}>
           {LINK_REL_OPTIONS.map((opt) => (
             <Checkbox

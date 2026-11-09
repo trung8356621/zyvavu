@@ -174,6 +174,9 @@ function ActiveInlineEditor({
   const multiline = allowsMultilineEnter(kind, tag)
   const [linkDraft, setLinkDraft] = React.useState<LinkEditorDraft | null>(null)
   const linkOpen = Boolean(linkDraft)
+  const linkOpenRef = React.useRef(linkOpen)
+  linkOpenRef.current = linkOpen
+  const cancelLinkRef = React.useRef<() => void>(() => {})
 
   const serialize = React.useCallback(
     (html: string) => serializeInlineFromEditor(html),
@@ -223,8 +226,9 @@ function ActiveInlineEditor({
           if (event.key === 'Escape') {
             event.preventDefault()
             event.stopPropagation()
-            if (linkOpen) {
-              setLinkDraft(null)
+            if (linkOpenRef.current) {
+              // Match Cancel button: discard draft + refocus editor (no mark mutation).
+              cancelLinkRef.current()
               return true
             }
             finishCancel()
@@ -382,7 +386,8 @@ function ActiveInlineEditor({
       target?: string
       rel?: string
     }
-    // Preserve Tiptap selection range while the docked Link Editor is open.
+    // Freeze the range on the draft and keep the editor selection visible.
+    current.commands.setTextSelection({ from, to })
     setLinkDraft(
       createLinkDraftFromMark(
         { from, to },
@@ -425,6 +430,7 @@ function ActiveInlineEditor({
       editor.commands.focus()
     }
   }, [editor])
+  cancelLinkRef.current = cancelLink
 
   const onToolbarMetrics = React.useCallback(
     (next: { mounted: boolean; rect: DOMRect | null }) => {

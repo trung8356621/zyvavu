@@ -52,6 +52,41 @@ function contentAtoms(
     },
   ]
 }
+
+const IMAGE_SAMPLE = '/pattern-library/media-sample.svg'
+
+function sampleImage(id: string): ThemeComponentData {
+  return {
+    type: 'Image',
+    props: {
+      id,
+      src: IMAGE_SAMPLE,
+      alt: 'Sample media',
+      aspectRatio: '16:9',
+      style: { radius: { radiusToken: 'md' } },
+    },
+  }
+}
+
+function sampleButton(id: string, label: string): ThemeComponentData {
+  return {
+    type: 'Button',
+    props: {
+      id,
+      text: label,
+      style: {
+        typography: { typography: 'p1', align: 'center' },
+        spacing: { padding: { token: 'sm' } },
+        button: {
+          version: 1,
+          normal: { preset: 'theme', radius: { radiusToken: 'md' } },
+          hover: { transform: 'lift' },
+        },
+        dimensions: { align: 'center' },
+      },
+    },
+  }
+}
 function pattern(
   type: string,
   id: string,
@@ -254,6 +289,307 @@ const sectionPatterns = [
             distribution: '2:1',
             column1: [text('split-feature', 'Nội dung nổi bật')],
             column2: [text('split-aside', 'Thông tin bổ sung')],
+          },
+        },
+      ],
+    },
+  ),
+  pattern(
+    'Section',
+    'section-media-start',
+    'Image and text',
+    'Media on the left with editorial copy.',
+    { background: { colorToken: 'surface' }, spacing: padding('lg') },
+    {
+      content: [
+        {
+          type: 'Columns',
+          props: {
+            id: 'media-start-columns',
+            distribution: '1:2',
+            column1: [sampleImage('media-start-image')],
+            column2: contentAtoms(
+              'media-start',
+              'Hình ảnh kể chuyện',
+              'Đặt media bên trái và chỉnh nội dung ngay trên canvas.',
+            ),
+          },
+        },
+      ],
+    },
+  ),
+  pattern(
+    'Section',
+    'section-media-end',
+    'Text and image',
+    'Copy first, then supporting media.',
+    { background: { colorToken: 'surface' }, spacing: padding('lg') },
+    {
+      content: [
+        {
+          type: 'Columns',
+          props: {
+            id: 'media-end-columns',
+            distribution: '2:1',
+            column1: contentAtoms(
+              'media-end',
+              'Nội dung dẫn đường',
+              'Giữ thông điệp trước, media hỗ trợ bên phải.',
+            ),
+            column2: [sampleImage('media-end-image')],
+          },
+        },
+      ],
+    },
+  ),
+  pattern(
+    'Section',
+    'section-feature-grid',
+    'Feature grid',
+    'Three equal feature columns with titles.',
+    { spacing: padding('lg') },
+    {
+      content: [
+        {
+          type: 'Columns',
+          props: {
+            id: 'feature-grid-columns',
+            distribution: '1:1:1',
+            style: { spacing: { gapToken: 'md' } },
+            column1: contentAtoms('feature-a', 'Tính năng A', 'Mô tả ngắn theo Theme tokens.'),
+            column2: contentAtoms('feature-b', 'Tính năng B', 'Mỗi cột chỉnh sửa độc lập.'),
+            column3: contentAtoms('feature-c', 'Tính năng C', 'Bố cục Flex/Grid, không absolute.'),
+          },
+        },
+      ],
+    },
+  ),
+  pattern(
+    'Section',
+    'section-cta',
+    'CTA section',
+    'Centered title, lead copy, and primary button.',
+    {
+      background: { colorToken: 'surface' },
+      spacing: padding('xl'),
+      dimensions: { containerWidth: 'narrowWidth' },
+    },
+    {
+      containerWidth: 'narrowWidth',
+      content: [
+        {
+          type: 'Heading',
+          props: {
+            id: 'cta-title',
+            text: 'Sẵn sàng bắt đầu?',
+            tag: 'h2',
+            style: {
+              typography: { typography: 'h2', colorToken: 'text', align: 'center' },
+              spacing: { margin: { bottomToken: 'sm' } },
+            },
+          },
+        },
+        {
+          type: 'Heading',
+          props: {
+            id: 'cta-lead',
+            text: 'Một lời kêu gọi hành động rõ ràng kèm nút primary của Theme.',
+            tag: 'p',
+            style: {
+              typography: { typography: 'p1', colorToken: 'text', align: 'center' },
+              spacing: { margin: { bottomToken: 'md' } },
+            },
+          },
+        },
+        sampleButton('cta-button', 'Bắt đầu ngay'),
+      ],
+    },
+  ),
+  pattern(
+    'Section',
+    'section-editorial-intro',
+    'Editorial introduction',
+    'Eyebrow, display title, and lead paragraph.',
+    { spacing: padding('xl'), dimensions: { containerWidth: 'narrowWidth' } },
+    {
+      containerWidth: 'narrowWidth',
+      content: [
+        {
+          type: 'Heading',
+          props: {
+            id: 'editorial-eyebrow',
+            text: 'Chuyên mục',
+            tag: 'h6',
+            style: {
+              typography: {
+                typography: 'p2',
+                colorToken: 'primary',
+                textTransform: 'uppercase',
+                letterSpacing: 'wide',
+                align: 'center',
+              },
+              spacing: { margin: { bottomToken: 'xs' } },
+            },
+          },
+        },
+        {
+          type: 'Heading',
+          props: {
+            id: 'editorial-title',
+            text: 'Câu chuyện mở đầu',
+            tag: 'h1',
+            style: {
+              typography: { typography: 'h1', colorToken: 'text', align: 'center' },
+              spacing: { margin: { bottomToken: 'md' } },
+            },
+          },
+        },
+        {
+          type: 'Heading',
+          props: {
+            id: 'editorial-lead',
+            text: 'Đoạn dẫn ngắn giúp người đọc nắm ý chính trước khi đi vào nội dung.',
+            tag: 'p',
+            style: {
+              typography: { typography: 'h3', colorToken: 'text', align: 'center' },
+              spacing: { margin: { bottomToken: 'md' } },
+            },
+          },
+        },
+      ],
+    },
+  ),
+  pattern(
+    'Section',
+    'section-hero-cta',
+    'Hero with CTA',
+    'Centered hero title, lead, and primary button.',
+    {
+      background: { colorToken: 'surface' },
+      spacing: padding('xl'),
+      dimensions: { containerWidth: 'narrowWidth', minHeight: 'md' },
+    },
+    {
+      containerWidth: 'narrowWidth',
+      content: [
+        {
+          type: 'Heading',
+          props: {
+            id: 'hero-title',
+            text: 'Xây dựng trang đẹp hơn',
+            tag: 'h1',
+            style: {
+              typography: { typography: 'h1', colorToken: 'text', align: 'center' },
+              spacing: { margin: { bottomToken: 'sm' } },
+            },
+          },
+        },
+        {
+          type: 'Heading',
+          props: {
+            id: 'hero-lead',
+            text: 'Hero gọn với CTA dùng Button Design V1 và Theme tokens.',
+            tag: 'p',
+            style: {
+              typography: { typography: 'p1', colorToken: 'text', align: 'center' },
+              spacing: { margin: { bottomToken: 'md' } },
+            },
+          },
+        },
+        sampleButton('hero-cta', 'Khám phá ngay'),
+      ],
+    },
+  ),
+  pattern(
+    'Section',
+    'section-testimonial',
+    'Testimonial quote',
+    'Quote-style paragraph with attribution.',
+    { background: { colorToken: 'surface' }, spacing: padding('xl') },
+    {
+      content: [
+        {
+          type: 'Heading',
+          props: {
+            id: 'quote-body',
+            text: '“Sản phẩm giúp chúng tôi kể câu chuyện thương hiệu rõ ràng hơn.”',
+            tag: 'p',
+            style: {
+              typography: {
+                typography: 'h3',
+                colorToken: 'text',
+                fontStyle: 'italic',
+                align: 'center',
+              },
+              border: { ...border, side: 'left', widthToken: 'thick', colorToken: 'primary' },
+              spacing: padding('md'),
+              background: { colorToken: 'surface' },
+            },
+          },
+        },
+        {
+          type: 'Heading',
+          props: {
+            id: 'quote-byline',
+            text: '— Khách hàng minh họa',
+            tag: 'p',
+            style: {
+              typography: { typography: 'p2', colorToken: 'primary', align: 'center' },
+              spacing: { margin: { topToken: 'sm' } },
+            },
+          },
+        },
+      ],
+    },
+  ),
+  pattern(
+    'Section',
+    'section-gallery',
+    'Image gallery section',
+    'Section wrapping a responsive image gallery grid.',
+    { spacing: padding('lg') },
+    {
+      content: [
+        {
+          type: 'Heading',
+          props: {
+            id: 'gallery-heading',
+            text: 'Thư viện hình ảnh',
+            tag: 'h2',
+            style: {
+              typography: { typography: 'h2', colorToken: 'text', align: 'center' },
+              spacing: { margin: { bottomToken: 'md' } },
+            },
+          },
+        },
+        {
+          type: 'Gallery',
+          props: {
+            id: 'gallery-grid',
+            columns: 3,
+            gapToken: 'md',
+            aspectRatio: '1:1',
+            objectFit: 'cover',
+            items: [
+              {
+                id: 'g1',
+                src: IMAGE_SAMPLE,
+                alt: 'Sample 1',
+                caption: '',
+              },
+              {
+                id: 'g2',
+                src: IMAGE_SAMPLE,
+                alt: 'Sample 2',
+                caption: '',
+              },
+              {
+                id: 'g3',
+                src: IMAGE_SAMPLE,
+                alt: 'Sample 3',
+                caption: '',
+              },
+            ],
           },
         },
       ],

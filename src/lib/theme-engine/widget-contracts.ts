@@ -1,6 +1,6 @@
 import type { ThemeComponentData, ThemeTemplateDocument } from './types'
 
-export const ATOM_TYPES = ['Heading', 'Text', 'Button', 'Image'] as const
+export const ATOM_TYPES = ['Heading', 'Text', 'Button', 'Image', 'Video'] as const
 export type AtomType = (typeof ATOM_TYPES)[number]
 export const SYSTEM_BLOCKS = {
   DocumentTitle: {

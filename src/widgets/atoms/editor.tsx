@@ -1,6 +1,7 @@
 import React from 'react'
 import type { CustomField } from '@puckeditor/core'
-import { Button, Stack, TextInput } from '@mantine/core'
+import { createUsePuck } from '@puckeditor/core'
+import { Button, Group, Stack, Text, TextInput } from '@mantine/core'
 import { MediaSourcePicker } from '@/components/admin/media/MediaSourcePicker'
 import { puckTypographyStyleField } from '@/components/builder/fields/PuckTypographyStyleField'
 import { InlineEditableAtom } from '@/components/builder/inline-edit/InlineEditableAtom'
@@ -9,6 +10,12 @@ import { atomManifests } from './manifests'
 import { AtomPresentation, createAtomRenderer } from './frontend'
 import { systemDescriptor } from '@/lib/theme-engine/widget-contracts'
 import { documentBoundHeadingFields, headingTagField } from './heading-fields'
+import { imageEditorField } from './ImageEditorField'
+import {
+  ASPECT_RATIO_OPTIONS,
+  OBJECT_FIT_OPTIONS,
+  OBJECT_POSITION_OPTIONS,
+} from './media-props'
 
 export {
   boundHeadingTagField,
@@ -16,13 +23,51 @@ export {
   headingTagField,
 } from './heading-fields'
 
-const imageSourceField: CustomField<string> = {
-  type: 'custom',
-  label: 'Image source',
-  render: ({ value, onChange, readOnly }) => (
+const usePuck = createUsePuck()
+
+/** Updates src (+ mediaId) on the selected Image/Video without dropping sibling props. */
+function MediaUrlField({
+  kind,
+  value,
+  onChange,
+  readOnly,
+  label,
+}: {
+  kind: 'image' | 'video'
+  value?: string
+  onChange: (next: string) => void
+  readOnly?: boolean
+  label: string
+}) {
+  const selectedItem = usePuck((s) => s.selectedItem)
+  const getSelectorForId = usePuck((s) => s.getSelectorForId)
+  const dispatch = usePuck((s) => s.dispatch)
+
+  const patchMedia = (patch: Record<string, unknown>) => {
+    const id = selectedItem?.props?.id
+    const selector = id ? getSelectorForId?.(String(id)) : null
+    if (!selectedItem || !selector) {
+      if (typeof patch.src === 'string') onChange(patch.src)
+      return
+    }
+    dispatch({
+      type: 'replace',
+      destinationIndex: selector.index,
+      destinationZone: selector.zone,
+      data: {
+        ...selectedItem,
+        props: {
+          ...selectedItem.props,
+          ...patch,
+        },
+      },
+    })
+  }
+
+  return (
     <Stack gap="xs">
       <TextInput
-        label="Image URL"
+        label={label}
         value={value || ''}
         readOnly={readOnly}
         onChange={(event) => onChange(event.currentTarget.value)}
@@ -30,36 +75,156 @@ const imageSourceField: CustomField<string> = {
       {!readOnly && (
         <>
           <MediaSourcePicker
+            kind={kind}
+            onSelect={(media) => {
+              if (!media.url) return
+              patchMedia({
+                src: media.url,
+                mediaId: media.id,
+                ...(kind === 'video' && media.posterUrl
+                  ? { posterUrl: media.posterUrl, posterMediaId: media.posterMediaId }
+                  : {}),
+              })
+            }}
+          />
+          {value ? (
+            <Button
+              variant="subtle"
+              color="red"
+              onClick={() =>
+                patchMedia({
+                  src: '',
+                  mediaId: undefined,
+                  ...(kind === 'video' ? { posterUrl: '', posterMediaId: undefined } : {}),
+                })
+              }
+            >
+              Remove {kind}
+            </Button>
+          ) : null}
+        </>
+      )}
+    </Stack>
+  )
+}
+
+const videoSourceField: CustomField<string> = {
+  type: 'custom',
+  label: 'Video source',
+  render: ({ value, onChange, readOnly }) => (
+    <MediaUrlField
+      kind="video"
+      value={value}
+      onChange={onChange}
+      readOnly={readOnly}
+      label="Video URL"
+    />
+  ),
+}
+
+const videoPosterField: CustomField<string> = {
+  type: 'custom',
+  label: 'Poster image',
+  render: ({ value, onChange, readOnly }) => (
+    <Stack gap="xs">
+      <TextInput
+        label="Poster URL"
+        value={value || ''}
+        readOnly={readOnly}
+        onChange={(event) => onChange(event.currentTarget.value)}
+      />
+      {!readOnly && (
+        <Group gap="xs">
+          <MediaSourcePicker
             kind="image"
+            triggerLabel="Choose poster"
             onSelect={(media) => {
               if (media.url) onChange(media.url)
             }}
           />
-          {value && (
+          {value ? (
             <Button variant="subtle" color="red" onClick={() => onChange('')}>
-              Remove image
+              Clear poster
             </Button>
-          )}
-        </>
+          ) : null}
+        </Group>
       )}
+      <Text size="xs" c="dimmed">
+        Shown before playback and when reduced motion is preferred.
+      </Text>
     </Stack>
   ),
 }
 
+const mediaPresentationFields = {
+  aspectRatio: {
+    type: 'select' as const,
+    label: 'Aspect ratio',
+    options: [...ASPECT_RATIO_OPTIONS],
+  },
+  objectFit: {
+    type: 'select' as const,
+    label: 'Object fit',
+    options: [...OBJECT_FIT_OPTIONS],
+  },
+  objectPosition: {
+    type: 'select' as const,
+    label: 'Focal position',
+    options: [...OBJECT_POSITION_OPTIONS],
+  },
+  caption: { type: 'text' as const, label: 'Caption' },
+}
+
 function atomFields(type: string, fixed: ReturnType<typeof systemDescriptor>) {
   if (fixed?.atom === 'Heading') {
-    // DocumentTitle / CategoryTitle: Heading settings minus editable Content.
     return { ...documentBoundHeadingFields }
   }
   if (fixed) return {}
   if (type === 'Image') {
+    // Single compact Image Editor panel. Link → ActionBar Link Editor.
+    return { src: imageEditorField }
+  }
+  if (type === 'Video') {
     return {
-      src: imageSourceField,
-      alt: { type: 'text' as const, label: 'Alternative text' },
+      src: videoSourceField,
+      posterUrl: videoPosterField,
+      alt: { type: 'text' as const, label: 'Accessible label' },
+      ...mediaPresentationFields,
+      controls: {
+        type: 'radio' as const,
+        label: 'Show controls',
+        options: [
+          { label: 'Yes', value: true },
+          { label: 'No', value: false },
+        ],
+      },
+      loop: {
+        type: 'radio' as const,
+        label: 'Loop',
+        options: [
+          { label: 'No', value: false },
+          { label: 'Yes', value: true },
+        ],
+      },
+      muted: {
+        type: 'radio' as const,
+        label: 'Muted',
+        options: [
+          { label: 'Yes', value: true },
+          { label: 'No', value: false },
+        ],
+      },
+      autoplay: {
+        type: 'radio' as const,
+        label: 'Autoplay (muted)',
+        options: [
+          { label: 'Off', value: false },
+          { label: 'On', value: true },
+        ],
+      },
     }
   }
   return {
-    // Puck native contentEditable stays off — V1 uses double-click Tiptap shell instead.
     text: {
       type: 'textarea' as const,
       label: type === 'Button' ? 'Label' : 'Content',
@@ -72,19 +237,7 @@ function atomFields(type: string, fixed: ReturnType<typeof systemDescriptor>) {
         }
       : {}),
     ...(type === 'Text' ? { style: puckTypographyStyleField } : {}),
-    ...(type === 'Button'
-      ? {
-          href: { type: 'text' as const, label: 'Link URL' },
-          newTab: {
-            type: 'radio' as const,
-            label: 'Open in new tab',
-            options: [
-              { label: 'No', value: false },
-              { label: 'Yes', value: true },
-            ],
-          },
-        }
-      : {}),
+    // Button link → ActionBar Link Editor (href/newTab props retained for save/reload).
   }
 }
 
@@ -139,7 +292,6 @@ export const atomEditors = Object.fromEntries(
                 }
               />
             )
-            // DocumentTitle / CategoryTitle / other bound atoms: never mount Tiptap.
             if (!canInlineEditAtom(type, Boolean(fixed))) return node
             return (
               <InlineEditableAtom

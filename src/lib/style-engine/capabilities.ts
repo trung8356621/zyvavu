@@ -15,7 +15,8 @@ export const COMPONENT_STYLE_CAPABILITIES: Record<string, StyleDomain[]> = {
   Heading: ['typography'],
   Text: ['typography'],
   Button: ['typography', 'button'],
-  Image: [],
+  Image: ['spacing', 'dimensions', 'border', 'shadow', 'effects', 'animation'],
+  Video: ['spacing', 'dimensions', 'border', 'shadow', 'effects', 'animation'],
   Section: [
     'section',
     'background',
@@ -42,6 +43,7 @@ export const COMPONENT_STYLE_CAPABILITIES: Record<string, StyleDomain[]> = {
     'animation',
   ],
   FeaturedMedia: ['spacing', 'dimensions', 'border', 'shadow', 'effects', 'animation'],
+  Gallery: ['spacing', 'dimensions', 'border', 'shadow', 'effects', 'animation'],
   CategoryHeader: [
     'typography',
     'spacing',
@@ -83,6 +85,7 @@ export const LABEL_TO_COMPONENT_TYPE: Record<string, string> = {
   'Document Body Content': 'PostContent',
   'Document Metadata': 'PostMeta',
   'Text & Content Card': 'TextBlock',
+  'Image Gallery': 'Gallery',
   'Section Container': 'Section',
   'Recent Posts Grid': 'RecentPosts',
   'Header Brand / Logo': 'HeaderBrand',

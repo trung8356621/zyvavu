@@ -57,7 +57,9 @@ describe('Canonical Pattern V1', () => {
       const next = insertWidgetPattern(base, instance, 'home', config)
       expect(next.content).toHaveLength(1)
       expect(instance.type).toBe('Section')
-      expect(instance.props.content.map((node: any) => node.type)).toEqual(['Heading', 'Text'])
+      // Unified Heading atom: title + body paragraph (tag p); legacy Text stays hidden.
+      expect(instance.props.content.map((node: any) => node.type)).toEqual(['Heading', 'Heading'])
+      expect(instance.props.content[1].props.tag).toBe('p')
       expect(
         new Set([instance.props.id, ...instance.props.content.map((node: any) => node.props.id)])
           .size,
@@ -299,14 +301,11 @@ describe('Pattern privacy and durability', () => {
       } as any),
     ).toThrow(/changed/)
   })
-  it('keeps saved JSON available when thumbnail generation fails', async () => {
+  it('keeps saved JSON available; file-backed V1 leaves thumbnails pending for live preview', async () => {
     const record = structuredClone(SYSTEM_PATTERNS[0])
     record.source = 'user'
     const doc = { id: 1, name: record.name, category: record.category, record, contentHash: 'hash' }
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ doc }) })
-      .mockResolvedValueOnce({ ok: false, json: async () => ({ message: 'Capture unavailable' }) })
+    const fetchMock = vi.fn().mockResolvedValueOnce({ ok: true, json: async () => ({ doc }) })
     vi.stubGlobal('fetch', fetchMock)
     let service: ReturnType<typeof useMyPatterns>
     function Harness() {
@@ -328,22 +327,48 @@ describe('Pattern privacy and durability', () => {
     })
     expect(service!.docs).toHaveLength(1)
     expect(service!.docs[0].record).toEqual(record)
-    expect(service!.docs[0].thumbnailStatus).toBe('failed')
+    // Capture endpoint is unused in file-backed V1; live structure preview replaces thumbs.
+    expect(service!.docs[0].thumbnailStatus).toBe('pending')
     expect(fetchMock.mock.calls[0][1].method).toBe('POST')
   })
-  it('shows an explicit thumbnail fallback, never a fake successful preview', () => {
+  it('falls back to live structure preview when complex thumbnail is unavailable', async () => {
     window.matchMedia = vi
       .fn()
       .mockReturnValue({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() })
+    let callback: IntersectionObserverCallback | undefined
+    vi.stubGlobal(
+      'IntersectionObserver',
+      class {
+        constructor(cb: IntersectionObserverCallback) {
+          callback = cb
+        }
+        observe = vi.fn()
+        disconnect = vi.fn()
+        unobserve = vi.fn()
+      },
+    )
     const record = {
       ...SYSTEM_PATTERNS.find((pattern) => pattern.id === 'section-airy')!,
-      thumbnail: { version: 1, status: 'failed' as const },
+      thumbnail: { version: 1, status: 'failed' as const, url: '/api/pattern-thumbnails/missing' },
     }
-    render(
+    const view = render(
       <MantineProvider>
-        <PatternThumbnail record={record} />
+        <PatternThumbnail record={record} url="/api/pattern-thumbnails/missing" />
       </MantineProvider>,
     )
-    expect(screen.getByText('Thumbnail unavailable')).toBeTruthy()
+    await act(async () => {
+      callback?.(
+        [{ isIntersecting: true } as IntersectionObserverEntry],
+        {} as IntersectionObserver,
+      )
+    })
+    const img = view.container.querySelector('img') as HTMLImageElement | null
+    if (img) {
+      await act(async () => {
+        img.dispatchEvent(new Event('error'))
+      })
+    }
+    expect(view.container.querySelector('[class*="sectionPreview"], [class*="columnsPreview"]')).toBeTruthy()
+    expect(screen.queryByText('Thumbnail unavailable')).toBeNull()
   })
 })

@@ -1,0 +1,25 @@
+/* Button Design V1 — hover uses persisted CSS variables; no JS hover persistence. */
+.zyvavu-styled-button:hover,
+.zyvavu-styled-button:focus-visible {
+  background-color: var(--zyvavu-btn-hover-bg, unset);
+  color: var(--zyvavu-btn-hover-color, unset);
+  border-color: var(--zyvavu-btn-hover-border, unset);
+  box-shadow: var(--zyvavu-btn-hover-shadow, unset);
+  opacity: var(--zyvavu-btn-hover-opacity, unset);
+  transform: var(--zyvavu-btn-hover-transform, unset);
+}
+
+.zyvavu-styled-button:focus-visible {
+  outline: 2px solid var(--zyvavu-theme-primary, #0e6b66);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .zyvavu-styled-button {
+    transition: none !important;
+  }
+  .zyvavu-styled-button:hover,
+  .zyvavu-styled-button:focus-visible {
+    transform: none !important;
+  }
+}

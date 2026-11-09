@@ -41,17 +41,35 @@ export const PRIMARY_STYLE_TOOLBAR_DOMAINS: StyleModalDomain[] = [
 ]
 
 export function orderStyleToolbarDomains(domains: StyleModalDomain[]): StyleModalDomain[] {
-  const primary = PRIMARY_STYLE_TOOLBAR_DOMAINS.filter((d) => domains.includes(d))
-  const rest = domains.filter((d) => !PRIMARY_STYLE_TOOLBAR_DOMAINS.includes(d))
-  return [...primary, ...rest]
+  // Atom-focused editors surface first (Button Design before generic domains).
+  const focusFirst = (['button'] as StyleModalDomain[]).filter((d) => domains.includes(d))
+  const primary = PRIMARY_STYLE_TOOLBAR_DOMAINS.filter(
+    (d) => domains.includes(d) && !focusFirst.includes(d),
+  )
+  const rest = domains.filter(
+    (d) => !PRIMARY_STYLE_TOOLBAR_DOMAINS.includes(d) && !focusFirst.includes(d),
+  )
+  return [...focusFirst, ...primary, ...rest]
 }
 
 export function getStyleModalDomains(type: string, variant?: string): StyleModalDomain[] {
   const capabilities = getComponentStyleCapabilities(type, undefined, { variant })
+  // Button Design owns Normal/Hover chrome — do not also expose Background/Borders docks.
+  if (type === 'Button' || capabilities.includes('button')) {
+    const buttonDomains: StyleModalDomain[] = ['button', 'spacing', 'animation']
+    if (capabilities.includes('effects')) buttonDomains.push('effects')
+    return buttonDomains
+  }
+  // Image/Video appearance props live in Widget Settings; Style dock is chrome only.
+  if (type === 'Image' || type === 'Video') {
+    const mediaDomains: StyleModalDomain[] = ['spacing', 'borders', 'animation']
+    if (capabilities.includes('shadow')) mediaDomains.push('shadow')
+    if (capabilities.includes('effects')) mediaDomains.push('effects')
+    return mediaDomains
+  }
   const domains: StyleModalDomain[] = ['animation', 'background', 'spacing', 'borders']
   if (type === 'Section') return domains
-  if (capabilities.includes('button')) domains.push('button')
-  else if (capabilities.includes('typography')) domains.push('typography')
+  if (capabilities.includes('typography')) domains.push('typography')
   if (capabilities.includes('shadow')) domains.push('shadow')
   if (capabilities.includes('effects')) domains.push('effects')
   const owned = new Set(FIELDS_OWNED_STYLE_DOMAINS[type] || [])

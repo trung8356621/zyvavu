@@ -141,6 +141,8 @@ export interface WidgetStyleContextMenuProps {
   componentType: string
   componentVariant?: string
   componentId: string
+  /** Semantic HTML tag from Atom Settings — independent of typography overrides. */
+  htmlTag?: string | null
   currentStyle?: WidgetSemanticStyle
   themeConfig?: ThemeConfig
   /** Direct-commit into Puck document (recordHistory handled by host). */
@@ -168,6 +170,7 @@ function WidgetStyleSession({
   componentType: rawComponentType,
   componentVariant,
   componentId,
+  htmlTag = null,
   currentStyle = EMPTY_STYLE,
   themeConfig,
   onUpdateStyle,
@@ -530,14 +533,19 @@ function WidgetStyleSession({
         <ButtonStyleControl
           key={`${componentId}:${shellRevision}`}
           themeConfig={themeConfig}
+          value={normalizedLive.button}
+          onChange={(button) => updatePartial({ button })}
           typography={
             <TypographyStyleControl
               value={normalizedLive.typography}
               themeConfig={themeConfig}
+              htmlTag={htmlTag}
               widgetType={componentType}
               onChange={(typography) => updatePartial({ typography })}
               onResetDomain={() => handleResetDomain('typography')}
               onOpenColorModal={(el) => handleOpenColorModal('text', el)}
+              responsive={normalizedLive.responsive}
+              onChangeResponsive={(responsive) => updatePartial({ responsive })}
             />
           }
         />
@@ -573,10 +581,13 @@ function WidgetStyleSession({
         <TypographyStyleControl
           value={normalizedLive.typography}
           themeConfig={themeConfig}
+          htmlTag={htmlTag}
           widgetType={componentType}
           onChange={(typo) => updatePartial({ typography: typo })}
           onResetDomain={() => handleResetDomain('typography')}
           onOpenColorModal={(el) => handleOpenColorModal('text', el)}
+          responsive={normalizedLive.responsive}
+          onChangeResponsive={(responsive) => updatePartial({ responsive })}
         />
       )
     }
@@ -602,6 +613,8 @@ function WidgetStyleSession({
           onChangeSpacing={(sp) => updatePartial({ spacing: sp })}
           onChangeDimensions={(dim) => updatePartial({ dimensions: dim })}
           onResetGroup={handleResetGroup}
+          responsive={normalizedLive.responsive}
+          onChangeResponsive={(responsive) => updatePartial({ responsive })}
         />
       )
     }

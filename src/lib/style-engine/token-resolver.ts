@@ -108,6 +108,26 @@ export function resolveLineHeight(preset?: LineHeightPreset): string | undefined
   }
 }
 
+/**
+ * Map a theme CSS line-height (or preset id) to a semantic LineHeightPreset for control display.
+ * Display-only — never persists a matched preset until the user edits.
+ */
+export function matchLineHeightPreset(
+  cssValue?: string | null,
+): LineHeightPreset | null {
+  if (!cssValue) return null
+  const v = cssValue.trim().toLowerCase()
+  if (v === 'compact' || v === 'normal' || v === 'relaxed' || v === 'loose') return v
+  const numeric = Number.parseFloat(v)
+  if (!Number.isFinite(numeric)) return null
+  // Exact preset CSS values from resolveLineHeight.
+  if (Math.abs(numeric - 1.2) < 0.001) return 'compact'
+  if (Math.abs(numeric - 1.5) < 0.001) return 'normal'
+  if (Math.abs(numeric - 1.75) < 0.001) return 'relaxed'
+  if (Math.abs(numeric - 2) < 0.001) return 'loose'
+  return null
+}
+
 export function resolveTextEffect(preset?: TextEffectPreset): {
   textShadow?: string
   WebkitTextStroke?: string

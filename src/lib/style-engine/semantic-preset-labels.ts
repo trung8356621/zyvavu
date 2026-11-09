@@ -102,6 +102,26 @@ export const PATTERN_SCALE_LABELS: Record<string, string> = {
   lg: 'Large',
 }
 
+/** Theme color tokens — user-facing names only (never expose CSS vars / internal ids alone). */
+export const COLOR_TOKEN_LABELS: Record<string, string> = {
+  background: 'Background',
+  surface: 'Surface Card',
+  text: 'Main Text',
+  primary: 'Primary Brand',
+  accent: 'Accent Highlight',
+  primaryHover: 'Primary Hover',
+  shadowSoft: 'Shadow Soft',
+  shadowMedium: 'Shadow Medium',
+  shadowStrong: 'Shadow Strong',
+  white: 'White',
+  black: 'Black',
+}
+
+export function colorTokenLabel(token: string | null | undefined): string {
+  if (!token) return 'Unset'
+  return COLOR_TOKEN_LABELS[token] || token
+}
+
 /** Map known preset → label; unknown values return null (caller shows raw custom). */
 export function semanticLabel(
   map: Record<string, string>,

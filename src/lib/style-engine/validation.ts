@@ -311,10 +311,77 @@ export function validateUniversalStyle(style: unknown): StyleValidationResult {
       for (const layer of s.shadow.layers)
         choice(layer, ['shadowSoft', 'shadowMedium', 'shadowStrong'], 'shadow layer')
   }
+  if (s.responsive && typeof s.responsive === 'object') {
+    for (const bp of ['tablet', 'mobile'] as const) {
+      const over = s.responsive[bp]
+      if (!over || typeof over !== 'object') continue
+      const typo = over.typography
+      if (typo) {
+        if (typo.fontSize && typeof typo.fontSize === 'string') {
+          if (typo.fontSize.includes('px') || typo.fontSize.includes('rem')) {
+            errors.push(`responsive.${bp}.typography.fontSize must be a semantic token`)
+          }
+        }
+        choice(typo.lineHeight, VALID_LINE_HEIGHT, `responsive.${bp}.typography.lineHeight`)
+        choice(typo.align, ['left', 'center', 'right', 'justify'], `responsive.${bp}.typography.align`)
+        for (const key of Object.keys(typo)) {
+          if (!['fontSize', 'lineHeight', 'align'].includes(key)) {
+            errors.push(`responsive.${bp}.typography.${key} is not supported in Responsive V1`)
+          }
+        }
+      }
+      if (over.align) choice(over.align, ['left', 'center', 'right', 'justify'], `responsive.${bp}.align`)
+      if (over.spacing && typeof over.spacing === 'object') {
+        for (const field of ['padding', 'margin'] as const) {
+          for (const value of Object.values(over.spacing[field] || {}))
+            choice(value, ['none', 'xs', 'sm', 'md', 'lg', 'xl', 'xxl'], `responsive.${bp}.${field}`)
+        }
+      }
+      for (const key of Object.keys(over)) {
+        if (!['typography', 'spacing', 'align'].includes(key)) {
+          errors.push(`responsive.${bp}.${key} is not supported in Responsive V1`)
+        }
+      }
+    }
+  }
   if (s.animation && !isAnimationSupported(s.animation))
     errors.push('Unsupported animation preset, trigger, target or options')
-  if (s.button && (s.button.version !== 1 || s.button.normal || s.button.hover))
-    errors.push('Button design is shell-only; appearance fields cannot be persisted yet')
+  if (s.button) {
+    if (s.button.version !== 1) errors.push('Unsupported button style version')
+    if (s.button.normal?.preset)
+      choice(s.button.normal.preset, ['theme', 'outline'], 'button.normal.preset')
+    if (s.button.normal?.background?.colorToken)
+      token(s.button.normal.background.colorToken, 'button.normal.background')
+    if (s.button.normal?.text?.colorToken) token(s.button.normal.text.colorToken, 'button.normal.text')
+    if (s.button.normal?.border) validateBorder(s.button.normal.border, 'button.normal.border')
+    if (s.button.normal?.radius?.radiusToken) token(s.button.normal.radius.radiusToken, 'button.normal.radius')
+    if (s.button.normal?.shadow?.shadowToken)
+      choice(
+        s.button.normal.shadow.shadowToken,
+        ['none', 'shadowSoft', 'shadowMedium', 'shadowStrong', 'subtle', 'elevated'],
+        'button.normal.shadow',
+      )
+    if (s.button.normal?.icon)
+      errors.push('Button icon styling is shell-only and cannot be persisted yet')
+    if (s.button.normal?.layout)
+      errors.push('Button layout styling is shell-only and cannot be persisted yet')
+    if (s.button.hover?.background?.colorToken)
+      token(s.button.hover.background.colorToken, 'button.hover.background')
+    if (s.button.hover?.text?.colorToken) token(s.button.hover.text.colorToken, 'button.hover.text')
+    if (s.button.hover?.border?.colorToken) token(s.button.hover.border.colorToken, 'button.hover.border')
+    if (s.button.hover?.shadow?.shadowToken)
+      choice(
+        s.button.hover.shadow.shadowToken,
+        ['none', 'shadowSoft', 'shadowMedium', 'shadowStrong', 'subtle', 'elevated'],
+        'button.hover.shadow',
+      )
+    if (s.button.hover?.transform)
+      choice(s.button.hover.transform, ['none', 'lift', 'grow'], 'button.hover.transform')
+    if (typeof s.button.hover?.opacity === 'number') {
+      if (s.button.hover.opacity < 0 || s.button.hover.opacity > 1)
+        errors.push('button.hover.opacity must be between 0 and 1')
+    }
+  }
 
   return {
     valid: errors.length === 0,

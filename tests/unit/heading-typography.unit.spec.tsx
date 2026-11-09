@@ -186,13 +186,53 @@ describe('Heading Typography V1', () => {
     expect(onResetDomain).toHaveBeenCalled()
   })
 
-  it('does not invent per-viewport typography (responsive gap)', () => {
-    // ResponsiveConfig only supports visibility/stack flags — no typography breakpoints.
+  it('does not invent per-viewport typography without explicit overrides', () => {
+    // Desktop base stays on resolveWidgetStyles; hide/stack alone produce no @media CSS.
     const css = resolveWidgetStyles({
       typography: { fontWeight: '700' },
       responsive: { hideOnMobile: true },
     } as any)
     expect(css.fontWeight).toBe('700')
     expect((css as any)['@media']).toBeUndefined()
+  })
+
+  it('property reset clears one key and preserves unrelated typography overrides', () => {
+    const onChange = vi.fn()
+    render(
+      <MantineProvider>
+        <TypographyStyleControl
+          value={{
+            fontWeight: '700',
+            fontStyle: 'italic',
+            textTransform: 'uppercase',
+            align: 'center',
+            colorToken: 'primary',
+          }}
+          themeConfig={themeConfig}
+          htmlTag="h2"
+          widgetType="Heading"
+          onChange={onChange}
+          onOpenColorModal={() => {}}
+        />
+      </MantineProvider>,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Reset textTransform' }))
+    const next = onChange.mock.calls.at(-1)?.[0] as TypographyStyleConfig
+    expect(next.textTransform).toBeUndefined()
+    expect(next.fontWeight).toBe('700')
+    expect(next.fontStyle).toBe('italic')
+    expect(next.align).toBe('center')
+    expect(next.colorToken).toBe('primary')
+  })
+
+  it('Heading P tag serializes paragraph theme vars when typography preset unset', () => {
+    const Heading = createAtomRenderer('Heading')
+    const markup = renderToStaticMarkup(
+      <Heading id="p1" text="Body" tag="p" style={{ typography: { fontWeight: '600' } }} />,
+    )
+    expect(markup).toContain('<p')
+    expect(markup).toContain('font-weight:600')
+    // Unset size still inherits theme CSS via tag; serializer only emits explicit overrides.
+    expect(markup).not.toContain('font-size:')
   })
 })

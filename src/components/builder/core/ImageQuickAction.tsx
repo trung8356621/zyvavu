@@ -29,7 +29,10 @@ export function ImageQuickAction({ id, beforeOperation }: { id: string; beforeOp
           type: 'replace',
           destinationIndex: selector.index,
           destinationZone: selector.zone,
-          data: { ...current, props: { ...current.props, src: media.url } },
+          data: {
+            ...current,
+            props: { ...current.props, src: media.url, mediaId: media.id },
+          },
         })
       }}
     />

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useMemo } from 'react'
+import React, { useMemo, useState } from 'react'
 import {
   ActionIcon,
   Box,
@@ -27,6 +27,7 @@ import type {
   FontWeightToken,
   LetterSpacingPreset,
   LineHeightPreset,
+  ResponsiveConfig,
   TextAlign,
   TextDecorationToken,
   TextEffectPreset,
@@ -45,7 +46,12 @@ import {
   LINE_HEIGHT_LABELS,
   typographyPresetLabel,
 } from '@/lib/style-engine/semantic-preset-labels'
-import { resolveColorToken } from '@/lib/style-engine/token-resolver'
+import { matchLineHeightPreset, resolveColorToken } from '@/lib/style-engine/token-resolver'
+import {
+  type ResponsiveBreakpoint,
+  resetResponsiveTypographyProperty,
+  setResponsiveTypographyProperty,
+} from '@/lib/style-engine/responsive-style'
 
 export interface TypographyStyleControlProps {
   value?: TypographyStyleConfig
@@ -57,6 +63,9 @@ export interface TypographyStyleControlProps {
   /** Clears the typography domain (and legacy flat color/align) via Style Session. */
   onResetDomain?: () => void
   onOpenColorModal: (anchor?: HTMLElement | null) => void
+  /** Responsive V1 — tablet/mobile store explicit size/LH/align overrides only. */
+  responsive?: ResponsiveConfig
+  onChangeResponsive?: (responsive: ResponsiveConfig | undefined) => void
 }
 
 const SELECT_INPUT_STYLES = {
@@ -185,7 +194,13 @@ export function TypographyStyleControl({
   onChange,
   onResetDomain,
   onOpenColorModal,
+  responsive,
+  onChangeResponsive,
 }: TypographyStyleControlProps) {
+  const [breakpoint, setBreakpoint] = useState<ResponsiveBreakpoint>('desktop')
+  const overrideBp = breakpoint === 'desktop' ? null : breakpoint
+  const bpActive = Boolean(overrideBp && onChangeResponsive)
+  const bpOverride = overrideBp ? responsive?.[overrideBp]?.typography || {} : {}
   const typoTokens = (themeConfig?.tokens?.typography || {}) as Record<string, any>
 
   const sizeOptions = useMemo<SelectOption[]>(() => {
@@ -255,13 +270,53 @@ export function TypographyStyleControl({
     onChange(withoutKey(value, key))
   }
 
+  const clearBreakpoint = (key: 'fontSize' | 'lineHeight' | 'align') => {
+    if (!onChangeResponsive || !overrideBp) return
+    onChangeResponsive(resetResponsiveTypographyProperty(responsive, overrideBp, key))
+  }
+
+  const setBreakpointTypo = (key: 'fontSize' | 'lineHeight' | 'align', next: string) => {
+    if (!onChangeResponsive || !overrideBp) return
+    onChangeResponsive(setResponsiveTypographyProperty(responsive, overrideBp, key, next))
+  }
+
   const handleResetAll = () => {
+    if (bpActive && onChangeResponsive && overrideBp) {
+      let next = responsive
+      for (const key of ['fontSize', 'lineHeight', 'align'] as const) {
+        next = resetResponsiveTypographyProperty(next, overrideBp, key)
+      }
+      onChangeResponsive(next)
+      return
+    }
     if (onResetDomain) onResetDomain()
     else onChange({})
   }
 
-  const PropertyReset = ({ field }: { field: keyof TypographyStyleConfig }) =>
-    value[field] !== undefined && value[field] !== null ? (
+  const PropertyReset = ({ field }: { field: keyof TypographyStyleConfig }) => {
+    const hasBp =
+      bpActive &&
+      (field === 'fontSize' || field === 'lineHeight' || field === 'align') &&
+      bpOverride[field as 'fontSize' | 'lineHeight' | 'align'] !== undefined
+    const hasDesktop = value[field] !== undefined && value[field] !== null
+    if (bpActive) {
+      if (!hasBp) return null
+      return (
+        <Tooltip label="Reset breakpoint">
+          <ActionIcon
+            size="sm"
+            variant="subtle"
+            color="gray"
+            aria-label={`Reset ${String(field)}`}
+            onClick={() => clearBreakpoint(field as 'fontSize' | 'lineHeight' | 'align')}
+          >
+            <RotateCcw size={12} />
+          </ActionIcon>
+        </Tooltip>
+      )
+    }
+    if (!hasDesktop) return null
+    return (
       <Tooltip label="Reset">
         <ActionIcon
           size="sm"
@@ -273,13 +328,36 @@ export function TypographyStyleControl({
           <RotateCcw size={12} />
         </ActionIcon>
       </Tooltip>
-    ) : null
+    )
+  }
 
   const inheritedPreset = effective.basePreset || null
   const sizeEffectiveValue = value.fontSize || inheritedPreset
+  const sizeOverride = bpActive ? bpOverride.fontSize : value.fontSize
+  const lineOverride = bpActive ? bpOverride.lineHeight : value.lineHeight
+  const alignOverride = bpActive ? bpOverride.align : value.align
 
   return (
     <Stack gap={8}>
+      {onChangeResponsive && (
+        <SegmentedControl
+          size="xs"
+          fullWidth
+          value={breakpoint}
+          onChange={(val) => setBreakpoint(val as ResponsiveBreakpoint)}
+          data={[
+            { value: 'desktop', label: 'Desktop' },
+            { value: 'tablet', label: 'Tablet' },
+            { value: 'mobile', label: 'Mobile' },
+          ]}
+          aria-label="Typography breakpoint"
+        />
+      )}
+      {bpActive && (
+        <Text size="xs" c="dimmed">
+          Overrides only — unset properties inherit Desktop. No font conversion.
+        </Text>
+      )}
       <Group justify="flex-end" align="center">
         <Button
           variant="subtle"
@@ -292,143 +370,170 @@ export function TypographyStyleControl({
         </Button>
       </Group>
 
-      <Box>
-        <FieldLabel
-          label="Preset"
-          field={
-            value.typography
-              ? {
-                  display: value.typography.toUpperCase(),
-                  sourceLabel: 'Override',
-                  source: 'override',
-                  inherited: false,
-                  unresolved: false,
-                }
-              : {
-                  display: inheritedPreset
-                    ? typographyPresetLabel(inheritedPreset)
-                    : 'Theme',
-                  sourceLabel: inheritedPreset
-                    ? `Theme ${typographyPresetLabel(inheritedPreset)}`
-                    : 'Theme',
-                  source: 'html-tag',
-                  inherited: true,
-                  unresolved: false,
-                }
-          }
-        />
-        <Group gap={4} align="center" wrap="nowrap">
-          <EffectiveSelect
-            ariaLabel="Preset"
-            overrideValue={value.typography}
-            effectiveValue={inheritedPreset}
-            data={presetOptions}
-            onSelect={(val) => update({ typography: val })}
-            onClear={() => clear('typography')}
-          />
-          <PropertyReset field="typography" />
-        </Group>
-      </Box>
+      {!bpActive && (
+        <>
+          <Box>
+            <FieldLabel
+              label="Preset"
+              field={
+                value.typography
+                  ? {
+                      display: value.typography.toUpperCase(),
+                      sourceLabel: 'Override',
+                      source: 'override',
+                      inherited: false,
+                      unresolved: false,
+                    }
+                  : {
+                      display: inheritedPreset
+                        ? typographyPresetLabel(inheritedPreset)
+                        : 'Theme',
+                      sourceLabel: inheritedPreset
+                        ? `Theme ${typographyPresetLabel(inheritedPreset)}`
+                        : 'Theme',
+                      source: 'html-tag',
+                      inherited: true,
+                      unresolved: false,
+                    }
+              }
+            />
+            <Group gap={4} align="center" wrap="nowrap">
+              <EffectiveSelect
+                ariaLabel="Preset"
+                overrideValue={value.typography}
+                effectiveValue={inheritedPreset}
+                data={presetOptions}
+                onSelect={(val) => update({ typography: val })}
+                onClear={() => clear('typography')}
+              />
+              <PropertyReset field="typography" />
+            </Group>
+          </Box>
 
-      <Box>
-        <FieldLabel label="Font" field={effective.fontFamily} />
-        <Group gap={4} align="center" wrap="nowrap">
-          <EffectiveSelect
-            ariaLabel="Font"
-            overrideValue={value.fontFamily}
-            effectiveValue={effective.fontFamily.raw || null}
-            data={fontFamilyOptions}
-            onSelect={(val) => update({ fontFamily: val as FontFamilyRole })}
-            onClear={() => clear('fontFamily')}
-          />
-          <PropertyReset field="fontFamily" />
-        </Group>
-      </Box>
+          <Box>
+            <FieldLabel label="Font" field={effective.fontFamily} />
+            <Group gap={4} align="center" wrap="nowrap">
+              <EffectiveSelect
+                ariaLabel="Font"
+                overrideValue={value.fontFamily}
+                effectiveValue={effective.fontFamily.raw || null}
+                data={fontFamilyOptions}
+                onSelect={(val) => update({ fontFamily: val as FontFamilyRole })}
+                onClear={() => clear('fontFamily')}
+              />
+              <PropertyReset field="fontFamily" />
+            </Group>
+          </Box>
+        </>
+      )}
 
       <Group grow gap="xs" align="flex-start">
+        {!bpActive && (
+          <Box style={{ flex: 1 }}>
+            <FieldLabel label="Weight" field={effective.fontWeight} />
+            <Group gap={4} align="center" wrap="nowrap">
+              <EffectiveSelect
+                ariaLabel="Weight"
+                overrideValue={value.fontWeight}
+                effectiveValue={effective.fontWeight.raw || null}
+                data={weightOptions}
+                onSelect={(val) => update({ fontWeight: val as FontWeightToken })}
+                onClear={() => clear('fontWeight')}
+              />
+              <PropertyReset field="fontWeight" />
+            </Group>
+          </Box>
+        )}
         <Box style={{ flex: 1 }}>
-          <FieldLabel label="Weight" field={effective.fontWeight} />
-          <Group gap={4} align="center" wrap="nowrap">
-            <EffectiveSelect
-              ariaLabel="Weight"
-              overrideValue={value.fontWeight}
-              effectiveValue={effective.fontWeight.raw || null}
-              data={weightOptions}
-              onSelect={(val) => update({ fontWeight: val as FontWeightToken })}
-              onClear={() => clear('fontWeight')}
-            />
-            <PropertyReset field="fontWeight" />
-          </Group>
-        </Box>
-        <Box style={{ flex: 1 }}>
-          <FieldLabel label="Size" field={effective.fontSize} />
+          <FieldLabel
+            label="Size"
+            field={
+              bpActive && bpOverride.fontSize
+                ? {
+                    display: bpOverride.fontSize,
+                    sourceLabel: 'Override',
+                    source: 'override',
+                    inherited: false,
+                    unresolved: false,
+                  }
+                : effective.fontSize
+            }
+          />
           <Group gap={4} align="center" wrap="nowrap">
             <EffectiveSelect
               ariaLabel="Size"
-              overrideValue={value.fontSize}
+              overrideValue={sizeOverride}
               effectiveValue={sizeEffectiveValue}
               data={sizeOptions}
-              onSelect={(val) => update({ fontSize: val })}
-              onClear={() => clear('fontSize')}
+              onSelect={(val) =>
+                bpActive ? setBreakpointTypo('fontSize', val) : update({ fontSize: val })
+              }
+              onClear={() => (bpActive ? clearBreakpoint('fontSize') : clear('fontSize'))}
             />
             <PropertyReset field="fontSize" />
           </Group>
         </Box>
       </Group>
 
-      <Box>
-        <FieldLabel label="Color" field={effective.color} end={<PropertyReset field="colorToken" />} />
-        <Group
-          justify="space-between"
-          align="center"
-          gap="xs"
-          wrap="nowrap"
-          style={{
-            minHeight: 36,
-            padding: '4px 8px',
-            borderRadius: 6,
-            border: '1px solid var(--mantine-color-default-border)',
-          }}
-        >
-          <Group gap="xs" wrap="nowrap" style={{ minWidth: 0 }}>
-            <Box
-              style={{
-                width: 22,
-                height: 22,
-                flex: 'none',
-                borderRadius: 4,
-                backgroundColor: currentTextColor,
-                border: '1px solid rgba(0,0,0,0.18)',
-              }}
-            />
-            <Text
-              size="xs"
-              fw={500}
-              truncate
-              style={{ fontSize: 12, color: 'var(--mantine-color-text, #17201f)' }}
-              data-color-display
-            >
-              {colorDisplay}
-            </Text>
-          </Group>
-          <Button
-            size="compact-xs"
-            variant="light"
-            color="teal"
-            onClick={(event) => onOpenColorModal(event.currentTarget)}
+      {!bpActive && (
+        <Box>
+          <FieldLabel label="Color" field={effective.color} end={<PropertyReset field="colorToken" />} />
+          <Group
+            justify="space-between"
+            align="center"
+            gap="xs"
+            wrap="nowrap"
+            style={{
+              minHeight: 36,
+              padding: '4px 8px',
+              borderRadius: 6,
+              border: '1px solid var(--mantine-color-default-border)',
+            }}
           >
-            Change
-          </Button>
-        </Group>
-      </Box>
+            <Group gap="xs" wrap="nowrap" style={{ minWidth: 0 }}>
+              <Box
+                style={{
+                  width: 22,
+                  height: 22,
+                  flex: 'none',
+                  borderRadius: 4,
+                  backgroundColor: currentTextColor,
+                  border: '1px solid rgba(0,0,0,0.18)',
+                }}
+              />
+              <Text
+                size="xs"
+                fw={500}
+                truncate
+                style={{ fontSize: 12, color: 'var(--mantine-color-text, #17201f)' }}
+                data-color-display
+              >
+                {colorDisplay}
+              </Text>
+            </Group>
+            <Button
+              size="compact-xs"
+              variant="light"
+              color="teal"
+              onClick={(event) => onOpenColorModal(event.currentTarget)}
+            >
+              Change
+            </Button>
+          </Group>
+        </Box>
+      )}
 
       <Box>
         <FieldLabel label="Align" field={effective.align} end={<PropertyReset field="align" />} />
         <SegmentedControl
           size="sm"
           fullWidth
-          value={value.align || (effective.align.raw as TextAlign) || 'left'}
-          onChange={(val) => update({ align: val as TextAlign })}
+          value={alignOverride || (effective.align.raw as TextAlign) || 'left'}
+          onChange={(val) =>
+            bpActive
+              ? setBreakpointTypo('align', val)
+              : update({ align: val as TextAlign })
+          }
           data={[
             { label: <AlignLeft size={15} />, value: 'left' },
             { label: <AlignCenter size={15} />, value: 'center' },
@@ -438,141 +543,154 @@ export function TypographyStyleControl({
         />
       </Box>
 
-      <Group grow gap="xs" align="flex-start">
-        <Box style={{ flex: 1 }}>
-          <FieldLabel label="Style" field={effective.fontStyle} />
+      {!bpActive && (
+        <Group grow gap="xs" align="flex-start">
+          <Box style={{ flex: 1 }}>
+            <FieldLabel label="Style" field={effective.fontStyle} />
+            <Group gap={4} align="center" wrap="nowrap">
+              <EffectiveSelect
+                ariaLabel="Style"
+                overrideValue={value.fontStyle}
+                effectiveValue={effective.fontStyle.raw || null}
+                data={[
+                  { value: 'normal', label: 'Normal' },
+                  { value: 'italic', label: 'Italic' },
+                ]}
+                onSelect={(val) => update({ fontStyle: val as FontStyleToken })}
+                onClear={() => clear('fontStyle')}
+              />
+              <PropertyReset field="fontStyle" />
+            </Group>
+          </Box>
+          <Box style={{ flex: 1 }}>
+            <FieldLabel label="Decoration" field={effective.textDecoration} />
+            <Group gap={4} align="center" wrap="nowrap">
+              <EffectiveSelect
+                ariaLabel="Decoration"
+                overrideValue={value.textDecoration}
+                effectiveValue={effective.textDecoration.raw || null}
+                data={[
+                  { value: 'none', label: 'None' },
+                  { value: 'underline', label: 'Underline' },
+                  { value: 'line-through', label: 'Strike' },
+                ]}
+                onSelect={(val) => update({ textDecoration: val as TextDecorationToken })}
+                onClear={() => clear('textDecoration')}
+              />
+              <PropertyReset field="textDecoration" />
+            </Group>
+          </Box>
+        </Group>
+      )}
+
+      {!bpActive && (
+        <Box>
+          <FieldLabel label="Transform" field={effective.textTransform} />
           <Group gap={4} align="center" wrap="nowrap">
             <EffectiveSelect
-              ariaLabel="Style"
-              overrideValue={value.fontStyle}
-              effectiveValue={effective.fontStyle.raw || null}
-              data={[
-                { value: 'normal', label: 'Normal' },
-                { value: 'italic', label: 'Italic' },
-              ]}
-              onSelect={(val) => update({ fontStyle: val as FontStyleToken })}
-              onClear={() => clear('fontStyle')}
-            />
-            <PropertyReset field="fontStyle" />
-          </Group>
-        </Box>
-        <Box style={{ flex: 1 }}>
-          <FieldLabel label="Decoration" field={effective.textDecoration} />
-          <Group gap={4} align="center" wrap="nowrap">
-            <EffectiveSelect
-              ariaLabel="Decoration"
-              overrideValue={value.textDecoration}
-              effectiveValue={effective.textDecoration.raw || null}
+              ariaLabel="Transform"
+              overrideValue={value.textTransform}
+              effectiveValue={effective.textTransform.raw || null}
               data={[
                 { value: 'none', label: 'None' },
-                { value: 'underline', label: 'Underline' },
-                { value: 'line-through', label: 'Strike' },
+                { value: 'uppercase', label: 'Uppercase' },
+                { value: 'lowercase', label: 'Lowercase' },
+                { value: 'capitalize', label: 'Capitalize' },
               ]}
-              onSelect={(val) => update({ textDecoration: val as TextDecorationToken })}
-              onClear={() => clear('textDecoration')}
+              onSelect={(val) => update({ textTransform: val as TextTransformToken })}
+              onClear={() => clear('textTransform')}
             />
-            <PropertyReset field="textDecoration" />
+            <PropertyReset field="textTransform" />
           </Group>
         </Box>
-      </Group>
-
-      <Box>
-        <FieldLabel label="Transform" field={effective.textTransform} />
-        <Group gap={4} align="center" wrap="nowrap">
-          <EffectiveSelect
-            ariaLabel="Transform"
-            overrideValue={value.textTransform}
-            effectiveValue={effective.textTransform.raw || null}
-            data={[
-              { value: 'none', label: 'None' },
-              { value: 'uppercase', label: 'Uppercase' },
-              { value: 'lowercase', label: 'Lowercase' },
-              { value: 'capitalize', label: 'Capitalize' },
-            ]}
-            onSelect={(val) => update({ textTransform: val as TextTransformToken })}
-            onClear={() => clear('textTransform')}
-          />
-          <PropertyReset field="textTransform" />
-        </Group>
-      </Box>
+      )}
 
       <Group grow gap="xs" align="flex-start">
-        <Box style={{ flex: 1 }}>
-          <FieldLabel label="Letter spacing" field={effective.letterSpacing} />
-          <Group gap={4} align="center" wrap="nowrap">
-            <EffectiveSelect
-              ariaLabel="Letter spacing"
-              overrideValue={value.letterSpacing}
-              effectiveValue={effective.letterSpacing.raw || null}
-              data={Object.entries(LETTER_SPACING_LABELS).map(([value, label]) => ({
-                value,
-                label,
-              }))}
-              onSelect={(val) => update({ letterSpacing: val as LetterSpacingPreset })}
-              onClear={() => clear('letterSpacing')}
-            />
-            <PropertyReset field="letterSpacing" />
-          </Group>
-        </Box>
+        {!bpActive && (
+          <Box style={{ flex: 1 }}>
+            <FieldLabel label="Letter spacing" field={effective.letterSpacing} />
+            <Group gap={4} align="center" wrap="nowrap">
+              <EffectiveSelect
+                ariaLabel="Letter spacing"
+                overrideValue={value.letterSpacing}
+                effectiveValue={effective.letterSpacing.raw || null}
+                data={Object.entries(LETTER_SPACING_LABELS).map(([value, label]) => ({
+                  value,
+                  label,
+                }))}
+                onSelect={(val) => update({ letterSpacing: val as LetterSpacingPreset })}
+                onClear={() => clear('letterSpacing')}
+              />
+              <PropertyReset field="letterSpacing" />
+            </Group>
+          </Box>
+        )}
         <Box style={{ flex: 1 }}>
           <FieldLabel label="Line height" field={effective.lineHeight} />
           <Group gap={4} align="center" wrap="nowrap">
             <EffectiveSelect
               ariaLabel="Line height"
-              overrideValue={value.lineHeight}
+              overrideValue={lineOverride}
               effectiveValue={
-                effective.lineHeight.raw &&
-                ['compact', 'normal', 'relaxed', 'loose'].includes(effective.lineHeight.raw)
-                  ? effective.lineHeight.raw
-                  : effective.lineHeight.display || effective.lineHeight.raw || null
+                matchLineHeightPreset(effective.lineHeight.raw) ||
+                matchLineHeightPreset(effective.lineHeight.display) ||
+                effective.lineHeight.raw ||
+                effective.lineHeight.display ||
+                null
               }
               data={Object.entries(LINE_HEIGHT_LABELS).map(([value, label]) => ({
                 value,
                 label,
               }))}
-              onSelect={(val) => update({ lineHeight: val as LineHeightPreset })}
-              onClear={() => clear('lineHeight')}
+              onSelect={(val) =>
+                bpActive
+                  ? setBreakpointTypo('lineHeight', val)
+                  : update({ lineHeight: val as LineHeightPreset })
+              }
+              onClear={() => (bpActive ? clearBreakpoint('lineHeight') : clear('lineHeight'))}
             />
             <PropertyReset field="lineHeight" />
           </Group>
         </Box>
       </Group>
 
-      <Group grow gap="xs" align="flex-start">
-        <Box style={{ flex: 1 }}>
-          <FieldLabel label="Effect" />
-          <Group gap={4} align="center" wrap="nowrap">
-            <EffectiveSelect
-              ariaLabel="Effect"
-              overrideValue={value.effectPreset}
-              effectiveValue="none"
-              data={[
-                { value: 'none', label: 'None' },
-                { value: 'shadow-soft', label: 'Soft shadow' },
-                { value: 'shadow-hard', label: 'Hard shadow' },
-                { value: 'outline', label: 'Outline' },
-                { value: 'glow', label: 'Glow' },
-                { value: 'subtle-depth', label: 'Depth' },
-              ]}
-              onSelect={(val) => update({ effectPreset: val as TextEffectPreset })}
-              onClear={() => clear('effectPreset')}
+      {!bpActive && (
+        <Group grow gap="xs" align="flex-start">
+          <Box style={{ flex: 1 }}>
+            <FieldLabel label="Effect" />
+            <Group gap={4} align="center" wrap="nowrap">
+              <EffectiveSelect
+                ariaLabel="Effect"
+                overrideValue={value.effectPreset}
+                effectiveValue="none"
+                data={[
+                  { value: 'none', label: 'None' },
+                  { value: 'shadow-soft', label: 'Soft shadow' },
+                  { value: 'shadow-hard', label: 'Hard shadow' },
+                  { value: 'outline', label: 'Outline' },
+                  { value: 'glow', label: 'Glow' },
+                  { value: 'subtle-depth', label: 'Depth' },
+                ]}
+                onSelect={(val) => update({ effectPreset: val as TextEffectPreset })}
+                onClear={() => clear('effectPreset')}
+              />
+              <PropertyReset field="effectPreset" />
+            </Group>
+          </Box>
+          <Box style={{ flex: 1, paddingTop: 22 }}>
+            <Switch
+              size="sm"
+              color="teal"
+              label="Vertical text"
+              checked={Boolean(value.verticalText)}
+              onChange={(e) => {
+                if (e.currentTarget.checked) update({ verticalText: true })
+                else clear('verticalText')
+              }}
             />
-            <PropertyReset field="effectPreset" />
-          </Group>
-        </Box>
-        <Box style={{ flex: 1, paddingTop: 22 }}>
-          <Switch
-            size="sm"
-            color="teal"
-            label="Vertical text"
-            checked={Boolean(value.verticalText)}
-            onChange={(e) => {
-              if (e.currentTarget.checked) update({ verticalText: true })
-              else clear('verticalText')
-            }}
-          />
-        </Box>
-      </Group>
+          </Box>
+        </Group>
+      )}
     </Stack>
   )
 }

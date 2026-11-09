@@ -16,6 +16,9 @@ import { PostMetaFrontend } from '@/widgets/PostMeta/frontend'
 import { featuredMediaManifest } from '@/widgets/FeaturedMedia/manifest'
 import { FeaturedMediaFrontend } from '@/widgets/FeaturedMedia/frontend'
 
+import { galleryManifest } from '@/widgets/Gallery/manifest'
+import { GalleryFrontend } from '@/widgets/Gallery/frontend'
+
 import { columnsManifest } from '@/widgets/Columns/manifest'
 import { ColumnsFrontend } from '@/widgets/Columns/frontend'
 
@@ -85,6 +88,7 @@ const defaultFrontendRegistry: Record<string, FrontendWidgetEntry> = {
   PostContent: { manifest: postContentManifest, component: PostContentFrontend },
   PostMeta: { manifest: postMetaManifest, component: PostMetaFrontend },
   FeaturedMedia: { manifest: featuredMediaManifest, component: FeaturedMediaFrontend },
+  Gallery: { manifest: galleryManifest, component: GalleryFrontend },
   Columns: { manifest: columnsManifest, component: ColumnsFrontend },
   TextBlock: { manifest: textBlockManifest, component: TextBlockFrontend },
   RecentPosts: { manifest: recentPostsManifest, component: RecentPostsFrontend },

@@ -420,7 +420,17 @@ export const ANIMATION_CSS = `
   60% { opacity: 1 }
 }
 @keyframes zyvavu-motion-lift-preview { 50% { transform: translateY(-3px) } }
-@media (prefers-reduced-motion: reduce) { [data-widget-style-surface] video { display: none; } }
+@media (prefers-reduced-motion: reduce) {
+  [data-widget-style-surface] video { display: none; }
+  /* Content Video atom: reveal static poster when motion video is suppressed. */
+  [data-zyvavu-content-video] [data-zyvavu-video-poster] {
+    display: block !important;
+    position: relative !important;
+    inset: auto !important;
+    height: auto !important;
+  }
+}
+[data-zyvavu-content-video] [data-zyvavu-video-poster] { display: none; }
 @media (prefers-reduced-motion: no-preference) {
   /*
    * Layout-stable motion contract:

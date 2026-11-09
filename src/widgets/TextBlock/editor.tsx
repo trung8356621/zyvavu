@@ -28,6 +28,14 @@ export const textBlockEditor: ComponentConfig<TextBlockProps> = {
       type: 'text',
       label: 'Button URL',
     },
+    ctaNewTab: {
+      type: 'radio',
+      label: 'Open CTA in new tab',
+      options: [
+        { label: 'No', value: false },
+        { label: 'Yes', value: true },
+      ],
+    },
   },
   defaultProps: {
     title: 'Tiêu đề nội dung khối',
@@ -36,6 +44,7 @@ export const textBlockEditor: ComponentConfig<TextBlockProps> = {
     badge: '',
     ctaLabel: '',
     ctaUrl: '',
+    ctaNewTab: false,
     style: {
       align: 'left',
       colorToken: 'text',

@@ -12,12 +12,37 @@ export const atomManifests: Record<string, WidgetManifest> = Object.fromEntries(
       supportedContexts: ['*'],
       defaultProps:
         id === 'Image'
-          ? { src: '', alt: '' }
-          : id === 'Heading'
-            ? { text: 'Heading', tag: 'h2' }
-            : id === 'Button'
-              ? { text: 'Button', href: '', newTab: false }
-              : { text: 'Your text' },
+          ? {
+              src: '',
+              alt: '',
+              aspectRatio: '16:9',
+              objectFit: 'cover',
+              objectPosition: 'center',
+              caption: '',
+              href: '',
+              newTab: false,
+            }
+          : id === 'Video'
+            ? {
+                src: '',
+                posterUrl: '',
+                alt: '',
+                aspectRatio: '16:9',
+                objectFit: 'cover',
+                objectPosition: 'center',
+                caption: '',
+                href: '',
+                newTab: false,
+                controls: true,
+                loop: false,
+                muted: true,
+                autoplay: false,
+              }
+            : id === 'Heading'
+              ? { text: 'Heading', tag: 'h2' }
+              : id === 'Button'
+                ? { text: 'Button', href: '', newTab: false }
+                : { text: 'Your text' },
     },
   ]),
   ...Object.entries(SYSTEM_BLOCKS).map(([id, descriptor]) => [

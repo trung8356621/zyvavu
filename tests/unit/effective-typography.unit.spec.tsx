@@ -9,6 +9,7 @@ import {
   resolveEffectiveTypography,
   resolveTypographyBasePreset,
 } from '@/lib/style-engine/effective-typography'
+import { matchLineHeightPreset } from '@/lib/style-engine/token-resolver'
 import { TypographyStyleControl } from '@/components/admin/theme-builder/style-controls/TypographyStyleControl'
 
 beforeEach(() => {
@@ -47,8 +48,11 @@ const themeConfig = {
 describe('Effective typography resolution', () => {
   it('resolves base preset from HTML tag then widget default', () => {
     expect(resolveTypographyBasePreset({ htmlTag: 'h3', widgetType: 'Heading' })).toBe('h3')
+    expect(resolveTypographyBasePreset({ htmlTag: 'p', widgetType: 'Heading' })).toBe('p1')
     expect(resolveTypographyBasePreset({ widgetType: 'Heading' })).toBe('h2')
     expect(resolveTypographyBasePreset({ widgetType: 'Text' })).toBe('p1')
+    expect(resolveTypographyBasePreset({ widgetType: 'TextBlock' })).toBe('p1')
+    expect(resolveTypographyBasePreset({ htmlTag: 'h3', widgetType: 'ItemTitle' })).toBe('h3')
     expect(
       resolveTypographyBasePreset({
         override: { typography: 'h1' },
@@ -56,6 +60,15 @@ describe('Effective typography resolution', () => {
         widgetType: 'Heading',
       }),
     ).toBe('h1')
+  })
+
+  it('maps theme CSS line-heights to semantic presets for display only', () => {
+    expect(matchLineHeightPreset('1.2')).toBe('compact')
+    expect(matchLineHeightPreset('1.5')).toBe('normal')
+    expect(matchLineHeightPreset('1.75')).toBe('relaxed')
+    expect(matchLineHeightPreset('2.0')).toBe('loose')
+    expect(matchLineHeightPreset('compact')).toBe('compact')
+    expect(matchLineHeightPreset('1.33')).toBeNull()
   })
 
   it('shows theme/tag inherited values without requiring overrides', () => {
@@ -190,5 +203,51 @@ describe('Effective typography resolution', () => {
     expect(onChange).toHaveBeenCalled()
     const cleared = onChange.mock.calls.at(-1)?.[0]
     expect(cleared.fontWeight).toBeUndefined()
+  })
+
+  it('shows Compact for theme line-height 1.2 without persisting a preset', () => {
+    const onChange = vi.fn()
+    render(
+      <MantineProvider>
+        <TypographyStyleControl
+          value={{}}
+          themeConfig={themeConfig}
+          htmlTag="h1"
+          widgetType="Heading"
+          onChange={onChange}
+          onOpenColorModal={() => {}}
+        />
+      </MantineProvider>,
+    )
+    expect((screen.getByRole('combobox', { name: 'Line height' }) as HTMLInputElement).value).toBe(
+      'Compact',
+    )
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('HTML tag change updates inherited display without requiring style mutation', () => {
+    const override = { fontWeight: '600' as const }
+    const asH2 = resolveEffectiveTypography({
+      override,
+      themeConfig,
+      htmlTag: 'h2',
+      widgetType: 'Heading',
+    })
+    const asP = resolveEffectiveTypography({
+      override,
+      themeConfig,
+      htmlTag: 'p',
+      widgetType: 'Heading',
+    })
+    expect(asH2.basePreset).toBe('h2')
+    expect(asP.basePreset).toBe('p1')
+    expect(asH2.fontWeight.inherited).toBe(false)
+    expect(asP.fontWeight.inherited).toBe(false)
+    expect(asH2.fontSize.inherited).toBe(true)
+    expect(asP.fontSize.inherited).toBe(true)
+    expect(asH2.fontSize.display).toBe('32px')
+    expect(asP.fontSize.display).toBe('16px')
+    // Override object itself is untouched by tag resolution.
+    expect(override).toEqual({ fontWeight: '600' })
   })
 })

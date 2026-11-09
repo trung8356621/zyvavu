@@ -44,11 +44,25 @@ describe('Domain-specific Style entry points', () => {
     expect(FIELDS_OWNED_STYLE_DOMAINS.Heading).toContain('typography')
     expect(FIELDS_OWNED_STYLE_DOMAINS.Text).toContain('typography')
     expect(FIELDS_OWNED_STYLE_DOMAINS.DocumentTitle).toContain('typography')
+    expect(FIELDS_OWNED_STYLE_DOMAINS.CategoryTitle).toContain('typography')
     expect(FIELDS_OWNED_STYLE_DOMAINS.PostTitle).toContain('typography')
     expect(getStyleModalDomains('Heading')).not.toContain('typography')
     expect(getStyleModalDomains('Text')).not.toContain('typography')
     expect(getStyleModalDomains('DocumentTitle')).not.toContain('typography')
+    expect(getStyleModalDomains('CategoryTitle')).not.toContain('typography')
     expect(getStyleModalDomains('PostTitle')).not.toContain('typography')
+    expect(getStyleModalDomains('Button')).toEqual(
+      expect.arrayContaining(['button', 'spacing', 'animation']),
+    )
+    expect(getStyleModalDomains('Button')).not.toContain('typography')
+    expect(getStyleModalDomains('Button')).not.toContain('background')
+    expect(getStyleModalDomains('Button')).not.toContain('borders')
+    expect(orderStyleToolbarDomains(getStyleModalDomains('Button'))[0]).toBe('button')
+    expect(getStyleModalDomains('Image')).not.toContain('typography')
+    expect(getStyleModalDomains('Image')).not.toContain('background')
+    expect(getStyleModalDomains('Image')).toEqual(
+      expect.arrayContaining(['spacing', 'borders', 'animation']),
+    )
   })
 
   it('opens only the requested domain body (no multi-domain Accordion)', () => {
