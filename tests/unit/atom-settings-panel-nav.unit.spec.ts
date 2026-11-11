@@ -4,6 +4,7 @@ import {
   ATOM_SETTINGS_PANEL_ATTR,
   focusAtomSettingsPanel,
   planBuilderPanelNavigation,
+  planStyleSelectionLock,
 } from '@/components/builder/core/atom-settings'
 
 describe('Atom Settings ↔ Style panel navigation', () => {
@@ -19,6 +20,49 @@ describe('Atom Settings ↔ Style panel navigation', () => {
       rightSideBarVisible: false,
       pulseAtomSettings: false,
     })
+  })
+
+  it('locks Style target selection while modal is open', () => {
+    expect(
+      planStyleSelectionLock({
+        styleOpen: true,
+        styleComponentId: 'w-1',
+        selectedId: 'w-1',
+        targetStillExists: true,
+      }),
+    ).toEqual({ action: 'keep' })
+    expect(
+      planStyleSelectionLock({
+        styleOpen: true,
+        styleComponentId: 'w-1',
+        selectedId: 'w-2',
+        targetStillExists: true,
+      }),
+    ).toEqual({ action: 'reselect', componentId: 'w-1' })
+    expect(
+      planStyleSelectionLock({
+        styleOpen: true,
+        styleComponentId: 'w-1',
+        selectedId: undefined,
+        targetStillExists: true,
+      }),
+    ).toEqual({ action: 'reselect', componentId: 'w-1' })
+    expect(
+      planStyleSelectionLock({
+        styleOpen: true,
+        styleComponentId: 'w-1',
+        selectedId: 'w-2',
+        targetStillExists: false,
+      }),
+    ).toEqual({ action: 'close-missing' })
+    expect(
+      planStyleSelectionLock({
+        styleOpen: false,
+        styleComponentId: 'w-1',
+        selectedId: 'w-2',
+        targetStillExists: true,
+      }),
+    ).toEqual({ action: 'keep' })
   })
 
   it('gear is a no-op plan when Fields already visible unless Style is covering it', () => {

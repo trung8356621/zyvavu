@@ -71,7 +71,7 @@ describe('Direct Style Editing & Overlay Layers', { timeout: 25000 }, () => {
     expect(ADMIN_OVERLAY_LAYERS.PALETTE_MODAL).toBeLessThan(ADMIN_OVERLAY_LAYERS.ACTIVE_DROPDOWN)
   })
 
-  it('renders docked Style sidebar without Apply', () => {
+  it('renders shared Style dialog without Apply', () => {
     render(
       <MantineProvider theme={adminMantineTheme}>
         <WidgetStyleContextMenu
@@ -87,7 +87,9 @@ describe('Direct Style Editing & Overlay Layers', { timeout: 25000 }, () => {
       </MantineProvider>,
     )
 
-    expect(screen.getByText(/Background:/i)).toBeTruthy()
+    const dialog = screen.getByTestId('unified-style-modal')
+    expect(dialog.getAttribute('data-modal-mode')).toBe('dialog')
+    expect(screen.getByText(/Background ·/i)).toBeTruthy()
     expect(screen.getByText(/Changes apply immediately/i)).toBeTruthy()
     expect(screen.queryByRole('button', { name: /Áp dụng \/ Apply/i })).toBeNull()
     expect(screen.getByRole('button', { name: /Hủy \/ Cancel/i })).toBeTruthy()

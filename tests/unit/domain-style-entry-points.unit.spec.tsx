@@ -80,7 +80,9 @@ describe('Domain-specific Style entry points', () => {
         />
       </MantineProvider>,
     )
-    expect(screen.getByRole('dialog', { name: /Background:/ })).toBeTruthy()
+    const dialog = screen.getByTestId('unified-style-modal')
+    expect(dialog.getAttribute('data-modal-mode')).toBe('dialog')
+    expect(screen.getByRole('dialog', { name: /Background ·/ })).toBeTruthy()
     expect(screen.getByText('Surface')).toBeTruthy()
     expect(screen.getByText('Pattern')).toBeTruthy()
     expect(screen.queryByTestId('style-domain-launcher')).toBeNull()
@@ -103,7 +105,7 @@ describe('Domain-specific Style entry points', () => {
     )
     expect(screen.getByTestId('style-domain-launcher')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Layout' }))
-    expect(screen.getByRole('dialog', { name: /Layout:/ })).toBeTruthy()
+    expect(screen.getByRole('dialog', { name: /Layout ·/ })).toBeTruthy()
     expect(screen.getByText('Spacing')).toBeTruthy()
     expect(screen.getByText('Dimensions')).toBeTruthy()
   })
@@ -162,15 +164,51 @@ describe('Domain-specific Style entry points', () => {
         <WidgetStyleContextMenu {...base} domain="background" />
       </MantineProvider>,
     )
-    expect(screen.getByText(/keep-me/)).toBeTruthy()
+    expect(screen.getByTestId('unified-style-modal')).toBeTruthy()
+    expect(screen.getByText(/Editing .+ · Background/)).toBeTruthy()
     view.rerender(
       <MantineProvider>
         <WidgetStyleContextMenu {...base} domain="borders" requestNonce={2} />
       </MantineProvider>,
     )
-    expect(await screen.findByRole('dialog', { name: /Borders:/ })).toBeTruthy()
+    expect(await screen.findByRole('dialog', { name: /Borders ·/ })).toBeTruthy()
     expect(screen.getByText('Border')).toBeTruthy()
     expect(screen.getByText('Radius')).toBeTruthy()
-    expect(screen.getByText(/keep-me/)).toBeTruthy()
+    expect(screen.getByText(/Editing .+ · Borders/)).toBeTruthy()
+    expect(screen.queryByText(/keep-me/)).toBeNull()
+  })
+
+  it('switching widgets remounts session values for the new target', () => {
+    const view = render(
+      <MantineProvider>
+        <WidgetStyleContextMenu
+          opened
+          domain="background"
+          anchorEl={null}
+          componentType="Section"
+          componentId="sec-a"
+          currentStyle={{ background: { colorToken: 'primary' } }}
+          onClose={vi.fn()}
+          onUpdateStyle={vi.fn(() => true)}
+        />
+      </MantineProvider>,
+    )
+    expect(screen.getByRole('dialog', { name: /Background ·/ })).toBeTruthy()
+    view.rerender(
+      <MantineProvider>
+        <WidgetStyleContextMenu
+          opened
+          domain="background"
+          anchorEl={null}
+          componentType="Section"
+          componentId="sec-b"
+          currentStyle={{ background: { colorToken: 'surface' } }}
+          onClose={vi.fn()}
+          onUpdateStyle={vi.fn(() => true)}
+        />
+      </MantineProvider>,
+    )
+    expect(screen.getAllByTestId('unified-style-modal')).toHaveLength(1)
+    expect(screen.getByText(/Editing .+ · Background/)).toBeTruthy()
   })
 })

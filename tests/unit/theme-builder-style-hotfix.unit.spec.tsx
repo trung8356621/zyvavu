@@ -211,7 +211,7 @@ describe('Theme Builder Hotfix — Flat Accordion & Style Context Menu', () => {
         </MantineProvider>,
       )
 
-      expect(screen.getByRole('dialog', { name: /Style:/i })).toBeDefined()
+      expect(screen.getByRole('dialog', { name: /Style ·/i })).toBeDefined()
       expect(screen.queryByText('Typography')).toBeNull()
       expect(screen.getByText('Layout')).toBeDefined()
       expect(screen.getByText('Background')).toBeDefined()
@@ -236,7 +236,7 @@ describe('Theme Builder Hotfix — Flat Accordion & Style Context Menu', () => {
         </MantineProvider>,
       )
 
-      expect(screen.getByRole('dialog', { name: /Style:/i })).toBeDefined()
+      expect(screen.getByRole('dialog', { name: /Style ·/i })).toBeDefined()
       expect(screen.queryByText('Typography')).toBeNull()
       expect(screen.getByText('Layout')).toBeDefined()
     })
@@ -260,7 +260,7 @@ describe('Theme Builder Hotfix — Flat Accordion & Style Context Menu', () => {
         </MantineProvider>,
       )
 
-      expect(screen.getByRole('dialog', { name: /Style:/i })).toBeDefined()
+      expect(screen.getByRole('dialog', { name: /Style ·/i })).toBeDefined()
       expect(screen.queryByText('Typography')).toBeNull()
       expect(screen.getByText('Background')).toBeDefined()
     })

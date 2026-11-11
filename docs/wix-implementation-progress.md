@@ -1,7 +1,34 @@
 # Wix Implementation Progress
 
-Checkpoint after **Coverage Completion batch** (Video ActionBar + Gallery item Fields + ItemImage parity + Nov 11 acceptance pack).  
-Do **not** treat unit PASS as UI VERIFIED.
+Checkpoint after **Unified Style Modal + Selection UX** (PO 2026-11-11; supersedes focused right-side Style dock).  
+Prior coverage-completion batch remains in history below. Do **not** treat unit PASS as UI VERIFIED.
+
+## PO decision — Unified Style modal (2026-11-11)
+
+| Item | Status | Notes |
+| --- | --- | --- |
+| Shared Style dialog host | **DONE (code)** | One `SharedDraggableModal` dialog for all Style domains; dock retired |
+| Selection persistence | **DONE (code)** | Puck SoT; lock/reselect Style target; close if deleted |
+| ActionBar alignment | **DONE (code)** | Shared 36px control row / icon box / overflow trigger |
+| Link Editor dock | PRESERVED | Apply/Cancel/Escape unchanged |
+| Widget Settings (Fields) | PRESERVED | Hidden while Style open; restored on close |
+| UI verification | **UI NOT VERIFIED** | Owner manual pass at 1366×768 / 1920×1080 |
+
+Changed (Style modal PO): `SharedDraggableModal.tsx`, `WidgetStyleContextMenu.tsx`, `PuckHost.tsx`, `WidgetActionBar.module.css`, `atom-settings.ts`, focused unit specs + `unified-style-modal.unit.spec.tsx`.
+
+## PO decision — Replace Puck 3-column shell (2026-11-11)
+
+| Item | Status | Notes |
+| --- | --- | --- |
+| Full-width Canvas workspace | **DONE (code)** | `EditorWorkspace.module.css` forces 0 right column + 60px left rail only |
+| Floating Widget Library | **DONE (code)** | Existing rail + overlay; overlay does not resize Canvas |
+| Floating Widget Settings | **DONE (code)** | Real Puck Fields in absolute right panel; selection opens / close hides |
+| Compact Theme Builder header | **DONE (code)** | One primary toolbar row; theme details in menu |
+| Shared Style Modal | PRESERVED | Unchanged contract; does not resize Canvas |
+| Iframe/canvas scroll alignment | **DONE (code)** | Canvas padding/overflow tightened to preview edge |
+| UI verification | **UI NOT VERIFIED** | Owner pass A–R at 1366×768 / 1920×1080 |
+
+Layout ownership: Puck still owns document/selection/history/Fields/registry/canvas; only the CSS-grid presentation shell is overridden via supported `fields`/`components` overrides + workspace CSS (no second editor engine).
 
 ## Baseline
 

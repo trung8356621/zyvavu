@@ -649,9 +649,9 @@ function WidgetStyleSession({
 
   if (!opened) return null
 
-  const panelTitle = focusedDomain
-    ? `${STYLE_MODAL_TITLES[focusedDomain]}: ${manifest?.label || componentType}`
-    : `Style: ${manifest?.label || componentType}`
+  const widgetLabel = manifest?.label || componentType
+  const domainLabel = focusedDomain ? STYLE_MODAL_TITLES[focusedDomain] : null
+  const panelTitle = domainLabel ? `${domainLabel} · ${widgetLabel}` : `Style · ${widgetLabel}`
 
   return (
     <>
@@ -665,18 +665,21 @@ function WidgetStyleSession({
             : 'Choose a style domain'
         }
         headerExtra={<Sliders size={16} color="var(--mantine-color-teal-7, #0e6b66)" />}
-        width={360}
-        mode="docked"
+        width="min(720px, calc(100vw - 32px))"
+        mode="dialog"
+        withBackdrop
         draggable={false}
         showCloseButton={true}
         closeOnClickOutside={false}
+        data-testid="unified-style-modal"
         style={{ visibility: mediaPickerOpened ? 'hidden' : undefined }}
         closeOnEscape={!mediaPickerOpened && !animationPickerOpened && !colorModalTarget}
         zIndex={ADMIN_OVERLAY_LAYERS.STYLE_MODAL}
         footer={
-          <Group justify="space-between" w="100%">
-            <Text size="xs" c="dimmed" style={{ fontSize: 12 }}>
-              {componentType}: {componentId}
+          <Group justify="space-between" w="100%" wrap="nowrap">
+            <Text size="xs" c="dimmed" data-style-modal-target={componentType}>
+              Editing {widgetLabel}
+              {domainLabel ? ` · ${domainLabel}` : ''}
             </Text>
             <Group gap="xs">
               <Button variant="default" size="xs" onClick={handleCancelSession}>

@@ -170,7 +170,10 @@ afterEach(() => {
 describe('Editor stability', () => {
   it.each(['Heading', 'Text', 'Button', 'Image'])(
     'exposes domain Style actions without Settings gear for %s',
-    (type) => {
+    async (type) => {
+      const { getStyleModalDomains, orderStyleToolbarDomains, STYLE_MODAL_TITLES } = await import(
+        '@/lib/style-engine/domains'
+      )
       const atomDoc = { ...document, content: [{ type, props: { id: 'atom', text: 'Content' } }] }
       model.snapshot = {
         ...model.snapshot,
@@ -191,12 +194,10 @@ describe('Editor stability', () => {
       const selected = model.snapshot.selectedItem
       // Widget Settings = native Puck Fields on selection; no ActionBar gear.
       expect(screen.queryByRole('button', { name: 'Settings' })).toBeNull()
-      expect(screen.getByRole('button', { name: 'Animation' })).toBeTruthy()
-      expect(screen.getByRole('button', { name: 'Background' })).toBeTruthy()
-      expect(screen.getByRole('button', { name: 'Layout' })).toBeTruthy()
-      expect(screen.getByRole('button', { name: 'Borders' })).toBeTruthy()
-      if (type === 'Button') {
-        // Link still shortcuts into native Fields (no parallel Atom modal).
+      for (const domain of orderStyleToolbarDomains(getStyleModalDomains(type)).slice(0, 4)) {
+        expect(screen.getByRole('button', { name: STYLE_MODAL_TITLES[domain] })).toBeTruthy()
+      }
+      if (type === 'Button' || type === 'Image') {
         expect(screen.getByRole('button', { name: 'Link' })).toBeTruthy()
       } else {
         expect(screen.queryByRole('button', { name: 'Link' })).toBeNull()
@@ -288,7 +289,7 @@ describe('Editor stability', () => {
     expect(screen.queryByRole('button', { name: 'Áp dụng / Apply' })).toBeNull()
   })
 
-  it('handles omitted currentStyle and keeps footer outside the scrolling body on docked panel', () => {
+  it('handles omitted currentStyle and keeps footer outside the scrolling body on Style dialog', () => {
     render(
       <MantineProvider>
         <WidgetStyleContextMenu
@@ -301,7 +302,8 @@ describe('Editor stability', () => {
         />
       </MantineProvider>,
     )
-    const dialog = screen.getByRole('dialog', { name: /Style:/ })
+    const dialog = screen.getByRole('dialog', { name: /Style ·/ })
+    expect(dialog.getAttribute('data-modal-mode')).toBe('dialog')
     const body = dialog.querySelector('[data-modal-region="content"]')!
     expect(body.contains(screen.getByRole('button', { name: 'Hủy / Cancel' }))).toBe(false)
     expect(screen.queryByRole('button', { name: 'Áp dụng / Apply' })).toBeNull()

@@ -2,8 +2,9 @@ import type { Dictionary } from '@puckeditor/core'
 
 /**
  * Puck Fields plugin is the official Atom Settings panel.
- * Style presentation lives in Style Sidebar; Atom Settings owns
- * content / semantic / binding / behavior fields only.
+ * Presentation is a floating right panel over a full-width Canvas
+ * (PO 2026-11-11 workspace shell). Style lives in the shared Style modal.
+ * Atom Settings owns content / semantic / binding / behavior fields only.
  */
 export const ATOM_SETTINGS_LABEL = 'Atom Settings'
 
@@ -17,7 +18,7 @@ export const ATOM_SETTINGS_PANEL_ATTR = 'data-zyvavu-atom-settings'
 export type BuilderPanelNavTarget = 'atom-settings' | 'style'
 
 export type BuilderPanelNavPlan = {
-  /** Close the docked Style Sidebar so it cannot cover Atom Settings. */
+  /** Close the shared Style modal so it cannot cover Atom Settings. */
   closeStyle: boolean
   /** Desired Puck Fields (right) sidebar visibility after navigation. */
   rightSideBarVisible: boolean
@@ -30,7 +31,7 @@ export type BuilderPanelNavPlan = {
 
 /**
  * Mutual-exclusive panel navigation between Atom Settings (Puck Fields)
- * and the Style Sidebar. Does not invent a second Fields panel.
+ * and the shared Style modal. Does not invent a second Fields panel.
  */
 export function planBuilderPanelNavigation(
   target: BuilderPanelNavTarget,
@@ -59,6 +60,27 @@ export function focusAtomSettingsPanel(root: ParentNode | Document = document): 
   panel.focus({ preventScroll: true })
   panel.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
   return true
+}
+
+export type StyleSelectionLockDecision =
+  | { action: 'keep' }
+  | { action: 'close-missing' }
+  | { action: 'reselect'; componentId: string }
+
+/**
+ * While Style modal is open, Puck selection must not silently retarget.
+ * Missing/deleted targets close the modal; canvas/blur selection changes reselect the Style target.
+ */
+export function planStyleSelectionLock(args: {
+  styleOpen: boolean
+  styleComponentId?: string | null
+  selectedId?: string | null
+  targetStillExists: boolean
+}): StyleSelectionLockDecision {
+  if (!args.styleOpen || !args.styleComponentId) return { action: 'keep' }
+  if (args.selectedId === args.styleComponentId) return { action: 'keep' }
+  if (!args.targetStillExists) return { action: 'close-missing' }
+  return { action: 'reselect', componentId: args.styleComponentId }
 }
 
 /** Field ownership classes for inventory / regression guards. */

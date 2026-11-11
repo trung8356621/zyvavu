@@ -20,7 +20,7 @@ export const STYLE_MODAL_TITLES: Record<StyleModalDomain, string> = {
 }
 
 /**
- * Domains owned by native Puck Fields for a widget — excluded from Style Sidebar
+ * Domains owned by native Puck Fields for a widget — excluded from Style modal
  * to avoid duplicate controls. Capabilities/serializer remain unchanged.
  */
 export const FIELDS_OWNED_STYLE_DOMAINS: Partial<Record<string, StyleModalDomain[]>> = {
@@ -60,7 +60,7 @@ export function getStyleModalDomains(type: string, variant?: string): StyleModal
     if (capabilities.includes('effects')) buttonDomains.push('effects')
     return buttonDomains
   }
-  // Image/Video appearance props live in Widget Settings; Style dock is chrome only.
+  // Image/Video appearance props live in Widget Settings; Style modal is chrome only.
   if (type === 'Image' || type === 'Video') {
     const mediaDomains: StyleModalDomain[] = ['spacing', 'borders', 'animation']
     if (capabilities.includes('shadow')) mediaDomains.push('shadow')

@@ -9,15 +9,14 @@ import {
   Box,
   Button,
   Group,
+  Menu,
   Paper,
   SegmentedControl,
   Select,
-  Stack,
   Text,
-  Title,
   Tooltip,
 } from '@mantine/core'
-import { AlertCircle, ArrowLeft, Check, Layers, Lock, Save } from 'lucide-react'
+import { AlertCircle, ArrowLeft, Check, Info, Save } from 'lucide-react'
 
 import { PuckHost } from '@/components/builder/core/PuckHost'
 import type { BuilderDocument } from '@/components/builder/core/types'
@@ -105,7 +104,6 @@ export function ThemeBuilder({
 
   const fontUrl = useMemo(() => getGoogleFontUrl(fontFamilies), [fontFamilies])
 
-  // Warn about unsaved changes before page unload
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (isDirty) {
@@ -149,7 +147,6 @@ export function ThemeBuilder({
     async (customDoc?: BuilderDocument) => {
       const docToValidate = (customDoc || latestDocRef.current) as ThemeTemplateDocument
 
-      // Authoritative save validation
       const validation = validateThemeTemplateDocument(
         docToValidate,
         selectedTemplate,
@@ -181,7 +178,6 @@ export function ThemeBuilder({
           throw new Error(data.errors?.join('; ') || data.message || 'Failed to save template override')
         }
 
-        // Update state
         setTemplates((prev) => ({
           ...prev,
           [selectedTemplate]: docToValidate,
@@ -195,15 +191,16 @@ export function ThemeBuilder({
         setIsSaving(false)
       }
     },
-    [selectedTemplate, templates],
+    [selectedTemplate, templates, themeId],
   )
 
-  const modeBadge =
+  const themeLabel = installedThemes.find((t) => t.id === themeId)?.label || themeId
+  const modeLabel =
     currentPolicy?.mode === 'structured-header'
-      ? { label: 'Structured Header (Flatsome-like)', color: 'blue' }
+      ? 'Structured Header'
       : currentPolicy?.mode === 'document'
-        ? { label: 'Document Builder', color: 'teal' }
-        : { label: 'Free Builder', color: 'violet' }
+        ? 'Document Builder'
+        : 'Free Builder'
 
   return (
     <Box
@@ -222,17 +219,30 @@ export function ThemeBuilder({
       <style dangerouslySetInnerHTML={{ __html: themeCss }} />
 
       {homeHeadingWarning(activeDoc) && <Text size="sm" c="dimmed">{homeHeadingWarning(activeDoc)}</Text>}
-      {['single', 'page', 'category'].includes(selectedTemplate) && activeDoc?.metadata?.roleContract !== 1 && <Button variant="subtle" size="sm" onClick={() => {
-        const upgraded = withRoleContract(latestDocRef.current)
-        const result = validateThemeTemplateDocument(upgraded, selectedTemplate, templates[selectedTemplate])
-        if (!result.valid) { setSaveError(`Upgrade requires: ${result.errors.join('; ')}`); return }
-        setTemplates(previous => ({ ...previous, [selectedTemplate]: upgraded }))
-        latestDocRef.current = upgraded
-        setIsDirty(true)
-      }}>Enable required title/content roles</Button>}
-      {/* TOP WORKSPACE TOOLBAR */}
+      {['single', 'page', 'category'].includes(selectedTemplate) && activeDoc?.metadata?.roleContract !== 1 && (
+        <Button
+          variant="subtle"
+          size="sm"
+          onClick={() => {
+            const upgraded = withRoleContract(latestDocRef.current)
+            const result = validateThemeTemplateDocument(upgraded, selectedTemplate, templates[selectedTemplate])
+            if (!result.valid) {
+              setSaveError(`Upgrade requires: ${result.errors.join('; ')}`)
+              return
+            }
+            setTemplates((previous) => ({ ...previous, [selectedTemplate]: upgraded }))
+            latestDocRef.current = upgraded
+            setIsDirty(true)
+          }}
+        >
+          Enable required title/content roles
+        </Button>
+      )}
+
+      {/* ONE primary compact toolbar — secondary theme details in a menu */}
       <Paper
-        p="sm"
+        px="sm"
+        py={6}
         withBorder
         style={{
           borderBottom: '1px solid var(--zyvavu-border, #dfe5e2)',
@@ -242,16 +252,15 @@ export function ThemeBuilder({
           flexShrink: 0,
         }}
       >
-        <Group justify="space-between" wrap="wrap" gap="md">
-          {/* Left: Navigation and Title */}
-          <Group gap="sm">
+        <Group justify="space-between" wrap="nowrap" gap="sm" style={{ minWidth: 0 }}>
+          <Group gap="xs" wrap="nowrap" style={{ minWidth: 0 }}>
             <Button
               component={Link}
               href="/admin/themes"
               variant="subtle"
               color="gray"
-              size="sm"
-              leftSection={<ArrowLeft size={16} />}
+              size="compact-sm"
+              leftSection={<ArrowLeft size={14} />}
               onClick={(e) => {
                 if (isDirty) {
                   const leave = window.confirm('You have unsaved changes. Leave Theme Builder?')
@@ -261,33 +270,11 @@ export function ThemeBuilder({
             >
               Themes
             </Button>
-            <Box>
-              <Group gap="xs">
-                <Title order={3} size="h4" style={{ margin: 0, fontWeight: 700, color: 'var(--zyvavu-primary, #0e6b66)' }}>
-                  Theme Builder
-                </Title>
-                <Badge
-                  color={themeId === activeThemeId ? 'teal' : 'gray'}
-                  variant="filled"
-                  size="sm"
-                >
-                  {installedThemes.find((t) => t.id === themeId)?.label || themeId}
-                  {themeId === activeThemeId ? ' (Active)' : ''}
-                </Badge>
-                <Badge color={modeBadge.color} variant="light" size="sm">
-                  {modeBadge.label}
-                </Badge>
-                {isDirty && (
-                  <Badge color="orange" variant="filled" size="sm">
-                    Unsaved Changes
-                  </Badge>
-                )}
-              </Group>
-            </Box>
-            {installedThemes.length > 1 && (
+
+            {installedThemes.length > 1 ? (
               <Select
                 size="xs"
-                style={{ width: 170 }}
+                w={150}
                 data={installedThemes.map((t) => ({
                   value: t.id,
                   label: `${t.label}${t.id === activeThemeId ? ' (Active)' : ''}`,
@@ -299,11 +286,42 @@ export function ThemeBuilder({
                     window.location.href = `/admin/theme-builder?theme=${val}&template=${selectedTemplate}`
                   }
                 }}
+                aria-label="Theme"
               />
+            ) : (
+              <Text size="sm" fw={700} c="var(--zyvavu-primary, #0e6b66)" style={{ whiteSpace: 'nowrap' }}>
+                {themeLabel}
+              </Text>
+            )}
+
+            <Menu withinPortal position="bottom-start">
+              <Menu.Target>
+                <Tooltip label="Theme & builder details">
+                  <Button size="compact-sm" variant="subtle" color="gray" leftSection={<Info size={14} />}>
+                    Details
+                  </Button>
+                </Tooltip>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Label>Theme</Menu.Label>
+                <Menu.Item disabled>
+                  {themeLabel}
+                  {themeId === activeThemeId ? ' · Active' : ''}
+                </Menu.Item>
+                <Menu.Label>Builder mode</Menu.Label>
+                <Menu.Item disabled>{modeLabel}</Menu.Item>
+                <Menu.Label>Template</Menu.Label>
+                <Menu.Item disabled>{selectedTemplate}</Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
+
+            {isDirty && (
+              <Badge color="orange" variant="filled" size="sm">
+                Unsaved
+              </Badge>
             )}
           </Group>
 
-          {/* Center: Template Selector */}
           <SegmentedControl
             value={selectedTemplate}
             onChange={(val) => handleTemplateChange(val as TemplateContext)}
@@ -312,31 +330,30 @@ export function ThemeBuilder({
               value: opt.value,
               disabled: opt.value === 'product',
             }))}
-            size="sm"
+            size="xs"
             color="teal"
+            style={{ flexShrink: 1, minWidth: 0 }}
           />
 
-          {/* Right: Actions */}
-          <Group gap="xs">
+          <Group gap="xs" wrap="nowrap">
             {saveSuccess && (
-              <Badge color="green" variant="light" leftSection={<Check size={12} />} size="md">
-                Template Saved
+              <Badge color="green" variant="light" leftSection={<Check size={12} />} size="sm">
+                Saved
               </Badge>
             )}
             <Button
               onClick={() => handleSave()}
               loading={isSaving}
-              leftSection={<Save size={16} />}
+              leftSection={<Save size={14} />}
               color="teal"
-              size="sm"
+              size="compact-sm"
               disabled={isSaving}
             >
-              Save Template
+              Save
             </Button>
           </Group>
         </Group>
 
-        {/* Validation or Error Alert */}
         {saveError && (
           <Alert
             icon={<AlertCircle size={16} />}
@@ -352,7 +369,6 @@ export function ThemeBuilder({
         )}
       </Paper>
 
-      {/* PUCK EDITOR WORKSPACE */}
       <Box
         style={{
           flex: 1,

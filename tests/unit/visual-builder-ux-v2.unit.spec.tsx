@@ -317,7 +317,7 @@ describe('Visual Builder UX V2 contracts', () => {
         />
       </MantineProvider>,
     )
-    expect(screen.getByRole('dialog').getAttribute('aria-label')).toContain('Background:')
+    expect(screen.getByRole('dialog').getAttribute('aria-label')).toContain('Background ·')
     expect(screen.queryByRole('tab', { name: 'Type' })).toBeNull()
     expect(screen.queryByText('Layout')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Reset domain' }))

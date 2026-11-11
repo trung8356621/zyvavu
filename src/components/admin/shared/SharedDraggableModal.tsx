@@ -30,7 +30,12 @@ export interface SharedDraggableModalProps {
   style?: React.CSSProperties
   headerExtra?: React.ReactNode
   subHeader?: React.ReactNode
+  /** Optional test / host identity hook (e.g. unified Style modal). */
+  'data-testid'?: string
 }
+
+const FOCUSABLE_SELECTOR =
+  'a[href],button:not([disabled]),textarea:not([disabled]),input:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])'
 
 export function clampModalPosition(
   position: { x: number; y: number },
@@ -136,9 +141,11 @@ export function SharedDraggableModal({
   style,
   headerExtra,
   subHeader,
+  'data-testid': dataTestId,
 }: SharedDraggableModalProps) {
   const isDocked = mode === 'docked'
-  const effectiveDraggable = isDocked ? false : draggable
+  const isDialog = mode === 'dialog'
+  const effectiveDraggable = isDocked || isDialog ? false : draggable
   const [viewport, setViewport] = useState(() => ({
     width: typeof window === 'undefined' ? 0 : window.innerWidth,
     height: typeof window === 'undefined' ? 0 : window.innerHeight,
@@ -172,6 +179,7 @@ export function SharedDraggableModal({
         height: Math.min(window.innerHeight, window.visualViewport?.height || window.innerHeight),
       }
       setViewport(next)
+      if (isDialog || isDocked) return
       const rect = modalRef.current?.getBoundingClientRect()
       if (rect) setPosition((previous) => clampModalPosition(previous, next, rect))
     }
@@ -182,10 +190,11 @@ export function SharedDraggableModal({
       window.removeEventListener('resize', resize)
       window.visualViewport?.removeEventListener('resize', resize)
     }
-  }, [opened])
+  }, [opened, isDialog, isDocked])
 
-  // Position calculation and reset when opened
+  // Position calculation and reset when opened (floating tools only)
   const resetToAnchorPosition = useCallback(() => {
+    if (isDialog || isDocked) return
     hasBeenDraggedRef.current = false
     if (initialPosition) {
       setPosition(
@@ -200,7 +209,7 @@ export function SharedDraggableModal({
       const pos = computeAnchorPosition(anchorEl || null, numericWidth, estimatedHeight)
       setPosition(pos)
     }
-  }, [anchorEl, initialPosition, numericWidth])
+  }, [anchorEl, initialPosition, numericWidth, isDialog, isDocked])
 
   useEffect(() => {
     if (opened) {
@@ -210,6 +219,7 @@ export function SharedDraggableModal({
 
   // Recalculate precisely once modal DOM is mounted on initial open (if not manually dragged)
   useEffect(() => {
+    if (isDialog || isDocked) return
     if (opened && !hasBeenDraggedRef.current && modalRef.current) {
       const rect = modalRef.current.getBoundingClientRect()
       if (!initialPosition) {
@@ -217,7 +227,7 @@ export function SharedDraggableModal({
         setPosition(pos)
       }
     }
-  }, [opened, anchorEl, initialPosition])
+  }, [opened, anchorEl, initialPosition, isDialog, isDocked])
 
   // Header Drag Pointer Handlers
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -299,7 +309,7 @@ export function SharedDraggableModal({
     window.addEventListener('pointerup', onPointerUp)
   }
 
-  // Floating tools focus their own controls while leaving the canvas reachable.
+  // Dialog traps focus; floating/docked focus first control without trapping the canvas.
   useEffect(() => {
     if (!opened) return
     const previous = anchorEl || (document.activeElement as HTMLElement | null)
@@ -309,11 +319,33 @@ export function SharedDraggableModal({
       )
       control?.focus({ preventScroll: true })
     })
+
+    const handleTabTrap = (event: KeyboardEvent) => {
+      if (!isDialog || event.key !== 'Tab' || !modalRef.current) return
+      const focusable = Array.from(
+        modalRef.current.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
+      ).filter((el) => !el.hasAttribute('disabled') && el.tabIndex !== -1 && el.offsetParent !== null)
+      if (focusable.length === 0) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      const active = document.activeElement as HTMLElement | null
+      if (event.shiftKey && active === first) {
+        event.preventDefault()
+        last.focus({ preventScroll: true })
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault()
+        first.focus({ preventScroll: true })
+      }
+    }
+
+    if (isDialog) window.addEventListener('keydown', handleTabTrap)
     return () => {
       cancelAnimationFrame(frame)
-      if (previous?.isConnected) previous.focus({ preventScroll: true })
+      if (isDialog) window.removeEventListener('keydown', handleTabTrap)
+      // Style dialog: do not steal canvas selection by restoring ActionBar focus.
+      if (!isDialog && previous?.isConnected) previous.focus({ preventScroll: true })
     }
-  }, [opened, anchorEl])
+  }, [opened, anchorEl, isDialog])
 
   // Escape key handler
   useEffect(() => {
@@ -361,76 +393,106 @@ export function SharedDraggableModal({
 
   if (!opened) return null
 
+  const paperStyle: React.CSSProperties = isDocked
+    ? {
+        position: 'fixed',
+        top: 0,
+        right: 0,
+        bottom: 0,
+        width,
+        maxWidth: 'min(100vw, 420px)',
+        height: '100%',
+        maxHeight: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        zIndex,
+        backgroundColor: 'var(--mantine-color-body, #ffffff)',
+        borderColor: 'var(--mantine-color-default-border, #e5e7eb)',
+        borderLeft: '1px solid var(--mantine-color-default-border, #e5e7eb)',
+        borderTop: 'none',
+        borderBottom: 'none',
+        borderRight: 'none',
+        boxShadow: '-4px 0 16px rgba(0, 0, 0, 0.06)',
+        overflow: 'hidden',
+        pointerEvents: 'auto',
+        ...style,
+      }
+    : isDialog
+      ? {
+          position: 'fixed',
+          left: '50%',
+          top: '50%',
+          transform: 'translate(-50%, -50%)',
+          width,
+          maxWidth: 'min(920px, calc(100vw - 32px))',
+          height: 'auto',
+          maxHeight: '90dvh',
+          display: 'flex',
+          flexDirection: 'column',
+          zIndex,
+          backgroundColor: 'var(--mantine-color-body, #ffffff)',
+          borderColor: 'var(--mantine-color-default-border, #e5e7eb)',
+          boxShadow: '0 12px 40px rgba(0, 0, 0, 0.16), 0 0 0 1px rgba(0, 0, 0, 0.04)',
+          overflow: 'hidden',
+          pointerEvents: 'auto',
+          ...style,
+        }
+      : {
+          position: 'fixed',
+          left: position.x,
+          top: position.y,
+          width,
+          maxWidth: 'calc(100vw - 24px)',
+          maxHeight: Math.max(0, viewport.height - position.y - 12),
+          display: 'flex',
+          flexDirection: 'column',
+          zIndex,
+          backgroundColor: 'var(--mantine-color-body, #ffffff)',
+          borderColor: 'var(--mantine-color-default-border, #e5e7eb)',
+          boxShadow: '0 4px 14px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.04)',
+          overflow: 'hidden',
+          transition: isDragging ? 'none' : 'box-shadow 0.15s ease',
+          pointerEvents: 'auto',
+          ...style,
+        }
+
   return (
     <Portal>
       {/* Optional backdrop for dialog mode */}
       {withBackdrop && (
         <Box
-          onClick={closeOnClickOutside ? onClose : undefined}
+          data-modal-backdrop={mode}
+          onClick={
+            closeOnClickOutside
+              ? () => {
+                  ;(onClickOutside || onClose)()
+                }
+              : undefined
+          }
           style={{
             position: 'fixed',
             inset: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.45)',
-            backdropFilter: 'blur(1.5px)',
+            // Keep canvas selection readable behind Style dialog (no heavy blur).
+            backgroundColor: isDialog ? 'rgba(15, 23, 32, 0.28)' : 'rgba(0, 0, 0, 0.45)',
+            backdropFilter: isDialog ? 'none' : 'blur(1.5px)',
             zIndex: zIndex - 1,
             pointerEvents: 'auto',
           }}
         />
       )}
 
-      {/* Style panel: floating/dialog card or fixed right dock */}
+      {/* Style panel: centered dialog, floating card, or fixed right dock (Link) */}
       <Paper
         ref={modalRef}
         withBorder
-        radius={isDocked ? 0 : 'sm'}
-        shadow={isDocked ? 'xs' : 'sm'}
+        radius={isDocked ? 0 : 'md'}
+        shadow={isDocked ? 'xs' : 'md'}
         className={className}
-        style={
-          isDocked
-            ? {
-                position: 'fixed',
-                top: 0,
-                right: 0,
-                bottom: 0,
-                width,
-                maxWidth: 'min(100vw, 420px)',
-                height: '100%',
-                maxHeight: '100%',
-                display: 'flex',
-                flexDirection: 'column',
-                zIndex,
-                backgroundColor: 'var(--mantine-color-body, #ffffff)',
-                borderColor: 'var(--mantine-color-default-border, #e5e7eb)',
-                borderLeft: '1px solid var(--mantine-color-default-border, #e5e7eb)',
-                borderTop: 'none',
-                borderBottom: 'none',
-                borderRight: 'none',
-                boxShadow: '-4px 0 16px rgba(0, 0, 0, 0.06)',
-                overflow: 'hidden',
-                pointerEvents: 'auto',
-                ...style,
-              }
-            : {
-                position: 'fixed',
-                left: position.x,
-                top: position.y,
-                width,
-                maxWidth: 'calc(100vw - 24px)',
-                maxHeight: Math.max(0, viewport.height - position.y - 12),
-                display: 'flex',
-                flexDirection: 'column',
-                zIndex,
-                backgroundColor: 'var(--mantine-color-body, #ffffff)',
-                borderColor: 'var(--mantine-color-default-border, #e5e7eb)',
-                boxShadow: '0 4px 14px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.04)',
-                overflow: 'hidden',
-                transition: isDragging ? 'none' : 'box-shadow 0.15s ease',
-                pointerEvents: 'auto',
-                ...style,
-              }
-        }
+        data-testid={dataTestId}
+        data-modal-mode={mode}
+        style={paperStyle}
         role="dialog"
-        aria-modal={withBackdrop}
+        aria-modal={withBackdrop || isDialog}
         aria-label={typeof title === 'string' ? title : undefined}
       >
         {/* Header with Grip & Drag Support */}

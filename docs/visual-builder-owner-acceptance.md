@@ -27,6 +27,11 @@ No commit/push in this workstream. Coverage: `docs/wix-research-coverage-matrix.
 | Gallery per-item Fields (alt/caption/href) | DONE | CODE / TEST · UI NOT VERIFIED |
 | FeaturedMedia + ItemImage fit/aspect | DONE | CODE / TEST · UI NOT VERIFIED |
 | Atom Button / Image focused editors | DONE | CODE / TEST · UI NOT VERIFIED |
+| **Unified Style modal (PO 2026-11-11)** | **DONE** | CODE / TEST · UI NOT VERIFIED — supersedes Style dock |
+| Style selection lock + ActionBar alignment | DONE | CODE / TEST · UI NOT VERIFIED |
+| **Full-width Workspace Shell (PO 2026-11-11)** | **DONE** | CODE / TEST · UI NOT VERIFIED — no permanent 3-col width |
+| Floating Library + Floating Fields | DONE | CODE / TEST · UI NOT VERIFIED |
+| Compact Theme Builder header | DONE | CODE / TEST · UI NOT VERIFIED |
 
 ### Remaining / blocked (do not expand before UI FAIL)
 
@@ -107,7 +112,14 @@ Mark each: PASS / FAIL / SKIP. Attach screenshot notes for FAIL.
 | # | Steps | Expected | Evidence | Status |
 | --- | --- | --- | --- | --- |
 | E1 | Insert Section layouts (media-start, feature-grid, CTA, editorial) | Nested structure intact | Batch 11 / E250 | UI NOT VERIFIED |
-| E2 | Section Background solid/gradient/pattern → Apply/Cancel/Reset | Session Cancel restores; domain Reset scoped | E64 / PO Style UX | UI NOT VERIFIED |
+| E2 | Section Background solid/gradient/pattern → Cancel/Reset | Session Cancel restores; domain Reset scoped; **large shared Style modal** (not right dock) | E64 / PO 2026-11-11 | UI NOT VERIFIED |
+| E2b | Open Animation/Background/Layout/Borders from ActionBar | Same modal host; header shows widget + domain; selection outline remains | PO Style modal | UI NOT VERIFIED |
+| E2c | Style open → click canvas elsewhere → close Style | Selection stays on Style target; Fields restored on close | selection lock | UI NOT VERIFIED |
+| E2d | ActionBar four Style icons + overflow at 1366 / 1920 | One row height; icons/gaps/centers aligned with label | ActionBar CSS | UI NOT VERIFIED |
+| E2e | Default load: no empty left/right reserved columns | Canvas uses remaining workspace; only 60px library rail | Workspace shell | UI NOT VERIFIED |
+| E2f | Open Library overlay / Fields / Style | Canvas width unchanged; Style keeps selection | Workspace shell | UI NOT VERIFIED |
+| E2g | Close Fields; iframe scrollbar vs preview edge | No blank strip / double scrollbar | Canvas scroll | UI NOT VERIFIED |
+| E2h | Compact header one primary row | Back, theme/template, Save; details in menu | ThemeBuilder | UI NOT VERIFIED |
 | E3 | Columns gap/alignment if present | No absolute positioning tools | Flex/Grid-first | UI NOT VERIFIED |
 | E4 | Section `containerWidth` / `verticalPadding` in Fields | Still Fields-owned (`inherit`) — expected PARTIAL | ownership doc | UI NOT VERIFIED |
 

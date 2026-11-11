@@ -67,7 +67,7 @@ import {
 const usePuck = createUsePuck()
 
 const OVERLAY_WIDTH_KEY = 'zyvavu.builder.libraryOverlayWidth'
-const OVERLAY_DEFAULT = 440
+const OVERLAY_DEFAULT = 400
 const OVERLAY_MIN = 320
 const OVERLAY_MAX = 650
 function readOverlayWidth() {
