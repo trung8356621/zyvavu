@@ -1,5 +1,56 @@
 # Visual Builder — Owner Acceptance Pack (Nov 11)
 
+## Workspace recovery QA — 2026-11-11
+
+Browser status: **UI NOT VERIFIED**. The owner supplied a screenshot of an authenticated Admin dashboard at `127.0.0.1:3107/admin`. The Codex session received the tab URL and screenshot but had no browser interaction capability. The dashboard screenshot cannot establish the Editor's layout or behavior. No Editor screenshots were captured.
+
+### Reported defects and reproduction
+
+These findings were diagnosed from source against the reported symptoms. Severity is provisional pending a browser retest.
+
+- **UX-01 · P1 · Puck layout and tool rail.** Open Theme Builder, then Page Settings or Outline. Expected: one icon per tool and a readable independent panel. Reported: duplicate icons, navigation at bottom-left, and content wrapping inside a narrow column. Source evidence: the prior grid allocated the library rail width to Puck's entire left sidebar and positioned Puck navigation at its bottom. The new rail and tool panels sit outside that sidebar. Status: browser retest **BLOCKED**.
+- **UX-02 · P2 · Widget Fields and library.** Select a widget, open Settings, and open and close Blocks. Expected: consistent headers, scroll, focus restoration, and no canvas width change. Reported: mismatched presentation and compressed controls. Source evidence: Puck's native Fields heading was rendered above the custom heading, and the library positioned its results relative to the category rail. Both now use workspace panel chrome. Status: browser retest **BLOCKED**.
+- **UX-03 · P2 · Widget ActionBar.** Select Image or Video, open Design and More, and repeat on a narrower preview. Expected: label and compact Settings, Design, More controls. Reported: a wide toolbar and unclear or duplicate actions. Source evidence: the prior toolbar rendered the full-width media trigger, parent selection, Duplicate and Delete alongside the three main actions, and repeated Design domains in More. Contextual actions now live under More. Status: browser retest **BLOCKED**.
+- **UX-04 · P2 · Floating Design.** Open a supported Design domain, minimize, restore, close, then open Widget Settings. Expected: a right-aligned panel within the workspace, with independent scroll and the original session after restore. Reported: unverified interaction and awkward placement. Source evidence: Design used a fixed viewport position with hard-coded offsets. It now uses the workspace as its containing block. Status: browser retest **BLOCKED**.
+
+### Workspace cases at both viewport sizes
+
+Run each case at **1366×768** and **1920×1080**. Record screenshots for failures, actual versus expected behavior, and whether the canvas remains usable. Record the preview width and scroll behavior before and after opening each panel.
+
+1. Open and close Widget Library.
+2. Open and close Outline.
+3. Open and close Page Settings.
+4. Open and close Theme Settings on Single, Page, or Category.
+5. Select Heading and a legacy Text widget where present.
+6. Select Button.
+7. Select Image and FeaturedMedia in their supported contexts.
+8. Open and close native Widget Fields.
+9. Open the capability-filtered Design menu.
+10. Open Animation on a supported widget.
+11. Switch Design domains and inspect the previous domain after returning.
+12. Minimize and restore Design, confirming the domain and target.
+13. Close Design and confirm Fields return.
+14. Switch widgets after closing Design. While Design is open, verify the existing selection lock.
+15. Undo and redo an in-memory edit.
+16. Change Desktop, Tablet, and Mobile, then toggle Preview in the header.
+17. Zoom and scroll, checking canvas height, centering, iframe edge, clipping, stacking, and pointer input.
+18. Save and reopen an isolated fixture.
+
+### Fixture and capability inventory
+
+The six fixture names are reserved for QA. Their creation is **BLOCKED**. The current Theme Builder saves to a site-wide Settings override keyed by theme and one of the fixed template contexts. A new fixture name alone provides no storage isolation. Use a disposable environment with those same editor routes before saving any of these cases.
+
+- **QA-01-Atoms · 5 cases.** Implemented: Heading insertion, content, H1–H6/P and inline formatting (1); typography presets, family, weight, size, line height, letter spacing, alignment, color, Reset and history (2); Button label, Link and preset (3); supported Button Normal/Hover, background, borders, spacing and history (4); Image insert/replace, alt, caption, aspect, fit, position, link, Reset and history (5). Legacy Text is available on existing documents. Button Icon and unsupported Normal groups remain unavailable.
+- **QA-02-Sections · 4 cases.** Implemented: Section Container and nested Columns insertion (1); slot placement, reorder and selection hierarchy (2); layout, spacing, border, background, pattern and responsive rendering (3); bound title, content, metadata, media and archive widgets in allowed contexts (4). Section's inner container is part of the Section renderer.
+- **QA-03-Media · 4 cases.** Implemented: Video insert/replace and poster (1); controls, reduced-motion fallback and responsive rendering (2); Gallery add/replace/remove and per-item alt/caption/href (3); Gallery columns/gap/aspect/fit and FeaturedMedia/ItemImage fit and aspect parity (4). Gallery organizer and masonry are excluded.
+- **QA-04-Style · 5 cases.** Use each widget's registered capabilities. Verify Background and Pattern, including the shared color palette (1); Layout and Spacing (2); linked/unlinked Border and Radius, preserving asymmetric values (3); Animation and Effects, including replay and reduced motion (4); cross-domain isolation, direct commit, Cancel, Reset, minimize, reopen and history (5). Scroll animation is a disabled shell. Domain availability varies by widget.
+- **QA-05-Responsive · 3 cases.** Implemented: Desktop/Tablet/Mobile viewport and selection persistence (1); explicit font size, line height, alignment and spacing overrides (2); Reset isolation and switching breakpoints with fresh values (3). Existing responsive behavior covers explicit overrides, with Wix sizing formulas outside scope.
+- **QA-06-Regression · 9 cases.** Verify select A → edit → B → A (1); close → reopen (2); edit → Undo → Redo (3); theme token inheritance and override → Reset (4); Desktop → Mobile → Desktop (5); Design → close → switch widget → reopen (6); insert → Undo → Redo (7); Save → reopen and full reload in the isolated environment (8); Link Editor across all nine rows and Apply/Cancel/Escape, selection changes, history and href generation (9). None, Page, Web address, Email and Phone are enabled. Section/Anchor, Top/Bottom, Document and Popup/Lightbox should appear disabled.
+
+Capability sources: [widget registry](../src/lib/theme-engine/widget-registry-editor.ts), [style capabilities](../src/lib/style-engine/capabilities.ts), [link destination model](../src/components/builder/inline-edit/link-editor-model.ts), and [research coverage matrix](wix-research-coverage-matrix.md).
+
+**QA count by case group:** 78 total · 0 PASS · 0 FAIL · 42 BLOCKED (36 workspace cases and 6 fixture setups) · 30 NOT_TESTED (capability cases) · 6 OUT_OF_SCOPE (Gallery organizer/masonry, absolute positioning, video hosting, Button Icon, full Scroll/Mouse catalogs, and Mega Menu rewrite). The counts refer to browser QA. Expected disabled controls are covered in the relevant capability cases.
+
 One consolidated visual/functional pass.  
 Status labels: **DONE** / **PARTIAL** / **BLOCKED** / **NOT_STARTED**.  
 Verification: **CODE VERIFIED** / **TEST VERIFIED** / **UI VERIFIED** / **UI NOT VERIFIED**.
@@ -78,7 +129,7 @@ Mark each: PASS / FAIL / SKIP. Attach screenshot notes for FAIL.
 | A1 | Theme Builder → Blocks; scan Heading, Button, Image, Video, Gallery, Sections | Compact preview cards; no giant clipping; Video cards do not autoplay | E01 / library | UI NOT VERIFIED |
 | A2 | Insert `image-square`, `video-standard`, Gallery, `section-hero-cta`, `section-testimonial`, `section-gallery` | Inserts succeed; unique IDs | V4 P7 | UI NOT VERIFIED |
 | A3 | Undo each insert; Redo once | History restores correctly | E08 / E259 | UI NOT VERIFIED |
-| A4 | Resize library overlay; Escape collapse; reopen category | Overlay clamps; canvas not crushed | PO library | UI NOT VERIFIED |
+| A4 | Close library with Escape; reopen and switch category | Focus returns to Blocks; Canvas dimensions stay stable | PO library | UI NOT VERIFIED |
 
 ### B. Heading / Text / Tiptap
 
@@ -113,11 +164,11 @@ Mark each: PASS / FAIL / SKIP. Attach screenshot notes for FAIL.
 | # | Steps | Expected | Evidence | Status |
 | --- | --- | --- | --- | --- |
 | E1 | Insert Section layouts (media-start, feature-grid, CTA, editorial) | Nested structure intact | Batch 11 / E250 | UI NOT VERIFIED |
-| E2 | Section Background solid/gradient/pattern → Cancel/Reset | Session Cancel restores; domain Reset scoped; **large shared Style modal** (not right dock) | E64 / PO 2026-11-11 | UI NOT VERIFIED |
+| E2 | Section Background solid/gradient/pattern → Cancel/Reset | Session Cancel restores; domain Reset scoped; Design remains anchored to the workspace | E64 / PO 2026-11-11 | UI NOT VERIFIED |
 | E2b | Open Animation/Background/Layout/Borders from ActionBar | Same modal host; header shows widget + domain; selection outline remains | PO Style modal | UI NOT VERIFIED |
 | E2c | Style open → click canvas elsewhere → close Style | Selection stays on Style target; Fields restored on close | selection lock | UI NOT VERIFIED |
-| E2d | ActionBar four Style icons + overflow at 1366 / 1920 | One row height; icons/gaps/centers aligned with label | ActionBar CSS | UI NOT VERIFIED |
-| E2e | Default load: no empty left/right reserved columns | Canvas uses remaining workspace; only 60px library rail | Workspace shell | UI NOT VERIFIED |
+| E2d | ActionBar Settings, Design, More at 1366 / 1920 | One row; compact controls and contextual actions in More | ActionBar CSS | UI NOT VERIFIED |
+| E2e | Default load: no empty left/right reserved columns | Canvas uses remaining workspace alongside the tool rail | Workspace shell | UI NOT VERIFIED |
 | E2f | Open Library overlay / Fields / Style | Canvas width unchanged; Style keeps selection | Workspace shell | UI NOT VERIFIED |
 | E2g | Close Fields; iframe scrollbar vs preview edge | No blank strip / double scrollbar | Canvas scroll | UI NOT VERIFIED |
 | E2h | Compact header one primary row | Back, theme/template, Save; details in menu | ThemeBuilder | UI NOT VERIFIED |

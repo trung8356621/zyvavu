@@ -145,6 +145,7 @@ export interface WidgetStyleContextMenuProps {
   htmlTag?: string | null
   currentStyle?: WidgetSemanticStyle
   themeConfig?: ThemeConfig
+  inWorkspace?: boolean
   /** Direct-commit into Puck document (recordHistory handled by host). */
   onUpdateStyle: (
     style: WidgetSemanticStyle,
@@ -173,6 +174,7 @@ function WidgetStyleSession({
   htmlTag = null,
   currentStyle = EMPTY_STYLE,
   themeConfig,
+  inWorkspace = false,
   onUpdateStyle,
   onSaveAsPattern,
 }: WidgetStyleContextMenuProps) {
@@ -661,7 +663,7 @@ function WidgetStyleSession({
       <Box
         data-testid="design-panel-collapsed"
         style={{
-          position: 'fixed',
+          position: inWorkspace ? 'absolute' : 'fixed',
           top: '50%',
           right: 8,
           transform: 'translateY(-50%)',
@@ -714,6 +716,7 @@ function WidgetStyleSession({
         }
         width={panelWidth}
         mode="floating"
+        withinPortal={!inWorkspace}
         withBackdrop={false}
         draggable={false}
         showCloseButton={true}
@@ -729,8 +732,9 @@ function WidgetStyleSession({
         data-testid="unified-style-modal"
         style={{
           visibility: mediaPickerOpened ? 'hidden' : undefined,
-          height: 'calc(100dvh - 68px)',
-          maxHeight: 'calc(100dvh - 68px)',
+          ...(inWorkspace
+            ? { position: 'absolute', top: 0, right: 0, bottom: 0, left: 'auto', maxWidth: '100%', maxHeight: '100%' }
+            : { height: 'calc(100dvh - 68px)', maxHeight: 'calc(100dvh - 68px)' }),
         }}
         closeOnEscape={!mediaPickerOpened && !animationPickerOpened && !colorModalTarget}
         zIndex={ADMIN_OVERLAY_LAYERS.STYLE_MODAL}

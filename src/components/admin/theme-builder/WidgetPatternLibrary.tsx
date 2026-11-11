@@ -120,8 +120,10 @@ export function WidgetPatternLibrary({
   themeConfig,
   beforeOperation,
   mode = 'blocks',
+  embedded = false,
 }: {
   mode?: 'blocks' | 'theme' | 'user'
+  embedded?: boolean
   context?: string
   themeConfig?: ThemeConfig
   beforeOperation: () => boolean
@@ -241,13 +243,13 @@ export function WidgetPatternLibrary({
     setOverlayWidth(readOverlayWidth())
   }, [])
   React.useEffect(() => {
-    if (!overlayLayout || !expanded) return
+    if (!overlayLayout || !expanded || embedded) return
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setExpanded(false)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [overlayLayout, expanded])
+  }, [overlayLayout, expanded, embedded])
   const startResize = (event: React.PointerEvent<HTMLDivElement>) => {
     event.preventDefault()
     const startX = event.clientX
@@ -434,6 +436,7 @@ export function WidgetPatternLibrary({
       style={tokenStyle}
       data-widget-pattern-library
       data-layout={overlayLayout ? 'overlay' : 'flat'}
+      data-embedded={embedded || undefined}
       data-expanded={overlayLayout && expanded ? 'true' : undefined}
     >
       {overlayLayout ? (
@@ -494,7 +497,7 @@ export function WidgetPatternLibrary({
               </ActionIcon>
             </Tooltip>
           )}
-          <Tooltip
+          {!embedded && <Tooltip
             label={expanded ? 'Collapse library' : 'Expand library'}
             position="right"
             withinPortal
@@ -513,26 +516,26 @@ export function WidgetPatternLibrary({
                 <PanelLeftOpen size={22} aria-hidden="true" />
               )}
             </ActionIcon>
-          </Tooltip>
+          </Tooltip>}
           </div>
           {expanded && (
             <div
               className={styles.overlay}
-              style={{ width: overlayWidth }}
+              style={embedded ? undefined : { width: overlayWidth }}
               role="region"
               aria-label="Widget library"
             >
               <div className={styles.overlayHeader}>
                 <Text fw={600} size="sm">
-                  {LABELS[active] || active}
+                  {mode === 'theme' ? config.components[types.find((type) => categoryFor(type) === active) || '']?.label || active : LABELS[active] || active}
                 </Text>
-                <ActionIcon
+                {!embedded && <ActionIcon
                   variant="subtle"
                   aria-label="Collapse library"
                   onClick={() => setExpanded(false)}
                 >
                   <PanelLeftClose size={18} aria-hidden="true" />
-                </ActionIcon>
+                </ActionIcon>}
               </div>
               <div className={styles.overlayBody}>
           <TextInput
@@ -852,7 +855,7 @@ export function WidgetPatternLibrary({
               </Stack>
             </div>
               </div>
-              <div
+              {!embedded && <div
                 className={styles.resizeHandle}
                 role="separator"
                 aria-orientation="vertical"
@@ -862,7 +865,7 @@ export function WidgetPatternLibrary({
                 aria-valuenow={overlayWidth}
                 tabIndex={0}
                 onPointerDown={startResize}
-              />
+              />}
             </div>
           )}
           {mode === 'blocks' && (

@@ -98,6 +98,24 @@
   padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
 }
 
+.library[data-embedded='true'] {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.library[data-embedded='true'] .overlay {
+  position: static;
+  min-height: 0;
+  max-width: none;
+  border: 0;
+  box-shadow: none;
+  z-index: auto;
+}
+
+.library[data-embedded='true'] .overlayBody {
+  overflow: auto;
+}
+
 .results {
   overflow-y: auto;
   min-width: 0;

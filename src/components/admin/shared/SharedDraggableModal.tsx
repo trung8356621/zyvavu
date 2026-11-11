@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useRef, useState, useCallback } from 'react'
-import { ActionIcon, Box, Group, Paper, Portal, Text } from '@mantine/core'
+import { ActionIcon, Box, Group, OptionalPortal, Paper, Text } from '@mantine/core'
 import { GripHorizontal, X } from 'lucide-react'
 import { ADMIN_OVERLAY_LAYERS } from '@/theme/layers'
 
@@ -28,6 +28,7 @@ export interface SharedDraggableModalProps {
   zIndex?: number
   className?: string
   style?: React.CSSProperties
+  withinPortal?: boolean
   headerExtra?: React.ReactNode
   subHeader?: React.ReactNode
   /** Optional test / host identity hook (e.g. unified Style modal). */
@@ -139,6 +140,7 @@ export function SharedDraggableModal({
   zIndex = ADMIN_OVERLAY_LAYERS.STYLE_MODAL,
   className,
   style,
+  withinPortal = true,
   headerExtra,
   subHeader,
   'data-testid': dataTestId,
@@ -457,7 +459,7 @@ export function SharedDraggableModal({
         }
 
   return (
-    <Portal>
+    <OptionalPortal withinPortal={withinPortal}>
       {/* Optional backdrop for dialog mode */}
       {withBackdrop && (
         <Box
@@ -598,6 +600,6 @@ export function SharedDraggableModal({
           </Box>
         )}
       </Paper>
-    </Portal>
+    </OptionalPortal>
   )
 }

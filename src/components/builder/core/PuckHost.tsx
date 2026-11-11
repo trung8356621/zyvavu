@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useCallback, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
   Puck,
   ActionBar,
@@ -9,13 +10,17 @@ import {
   type Plugin,
   type Viewport,
   createUsePuck,
+  fieldsPlugin,
 } from '@puckeditor/core'
 import '@puckeditor/core/dist/index.css'
-import { ActionIcon, Alert, Box, Button, Group, LoadingOverlay, Text, Menu } from '@mantine/core'
+import { ActionIcon, Alert, Box, Button, Group, LoadingOverlay, Text, Menu, Tooltip } from '@mantine/core'
 import {
   Check,
   AlertCircle,
   Palette,
+  Blocks,
+  ListTree,
+  Eye,
   Save,
   Sliders,
   Play,
@@ -124,7 +129,7 @@ type StyleMenuRequest = {
 
 type EditorBridgeValue = {
   /** Opens native Puck Fields panel (official Atom Settings). */
-  openAtomSettings: () => void
+  openAtomSettings: (trigger?: HTMLButtonElement) => void
   /** Closes floating Fields without changing Puck selection. */
   closeAtomSettings: () => void
   /** Opens canonical Link Editor for Button/Image widget props. */
@@ -138,6 +143,7 @@ type EditorBridgeValue = {
   styleComponentId?: string
   templateContext?: string
   themeConfig?: ThemeConfig
+  previewControlTarget?: HTMLElement | null
   beforeOperation: () => boolean
   history?: ReturnType<typeof createPuckHistoryCoordinator>
 }
@@ -149,7 +155,7 @@ function StablePuckOverride({ children }: { children: React.ReactNode }) {
   const bridge = React.useContext(EditorBridgeContext)!
   return (
     <PuckBridge onRegisterApi={bridge.registerApi} onSelectionChange={bridge.select}>
-      {children}
+      {bridge.templateContext ? <ThemeWorkspace>{children}</ThemeWorkspace> : children}
       <SaveAsPatternDialog
         opened={bridge.saveAsPatternOpened}
         onClose={bridge.closeSaveAsPattern}
@@ -157,6 +163,133 @@ function StablePuckOverride({ children }: { children: React.ReactNode }) {
         beforeOperation={bridge.beforeOperation}
       />
     </PuckBridge>
+  )
+}
+
+function WorkspacePanel({
+  title,
+  onClose,
+  children,
+  library = false,
+}: {
+  title: string
+  onClose: () => void
+  children: React.ReactNode
+  library?: boolean
+}) {
+  return (
+    <>
+      <div className={workspaceStyles.fieldsHeader}>
+        <span className={workspaceStyles.fieldsTitle}>{title}</span>
+        <ActionIcon size="sm" variant="subtle" color="gray" aria-label={`Close ${title}`} onClick={onClose}>
+          <X size={15} aria-hidden />
+        </ActionIcon>
+      </div>
+      <div className={library ? workspaceStyles.libraryBody : workspaceStyles.fieldsBody}>{children}</div>
+    </>
+  )
+}
+
+function ThemeWorkspace({ children }: { children: React.ReactNode }) {
+  const bridge = React.useContext(EditorBridgeContext)!
+  const [panel, setPanel] = useState<'blocks' | 'outline' | 'page' | 'theme' | null>(null)
+  const panelRef = React.useRef<HTMLElement>(null)
+  const triggerRef = React.useRef<HTMLButtonElement | null>(null)
+  const panelId = React.useId()
+  const previewMode = usePuck((state) => state.appState.ui.previewMode)
+  const dispatch = usePuck((state) => state.dispatch)
+  const previewing = previewMode === 'interactive'
+  const tools = [
+    { id: 'blocks', title: 'Widget Library', icon: Blocks },
+    { id: 'outline', title: 'Outline', icon: ListTree },
+    { id: 'page', title: bridge.templateContext === 'header' ? 'Header Settings' : 'Page Settings', icon: Sliders },
+    ...(hasThemeLibrary(bridge.templateContext) ? [{ id: 'theme', title: 'Theme Settings', icon: Palette } as const] : []),
+  ] as const
+  const active = tools.find((tool) => tool.id === panel)
+
+  React.useEffect(() => {
+    if (panel) panelRef.current?.focus()
+  }, [panel])
+
+  const closePanel = () => {
+    setPanel(null)
+    triggerRef.current?.focus()
+  }
+
+  return (
+    <div className={workspaceStyles.themeWorkspace}>
+      {bridge.previewControlTarget && createPortal(
+        <Tooltip label={previewing ? 'Return to editing' : 'Preview'}>
+          <ActionIcon
+            size="sm"
+            variant={previewing ? 'light' : 'subtle'}
+            aria-label="Preview"
+            aria-pressed={previewing}
+            disabled={Boolean(bridge.styleComponentId)}
+            onClick={() => {
+              setPanel(null)
+              dispatch({
+                type: 'setUi',
+                ui: { previewMode: previewing ? 'edit' : 'interactive', rightSideBarVisible: false },
+              })
+            }}
+          >
+            <Eye size={16} aria-hidden />
+          </ActionIcon>
+        </Tooltip>,
+        bridge.previewControlTarget,
+      )}
+      <nav className={workspaceStyles.toolRail} aria-label="Editor tools">
+        {tools.map(({ id, title, icon: Icon }) => (
+          <Tooltip key={id} label={title} position="right" withinPortal events={{ hover: true, focus: true, touch: false }}>
+            <ActionIcon
+              size="md"
+              variant={panel === id ? 'light' : 'subtle'}
+              aria-label={title}
+              aria-expanded={panel === id}
+              disabled={previewing}
+              aria-controls={panel === id ? panelId : undefined}
+              onClick={(event) => {
+                triggerRef.current = event.currentTarget
+                setPanel(panel === id ? null : id)
+              }}
+            >
+              <Icon size={18} aria-hidden />
+            </ActionIcon>
+          </Tooltip>
+        ))}
+      </nav>
+      {children}
+      {active && !previewing && (
+        <section
+          id={panelId}
+          ref={panelRef}
+          className={workspaceStyles.toolPanel}
+          aria-label={active.title}
+          tabIndex={-1}
+          onKeyDown={(event) => {
+            if (event.key !== 'Escape' || event.defaultPrevented || !event.currentTarget.contains(event.target as Node)) return
+            event.stopPropagation()
+            closePanel()
+          }}
+        >
+          <WorkspacePanel title={active.title} onClose={closePanel} library={panel === 'blocks' || panel === 'theme'}>
+            {(panel === 'blocks' || panel === 'theme') && (
+              <WidgetPatternLibrary
+                key={panel}
+                context={bridge.templateContext}
+                themeConfig={bridge.themeConfig}
+                beforeOperation={bridge.beforeOperation}
+                mode={panel}
+                embedded
+              />
+            )}
+            {panel === 'outline' && <Puck.Outline />}
+            {panel === 'page' && <PageSettingsPanel themeConfig={bridge.themeConfig} templateName={bridge.templateContext} />}
+          </WorkspacePanel>
+        </section>
+      )}
+    </div>
   )
 }
 
@@ -185,10 +318,6 @@ function StableLibraryOverride() {
       beforeOperation={bridge.beforeOperation}
     />
   )
-}
-function StableThemeLibraryOverride() {
-  const bridge = React.useContext(EditorBridgeContext)!
-  return <WidgetPatternLibrary context={bridge.templateContext} themeConfig={bridge.themeConfig} beforeOperation={bridge.beforeOperation} mode="theme" />
 }
 function StableIframeOverride({ children }: { children: React.ReactNode }) {
   return (
@@ -222,23 +351,25 @@ function StableFieldsOverride({
       tabIndex={-1}
       className={workspaceStyles.fieldsPanel}
       data-fields-loading={isLoading ? 'true' : undefined}
+      onKeyDown={(event) => {
+        if (event.key !== 'Escape' || event.defaultPrevented || !event.currentTarget.contains(event.target as Node)) return
+        event.stopPropagation()
+        bridge?.closeAtomSettings()
+      }}
     >
-      <div className={workspaceStyles.fieldsHeader}>
-        <span className={workspaceStyles.fieldsTitle}>{label} settings</span>
-        <ActionIcon
-          size="sm"
-          variant="subtle"
-          color="gray"
-          aria-label="Close widget settings"
-          onClick={() => bridge?.closeAtomSettings()}
-        >
-          <X size={15} />
-        </ActionIcon>
-      </div>
-      <div className={workspaceStyles.fieldsBody}>{children}</div>
+      <WorkspacePanel title={`${label} settings`} onClose={() => bridge?.closeAtomSettings()}>
+        {children}
+      </WorkspacePanel>
     </div>
   )
 }
+
+const EmptyPlugin = () => <></>
+const THEME_WORKSPACE_PLUGINS: Plugin[] = [
+  { name: 'blocks', render: EmptyPlugin },
+  { name: 'outline', render: EmptyPlugin },
+  { ...fieldsPlugin(), render: EmptyPlugin },
+]
 
 const PUCK_OVERRIDES = {
   components: StableLibraryOverride,
@@ -383,106 +514,90 @@ function PuckActionBarBridge({
       data-style-open={Boolean(componentId && styleMenuComponentId === componentId)}
       data-testid="widget-actionbar-v5"
     >
-      {rawType === 'Image' && componentId && (
-        <ImageQuickAction
-          key={componentId}
-          id={componentId}
-          kind="Image"
-          beforeOperation={bridge.beforeOperation}
-        />
+      {label && <Text component="span" size="sm" fw={600} truncate>{label}</Text>}
+      <ActionIcon
+        size="sm"
+        variant="subtle"
+        aria-label="Settings"
+        title="Settings"
+        onClick={(event) => bridge.openAtomSettings(event.currentTarget)}
+      >
+        <Settings2 size={16} aria-hidden />
+      </ActionIcon>
+      {designDomains.length > 0 && (
+        <Menu withinPortal={false} position="bottom-end">
+          <Menu.Target>
+            <ActionIcon
+              size="sm"
+              variant={styleMenuComponentId === componentId ? 'light' : 'subtle'}
+              aria-label="Design"
+              title="Design"
+              data-testid="widget-design-trigger"
+            >
+              <Paintbrush size={16} aria-hidden />
+            </ActionIcon>
+          </Menu.Target>
+          <Menu.Dropdown>
+            {designDomains.map((domain) => {
+              const Icon = STYLE_DOMAIN_ICONS[domain]
+              return (
+                <Menu.Item key={domain} leftSection={<Icon size={16} />} onClick={(event) => handleEditStyleClick(event, domain)}>
+                  {STYLE_MODAL_TITLES[domain]}
+                </Menu.Item>
+              )
+            })}
+          </Menu.Dropdown>
+        </Menu>
       )}
-      {rawType === 'Video' && componentId && (
-        <ImageQuickAction
-          key={`video-${componentId}`}
-          id={componentId}
-          kind="Video"
-          beforeOperation={bridge.beforeOperation}
-        />
-      )}
-      <ActionBar>
-        <ActionBar.Group>
-          {parentAction}
-          {label && <ActionBar.Label label={label} />}
-        </ActionBar.Group>
-        <ActionBar.Group>
-          {/* UX V5: Settings | Design | More — preserve all capabilities */}
-          <ActionBar.Action
-            label="Settings"
-            onClick={(event) => {
-              event.stopPropagation()
-              bridge.openAtomSettings()
-            }}
+      <Menu withinPortal={false} position="bottom-end" keepMounted>
+        <Menu.Target>
+          <ActionIcon
+            size="sm"
+            variant="subtle"
+            aria-label="More actions"
+            title="More actions"
+            data-testid="widget-more-trigger"
           >
-            <span className={actionBarStyles.styleTrigger}>
-              <Settings2 size={20} aria-hidden />
-            </span>
-          </ActionBar.Action>
-          <ActionBar.Action
-            label="Design"
-            onClick={(event) => {
-              // Opens floating Design Panel on the capability-aware domain launcher.
-              handleEditStyleClick(event, designDomains.length === 1 ? designDomains[0] : undefined)
-            }}
-          >
-            <span className={actionBarStyles.styleTrigger} data-testid="widget-design-trigger">
-              <Paintbrush size={20} aria-hidden />
-            </span>
-          </ActionBar.Action>
-          <Menu withinPortal={false} position="bottom-end" closeOnItemClick>
-            <Menu.Target>
-              <button
-                type="button"
-                className={actionBarStyles.overflowTrigger}
-                aria-label="More actions"
-                title="More actions"
-                data-testid="widget-more-trigger"
-              >
-                <MoreHorizontal size={20} aria-hidden />
-              </button>
-            </Menu.Target>
-            <Menu.Dropdown data-testid="widget-more-menu">
-              {designDomains.map((domain) => {
-                const Icon = STYLE_DOMAIN_ICONS[domain]
-                return (
-                  <Menu.Item
-                    key={domain}
-                    leftSection={<Icon size={16} />}
-                    onClick={(event) => handleEditStyleClick(event, domain)}
-                  >
-                    {STYLE_MODAL_TITLES[domain]}
-                  </Menu.Item>
-                )
-              })}
-              {(componentType === 'Button' ||
-                componentType === 'Image' ||
-                componentType === 'Video') &&
-                componentId && (
-                  <Menu.Item
-                    leftSection={<LinkIcon size={16} />}
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      bridge.openAtomLink(componentId)
-                    }}
-                  >
-                    Link
-                  </Menu.Item>
-                )}
+            <MoreHorizontal size={16} aria-hidden />
+          </ActionIcon>
+        </Menu.Target>
+        <Menu.Dropdown data-testid="widget-more-menu">
+          {React.Children.map([parentAction, children], (action) => {
+            if (!React.isValidElement<React.ComponentProps<typeof ActionBar.Action>>(action)) return null
+            if (action.type !== ActionBar.Action) return action
+            return (
               <Menu.Item
-                leftSection={<Bookmark size={16} />}
-                disabled={!canSaveSelectedAsPattern(componentType)}
-                onClick={(event) => {
-                  event.stopPropagation()
-                  bridge.openSaveAsPattern()
-                }}
+                leftSection={action.props.children}
+                disabled={action.props.disabled}
+                onClick={action.props.onClick}
               >
-                Save as Pattern
+                {action.props.label}
               </Menu.Item>
-            </Menu.Dropdown>
-          </Menu>
-          <ActionBar.Separator />
-          {children}
-        </ActionBar.Group>
-      </ActionBar>
+            )
+          })}
+          {(rawType === 'Image' || rawType === 'Video') && componentId && (
+            <ImageQuickAction
+              key={componentId}
+              id={componentId}
+              kind={rawType}
+              beforeOperation={bridge.beforeOperation}
+              renderTrigger={({ label: mediaLabel, disabled, onClick }) => (
+                <Menu.Item disabled={disabled} onClick={onClick}>{mediaLabel}</Menu.Item>
+              )}
+            />
+          )}
+          {(componentType === 'Button' || componentType === 'Image' || componentType === 'Video') && componentId && (
+            <Menu.Item leftSection={<LinkIcon size={16} />} onClick={() => bridge.openAtomLink(componentId)}>
+              Link
+            </Menu.Item>
+          )}
+          {canSaveSelectedAsPattern(componentType) && (
+            <Menu.Item leftSection={<Bookmark size={16} />} onClick={bridge.openSaveAsPattern}>
+              Save as Pattern
+            </Menu.Item>
+          )}
+        </Menu.Dropdown>
+      </Menu>
     </div>
   )
 }
@@ -534,6 +649,7 @@ export type PuckHostProps = {
   desktopOnly?: boolean
   themeConfig?: ThemeConfig
   templateContext?: string
+  previewControlTarget?: HTMLElement | null
   /** Lift Puck history undo/redo into the Theme Builder one-row header (UX V5). */
   onHistoryReady?: (history: ReturnType<typeof createPuckHistoryCoordinator>) => void
 }
@@ -553,6 +669,7 @@ export function PuckHost({
   desktopOnly = false,
   themeConfig,
   templateContext,
+  previewControlTarget,
   onHistoryReady,
 }: PuckHostProps) {
   const [localDoc, setLocalDoc] = useState<BuilderDocument>(document)
@@ -560,6 +677,7 @@ export function PuckHost({
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false)
   const latestDocRef = React.useRef<BuilderDocument>(localDoc)
   const viewportRef = React.useRef<HTMLDivElement>(null)
+  const fieldsTriggerRef = React.useRef<HTMLButtonElement | null>(null)
 
   const pageSettingsPlugin: Plugin = useMemo(() => {
     return {
@@ -954,9 +1072,12 @@ export function PuckHost({
 
   const closeAtomSettings = useCallback(() => {
     setPuckRightSidebar(false)
+    fieldsTriggerRef.current?.focus()
+    fieldsTriggerRef.current = null
   }, [setPuckRightSidebar])
 
-  const openAtomSettings = useCallback(() => {
+  const openAtomSettings = useCallback((trigger?: HTMLButtonElement) => {
+    fieldsTriggerRef.current = trigger ?? null
     const api = puckApiRef.current
     const styleOpen = Boolean(activeStyleMenu?.opened)
     const atomSettingsVisible = Boolean(api?.getAppState()?.ui?.rightSideBarVisible)
@@ -1044,6 +1165,7 @@ export function PuckHost({
     saveAsPatternOpened,
     templateContext,
     themeConfig,
+    previewControlTarget,
     beforeOperation: () => true,
     registerApi: handleRegisterPuckApi,
     select: handleSelectionChange,
@@ -1056,16 +1178,19 @@ export function PuckHost({
     () => ({
       // Floating Fields start closed; selection opens them without reserving grid width.
       rightSideBarVisible: false,
-      leftSideBarVisible: true,
+      leftSideBarVisible: !templateContext,
       viewports: {
         current: { width: '100%' as const, height: 'auto' as const },
         options: activeViewports,
         controlsVisible: !desktopOnly,
       },
     }),
-    [activeViewports, desktopOnly],
+    [activeViewports, desktopOnly, templateContext],
   )
-  const plugins = useMemo(() => [pageSettingsPlugin, ...(hasThemeLibrary(templateContext) ? [{ name: 'theme', label: 'Theme', icon: <Palette size={16} />, render: StableThemeLibraryOverride }] : [])], [pageSettingsPlugin, templateContext])
+  const plugins = useMemo(
+    () => (templateContext ? THEME_WORKSPACE_PLUGINS : [pageSettingsPlugin]),
+    [pageSettingsPlugin, templateContext],
+  )
 
   return (
     <BuilderChromeProvider themeConfig={themeConfig}>
@@ -1076,7 +1201,6 @@ export function PuckHost({
           actionBarStyles.libraryHost,
           workspaceStyles.workspaceShell,
           templateContext ? workspaceStyles.themeNavigation : '',
-          templateContext ? actionBarStyles.themeNavigation : '',
         ]
           .filter(Boolean)
           .join(' ')}
@@ -1190,6 +1314,7 @@ export function PuckHost({
         {activeStyleMenu?.opened && (
           <WidgetStyleContextMenu
             opened={activeStyleMenu.opened}
+            inWorkspace={Boolean(templateContext)}
             domain={activeStyleMenu.domain}
             requestNonce={activeStyleMenu.requestNonce}
             onClose={handleCloseStyleMenu}

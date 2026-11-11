@@ -40,7 +40,7 @@ describe('shared toolbar image quick action', () => {
     fireEvent.click(screen.getByText('Change Image'))
     expect(state.dispatch).toHaveBeenCalledWith({
       type: 'replace', destinationIndex: 4, destinationZone: 'other:content',
-      data: { ...state.item, props: { ...state.item.props, src: '/new.webp' } },
+      data: { ...state.item, props: { ...state.item.props, src: '/new.webp', mediaId: 9 } },
     })
     expect(state.item.props.src).toBe('')
   })

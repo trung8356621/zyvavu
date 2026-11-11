@@ -106,9 +106,18 @@ export function MediaSourcePicker(props: {
   onSelect: (doc: SelectedMedia) => void
   onOpenChange?: (opened: boolean) => void
   triggerLabel?: string
+  renderTrigger?: (props: { label: string; disabled?: boolean; onClick: () => void }) => React.ReactNode
   disabled?: boolean
 }) {
   const [opened, setOpened] = useState(false)
+  const trigger = {
+    label: props.triggerLabel || `Choose ${props.kind} from Media`,
+    disabled: props.disabled,
+    onClick: () => {
+      setOpened(true)
+      props.onOpenChange?.(true)
+    },
+  }
   return opened ? (
     <NativeMediaPicker
       {...props}
@@ -117,16 +126,9 @@ export function MediaSourcePicker(props: {
         props.onOpenChange?.(false)
       }}
     />
-  ) : (
-    <Button
-      variant="default"
-      disabled={props.disabled}
-      onClick={() => {
-        setOpened(true)
-        props.onOpenChange?.(true)
-      }}
-    >
-      {props.triggerLabel || `Choose ${props.kind} from Media`}
+  ) : props.renderTrigger ? props.renderTrigger(trigger) : (
+    <Button variant="default" disabled={trigger.disabled} onClick={trigger.onClick}>
+      {trigger.label}
     </Button>
   )
 }

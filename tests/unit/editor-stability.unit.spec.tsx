@@ -54,6 +54,7 @@ vi.mock('@puckeditor/core', async () => {
   )
   return {
     ActionBar,
+    fieldsPlugin: () => ({ name: 'fields', mobileOnly: true }),
     createUsePuck: () => (selector: (snapshot: any) => any) =>
       React.useSyncExternalStore(
         (listener) => {
@@ -64,7 +65,7 @@ vi.mock('@puckeditor/core', async () => {
         },
         () => selector(model.snapshot),
       ),
-    Puck: (props: any) => {
+    Puck: Object.assign((props: any) => {
       model.uiIdentities.add(props.ui)
       model.pluginIdentities.add(props.plugins)
       React.useEffect(() => {
@@ -82,7 +83,7 @@ vi.mock('@puckeditor/core', async () => {
           </Bar>
         </Override>
       )
-    },
+    }, { Outline: () => <div>Native outline</div> }),
   }
 })
 
@@ -168,8 +169,28 @@ afterEach(() => {
 })
 
 describe('Editor stability', () => {
+  it('opens the tool panel without remounting Puck and returns focus to its rail button', () => {
+    render(
+      <MantineProvider>
+        <PuckHost config={{ components: {} }} document={document} onSave={vi.fn()} templateContext="single" />
+      </MantineProvider>,
+    )
+    const canvas = screen.getByTitle('unit canvas')
+    const outline = screen.getByRole('button', { name: 'Outline' })
+    expect(screen.getByRole('button', { name: 'Theme Settings' })).toBeTruthy()
+    fireEvent.click(outline)
+    const panel = screen.getByRole('region', { name: 'Outline' })
+    expect(panel.textContent).toContain('Native outline')
+    expect(panel.ownerDocument.activeElement).toBe(panel)
+    fireEvent.keyDown(panel, { key: 'Escape' })
+    expect(screen.queryByRole('region', { name: 'Outline' })).toBeNull()
+    expect(outline.ownerDocument.activeElement).toBe(outline)
+    expect(screen.getByTitle('unit canvas')).toBe(canvas)
+    expect(model.mounts).toBe(1)
+  })
+
   it.each(['Heading', 'Text', 'Button', 'Image'])(
-    'exposes domain Style actions without Settings gear for %s',
+    'exposes Settings, Design and More for %s',
     async (type) => {
       const { getStyleModalDomains, orderStyleToolbarDomains, STYLE_MODAL_TITLES } = await import(
         '@/lib/style-engine/domains'

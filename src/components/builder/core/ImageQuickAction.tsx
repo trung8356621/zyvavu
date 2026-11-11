@@ -18,10 +18,12 @@ export function ImageQuickAction({
   id,
   beforeOperation,
   kind = 'Image',
+  renderTrigger,
 }: {
   id: string
   beforeOperation: () => boolean
   kind?: MediaAtomType
+  renderTrigger?: React.ComponentProps<typeof MediaSourcePicker>['renderTrigger']
 }) {
   const getItemById = usePuck((s) => s.getItemById)
   const getSelectorForId = usePuck((s) => s.getSelectorForId)
@@ -37,6 +39,7 @@ export function ImageQuickAction({
     <MediaSourcePicker
       kind={mediaKind}
       triggerLabel={triggerLabel}
+      renderTrigger={renderTrigger}
       disabled={!getPermissions({ item }).edit}
       onSelect={(media) => {
         const current = getItemById(id)
@@ -50,7 +53,7 @@ export function ImageQuickAction({
         ) {
           return
         }
-        const nextProps: Record<string, unknown> = {
+        const nextProps: { id: string; [key: string]: unknown } = {
           ...current.props,
           src: media.url,
           mediaId: media.id,

@@ -1,5 +1,14 @@
 # Wix Implementation Progress
 
+## Workspace recovery batch — 2026-11-11
+
+- Replaced Theme Builder's bottom-positioned Puck plugin navigation with a workspace rail. The floating tool panels reuse the existing library, Puck Outline and Page Settings. Puck Fields keep their original form and use the same panel header and close control.
+- The ActionBar uses Settings, Design and More, with native actions and media replacement under More. Design anchors to the workspace. The header exposes Puck Preview and retains the native viewport and zoom controls on Canvas.
+- Focused Vitest on the final code passed **28/28** across Editor stability, Widget Library and Image Quick Action. The earlier 11-suite sweep passed **87/98**. One failure was the Image test's stale expectation for persisted media ID, corrected and verified in the final run. Ten failures remain in older Style Hotfix and UX V2 suites, involving existing control names/background behavior and pattern assertions.
+- TypeScript reported **53** diagnostics, all outside modified files. The scoped ESLint run reported **8 errors**, with matching errors reproduced on HEAD. No production build or migration ran.
+- **UI NOT VERIFIED** at either requested viewport. The QA inventory, provisional defect backlog, reported symptoms and fixture isolation blocker are in the [owner acceptance pack](visual-builder-owner-acceptance.md#workspace-recovery-qa--2026-11-11).
+- Changed source: `PuckHost.tsx`, `EditorWorkspace.module.css`, `WidgetActionBar.module.css`, `ThemeBuilder.tsx`, `WidgetPatternLibrary.tsx`, `WidgetPatternLibrary.module.css`, `WidgetStyleContextMenu.tsx`, `SharedDraggableModal.tsx`, `ImageQuickAction.tsx`, and `MediaSourcePicker.tsx`. Updated the three focused unit suites and the UX, acceptance and progress documents.
+
 Checkpoint after **Editor UX V5** (PO 2026-11-11 final).  
 Supersedes Style Dock and centered blocking Style Modal. Do **not** treat unit PASS as UI VERIFIED.
 

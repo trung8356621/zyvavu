@@ -1,125 +1,24 @@
-/* Scoped Puck bridge: preserve native actions/permissions, enlarge the shared surface. */
 .toolbar {
-  --zyvavu-actionbar-control-size: 36px;
-  --zyvavu-actionbar-icon-size: 20px;
-  --zyvavu-actionbar-gap: 4px;
-  --puck-actionbar-color-bg: var(--zyvavu-surface);
-  --puck-actionbar-color-text: var(--zyvavu-text);
-  --puck-actionbar-color-separator: var(--zyvavu-border);
-  --puck-actionbar-color-action-hover: var(--zyvavu-primary);
-  --puck-actionbar-color-action-active: var(--zyvavu-primary);
-  --puck-actionbar-color-action-disabled: var(--zyvavu-text);
-  --puck-actionbar-opacity-text: 1;
-  --puck-actionbar-radius: var(--mantine-radius-lg);
-  --puck-actionbar-action-space: 0;
-  --puck-actionbar-space-x: 0;
-  --puck-actionbar-space-y: 0;
-  --puck-actionbar-font-size: var(--mantine-font-size-sm);
-  --puck-color-focus-ring: var(--zyvavu-primary);
-
   color: var(--zyvavu-text);
   background: var(--zyvavu-surface);
   border: 1px solid var(--zyvavu-border);
-  border-radius: var(--mantine-radius-lg);
+  border-radius: var(--mantine-radius-md);
   box-shadow: var(--mantine-shadow-sm);
   display: flex;
-  flex-wrap: nowrap;
   align-items: center;
   gap: var(--mantine-spacing-xs);
-  padding: 4px;
+  padding: calc(var(--mantine-spacing-xs) / 2);
   width: max-content;
-  min-height: calc(var(--zyvavu-actionbar-control-size) + 8px);
   box-sizing: border-box;
 }
 
-.toolbar > div,
-.toolbar :global([class*='_ActionBar_']),
-.toolbar :global([class*='_ActionBar-group_']) {
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  gap: var(--zyvavu-actionbar-gap);
+.toolbar > button {
+  flex-shrink: 0;
+}
+
+.toolbar > span {
   min-width: 0;
-  min-height: var(--zyvavu-actionbar-control-size);
-  height: var(--zyvavu-actionbar-control-size);
-}
-
-.toolbar :global([class*='_ActionBar-separator_']) {
-  align-self: stretch;
-  height: auto;
-  min-height: calc(var(--zyvavu-actionbar-control-size) - 8px);
-  margin-block: 4px;
-}
-
-.toolbar button,
-.toolbar :global([class*='_ActionBarAction_']),
-.overflowTrigger {
-  box-sizing: border-box;
-  width: var(--zyvavu-actionbar-control-size);
-  height: var(--zyvavu-actionbar-control-size);
-  min-width: var(--zyvavu-actionbar-control-size);
-  min-height: var(--zyvavu-actionbar-control-size);
-  padding: 0;
-  margin: 0;
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--mantine-radius-md);
-  line-height: 0;
-  vertical-align: middle;
-}
-
-.toolbar button svg,
-.toolbar :global([class*='_ActionBarAction_']) svg,
-.overflowTrigger svg,
-.styleTrigger svg {
-  width: var(--zyvavu-actionbar-icon-size);
-  height: var(--zyvavu-actionbar-icon-size);
-  display: block;
-  flex-shrink: 0;
-}
-
-.toolbar :global([class*='_ActionBar-label_']) {
-  display: inline-flex;
-  align-items: center;
-  max-width: 10rem;
-  height: var(--zyvavu-actionbar-control-size);
-  overflow: hidden;
-  line-height: 1.2;
-}
-
-.overflowTrigger {
-  appearance: none;
-  background: transparent;
-  border: none;
-  color: inherit;
-  cursor: pointer;
-}
-
-.toolbar button:not(:disabled):not([aria-disabled='true']):hover,
-.toolbar button:not(:disabled):not([aria-disabled='true']):active,
-.toolbar[data-style-open='true'] button:has(.styleTrigger),
-.overflowTrigger:hover,
-.overflowTrigger:active {
-  background: var(--zyvavu-background);
-  color: var(--zyvavu-primary);
-}
-
-.styleTrigger {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--zyvavu-actionbar-icon-size);
-  height: var(--zyvavu-actionbar-icon-size);
-  line-height: 0;
-  pointer-events: none;
-}
-
-.toolbar button:focus-visible,
-.overflowTrigger:focus-visible {
-  outline: 2px solid var(--zyvavu-primary);
-  outline-offset: -2px;
+  max-width: 9rem;
 }
 
 /* Keep a thin selected outline while Style dialog is open — never a thick black frame. */
@@ -142,29 +41,5 @@
 @media (max-width: 765px) {
   .libraryHost:has([data-widget-pattern-library]) {
     --puck-user-sidebar-left-width: 100%;
-  }
-}
-
-/* Theme Builder plugin nav — compact; height/fill owned by EditorWorkspace shell. */
-.themeNavigation {
-  --zyvavu-builder-library-rail-width: 60px;
-  --zyvavu-builder-plugin-nav-width: min(11rem, 26vw);
-  --zyvavu-builder-library-width: var(--zyvavu-builder-library-rail-width);
-}
-.themeNavigation :global([class*='_PuckLayout-inner_']) {
-  --puck-pluginbar-width: 0px;
-  --puck-user-sidebar-left-width: var(--zyvavu-builder-library-rail-width);
-}
-.themeNavigation :global([class*='_PuckHeader-toggle_']) {
-  display: none;
-}
-@media (max-width: 637px) {
-  .themeNavigation :global([class*='_PuckLayout-nav_']) {
-    grid-area: sidenav;
-    width: 100%;
-    max-height: none;
-  }
-  .themeNavigation :global([class*='_PuckLayout-header_']) {
-    padding-inline-start: 0;
   }
 }

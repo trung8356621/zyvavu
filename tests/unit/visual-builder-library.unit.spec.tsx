@@ -25,6 +25,20 @@ beforeEach(() => {
   }
 })
 afterEach(() => { cleanup(); stylePreviewStore.clearPreview(); vi.unstubAllGlobals() })
+it('keeps category switching and delegates dismissal to the containing workspace panel', () => {
+  render(
+    <MantineProvider>
+      <WidgetPatternLibrary context="home" beforeOperation={() => true} embedded />
+    </MantineProvider>,
+  )
+  fireEvent.click(screen.getByRole('button', { name: 'Sections' }))
+  expect(screen.getByRole('button', { name: 'Insert Airy section' })).toBeTruthy()
+  expect(screen.queryByRole('button', { name: 'Collapse library' })).toBeNull()
+  expect(screen.queryByRole('separator', { name: 'Resize library' })).toBeNull()
+  fireEvent.keyDown(window, { key: 'Escape' })
+  expect(screen.getByRole('region', { name: 'Widget library' })).toBeTruthy()
+})
+
 it('renders registry categories and inserts a real pattern as one Puck operation', () => {
   render(
     <MantineProvider>

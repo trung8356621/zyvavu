@@ -15,7 +15,7 @@ import {
   Text,
   Tooltip,
 } from '@mantine/core'
-import { AlertCircle, ArrowLeft, Check, ChevronDown, Redo2, Save, Undo2 } from 'lucide-react'
+import { AlertCircle, ArrowLeft, ChevronDown, Redo2, Save, Undo2 } from 'lucide-react'
 
 import { PuckHost } from '@/components/builder/core/PuckHost'
 import type { EditorHistoryCoordinator } from '@/lib/style-engine/editor-history'
@@ -73,6 +73,7 @@ export function ThemeBuilder({
   const [saveError, setSaveError] = useState<string | null>(null)
   const [history, setHistory] = useState<EditorHistoryCoordinator | null>(null)
   const [historyTick, setHistoryTick] = useState(0)
+  const [previewControlTarget, setPreviewControlTarget] = useState<HTMLDivElement | null>(null)
   const bumpHistory = useCallback(() => setHistoryTick((n) => n + 1), [])
 
   const activeDoc = templates[selectedTemplate]
@@ -405,11 +406,7 @@ export function ThemeBuilder({
                 }}
               />
             </Tooltip>
-            {saveSuccess && (
-              <Text size="xs" c="teal" style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
-                <Check size={12} /> Saved
-              </Text>
-            )}
+            <div ref={setPreviewControlTarget} />
             <Button
               onClick={() => handleSave()}
               loading={isSaving}
@@ -461,6 +458,7 @@ export function ThemeBuilder({
           height="100%"
           themeConfig={themeConfig}
           templateContext={selectedTemplate}
+          previewControlTarget={previewControlTarget}
           onHistoryReady={setHistory}
         />
       </Box>
