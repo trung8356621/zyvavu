@@ -1,8 +1,17 @@
 'use client'
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ActionIcon, Box, Button, Group, Stack, Text, Tooltip } from '@mantine/core'
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { ActionIcon, Box, Button, Group, Select, SimpleGrid, Stack, Text, Tooltip } from '@mantine/core'
 import { Bookmark, ChevronRight, Minimize2, Paintbrush } from 'lucide-react'
+import type { ListPresentationConfig } from '@/lib/style-engine/list-presentation'
+import {
+  CATEGORY_LIST_STYLE_TARGETS,
+  getCategoryListTargetMeta,
+  readCategoryListTargetStyle,
+  writeCategoryListTargetStyle,
+  type CategoryListStyleTarget,
+} from '@/widgets/CategoryList/style-targets'
+import { IconPickerField } from '@/components/admin/icons/IconPicker'
 import { resolveSectionLayout, type SectionLayoutProps } from '@/lib/style-engine/effective-defaults'
 import { resetResponsiveSpacing, type ResponsiveBreakpoint } from '@/lib/style-engine/responsive-style'
 import {
@@ -19,8 +28,9 @@ import {
 } from '@/lib/style-engine/animation-replay'
 import {
   createStyleSessionSnapshot,
-  getCancelRestoreStyle,
   getDomainResetStyle,
+  restoreSessionOwnedPresentationTargets,
+  restoreSessionOwnedStyleDomains,
   stylesEqual,
   type StyleSessionSnapshot,
 } from '@/lib/style-engine/style-session-contract'
@@ -146,6 +156,7 @@ export interface WidgetStyleContextMenuProps {
   /** Semantic HTML tag from Atom Settings — independent of typography overrides. */
   htmlTag?: string | null
   currentStyle?: WidgetSemanticStyle
+  listPresentation?: ListPresentationConfig
   sectionLayoutProps?: SectionLayoutProps
   columnGap?: string
   themeConfig?: ThemeConfig
@@ -153,6 +164,11 @@ export interface WidgetStyleContextMenuProps {
   /** Direct-commit into Puck document (recordHistory handled by host). */
   onUpdateStyle: (
     style: WidgetSemanticStyle,
+    options?: { recordHistory?: boolean },
+  ) => boolean | void
+  /** CategoryList subpart styles — independent of root `props.style`. */
+  onUpdateListPresentation?: (
+    presentation: ListPresentationConfig,
     options?: { recordHistory?: boolean },
   ) => boolean | void
   /** Optional ActionBar-parity pattern save from the right-click domain launcher. */
@@ -177,19 +193,45 @@ function WidgetStyleSession({
   componentId,
   htmlTag = null,
   currentStyle = EMPTY_STYLE,
+  listPresentation,
   sectionLayoutProps,
   columnGap,
   themeConfig,
   inWorkspace = false,
   onUpdateStyle,
+  onUpdateListPresentation,
   onSaveAsPattern,
 }: WidgetStyleContextMenuProps) {
   const componentType = normalizeComponentType(rawComponentType)
+  const isCategoryList = componentType === 'CategoryList'
 
   const sessionRef = useRef<StyleSessionSnapshot>(
     createStyleSessionSnapshot(componentId, currentStyle, domain),
   )
-  const [liveStyle, setLiveStyle] = useState<WidgetSemanticStyle>(() => currentStyle || {})
+  const presentationSessionRef = useRef<ListPresentationConfig>(
+    JSON.parse(JSON.stringify(listPresentation || {})),
+  )
+  /** Domains/targets mutated in this Style session — Cancel restores only these. */
+  const dirtyDomainsRef = useRef<Set<StyleModalDomain>>(new Set())
+  const dirtyTargetsRef = useRef<Set<CategoryListStyleTarget>>(new Set())
+  const [widgetStyle, setWidgetStyle] = useState<WidgetSemanticStyle>(currentStyle)
+  const [livePresentation, setLivePresentation] = useState<ListPresentationConfig>(
+    () => listPresentation || {},
+  )
+  const [documentValues, setDocumentValues] = useState({ currentStyle, listPresentation })
+  // Reconcile host edits before rendering the next target or recording its baseline.
+  if (documentValues.currentStyle !== currentStyle || documentValues.listPresentation !== listPresentation) {
+    setDocumentValues({ currentStyle, listPresentation })
+    if (documentValues.currentStyle !== currentStyle) setWidgetStyle(currentStyle)
+    if (documentValues.listPresentation !== listPresentation) {
+      setLivePresentation(listPresentation || {})
+    }
+  }
+  const [styleTarget, setStyleTarget] = useState<CategoryListStyleTarget>('container')
+  const liveStyle = useMemo(
+    () => isCategoryList ? readCategoryListTargetStyle(livePresentation, styleTarget) : widgetStyle,
+    [isCategoryList, livePresentation, styleTarget, widgetStyle],
+  )
   const [spacingBreakpoint, setSpacingBreakpoint] = useState<ResponsiveBreakpoint>('desktop')
   const [validationError, setValidationError] = useState<string | null>(null)
   const [mediaPickerOpened, setMediaPickerOpened] = useState(false)
@@ -206,10 +248,12 @@ function WidgetStyleSession({
   /** UX V5 — collapse hides chrome but keeps session/domain/target. */
   const [designCollapsed, setDesignCollapsed] = useState(false)
 
-  const domains = useMemo(
-    () => orderStyleToolbarDomains(getStyleModalDomains(componentType, componentVariant)),
-    [componentType, componentVariant],
-  )
+  const targetMeta = isCategoryList ? getCategoryListTargetMeta(styleTarget) : null
+  const domains = useMemo(() => {
+    const all = orderStyleToolbarDomains(getStyleModalDomains(componentType, componentVariant))
+    if (!isCategoryList || !targetMeta) return all
+    return all.filter((d) => targetMeta.domains.includes(d))
+  }, [componentType, componentVariant, isCategoryList, targetMeta])
   /** Focused domain editor — never the old all-domains Accordion. */
   const [activeDomain, setActiveDomain] = useState<StyleModalDomain | null>(
     domain || null,
@@ -223,14 +267,17 @@ function WidgetStyleSession({
   }
 
   const focusedDomain = activeDomain && domains.includes(activeDomain) ? activeDomain : null
+  const scopeRef = useRef({ target: styleTarget, domain: focusedDomain })
 
-  // External document sync (Undo/Redo / host refresh) → panel values.
-  useEffect(() => {
-    if (!stylesEqual(liveStyle, currentStyle)) {
-      setLiveStyle(currentStyle || {})
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: follow host SoT only
-  }, [currentStyle])
+  useLayoutEffect(() => {
+    const scope = scopeRef.current
+    if (scope.target === styleTarget && scope.domain === focusedDomain) return
+    scopeRef.current = { target: styleTarget, domain: focusedDomain }
+    sessionRef.current = createStyleSessionSnapshot(componentId, liveStyle, focusedDomain)
+    presentationSessionRef.current = JSON.parse(JSON.stringify(livePresentation))
+    dirtyDomainsRef.current.clear()
+    dirtyTargetsRef.current.clear()
+  }, [componentId, focusedDomain, livePresentation, liveStyle, styleTarget])
 
   const replayCleanup = useRef<(() => void) | null>(null)
   const stopReplay = useCallback(() => {
@@ -320,11 +367,26 @@ function WidgetStyleSession({
       }
       setValidationError(null)
       paletteLiveRef.current = next
-      setLiveStyle(next)
+      if (focusedDomain) dirtyDomainsRef.current.add(focusedDomain)
+      if (isCategoryList && onUpdateListPresentation) {
+        dirtyTargetsRef.current.add(styleTarget)
+        const nextPresentation = writeCategoryListTargetStyle(livePresentation, styleTarget, next)
+        setLivePresentation(nextPresentation)
+        if (onUpdateListPresentation(nextPresentation, options) === false) return false
+        return true
+      }
       if (onUpdateStyle(next, options) === false) return false
+      setWidgetStyle(next)
       return true
     },
-    [onUpdateStyle],
+    [
+      focusedDomain,
+      isCategoryList,
+      livePresentation,
+      onUpdateListPresentation,
+      onUpdateStyle,
+      styleTarget,
+    ],
   )
 
   const updatePartial = useCallback(
@@ -351,13 +413,61 @@ function WidgetStyleSession({
     [liveStyle, commitStyle],
   )
 
+  /**
+   * Close / X / Escape = navigation only. Live document edits already committed
+   * stay; never treat panel close as Cancel/rollback.
+   */
+  const handleCloseSession = useCallback(() => {
+    onClose()
+  }, [onClose])
+
+  /**
+   * Explicit Cancel — restore only session-owned dirty paths onto the current document.
+   * Prior closed-session commits (e.g. Parent after X) stay on `currentStyle`/`listPresentation`.
+   */
   const handleCancelSession = useCallback(() => {
-    const restore = getCancelRestoreStyle(sessionRef.current)
-    if (!stylesEqual(restore, liveStyle)) {
-      commitStyle(restore)
+    if (isCategoryList && onUpdateListPresentation) {
+      const restored = restoreSessionOwnedPresentationTargets({
+        baseline: presentationSessionRef.current as Record<string, unknown>,
+        current: (listPresentation || livePresentation) as Record<string, unknown>,
+        dirtyTargets: dirtyTargetsRef.current,
+      }) as ListPresentationConfig
+      dirtyTargetsRef.current = new Set()
+      dirtyDomainsRef.current = new Set()
+      if (!stylesEqual(restored as WidgetSemanticStyle, livePresentation as WidgetSemanticStyle)) {
+        setLivePresentation(restored)
+        onUpdateListPresentation(restored)
+      }
+      onClose()
+      return
+    }
+
+    const restored = restoreSessionOwnedStyleDomains({
+      baseline: sessionRef.current.style,
+      current: currentStyle || liveStyle,
+      dirtyDomains: dirtyDomainsRef.current,
+    })
+    dirtyDomainsRef.current = new Set()
+    if (!stylesEqual(restored, liveStyle)) {
+      // Write the rollback directly so it does not mark the domain dirty again.
+      const validation = validateUniversalStyle(restored)
+      if (validation.valid) {
+        setValidationError(null)
+        setWidgetStyle(restored)
+        onUpdateStyle(restored)
+      }
     }
     onClose()
-  }, [commitStyle, liveStyle, onClose])
+  }, [
+    currentStyle,
+    isCategoryList,
+    listPresentation,
+    livePresentation,
+    liveStyle,
+    onClose,
+    onUpdateListPresentation,
+    onUpdateStyle,
+  ])
 
   const handleResetDomain = useCallback(
     (target: StyleModalDomain) => {
@@ -730,17 +840,19 @@ function WidgetStyleSession({
     <>
       <SharedDraggableModal
         opened={opened}
-        onClose={handleCancelSession}
+        onClose={handleCloseSession}
         title={panelTitle}
         subtitle={
           focusedDomain
-            ? 'Live preview · Cancel restores session · Reset clears this domain'
+            ? inWorkspace
+              ? 'Edits apply live · Cancel restores session · Reset clears this domain'
+              : 'Edits apply live · Close keeps · Cancel restores session · Reset clears this domain'
             : 'Choose a design domain'
         }
         headerExtra={
           <Group gap={4} wrap="nowrap">
             <Paintbrush size={15} color="var(--mantine-color-teal-7, #0e6b66)" />
-            <Tooltip label="Collapse Design panel">
+            {!inWorkspace && <Tooltip label="Collapse Design panel">
               <ActionIcon
                 size="sm"
                 variant="subtle"
@@ -750,15 +862,15 @@ function WidgetStyleSession({
               >
                 <Minimize2 size={14} />
               </ActionIcon>
-            </Tooltip>
+            </Tooltip>}
           </Group>
         }
         width={panelWidth}
-        mode="floating"
+        mode={inWorkspace ? 'docked' : 'floating'}
         withinPortal={!inWorkspace}
         withBackdrop={false}
         draggable={false}
-        showCloseButton={true}
+        showCloseButton={!inWorkspace}
         closeOnClickOutside={false}
         initialPosition={
           typeof window === 'undefined'
@@ -775,29 +887,19 @@ function WidgetStyleSession({
             ? { position: 'absolute', top: 0, right: 0, bottom: 0, left: 'auto', maxWidth: '100%', maxHeight: '100%' }
             : { height: 'calc(100dvh - 68px)', maxHeight: 'calc(100dvh - 68px)' }),
         }}
-        closeOnEscape={!mediaPickerOpened && !animationPickerOpened && !colorModalTarget}
+        closeOnEscape={!inWorkspace && !mediaPickerOpened && !animationPickerOpened && !colorModalTarget}
         zIndex={ADMIN_OVERLAY_LAYERS.STYLE_MODAL}
         footer={
-          <Group justify="space-between" w="100%" wrap="nowrap">
-            <Text size="xs" c="dimmed" data-style-modal-target={componentType}>
-              Editing {widgetLabel}
-              {domainLabel ? ` · ${domainLabel}` : ''}
-            </Text>
-            <Group gap="xs">
-              <Button variant="default" size="xs" onClick={handleCancelSession}>
-                Hủy / Cancel
+          <SimpleGrid cols={2} spacing="xs" w="100%">
+            <Button variant="default" size="xs" onClick={handleCancelSession}>
+              Hủy / Cancel
+            </Button>
+            {focusedDomain && (
+              <Button variant="subtle" size="xs" onClick={() => handleResetDomain(focusedDomain)}>
+                Reset domain
               </Button>
-              {focusedDomain && (
-                <Button
-                  variant="subtle"
-                  size="sm"
-                  onClick={() => handleResetDomain(focusedDomain)}
-                >
-                  Reset domain
-                </Button>
-              )}
-            </Group>
-          </Group>
+            )}
+          </SimpleGrid>
         }
       >
         <Stack gap="xs">
@@ -806,6 +908,71 @@ function WidgetStyleSession({
               {validationError}
             </Text>
           )}
+          {isCategoryList ? (
+            <Select
+              size="sm"
+              label="Style Target"
+              data={CATEGORY_LIST_STYLE_TARGETS.map((t) => ({ value: t.id, label: t.label }))}
+              value={styleTarget}
+              onChange={(value) => {
+                setStyleTarget((value as CategoryListStyleTarget) || 'container')
+                setActiveDomain(null)
+              }}
+            />
+          ) : null}
+          {isCategoryList && (styleTarget === 'marker' || styleTarget === 'chevron') ? (
+            <Stack gap="xs">
+              {styleTarget === 'marker' ? (
+                <>
+                  <Select
+                    size="sm"
+                    label="Marker mode"
+                    value={livePresentation.marker?.mode || 'none'}
+                    data={[
+                      { value: 'none', label: 'None' },
+                      { value: 'icon', label: 'Icon' },
+                      { value: 'number', label: 'Number' },
+                    ]}
+                    onChange={(mode) => {
+                      const next = {
+                        ...livePresentation,
+                        marker: {
+                          ...(livePresentation.marker || {}),
+                          mode: (mode as 'none' | 'icon' | 'number') || 'none',
+                        },
+                      }
+                      dirtyTargetsRef.current.add('marker')
+                      setLivePresentation(next)
+                      onUpdateListPresentation?.(next)
+                    }}
+                  />
+                  {(livePresentation.marker?.mode || 'none') === 'icon' ? (
+                    <IconPickerField
+                      label="Marker icon"
+                      value={livePresentation.marker?.icon || null}
+                      onChange={(icon) => {
+                        const next = {
+                          ...livePresentation,
+                          marker: {
+                            ...(livePresentation.marker || {}),
+                            mode: 'icon' as const,
+                            icon,
+                          },
+                        }
+                        dirtyTargetsRef.current.add('marker')
+                        setLivePresentation(next)
+                        onUpdateListPresentation?.(next)
+                      }}
+                    />
+                  ) : null}
+                </>
+              ) : (
+                <Text size="xs" c="dimmed">
+                  Chevron sizing and color use the domains below. Marker stays independent.
+                </Text>
+              )}
+            </Stack>
+          ) : null}
           {!focusedDomain ? (
             <Stack gap="xs" data-testid="style-domain-launcher">
               <Text size="sm" c="dimmed">

@@ -3,24 +3,31 @@
 import { resolveWidgetStyles } from '@/lib/style-engine/serializer'
 import { animationAttributes } from '@/lib/style-engine/animation-presets'
 
-import React from 'react'
-import type { ComponentConfig } from '@puckeditor/core'
+import React, { useMemo } from 'react'
+import type { ComponentConfig, CustomField } from '@puckeditor/core'
 import { createUsePuck } from '@puckeditor/core'
+import { Select, Text } from '@mantine/core'
 
 const usePuck = createUsePuck()
 import { ItemContextProvider, type LoopItemRecord } from '@/lib/theme-engine/item-context'
+import { resolveSlotItems } from '@/lib/theme-engine/document-slots'
 import { ItemTitleFrontend } from '@/widgets/ItemTitle/frontend'
 import { ItemImageFrontend } from '@/widgets/ItemImage/frontend'
 import { ItemExcerptFrontend } from '@/widgets/ItemExcerpt/frontend'
 import { ItemLinkFrontend } from '@/widgets/ItemLink/frontend'
+import { ItemDateFrontend } from '@/widgets/ItemDate/frontend'
 import { TextBlockFrontend } from '@/widgets/TextBlock/frontend'
+import { useLoopItemTemplates } from '@/lib/theme-engine/loop-item-templates-context'
+import { LoopItemEditorPreview } from '@/lib/theme-engine/loop-item-editor-preview'
 import type { CollectionLoopProps } from './frontend'
+import { isProductSchemaSupported } from '@/lib/theme-engine/normalized-item'
 
 const SAFE_PREVIEW_COMPONENTS: Record<string, React.ComponentType<any>> = {
   ItemTitle: ItemTitleFrontend,
   ItemImage: ItemImageFrontend,
   ItemExcerpt: ItemExcerptFrontend,
   ItemLink: ItemLinkFrontend,
+  ItemDate: ItemDateFrontend,
   TextBlock: TextBlockFrontend,
 }
 
@@ -31,7 +38,7 @@ const EDITOR_SAMPLE_RECORDS: LoopItemRecord[] = [
     excerpt:
       'Khám phá giải pháp chuyển đổi mô hình vận hành và cải thiện 40% hiệu suất chuyền gia công hiện đại.',
     url: '#',
-    date: '15/10/2026',
+    date: '2026-10-15',
     category: 'Công nghệ',
   },
   {
@@ -40,7 +47,7 @@ const EDITOR_SAMPLE_RECORDS: LoopItemRecord[] = [
     excerpt:
       'Tổng hợp đánh giá chuyên sâu về chuỗi cung ứng toàn cầu và bộ tiêu chuẩn kiểm định châu Âu mới.',
     url: '#',
-    date: '14/10/2026',
+    date: '2026-10-14',
     category: 'Báo cáo',
   },
   {
@@ -49,7 +56,7 @@ const EDITOR_SAMPLE_RECORDS: LoopItemRecord[] = [
     excerpt:
       'Ứng dụng năng lượng tái tạo và chứng chỉ xanh giúp gia tăng giá trị thương hiệu đối tác quốc tế.',
     url: '#',
-    date: '12/10/2026',
+    date: '2026-10-12',
     category: 'Vận hành',
   },
   {
@@ -58,10 +65,46 @@ const EDITOR_SAMPLE_RECORDS: LoopItemRecord[] = [
     excerpt:
       'Mạng lưới kho bãi kết nối trực tiếp cảng nước sâu giúp rút ngắn thời gian giao vận xuống 24 giờ.',
     url: '#',
-    date: '10/10/2026',
+    date: '2026-10-10',
     category: 'Logistics',
   },
 ]
+
+function LoopItemTemplateFieldControl({
+  value,
+  onChange,
+  readOnly,
+}: {
+  value: string | undefined
+  onChange: (value: string | undefined) => void
+  readOnly?: boolean
+}) {
+  const { items } = useLoopItemTemplates()
+  const data = items.map((item) => ({ value: item.id, label: item.name }))
+  return (
+    <Select
+      label="Loop Item Template"
+      description="Required for new Collection Loops. Item presentation comes from this shared template."
+      data={data}
+      value={value || null}
+      onChange={(next) => onChange(next || undefined)}
+      placeholder={data.length ? 'Select a Loop Item Template' : 'Create a Loop Item via + first'}
+      disabled={readOnly || data.length === 0}
+      clearable
+      searchable
+      size="sm"
+      comboboxProps={{ withinPortal: true }}
+    />
+  )
+}
+
+const loopItemTemplateField: CustomField<string | undefined> = {
+  type: 'custom',
+  label: 'Loop Item Template',
+  render: ({ value, onChange, readOnly }) => (
+    <LoopItemTemplateFieldControl value={value} onChange={onChange} readOnly={readOnly} />
+  ),
+}
 
 export const collectionLoopEditor: ComponentConfig<CollectionLoopProps> = {
   label: 'Collection Loop',
@@ -83,17 +126,49 @@ export const collectionLoopEditor: ComponentConfig<CollectionLoopProps> = {
       label: 'Data Source',
       options: [
         { label: 'Posts (Blog & Articles)', value: 'posts' },
-        { label: 'Products (Pending Catalog)', value: 'products' },
+        { label: 'Categories', value: 'categories' },
+        {
+          label: isProductSchemaSupported()
+            ? 'Products'
+            : 'Products (Pending Catalog)',
+          value: 'products',
+        },
+      ],
+    },
+    loopItemTemplateId: loopItemTemplateField,
+    layout: {
+      type: 'select',
+      label: 'Layout',
+      options: [
+        { label: 'Grid', value: 'grid' },
+        { label: 'List', value: 'list' },
       ],
     },
     columns: {
       type: 'select',
-      label: 'Grid Columns',
+      label: 'Desktop Columns',
       options: [
-        { label: '1 Column (List)', value: 1 },
+        { label: '1 Column', value: 1 },
         { label: '2 Columns', value: 2 },
         { label: '3 Columns', value: 3 },
         { label: '4 Columns', value: 4 },
+      ],
+    },
+    columnsTablet: {
+      type: 'select',
+      label: 'Tablet Columns',
+      options: [
+        { label: '1 Column', value: 1 },
+        { label: '2 Columns', value: 2 },
+        { label: '3 Columns', value: 3 },
+      ],
+    },
+    columnsMobile: {
+      type: 'select',
+      label: 'Mobile Columns',
+      options: [
+        { label: '1 Column', value: 1 },
+        { label: '2 Columns', value: 2 },
       ],
     },
     gap: {
@@ -122,6 +197,8 @@ export const collectionLoopEditor: ComponentConfig<CollectionLoopProps> = {
       options: [
         { label: 'Newest First', value: 'newest' },
         { label: 'Oldest First', value: 'oldest' },
+        { label: 'Title A–Z', value: 'title-asc' },
+        { label: 'Title Z–A', value: 'title-desc' },
       ],
     },
     emptyText: {
@@ -138,12 +215,32 @@ export const collectionLoopEditor: ComponentConfig<CollectionLoopProps> = {
       },
       getItemSummary: (item) => item.title || 'Untitled Item',
     },
-    itemTemplate: { type: 'slot', disallow: ['Section'] },
+    // Legacy inline slot field retained so existing documents do not lose stored slot data on save.
+    // New authoring uses loopItemTemplateId only; library no longer offers Item* widgets.
+    itemTemplate: {
+      type: 'slot',
+      label: 'Legacy inline item template (compat — do not use for new designs)',
+      disallow: [
+        'Section',
+        'CollectionLoop',
+        'PostCollection',
+        'FeaturedPost',
+        'RecentPosts',
+        'ItemTitle',
+        'ItemImage',
+        'ItemExcerpt',
+        'ItemLink',
+        'ItemDate',
+      ],
+    },
   },
   defaultProps: {
     mode: 'dynamic',
     source: 'posts',
+    layout: 'grid',
     columns: 3,
+    columnsTablet: 2,
+    columnsMobile: 1,
     gap: '24px',
     heading: '',
     limit: 6,
@@ -151,6 +248,7 @@ export const collectionLoopEditor: ComponentConfig<CollectionLoopProps> = {
     sort: 'newest',
     emptyText: 'Chưa có bài viết nào.',
     manualItems: [],
+    loopItemTemplateId: '',
   },
   render: (props: any) => <CollectionLoopEditorCanvas {...props} />,
 }
@@ -161,16 +259,25 @@ function CollectionLoopEditorCanvas({
   heading,
   mode = 'dynamic',
   source = 'posts',
+  layout = 'grid',
   columns = 3,
   gap = '24px',
   manualItems = [],
+  loopItemTemplateId = '',
   itemTemplate: ItemTemplateSlot,
 }: any) {
-  const zones = usePuck((s) => s.appState?.data?.zones)
-  const zoneKey = `${id}:itemTemplate`
-  const templateItems: any[] = zones?.[zoneKey] || []
+  const data = usePuck((s) => s.appState?.data)
+  const { documents, items: loopMetas } = useLoopItemTemplates()
+  const templateItems = useMemo(
+    () => resolveSlotItems(data, id, 'itemTemplate'),
+    [data, id],
+  )
 
-  // Active records for preview
+  const linkedId = String(loopItemTemplateId || '').trim()
+  const linkedDoc = linkedId ? documents[linkedId] : null
+  const linkedMeta = loopMetas.find((item) => item.id === linkedId)
+  const legacyInline = !linkedDoc && templateItems.length > 0
+
   const activeRecords: LoopItemRecord[] =
     mode === 'manual' && manualItems && manualItems.length > 0
       ? manualItems.map((m: any, idx: number) => ({
@@ -181,8 +288,9 @@ function CollectionLoopEditorCanvas({
         }))
       : EDITOR_SAMPLE_RECORDS
 
+  const previewCount = layout === 'list' ? 2 : Math.max(2, Number(columns) || 3)
   const prototypeRecord = activeRecords[0]
-  const previewRecords = activeRecords.slice(1, Math.max(2, Number(columns)))
+  const previewRecords = activeRecords.slice(1, previewCount)
 
   return (
     <div
@@ -197,7 +305,6 @@ function CollectionLoopEditorCanvas({
         ...resolveWidgetStyles(semanticStyle),
       }}
     >
-      {/* Editor Info Bar */}
       <div
         style={{
           padding: '0 16px 12px',
@@ -226,11 +333,16 @@ function CollectionLoopEditorCanvas({
             Collection Loop
           </span>
           <span style={{ fontSize: '13px', fontWeight: 600, color: '#334155' }}>
-            Mode: {mode === 'dynamic' ? `Dynamic (${source})` : 'Manual Items'} • {columns} Columns
+            Mode: {mode === 'dynamic' ? `Dynamic (${source})` : 'Manual'} • {layout} • {columns}{' '}
+            cols
           </span>
         </div>
         <span style={{ fontSize: '12px', color: '#64748b' }}>
-          Thiết kế 1 Prototype Card bên trái — các thẻ Preview bên phải tự động lặp theo
+          {linkedDoc
+            ? `Template: ${linkedMeta?.name || linkedId} (shared reference)`
+            : legacyInline
+              ? 'Legacy inline item template — select a Loop Item Template to migrate'
+              : 'Select a Loop Item Template in settings'}
         </span>
       </div>
 
@@ -247,15 +359,23 @@ function CollectionLoopEditorCanvas({
         </h2>
       )}
 
+      {legacyInline && (
+        <Text size="xs" c="orange" px="md" mb="sm">
+          This Collection Loop still uses a legacy inline item design. Choose a Loop Item Template
+          above; the inline design is kept until you do so (not discarded).
+        </Text>
+      )}
+
       <div
         style={{
-          display: 'grid',
-          gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+          display: layout === 'list' ? 'flex' : 'grid',
+          flexDirection: layout === 'list' ? 'column' : undefined,
+          gridTemplateColumns:
+            layout === 'list' ? undefined : `repeat(${columns}, minmax(0, 1fr))`,
           gap: gap || '24px',
           padding: '0 16px',
         }}
       >
-        {/* 1. Prototype Card: editable dropzone */}
         <div
           style={{
             border: '2px dashed #0e6b66',
@@ -284,18 +404,27 @@ function CollectionLoopEditorCanvas({
               letterSpacing: '0.05em',
             }}
           >
-            ★ PROTOTYPE TEMPLATE (Editable)
+            {linkedDoc
+              ? '★ Linked Loop Item Template (edit via Template Type → Loop Item)'
+              : '★ Loop Item Template (Editable legacy slot)'}
           </div>
 
           <ItemContextProvider item={prototypeRecord}>
-            {ItemTemplateSlot ? (
+            {linkedDoc ? (
+              <LoopItemEditorPreview
+                document={linkedDoc}
+                dataContext={{ type: 'home', item: prototypeRecord }}
+              />
+            ) : ItemTemplateSlot ? (
               <ItemTemplateSlot />
             ) : (
-              <div style={{ color: '#94a3b8', fontSize: '13px' }}>Slot: Drop widgets here</div>
+              <div style={{ color: '#94a3b8', fontSize: '13px' }}>
+                Select a Loop Item Template in widget settings
+              </div>
             )}
           </ItemContextProvider>
 
-          {templateItems.length === 0 && (
+          {!linkedDoc && templateItems.length === 0 && (
             <div
               style={{
                 marginTop: '12px',
@@ -308,12 +437,11 @@ function CollectionLoopEditorCanvas({
                 textAlign: 'center',
               }}
             >
-              Kéo thả các Item widgets (ItemTitle, ItemImage, ItemExcerpt, ItemLink...) vào đây.
+              Create a Loop Item via the Theme Builder + menu, then select it here.
             </div>
           )}
         </div>
 
-        {/* 2. Repeated Preview Cards */}
         {previewRecords.map((sampleRecord, sIdx) => (
           <div
             key={sampleRecord.id || sIdx}
@@ -342,17 +470,22 @@ function CollectionLoopEditorCanvas({
                 marginBottom: '12px',
               }}
             >
-              Preview #{sIdx + 2} (Auto-repeated)
+              Preview #{sIdx + 2} (not saved)
             </div>
 
             <ItemContextProvider item={sampleRecord}>
-              {templateItems.length > 0 ? (
+              {linkedDoc ? (
+                <LoopItemEditorPreview
+                  document={linkedDoc}
+                  dataContext={{ type: 'home', item: sampleRecord }}
+                />
+              ) : templateItems.length > 0 ? (
                 templateItems.map((child: any, cIdx: number) => {
                   const Component = SAFE_PREVIEW_COMPONENTS[child.type]
                   if (!Component) return null
                   return (
                     <Component
-                      key={child.props?.id || cIdx}
+                      key={`${sampleRecord.id}-${child.props?.id || cIdx}`}
                       {...child.props}
                       dataContext={{ type: 'home', item: sampleRecord }}
                     />
@@ -372,7 +505,7 @@ function CollectionLoopEditorCanvas({
                     textAlign: 'center',
                   }}
                 >
-                  (Lặp theo Prototype)
+                  (Repeats Loop Item Template)
                 </div>
               )}
             </ItemContextProvider>

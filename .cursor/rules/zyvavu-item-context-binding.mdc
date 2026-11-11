@@ -1,0 +1,9 @@
+---
+description: Require Zyvavu Item Context Binding skill for Loop Item / CollectionLoop / Atom binding work
+globs: src/widgets/CollectionLoop/**/*,src/widgets/Item*/**/*,src/widgets/atoms/**/*,src/lib/theme-engine/normalized-item.ts,src/lib/theme-engine/item-binding.ts,src/lib/theme-engine/item-context.tsx,src/lib/theme-engine/loop-item*.ts,src/lib/theme-engine/loop-item*.tsx,src/lib/theme-engine/category-query.ts,src/lib/theme-engine/post-records.ts,src/lib/theme-engine/post-query.ts,src/lib/theme-engine/policy.ts,src/components/admin/theme-builder/ThemeBuilder.tsx,src/components/admin/theme-builder/ThemeBuilderView.tsx,tests/unit/loop-item*.ts,tests/unit/loop-item*.tsx,tests/unit/collection-loop*.ts,tests/unit/collection-loop*.tsx
+alwaysApply: false
+---
+
+Before editing matching files, read and follow `.agents/skills/zyvavu-item-context-binding/SKILL.md`.
+
+Do not invent Item* authoring widgets, a second Style Engine, root-Section requirements for `loopItem`, or name-based template migrations. Link to the skill; do not duplicate its full contract here.

@@ -16,6 +16,15 @@ import {
   OBJECT_FIT_OPTIONS,
   OBJECT_POSITION_OPTIONS,
 } from './media-props'
+import {
+  applyBindingFieldVisibility,
+  isActiveItemBinding,
+  MEDIA_BINDING_OPTIONS,
+  TEXT_BINDING_OPTIONS,
+  URL_BINDING_OPTIONS,
+} from '@/lib/theme-engine/item-binding'
+import { bindingPreviewForTemplate } from '@/lib/theme-engine/binding-preview'
+import { useBuilderTemplateContext } from '@/components/builder/core/BuilderTemplateContext'
 
 export {
   boundHeadingTagField,
@@ -175,6 +184,24 @@ const mediaPresentationFields = {
   caption: { type: 'text' as const, label: 'Caption' },
 }
 
+const textBindingField = {
+  type: 'select' as const,
+  label: 'Text binding',
+  options: TEXT_BINDING_OPTIONS,
+}
+
+const hrefBindingField = {
+  type: 'select' as const,
+  label: 'URL binding',
+  options: URL_BINDING_OPTIONS,
+}
+
+const srcBindingField = {
+  type: 'select' as const,
+  label: 'Media binding',
+  options: MEDIA_BINDING_OPTIONS,
+}
+
 function atomFields(type: string, fixed: ReturnType<typeof systemDescriptor>) {
   if (fixed?.atom === 'Heading') {
     return { ...documentBoundHeadingFields }
@@ -182,10 +209,15 @@ function atomFields(type: string, fixed: ReturnType<typeof systemDescriptor>) {
   if (fixed) return {}
   if (type === 'Image') {
     // Single compact Image Editor panel. Link → ActionBar Link Editor.
-    return { src: imageEditorField }
+    return {
+      srcBinding: srcBindingField,
+      hrefBinding: hrefBindingField,
+      src: imageEditorField,
+    }
   }
   if (type === 'Video') {
     return {
+      srcBinding: srcBindingField,
       src: videoSourceField,
       posterUrl: videoPosterField,
       alt: { type: 'text' as const, label: 'Accessible label' },
@@ -224,10 +256,18 @@ function atomFields(type: string, fixed: ReturnType<typeof systemDescriptor>) {
       },
     }
   }
+  if (type === 'Button') {
+    // Label → canvas double-click TipTap. Icon → Button Design. Link → ActionBar.
+    return {
+      textBinding: textBindingField,
+      hrefBinding: hrefBindingField,
+    }
+  }
   return {
+    textBinding: textBindingField,
     text: {
       type: 'textarea' as const,
-      label: type === 'Button' ? 'Label' : 'Content',
+      label: 'Content',
       contentEditable: false,
     },
     ...(type === 'Heading'
@@ -237,8 +277,67 @@ function atomFields(type: string, fixed: ReturnType<typeof systemDescriptor>) {
         }
       : {}),
     ...(type === 'Text' ? { style: puckTypographyStyleField } : {}),
-    // Button link → ActionBar Link Editor (href/newTab props retained for save/reload).
   }
+}
+
+function BoundAtomCanvas({
+  type,
+  fixed,
+  Renderer,
+  props,
+}: {
+  type: string
+  fixed: ReturnType<typeof systemDescriptor>
+  Renderer: ReturnType<typeof createAtomRenderer>
+  props: React.ComponentProps<ReturnType<typeof createAtomRenderer>>
+}) {
+  const templateContext = useBuilderTemplateContext()
+  if (fixed?.atom === 'Image') {
+    return (
+      <AtomPresentation
+        id={props.id}
+        style={props.style}
+        kind="Image"
+        text="Featured media preview"
+      />
+    )
+  }
+  const textBound = isActiveItemBinding(props.textBinding)
+  const hrefBound = isActiveItemBinding(props.hrefBinding)
+  const srcBound = isActiveItemBinding(props.srcBinding)
+  const needsBindingPreview = textBound || hrefBound || srcBound
+  const dataContext = fixed
+    ? {
+        type: 'single' as const,
+        document: {
+          title: '[Document Title]',
+          createdAt: '2026-01-01',
+          categories: [{ title: '[Category]' }],
+          featuredImage: { url: 'https://placehold.co/640x360/e2e8f0/334155?text=Featured' },
+        },
+        archive: {
+          title: '[Category Title]',
+          description: '[Category Description]',
+        },
+      }
+    : needsBindingPreview
+      ? bindingPreviewForTemplate(templateContext, props.dataContext)
+      : props.dataContext
+
+  const node = <Renderer {...props} dataContext={dataContext} />
+  // Only textBinding blocks inline label/content edit; hrefBinding keeps Button label editable.
+  if (!canInlineEditAtom(type, Boolean(fixed) || textBound)) return node
+  return (
+    <InlineEditableAtom
+      kind={type}
+      id={String(props.id || '')}
+      text={props.text}
+      tag={props.tag}
+      style={props.style}
+    >
+      {node}
+    </InlineEditableAtom>
+  )
 }
 
 export const atomEditors = Object.fromEntries(
@@ -252,59 +351,29 @@ export const atomEditors = Object.fromEntries(
             tag: type === 'CategoryTitle' ? 'h2' : 'h1',
           }
         : manifest.defaultProps
+    const baseFields = atomFields(type, fixed)
     return [
       type,
       {
         manifest,
         config: {
           label: manifest.label,
-          fields: atomFields(type, fixed),
+          fields: baseFields,
           defaultProps: defaults,
-          render: (props: React.ComponentProps<typeof Renderer>) => {
-            if (fixed?.atom === 'Image') {
-              return (
-                <AtomPresentation
-                  id={props.id}
-                  style={props.style}
-                  kind="Image"
-                  text="Featured media preview"
-                />
-              )
-            }
-            const node = (
-              <Renderer
-                {...props}
-                dataContext={
-                  fixed
-                    ? {
-                        type: 'single',
-                        document: {
-                          title: '[Document Title]',
-                          createdAt: '2026-01-01',
-                          categories: [{ title: '[Category]' }],
-                        },
-                        archive: {
-                          title: '[Category Title]',
-                          description: '[Category Description]',
-                        },
-                      }
-                    : undefined
-                }
-              />
-            )
-            if (!canInlineEditAtom(type, Boolean(fixed))) return node
-            return (
-              <InlineEditableAtom
-                kind={type}
-                id={String(props.id || '')}
-                text={props.text}
-                tag={props.tag}
-                style={props.style}
-              >
-                {node}
-              </InlineEditableAtom>
-            )
+          resolveFields: (
+            data: { props?: Record<string, unknown> },
+            params: { fields: typeof baseFields },
+          ) => {
+            if (fixed) return params.fields
+            return applyBindingFieldVisibility(params.fields as Record<string, unknown>, {
+              textBinding: data.props?.textBinding as string | undefined,
+              hrefBinding: data.props?.hrefBinding as string | undefined,
+              srcBinding: data.props?.srcBinding as string | undefined,
+            }) as typeof baseFields
           },
+          render: (props: React.ComponentProps<typeof Renderer>) => (
+            <BoundAtomCanvas type={type} fixed={fixed} Renderer={Renderer} props={props} />
+          ),
         },
       },
     ]

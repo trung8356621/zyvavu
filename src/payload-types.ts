@@ -181,8 +181,35 @@ export interface Category {
   id: number;
   title: string;
   slug: string;
+  /**
+   * Optional parent category for hierarchical navigation lists.
+   */
+  parent?: (number | null) | Category;
+  /**
+   * Optional category thumbnail from the Media Library.
+   */
+  thumbnail?: (number | null) | Media;
   updatedAt: string;
   createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "media".
+ */
+export interface Media {
+  id: number;
+  alt: string;
+  updatedAt: string;
+  createdAt: string;
+  url?: string | null;
+  thumbnailURL?: string | null;
+  filename?: string | null;
+  mimeType?: string | null;
+  filesize?: number | null;
+  width?: number | null;
+  height?: number | null;
+  focalX?: number | null;
+  focalY?: number | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -276,25 +303,6 @@ export interface Page {
   updatedAt: string;
   createdAt: string;
   _status?: ('draft' | 'published') | null;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "media".
- */
-export interface Media {
-  id: number;
-  alt: string;
-  updatedAt: string;
-  createdAt: string;
-  url?: string | null;
-  thumbnailURL?: string | null;
-  filename?: string | null;
-  mimeType?: string | null;
-  filesize?: number | null;
-  width?: number | null;
-  height?: number | null;
-  focalX?: number | null;
-  focalY?: number | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -664,6 +672,8 @@ export interface MediaSelect<T extends boolean = true> {
 export interface CategoriesSelect<T extends boolean = true> {
   title?: T;
   slug?: T;
+  parent?: T;
+  thumbnail?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -897,6 +907,44 @@ export interface Setting {
    */
   enableMegaMenu?: boolean | null;
   /**
+   * Ordered site contact entries. Widgets reference stable Entry IDs — renaming the Key does not break widgets. Phone/Email auto-links use Special link, not the Key label.
+   */
+  contactEntries?:
+    | {
+        /**
+         * Stable internal ID used by Contact Information widgets.
+         */
+        entryId: string;
+        /**
+         * Editable display label. Renaming does not change Entry ID or auto-links.
+         */
+        key: string;
+        value: string;
+        /**
+         * Optional URL. When set and Special link is empty, the value renders as a clickable link. Unsafe schemes are rejected.
+         */
+        link?: string | null;
+        /**
+         * Optional. Stable auto-link for phone/email — independent of the editable Key. Leave empty for plain text or optional Link. Not a general contact type.
+         */
+        semantics?: ('phone' | 'email') | null;
+        icon?:
+          | {
+              [k: string]: unknown;
+            }
+          | unknown[]
+          | string
+          | number
+          | boolean
+          | null;
+        /**
+         * Lower numbers appear first. Drag-reorder the array to change sequence.
+         */
+        order?: number | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
    * Reserved for the initial setup wizard. The wizard is not available yet.
    */
   setupComplete?: boolean | null;
@@ -999,6 +1047,18 @@ export interface SettingsSelect<T extends boolean = true> {
   pwaEnabled?: T;
   offlinePageLimit?: T;
   enableMegaMenu?: T;
+  contactEntries?:
+    | T
+    | {
+        entryId?: T;
+        key?: T;
+        value?: T;
+        link?: T;
+        semantics?: T;
+        icon?: T;
+        order?: T;
+        id?: T;
+      };
   setupComplete?: T;
   activeThemeId?: T;
   themeTemplates?: T;

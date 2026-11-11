@@ -1,9 +1,8 @@
 {
   "version": 1,
   "template": "single",
-  "root": {
-    "props": {}
-  },
+  "metadata": { "roleContract": 1 },
+  "root": { "props": {} },
   "content": [
     {
       "type": "Section",
@@ -36,36 +35,34 @@
   "zones": {
     "corp-single-header-section:content": [
       {
-        "type": "PostTitle",
+        "type": "Heading",
         "props": {
           "id": "single-title-1",
+          "text": "",
           "tag": "h1",
-          "align": "left",
-          "variant": "default",
-          "lock": {
-            "canDelete": false,
-            "canMove": true,
-            "canEditProps": true
-          }
+          "textBinding": "title",
+          "lock": { "canDelete": false, "canMove": true, "canEditProps": true }
         }
       },
       {
-        "type": "PostMeta",
-        "props": {
-          "id": "single-meta-1",
-          "showDate": true,
-          "showAuthor": true,
-          "showCategories": true
-        }
+        "type": "Text",
+        "props": { "id": "single-date-1", "text": "", "textBinding": "date" }
+      },
+      {
+        "type": "Text",
+        "props": { "id": "single-taxonomy-1", "text": "", "textBinding": "taxonomy" }
       }
     ],
     "corp-single-media-section:content": [
       {
-        "type": "FeaturedMedia",
+        "type": "Image",
         "props": {
           "id": "single-media-1",
+          "src": "",
+          "alt": "",
+          "srcBinding": "thumbnail",
           "aspectRatio": "16:9",
-          "rounded": true
+          "objectFit": "cover"
         }
       }
     ],
@@ -75,11 +72,7 @@
         "props": {
           "id": "single-content-1",
           "showExcerptFirst": true,
-          "lock": {
-            "canDelete": false,
-            "canMove": false,
-            "canEditProps": true
-          }
+          "lock": { "canDelete": false, "canMove": false, "canEditProps": true }
         }
       }
     ]

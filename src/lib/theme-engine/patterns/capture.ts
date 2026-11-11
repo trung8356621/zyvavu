@@ -1,11 +1,19 @@
-import { chromium } from '@playwright/test'
-import sharp from 'sharp'
+import { execFile } from 'node:child_process'
+import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
+import { promisify } from 'node:util'
 import type { PayloadRequest } from 'payload'
 import { canonicalPublicOrigin } from '@/lib/site/origin'
 import { resolveActiveThemeId } from '../resolver'
-import { signCaptureTicket, type CaptureTicket } from './server'
-import { measurePatternCapture, PATTERN_CAPTURE_WIDTH } from './capture-bounds'
+import type { CaptureTicket } from './server'
+
+const execFileAsync = promisify(execFile)
+const workerPath = path.resolve(process.cwd(), 'scripts/pattern-capture-worker.mts')
+
 let captureQueue: Promise<void> = Promise.resolve()
+
+/** Spawns an out-of-process worker so Playwright never enters the Next/Turbopack graph. */
 export async function capturePatternWebP(
   ticket: CaptureTicket,
   origin = canonicalPublicOrigin(),
@@ -17,92 +25,32 @@ export async function capturePatternWebP(
     release = resolve
   })
   await previous
-  ticket = { ...ticket, expires: Date.now() + 90000 }
-  let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined
+  const workDir = await mkdtemp(path.join(tmpdir(), 'zyvavu-pattern-cap-'))
+  const outFile = path.join(workDir, 'out.webp')
   try {
-    browser = await chromium.launch({
-      headless: true,
-      executablePath: process.env.PATTERN_CHROMIUM_EXECUTABLE_PATH || undefined,
-    })
-    const context = await browser.newContext({
-      viewport: { width: PATTERN_CAPTURE_WIDTH, height: 800 },
-      deviceScaleFactor: 2,
-      reducedMotion: 'reduce',
-      serviceWorkers: 'block',
-    })
-    const url = new URL(
-      `/pattern-preview/${encodeURIComponent(ticket.key)}?theme=${encodeURIComponent(ticket.themeId)}`,
+    const payload = {
+      ticket: { ...ticket, expires: Date.now() + 90000 },
       origin,
-    )
-    const signed = signCaptureTicket(ticket, secret)
-    await context.route('**/*', async (route) => {
-      const request = route.request()
-      const target = new URL(request.url())
-      if (request.method() !== 'GET' || target.origin !== url.origin) return route.abort()
-      if (target.pathname === url.pathname)
-        return route.continue({ headers: { ...request.headers(), 'x-pattern-capture': signed } })
-      if (/^\/(?:_next\/static\/|pattern-library\/|api\/media\/file\/)/.test(target.pathname))
-        return route.continue()
-      return route.abort()
-    })
-    const page = await context.newPage()
-    const response = await page.goto(url.href, { waitUntil: 'networkidle', timeout: 30000 })
-    if (!response?.ok()) throw new Error('Protected pattern preview was unavailable')
-    await page.locator('[data-pattern-capture="ready"]').waitFor({ timeout: 15000 })
-    await page.evaluate(async () => {
-      await document.fonts.ready
-      for (const image of document.images) image.loading = 'eager'
-      await Promise.all([...document.images].map((image) => image.decode().catch(() => {})))
-      const root = document.querySelector<HTMLElement>('[data-pattern-capture="ready"]')!
-      let previous = ''
-      let stable = 0
-      for (let frame = 0; frame < 60; frame++) {
-        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
-        const layout = [root, ...root.querySelectorAll('*')].map((element) => {
-          const rect = element.getBoundingClientRect()
-          return [rect.x, rect.y, rect.width, rect.height]
-        })
-        const current = JSON.stringify(layout)
-        stable = current === previous ? stable + 1 : 0
-        if (stable >= 3) return
-        previous = current
-      }
-      throw new Error('Pattern layout did not stabilize before capture')
-    })
-    const clip = await page
-      .locator('[data-pattern-capture="ready"]')
-      .evaluate(measurePatternCapture)
-    await page.evaluate(({ width, height }) => {
-      // Shadows do not contribute to scrollHeight. Extend the document without
-      // changing the viewport or the pattern's layout before the full-page clip.
-      const extent = document.createElement('div')
-      extent.setAttribute('aria-hidden', 'true')
-      Object.assign(extent.style, {
-        position: 'absolute',
-        left: `${width - 1}px`,
-        top: `${height - 1}px`,
-        width: '1px',
-        height: '1px',
-        pointerEvents: 'none',
-      })
-      document.body.append(extent)
-    }, clip)
-    const screenshot = await page.screenshot({
-      type: 'png',
-      clip,
-      fullPage: true,
-      animations: 'disabled',
-      timeout: 15000,
-    })
-    return sharp(screenshot).resize({ width: clip.width }).webp({ quality: 90 }).toBuffer()
-  } finally {
-    try {
-      await browser?.close()
-    } finally {
-      release()
+      secret,
+      outFile,
     }
+    await execFileAsync(
+      process.execPath,
+      ['--import', 'tsx', workerPath, JSON.stringify(payload)],
+      {
+        timeout: 120_000,
+        maxBuffer: 2 * 1024 * 1024,
+        env: process.env,
+        windowsHide: true,
+      },
+    )
+    return await readFile(outFile)
+  } finally {
+    release()
+    await rm(workDir, { recursive: true, force: true }).catch(() => {})
   }
 }
+
 export async function generateUserPatternThumbnail(req: PayloadRequest): Promise<Response> {
   const id = String(req.routeParams?.id || '')
   let doc

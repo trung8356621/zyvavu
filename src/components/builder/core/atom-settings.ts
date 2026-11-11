@@ -2,8 +2,8 @@ import type { Dictionary } from '@puckeditor/core'
 
 /**
  * Puck Fields plugin is the official Atom Settings panel.
- * Presentation is a floating right panel over a full-width Canvas
- * (PO 2026-11-11 workspace shell). Style lives in the shared Style modal.
+ * Presentation is a docked right panel that reserves workspace width when open
+ * (PO Theme Builder final polish). Style lives in the shared Style modal.
  * Atom Settings owns content / semantic / binding / behavior fields only.
  */
 export const ATOM_SETTINGS_LABEL = 'Atom Settings'
@@ -108,6 +108,13 @@ export type AtomFieldOwnership = {
  */
 export const ATOM_FIELD_OWNERSHIP: AtomFieldOwnership[] = [
   { widget: 'Heading', field: 'text', classification: 'CONTENT', owner: 'atom-settings' },
+  {
+    widget: 'Heading',
+    field: 'textBinding',
+    classification: 'DATA_BINDING',
+    owner: 'atom-settings',
+    notes: 'Optional Loop Item binding; Static keeps existing text',
+  },
   { widget: 'Heading', field: 'tag', classification: 'SEMANTIC', owner: 'atom-settings' },
   {
     widget: 'Heading',
@@ -117,13 +124,45 @@ export const ATOM_FIELD_OWNERSHIP: AtomFieldOwnership[] = [
     notes: 'Native Puck Fields via puckTypographyStyleField; excluded from Style Sidebar',
   },
   { widget: 'Text', field: 'text', classification: 'CONTENT', owner: 'atom-settings' },
-  { widget: 'Button', field: 'text', classification: 'CONTENT', owner: 'atom-settings' },
+  {
+    widget: 'Text',
+    field: 'textBinding',
+    classification: 'DATA_BINDING',
+    owner: 'atom-settings',
+    notes: 'Optional Loop Item binding; Static keeps existing text',
+  },
+  {
+    widget: 'Button',
+    field: 'text',
+    classification: 'CONTENT',
+    owner: 'atom-settings',
+    notes: 'Canvas double-click TipTap (B/I/U); Fields UI has no Label panel',
+  },
+  {
+    widget: 'Button',
+    field: 'textBinding',
+    classification: 'DATA_BINDING',
+    owner: 'atom-settings',
+  },
+  {
+    widget: 'Button',
+    field: 'hrefBinding',
+    classification: 'DATA_BINDING',
+    owner: 'atom-settings',
+  },
+  {
+    widget: 'Button',
+    field: 'style.button.icon',
+    classification: 'STYLE',
+    owner: 'style-sidebar',
+    notes: 'Button Design owns icon select/position/size/gap',
+  },
   {
     widget: 'Button',
     field: 'href',
     classification: 'CONTENT',
     owner: 'atom-settings',
-    notes: 'Edited via ActionBar Link Editor; Fields UI shows Label only',
+    notes: 'Edited via ActionBar Link Editor',
   },
   {
     widget: 'Button',
@@ -145,6 +184,19 @@ export const ATOM_FIELD_OWNERSHIP: AtomFieldOwnership[] = [
     classification: 'CONTENT',
     owner: 'atom-settings',
     notes: 'Compact Image Editor panel (preview/change/remove)',
+  },
+  {
+    widget: 'Image',
+    field: 'srcBinding',
+    classification: 'DATA_BINDING',
+    owner: 'atom-settings',
+    notes: 'Optional thumbnail binding for Loop Item Templates',
+  },
+  {
+    widget: 'Image',
+    field: 'hrefBinding',
+    classification: 'DATA_BINDING',
+    owner: 'atom-settings',
   },
   { widget: 'Image', field: 'alt', classification: 'CONTENT', owner: 'atom-settings' },
   { widget: 'Image', field: 'aspectRatio', classification: 'BEHAVIOR', owner: 'atom-settings' },

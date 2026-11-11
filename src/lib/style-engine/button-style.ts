@@ -43,6 +43,7 @@ export function normalizeButtonStyle(button?: ButtonStyleShell | null): ButtonSt
     version: 1,
     ...(button.normal ? { normal: button.normal } : {}),
     ...(button.hover ? { hover: button.hover } : {}),
+    ...(button.icon ? { icon: button.icon } : {}),
   }
 }
 

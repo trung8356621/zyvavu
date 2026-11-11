@@ -201,12 +201,21 @@ export default buildConfig({
         } catch {
           return Response.json({ success: false, message: 'Invalid JSON payload' }, { status: 400 })
         }
-        const { template, document, themeId } = body || {}
+        const { template, document, themeId, loopItemId } = body || {}
         if (!template || !document) {
           return Response.json(
             { success: false, message: 'Template and document are required' },
             { status: 400 },
           )
+        }
+        if (template === 'loopItem') {
+          const { saveLoopItemTemplate } = await import('@/lib/theme-engine/loop-item-templates')
+          const id =
+            (typeof loopItemId === 'string' && loopItemId.trim()) ||
+            (typeof document?.metadata?.loopItemId === 'string' && document.metadata.loopItemId) ||
+            ''
+          const res = await saveLoopItemTemplate(req.payload, id, document, themeId)
+          return Response.json(res, { status: res.success ? 200 : 400 })
         }
         const res = await saveThemeTemplateOverride(
           req.payload,
@@ -215,6 +224,26 @@ export default buildConfig({
           req.user,
           themeId,
         )
+        return Response.json(res, { status: res.success ? 200 : 400 })
+      },
+    },
+    {
+      path: '/theme-builder/loop-item/create',
+      method: 'post',
+      handler: async (req) => {
+        const { isSiteStaff } = await import('@/access/roles')
+        const { createLoopItemTemplate } = await import('@/lib/theme-engine/loop-item-templates')
+        if (!isSiteStaff(req.user)) {
+          return Response.json({ success: false, message: 'Forbidden' }, { status: 403 })
+        }
+        let body: any
+        try {
+          body = await req.json?.()
+        } catch {
+          return Response.json({ success: false, message: 'Invalid JSON payload' }, { status: 400 })
+        }
+        const { name, themeId } = body || {}
+        const res = await createLoopItemTemplate(req.payload, name, themeId)
         return Response.json(res, { status: res.success ? 200 : 400 })
       },
     },

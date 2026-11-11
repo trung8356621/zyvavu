@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom'
 import { ActionIcon, Tooltip } from '@mantine/core'
 import { Bold, Italic, Link2, Underline as UnderlineIcon } from 'lucide-react'
 import { registerOverlayPortal } from '@puckeditor/core'
-import type { Editor } from '@tiptap/react'
+import { useEditorState, type Editor } from '@tiptap/react'
 import { ADMIN_OVERLAY_LAYERS } from '@/theme/layers'
 import { computeToolbarPosition, mapElementRectToWindow } from './edit-boundary'
 import styles from './InlineContentEditor.module.css'
@@ -23,13 +23,27 @@ export function InlineFormatToolbar({
   anchorEl,
   onOpenLink,
   onMetrics,
+  allowLink = true,
 }: {
   editor: Editor
   anchorEl: HTMLElement | null
   onOpenLink: (editor: Editor) => void
   onMetrics?: (next: { mounted: boolean; rect: DOMRect | null }) => void
+  /** Button labels own the destination URL — no nested link mark. */
+  allowLink?: boolean
 }) {
   const toolbarRef = React.useRef<HTMLDivElement | null>(null)
+  const editorState = useEditorState({
+    editor,
+    selector: ({ editor }) => ({
+      from: editor.state.selection.from,
+      to: editor.state.selection.to,
+      bold: editor.isActive('bold'),
+      italic: editor.isActive('italic'),
+      underline: editor.isActive('underline'),
+      link: editor.isActive('link'),
+    }),
+  })
   const [pos, setPos] = React.useState<{
     top: number
     left: number
@@ -83,7 +97,7 @@ export function InlineFormatToolbar({
 
   React.useLayoutEffect(() => {
     updatePosition()
-  }, [updatePosition, editor.state.selection.from, editor.state.selection.to])
+  }, [updatePosition, editorState.from, editorState.to])
 
   React.useEffect(() => {
     if (!anchorEl) return
@@ -139,32 +153,34 @@ export function InlineFormatToolbar({
     >
         <ToolbarButton
           label="Bold"
-          active={editor.isActive('bold')}
+          active={editorState.bold}
           onAction={() => editor.chain().focus().toggleBold().run()}
         >
           <Bold size={15} strokeWidth={2.25} />
         </ToolbarButton>
         <ToolbarButton
           label="Italic"
-          active={editor.isActive('italic')}
+          active={editorState.italic}
           onAction={() => editor.chain().focus().toggleItalic().run()}
         >
           <Italic size={15} strokeWidth={2.25} />
         </ToolbarButton>
         <ToolbarButton
           label="Underline"
-          active={editor.isActive('underline')}
+          active={editorState.underline}
           onAction={() => editor.chain().focus().toggleUnderline().run()}
         >
           <UnderlineIcon size={15} strokeWidth={2.25} />
         </ToolbarButton>
-        <ToolbarButton
-          label="Link"
-          active={editor.isActive('link')}
-          onAction={() => onOpenLink(editor)}
-        >
-          <Link2 size={15} strokeWidth={2.25} />
-        </ToolbarButton>
+        {allowLink ? (
+          <ToolbarButton
+            label="Link"
+            active={editorState.link}
+            onAction={() => onOpenLink(editor)}
+          >
+            <Link2 size={15} strokeWidth={2.25} />
+          </ToolbarButton>
+        ) : null}
     </div>,
     document.body,
   )

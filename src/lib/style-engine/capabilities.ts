@@ -54,11 +54,14 @@ export const COMPONENT_STYLE_CAPABILITIES: Record<string, StyleDomain[]> = {
     'animation',
   ],
   CollectionLoop: ['spacing', 'dimensions', 'border', 'shadow', 'effects', 'animation'],
+  FeaturedPost: ['spacing', 'dimensions', 'border', 'shadow', 'effects', 'animation'],
+  PostCollection: ['spacing', 'dimensions', 'border', 'shadow', 'effects', 'animation'],
   RecentPosts: ['spacing', 'dimensions', 'border', 'shadow', 'effects', 'animation'],
   ItemTitle: ['typography', 'spacing', 'dimensions', 'border', 'shadow', 'effects', 'animation'],
   ItemExcerpt: ['typography', 'spacing', 'dimensions', 'border', 'shadow', 'effects', 'animation'],
   ItemImage: ['spacing', 'dimensions', 'border', 'shadow', 'effects', 'animation'],
   ItemLink: ['typography', 'spacing', 'dimensions', 'border', 'shadow', 'effects', 'animation'],
+  ItemDate: ['typography', 'spacing', 'dimensions', 'border', 'shadow', 'effects', 'animation'],
   HeaderAction: [
     'typography',
     'button',
@@ -74,6 +77,17 @@ export const COMPONENT_STYLE_CAPABILITIES: Record<string, StyleDomain[]> = {
     'spacing',
     'dimensions',
     'border',
+    'shadow',
+    'effects',
+    'animation',
+  ],
+  Icon: ['spacing', 'dimensions', 'border', 'background', 'shadow', 'effects', 'animation'],
+  CategoryList: [
+    'typography',
+    'spacing',
+    'dimensions',
+    'border',
+    'background',
     'shadow',
     'effects',
     'animation',
@@ -96,6 +110,10 @@ export const LABEL_TO_COMPONENT_TYPE: Record<string, string> = {
   'Item Excerpt': 'ItemExcerpt',
   'Item Link / CTA': 'ItemLink',
   'Collection Loop': 'CollectionLoop',
+  'Featured Post': 'FeaturedPost',
+  'Post Collection': 'PostCollection',
+  'Item Date': 'ItemDate',
+  'Category List': 'CategoryList',
 }
 
 export function normalizeComponentType(typeOrLabel: string): string {

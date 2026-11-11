@@ -1,10 +1,12 @@
 /**
  * Shared Style Session contract (direct-commit era).
  *
- * Product rules (2026-11-07):
+ * Product rules (2026-11-11 PO correction):
  * - Edit → update real Editor state → Canvas (no Apply boundary).
- * - Cancel restores the snapshot captured when the Style session opened (scoped).
- * - Reset restores domain defaults/inheritance (distinct from Cancel / Undo).
+ * - Close / X / Escape = navigation only; never rollback committed edits.
+ * - Cancel (explicit) restores only paths this session mutated (session-owned).
+ * - Cancel must not overwrite unrelated newer document changes outside dirty paths.
+ * - Reset restores domain defaults/inheritance (distinct from Cancel / Undo / Close).
  * - Undo/Redo are History transactions (Puck-owned when style uses setData+recordHistory).
  *
  * Status labels for callers: CONFIRMED against Puck 0.23 source where noted.
@@ -13,6 +15,18 @@
 import type { WidgetSemanticStyle } from '@/lib/theme-engine/types'
 import type { StyleModalDomain } from './domains'
 import { resetStyleDomain } from './domains'
+
+/** Style object keys owned by each Style modal domain. */
+export const STYLE_DOMAIN_FIELDS: Record<StyleModalDomain, readonly string[]> = {
+  animation: ['animation'],
+  background: ['background', 'backgroundToken'],
+  spacing: ['spacing', 'dimensions', 'section'],
+  borders: ['border', 'radius'],
+  typography: ['typography', 'colorToken', 'align'],
+  shadow: ['shadow'],
+  effects: ['effects'],
+  button: ['button', 'typography', 'colorToken', 'align'],
+}
 
 export type StyleHistoryOwner = 'puck'
 
@@ -72,9 +86,66 @@ export function createStyleSessionSnapshot(
   }
 }
 
-/** Cancel-session restore target: exact style at session open. */
+/** Full session-open snapshot (legacy helpers / tests). Prefer scoped Cancel below. */
 export function getCancelRestoreStyle(session: StyleSessionSnapshot): WidgetSemanticStyle {
   return cloneStyle(session.style)
+}
+
+/**
+ * Cancel: restore only session-owned (dirty) domains onto the current document style.
+ * Untouched domains keep `current` values (including edits from prior closed sessions).
+ */
+export function restoreSessionOwnedStyleDomains(args: {
+  baseline: WidgetSemanticStyle | null | undefined
+  current: WidgetSemanticStyle | null | undefined
+  dirtyDomains: Iterable<StyleModalDomain>
+}): WidgetSemanticStyle {
+  const baseline = cloneStyle(args.baseline)
+  const next = cloneStyle(args.current) as WidgetSemanticStyle & Record<string, unknown>
+  const dirty = new Set(args.dirtyDomains)
+  if (!dirty.size) return next
+
+  for (const domain of dirty) {
+    const fields = STYLE_DOMAIN_FIELDS[domain] || []
+    for (const field of fields) {
+      const value = (baseline as Record<string, unknown>)[field]
+      if (value === undefined) delete next[field]
+      else next[field] = JSON.parse(JSON.stringify(value))
+    }
+  }
+  return next
+}
+
+/** CategoryList presentation keys owned by each Style Target. */
+export const CATEGORY_LIST_TARGET_FIELDS = {
+  container: ['container', 'indentPx'],
+  parentItem: ['itemParent'],
+  childItem: ['itemChild'],
+  marker: ['marker'],
+  chevron: ['chevron'],
+} as const
+
+export type CategoryListSessionTarget = keyof typeof CATEGORY_LIST_TARGET_FIELDS
+
+/**
+ * Cancel for CategoryList: restore only dirty Style Targets onto current presentation.
+ * Previously committed targets (e.g. Parent after Close) remain from `current`.
+ */
+export function restoreSessionOwnedPresentationTargets(args: {
+  baseline: Record<string, unknown> | null | undefined
+  current: Record<string, unknown> | null | undefined
+  dirtyTargets: Iterable<CategoryListSessionTarget>
+}): Record<string, unknown> {
+  const baseline = JSON.parse(JSON.stringify(args.baseline || {})) as Record<string, unknown>
+  const next = JSON.parse(JSON.stringify(args.current || {})) as Record<string, unknown>
+  for (const target of args.dirtyTargets) {
+    const fields = CATEGORY_LIST_TARGET_FIELDS[target] || []
+    for (const field of fields) {
+      if (baseline[field] === undefined) delete next[field]
+      else next[field] = JSON.parse(JSON.stringify(baseline[field]))
+    }
+  }
+  return next
 }
 
 /** Reset one Style domain in-place (still requires a document commit by the host). */

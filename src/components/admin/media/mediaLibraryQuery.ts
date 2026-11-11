@@ -9,14 +9,24 @@ export function mediaKindWhere(where: Where = {}, kind: LibraryKind): Where {
   return kind === 'all' ? next : { ...next, mimeType: { contains: `${kind}/` } }
 }
 
-export function mediaLibraryURL(api: string, kind: LibraryKind, search: string, page: number) {
+export function mediaLibraryURL(
+  api: string,
+  kind: LibraryKind,
+  search: string,
+  page: number,
+  opts?: { svgOnly?: boolean },
+) {
   const params = new URLSearchParams({
     depth: '0',
     limit: '24',
     page: String(page),
     sort: '-createdAt',
   })
-  if (kind !== 'all') params.set('where[mimeType][contains]', `${kind}/`)
+  if (opts?.svgOnly) {
+    params.set('where[mimeType][contains]', 'svg')
+  } else if (kind !== 'all') {
+    params.set('where[mimeType][contains]', `${kind}/`)
+  }
   if (search.trim()) params.set('where[filename][like]', search.trim())
   return `${api}/media?${params}`
 }

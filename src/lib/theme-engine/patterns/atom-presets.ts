@@ -1,9 +1,11 @@
 import type { UniversalStyle } from '@/lib/style-engine/types'
+import { CATEGORY_LIST_PRESETS } from '@/widgets/CategoryList/presets'
+import { CONTACT_DISPLAY_PRESETS, sampleContactEntryIds } from '@/lib/site/contact'
 import type { PatternJSON } from './json'
 import { collectPatternTokens } from './json'
 
 /** Core atoms shown first in the Widget Library (Patterns category excluded). */
-export const ATOM_LIBRARY_PRIORITY = ['Heading', 'Button', 'Image', 'Video'] as const
+export const ATOM_LIBRARY_PRIORITY = ['Heading', 'Button', 'Image', 'Video', 'Icon'] as const
 /** Legacy Text remains renderable but is hidden from new library insertions. */
 export const LIBRARY_HIDDEN_ATOM_TYPES = ['Text'] as const
 
@@ -11,8 +13,11 @@ export const LIBRARY_CATEGORY_ORDER = [
   'text',
   'buttons',
   'media',
+  'icons',
   'layout',
   'sections',
+  'navigation',
+  'general',
   'dynamic',
 ] as const
 
@@ -627,13 +632,83 @@ export const CONTAINER_PRESETS: PatternJSON[] = [
   ),
 ]
 
+/** Icon atom presets — Lucide/custom selection lives in props.icon. */
+export const ICON_PRESETS: PatternJSON[] = [
+  atomPattern(
+    'Icon',
+    'icon-primary',
+    'Primary icon',
+    'Brand-colored Lucide icon.',
+    { colorToken: 'primary', spacing: { padding: { token: 'xs' } } },
+    { icon: { source: 'lucide', name: 'star', recolorable: true }, size: 28, strokeWidth: 2, decorative: true },
+    'icons',
+  ),
+  atomPattern(
+    'Icon',
+    'icon-muted',
+    'Muted icon',
+    'Secondary supporting icon.',
+    { colorToken: 'textMuted', spacing: { padding: { token: 'xs' } } },
+    { icon: { source: 'lucide', name: 'info', recolorable: true }, size: 20, strokeWidth: 1.75, decorative: true },
+    'icons',
+  ),
+  atomPattern(
+    'Icon',
+    'icon-zalo',
+    'Zalo icon',
+    'Built-in custom Zalo mark (DEC-MEDIA-002).',
+    { colorToken: 'primary', spacing: { padding: { token: 'xs' } } },
+    { icon: { source: 'custom', name: 'zalo', recolorable: true }, size: 28, decorative: false, label: 'Zalo' },
+    'icons',
+  ),
+]
+
+export const CATEGORY_LIST_PATTERNS: PatternJSON[] = CATEGORY_LIST_PRESETS.map((preset) =>
+  ({
+    ...atomPattern(
+      'CategoryList',
+      `category-list-${preset.id}`,
+      preset.label,
+      preset.description,
+      { spacing: { padding: { token: 'sm' } } },
+      {
+        preset: preset.id,
+        selectedCategoryIds: [],
+        includeDescendants: true,
+        hideEmpty: false,
+        showCounts: false,
+        autoExpandActive: true,
+        initialExpanded: 'roots',
+        listPresentation: preset.listPresentation,
+      },
+      'navigation',
+    ),
+    thumbnail: {
+      version: 1,
+      status: 'pending',
+      url: `/api/pattern-thumbnails/category-list-${preset.id}`,
+    },
+  }),
+)
+
 export const ATOM_PRESETS: PatternJSON[] = [
   ...HEADING_PRESETS,
   ...TEXT_PRESETS,
   ...BUTTON_PRESETS,
   ...IMAGE_PRESETS,
   ...VIDEO_PRESETS,
+  ...ICON_PRESETS,
   ...CONTAINER_PRESETS,
+  ...CATEGORY_LIST_PATTERNS,
+  ...CONTACT_DISPLAY_PRESETS.map(({ value, label }) => atomPattern(
+    'ContactInformation',
+    `contact-information-${value}`,
+    label,
+    'Display selected Site Settings contact entries.',
+    { backgroundToken: 'transparent' },
+    { preset: value, entryIds: sampleContactEntryIds(), showLabels: true, showIcons: true },
+    'general',
+  )),
 ]
 
 export function atomPresetCounts() {
@@ -644,6 +719,7 @@ export function atomPresetCounts() {
     Button: BUTTON_PRESETS.length,
     Image: IMAGE_PRESETS.length,
     Video: VIDEO_PRESETS.length,
+    Icon: ICON_PRESETS.length,
     Container: CONTAINER_PRESETS.length,
   }
 }

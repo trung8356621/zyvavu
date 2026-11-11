@@ -6,6 +6,7 @@ export const PAGE_CONTENT_CONTEXTS: ReadonlySet<TemplateContext> = new Set([
   'page',
   'category',
   'product',
+  // loopItem intentionally excluded: root Atoms / optional Containers are allowed.
 ])
 
 export function isPageContentContext(context: string): boolean {

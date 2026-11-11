@@ -30,9 +30,32 @@ export function inlineContentExtensions(opts?: { multiline?: boolean }): Extensi
       strike: false,
       dropcursor: false,
       gapcursor: false,
-      hardBreak: opts?.multiline !== false,
-      underline: true,
+      // TipTap 3: only `false` or options — omit/`{}` keeps the default extension.
+      hardBreak: opts?.multiline === false ? false : {},
+      underline: {},
       link: linkOptions,
+    }),
+  ]
+}
+
+/** Settings-panel Button label: inline B/I/U only (no links / lists / breaks). */
+export function buttonLabelExtensions(): Extensions {
+  return [
+    StarterKit.configure({
+      heading: false,
+      blockquote: false,
+      codeBlock: false,
+      code: false,
+      bulletList: false,
+      orderedList: false,
+      listItem: false,
+      horizontalRule: false,
+      strike: false,
+      dropcursor: false,
+      gapcursor: false,
+      hardBreak: false,
+      underline: {},
+      link: false,
     }),
   ]
 }

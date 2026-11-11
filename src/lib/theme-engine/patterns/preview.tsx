@@ -3,6 +3,7 @@ import { ThemeRenderer } from '../renderer'
 import type { ThemeConfig, ThemeDataContext } from '../types'
 import { generateThemeCss } from '../styles'
 import { PATTERN_SLOTS, validatePatternJSON, type PatternJSON } from './json'
+import { sampleContactEntriesWithOrder } from '@/lib/site/contact'
 export function PatternDocumentPreview({
   pattern,
   themeConfig,
@@ -36,9 +37,10 @@ export function PatternDocumentPreview({
   prepare(payload.content)
   const dataContext: ThemeDataContext = {
     type: 'home',
+    patternPreview: true,
     document: { title: 'Tiêu đề minh họa' },
     item: { title: 'Nội dung minh họa', url: '#', excerpt: 'Mẫu nội dung chỉ dùng cho preview.' },
-    site: { siteName: 'Zyvavu', tagline: 'Pattern preview', menuItems: [] },
+    site: { siteName: 'Zyvavu', tagline: 'Pattern preview', menuItems: [], contactEntries: sampleContactEntriesWithOrder() },
   }
   return (
     <div

@@ -40,7 +40,8 @@ import {
 
 import { CURRENT_BUILDER_VERSION, validateBuilderDocument } from './document'
 import type { BuilderDocument } from './types'
-import type { ThemeConfig, WidgetSemanticStyle } from '@/lib/theme-engine/types'
+import type { TemplateContext, ThemeConfig, WidgetSemanticStyle } from '@/lib/theme-engine/types'
+import { canonicalizeZonesToSlots } from '@/lib/theme-engine/document-slots'
 import {
   getComponentStyleCapabilities,
   normalizeComponentType,
@@ -82,6 +83,7 @@ import actionBarStyles from './WidgetActionBar.module.css'
 import workspaceStyles from './EditorWorkspace.module.css'
 import { ImageQuickAction } from './ImageQuickAction'
 import { AtomWidgetLinkHost } from '@/components/builder/inline-edit/AtomWidgetLinkHost'
+import { BuilderTemplateProvider } from '@/components/builder/core/BuilderTemplateContext'
 import { useToolbarBoundary } from './useToolbarBoundary'
 import {
   ATOM_SETTINGS_DICTIONARY,
@@ -124,15 +126,14 @@ type StyleMenuRequest = {
   /** Semantic HTML tag (Heading/ItemTitle/…) — independent of style.typography overrides. */
   htmlTag?: string | null
   currentStyle: WidgetSemanticStyle
+  listPresentation?: import('@/lib/style-engine/list-presentation').ListPresentationConfig
   anchorEl: HTMLElement | null
   initialPosition?: { x: number; y: number }
 }
 
 type EditorBridgeValue = {
   /** Opens native Puck Fields panel (official Atom Settings). */
-  openAtomSettings: (trigger?: HTMLButtonElement) => void
-  /** Closes floating Fields without changing Puck selection. */
-  closeAtomSettings: () => void
+  openAtomSettings: () => void
   /** Opens canonical Link Editor for Button/Image widget props. */
   openAtomLink: (componentId: string) => void
   openSaveAsPattern: () => void
@@ -143,10 +144,10 @@ type EditorBridgeValue = {
   openStyle: (request: StyleMenuRequest) => void
   styleComponentId?: string
   templateContext?: string
+  libraryLanguage?: string
   themeConfig?: ThemeConfig
   previewControlTarget?: HTMLElement | null
   beforeOperation: () => boolean
-  history?: ReturnType<typeof createPuckHistoryCoordinator>
 }
 
 const EditorBridgeContext = React.createContext<EditorBridgeValue | null>(null)
@@ -174,7 +175,7 @@ function WorkspacePanel({
   library = false,
 }: {
   title: string
-  onClose: () => void
+  onClose?: () => void
   children: React.ReactNode
   library?: boolean
 }) {
@@ -182,9 +183,11 @@ function WorkspacePanel({
     <>
       <div className={workspaceStyles.fieldsHeader}>
         <span className={workspaceStyles.fieldsTitle}>{title}</span>
-        <ActionIcon size="sm" variant="subtle" color="gray" aria-label={`Close ${title}`} onClick={onClose}>
-          <X size={15} aria-hidden />
-        </ActionIcon>
+        {onClose && (
+          <ActionIcon size="sm" variant="subtle" color="gray" aria-label={`Close ${title}`} onClick={onClose}>
+            <X size={15} aria-hidden />
+          </ActionIcon>
+        )}
       </div>
       <div className={library ? workspaceStyles.libraryBody : workspaceStyles.fieldsBody}>{children}</div>
     </>
@@ -277,6 +280,7 @@ function ThemeWorkspace({ children }: { children: React.ReactNode }) {
           <WorkspacePanel title={active.title} onClose={closePanel} library={panel === 'blocks' || panel === 'theme'}>
             {(panel === 'blocks' || panel === 'theme') && (
               <WidgetPatternLibrary
+                language={bridge.libraryLanguage}
                 key={panel}
                 context={bridge.templateContext}
                 themeConfig={bridge.themeConfig}
@@ -314,6 +318,7 @@ function StableLibraryOverride() {
   const bridge = React.useContext(EditorBridgeContext)!
   return (
     <WidgetPatternLibrary
+      language={bridge.libraryLanguage}
       context={bridge.templateContext}
       themeConfig={bridge.themeConfig}
       beforeOperation={bridge.beforeOperation}
@@ -338,7 +343,6 @@ function StableFieldsOverride({
   isLoading?: boolean
   itemSelector?: unknown
 }) {
-  const bridge = React.useContext(EditorBridgeContext)
   const selectedItem = usePuck((s) => s.selectedItem)
   const rawType = selectedItem?.type || 'Widget'
   const label =
@@ -346,19 +350,16 @@ function StableFieldsOverride({
       ? selectedItem.props.label
       : rawType
 
+  if (rawType === 'Button') return <></>
+
   return (
     <div
       {...{ [ATOM_SETTINGS_PANEL_ATTR]: 'true' }}
       tabIndex={-1}
       className={workspaceStyles.fieldsPanel}
       data-fields-loading={isLoading ? 'true' : undefined}
-      onKeyDown={(event) => {
-        if (event.key !== 'Escape' || event.defaultPrevented || !event.currentTarget.contains(event.target as Node)) return
-        event.stopPropagation()
-        bridge?.closeAtomSettings()
-      }}
     >
-      <WorkspacePanel title={`${label} settings`} onClose={() => bridge?.closeAtomSettings()}>
+      <WorkspacePanel title={`${label} settings`}>
         {children}
       </WorkspacePanel>
     </div>
@@ -405,9 +406,6 @@ function PuckBridge({
         ? appState.data.zones?.[selector.zone]?.[selector.index]?.props?.id
         : appState.data.content?.[selector.index]?.props?.id
       : undefined)
-  React.useEffect(() => {
-    onSelectionChange(selectedId)
-  }, [selectedId, onSelectionChange])
   const appStateRef = React.useRef(appState)
   React.useLayoutEffect(() => {
     appStateRef.current = appState
@@ -426,6 +424,11 @@ function PuckBridge({
       },
     })
   }, [dispatch, history, onRegisterApi, getItemById, getSelectorForId, getPermissions])
+
+  const notifySelection = React.useEffectEvent(onSelectionChange)
+  React.useEffect(() => {
+    notifySelection(selectedId)
+  }, [selectedId])
 
   return <>{children}</>
 }
@@ -516,15 +519,15 @@ function PuckActionBarBridge({
       data-testid="widget-actionbar-v5"
     >
       {label && <Text component="span" size="sm" fw={600} truncate>{label}</Text>}
-      <ActionIcon
+      {componentType !== 'Button' && <ActionIcon
         size="sm"
         variant="subtle"
         aria-label="Settings"
         title="Settings"
-        onClick={(event) => bridge.openAtomSettings(event.currentTarget)}
+        onClick={bridge.openAtomSettings}
       >
         <Settings2 size={16} aria-hidden />
-      </ActionIcon>
+      </ActionIcon>}
       {designDomains.length > 0 && (
         <Menu withinPortal={false} position="bottom-end">
           <Menu.Target>
@@ -582,14 +585,34 @@ function PuckActionBarBridge({
               id={componentId}
               kind={rawType}
               beforeOperation={bridge.beforeOperation}
+              disabled={
+                typeof resolvedItem?.props?.srcBinding === 'string' &&
+                resolvedItem.props.srcBinding.trim().length > 0
+              }
               renderTrigger={({ label: mediaLabel, disabled, onClick }) => (
-                <Menu.Item disabled={disabled} onClick={onClick}>{mediaLabel}</Menu.Item>
+                <Menu.Item disabled={disabled} onClick={onClick}>
+                  {typeof resolvedItem?.props?.srcBinding === 'string' &&
+                  resolvedItem.props.srcBinding.trim().length > 0
+                    ? 'Source bound to item'
+                    : mediaLabel}
+                </Menu.Item>
               )}
             />
           )}
-          {(componentType === 'Button' || componentType === 'Image' || componentType === 'Video') && componentId && (
-            <Menu.Item leftSection={<LinkIcon size={16} />} onClick={() => bridge.openAtomLink(componentId)}>
-              Link
+          {(componentType === 'Button' || componentType === 'Image' || componentType === 'Video') &&
+            componentId && (
+            <Menu.Item
+              leftSection={<LinkIcon size={16} />}
+              disabled={
+                typeof resolvedItem?.props?.hrefBinding === 'string' &&
+                resolvedItem.props.hrefBinding.trim().length > 0
+              }
+              onClick={() => bridge.openAtomLink(componentId)}
+            >
+              {typeof resolvedItem?.props?.hrefBinding === 'string' &&
+              resolvedItem.props.hrefBinding.trim().length > 0
+                ? 'Link bound to item'
+                : 'Link'}
             </Menu.Item>
           )}
           {canSaveSelectedAsPattern(componentType) && (
@@ -650,6 +673,7 @@ export type PuckHostProps = {
   desktopOnly?: boolean
   themeConfig?: ThemeConfig
   templateContext?: string
+  libraryLanguage?: string
   previewControlTarget?: HTMLElement | null
   /** Lift Puck history undo/redo into the Theme Builder one-row header (UX V5). */
   onHistoryReady?: (history: ReturnType<typeof createPuckHistoryCoordinator>) => void
@@ -670,15 +694,30 @@ export function PuckHost({
   desktopOnly = false,
   themeConfig,
   templateContext,
+  libraryLanguage,
   previewControlTarget,
   onHistoryReady,
 }: PuckHostProps) {
-  const [localDoc, setLocalDoc] = useState<BuilderDocument>(document)
+  const [localDoc, setLocalDoc] = useState<BuilderDocument>(() =>
+    document ? (canonicalizeZonesToSlots(document) as BuilderDocument) : document,
+  )
+  const [documentProp, setDocumentProp] = useState(document)
   const [validationError, setValidationError] = useState<string | null>(null)
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false)
   const latestDocRef = React.useRef<BuilderDocument>(localDoc)
   const viewportRef = React.useRef<HTMLDivElement>(null)
-  const fieldsTriggerRef = React.useRef<HTMLButtonElement | null>(null)
+
+  // Sync external document prop → local editor state (zones → slots) during render.
+  if (document !== documentProp) {
+    setDocumentProp(document)
+    const canonical = document
+      ? (canonicalizeZonesToSlots(document) as BuilderDocument)
+      : document
+    setLocalDoc(canonical)
+  }
+  React.useLayoutEffect(() => {
+    latestDocRef.current = localDoc
+  }, [localDoc])
 
   const pageSettingsPlugin: Plugin = useMemo(() => {
     return {
@@ -688,12 +727,6 @@ export function PuckHost({
       render: () => <PageSettingsPanel themeConfig={themeConfig} templateName={templateContext} />,
     }
   }, [themeConfig, templateContext])
-
-  // Sync when initial document changes externally
-  React.useEffect(() => {
-    setLocalDoc(document)
-    latestDocRef.current = document
-  }, [document])
 
   const puckData: Data = useMemo(() => {
     return {
@@ -706,13 +739,13 @@ export function PuckHost({
   const handlePuckChange = useCallback(
     (data: Data) => {
       const current = latestDocRef.current || localDoc
-      const updated: BuilderDocument = {
+      const updated = canonicalizeZonesToSlots({
         version: current.version || CURRENT_BUILDER_VERSION,
         root: data.root,
         content: data.content,
         zones: data.zones || {},
         metadata: current.metadata,
-      }
+      }) as BuilderDocument
       latestDocRef.current = updated
       setLocalDoc(updated)
       setSaveSuccess(false)
@@ -758,6 +791,7 @@ export function PuckHost({
     (StyleMenuRequest & { opened: boolean }) | null
   >(null)
   const [saveAsPatternOpened, setSaveAsPatternOpened] = useState(false)
+  const [atomLinkId, setAtomLinkId] = useState<string | null>(null)
 
   const puckApiRef = React.useRef<PuckApi | null>(null)
 
@@ -783,7 +817,7 @@ export function PuckHost({
       anchorEl,
       initialPosition,
     }: StyleMenuRequest) => {
-      // Same widget: retarget domain accordion without resetting the session baseline.
+      // Same widget: the dock establishes a new baseline when the domain changes.
       if (activeStyleMenu?.opened && activeStyleMenu.componentId === componentId) {
         setActiveStyleMenu((previous) =>
           previous
@@ -821,28 +855,22 @@ export function PuckHost({
         htmlTag: resolvedTag,
         currentStyle:
           (item?.props?.style as WidgetSemanticStyle) || currentStyle || EMPTY_STYLE,
+        listPresentation: item?.props?.listPresentation,
         anchorEl,
         initialPosition,
       })
     },
-    [activeStyleMenu, setPuckRightSidebar],
+    [activeStyleMenu, setAtomLinkId, setPuckRightSidebar],
   )
 
   const handleCloseStyleMenu = useCallback(() => {
     stylePreviewStore.clearPreview()
     setActiveStyleMenu(null)
-    // Restore Atom Settings (Puck Fields) when leaving Style.
-    setPuckRightSidebar(true)
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => {
-        // Avoid the BuilderDocument prop named `document`.
-        focusAtomSettingsPanel(window.document)
-      })
-    })
+    setPuckRightSidebar(false)
   }, [setPuckRightSidebar])
 
-  const handleUpdateWidgetStyle = useCallback(
-    (newStyle: WidgetSemanticStyle, options?: { recordHistory?: boolean }) => {
+  const patchActiveWidgetProps = useCallback(
+    (patch: Record<string, unknown>, options?: { recordHistory?: boolean }) => {
       if (!activeStyleMenu) return false
       const { componentId } = activeStyleMenu
       const api = puckApiRef.current
@@ -864,7 +892,7 @@ export function PuckHost({
             props: {
               ...item.props,
               id: item.props?.id || componentId,
-              style: newStyle,
+              ...patch,
             },
           }
         }
@@ -900,11 +928,27 @@ export function PuckHost({
           { recordHistory: options?.recordHistory !== false },
         )
       }
-
-      setActiveStyleMenu((prev) => (prev ? { ...prev, currentStyle: newStyle } : null))
       return true
     },
     [activeStyleMenu],
+  )
+
+  const handleUpdateWidgetStyle = useCallback(
+    (newStyle: WidgetSemanticStyle, options?: { recordHistory?: boolean }) => {
+      if (!patchActiveWidgetProps({ style: newStyle }, options)) return false
+      setActiveStyleMenu((prev) => (prev ? { ...prev, currentStyle: newStyle } : null))
+      return true
+    },
+    [patchActiveWidgetProps],
+  )
+
+  const handleUpdateListPresentation = useCallback(
+    (presentation: import('@/lib/style-engine/list-presentation').ListPresentationConfig, options?: { recordHistory?: boolean }) => {
+      if (!patchActiveWidgetProps({ listPresentation: presentation }, options)) return false
+      setActiveStyleMenu((prev) => (prev ? { ...prev, listPresentation: presentation } : prev))
+      return true
+    },
+    [patchActiveWidgetProps],
   )
 
   // Native right-click on canvas widgets triggers the style context menu
@@ -1016,13 +1060,32 @@ export function PuckHost({
     }
   }, [activeStyleMenu, handleOpenStyleMenu])
 
-  const [atomLinkId, setAtomLinkId] = useState<string | null>(null)
-
   const handleSelectionChange = useCallback((id: string | undefined) => {
     setAtomLinkId((previous) => (previous && previous !== id ? null : previous))
 
     const styleOpen = Boolean(activeStyleMenu?.opened)
     const styleComponentId = activeStyleMenu?.componentId
+    const selected = id ? puckApiRef.current?.findItem?.(id)?.item : undefined
+
+    if (id && selected?.type === 'Button') {
+      if (styleComponentId === id && styleOpen) return
+      setPuckRightSidebar(false)
+      handleOpenStyleMenu({
+        domain: 'button',
+        componentType: 'Button',
+        componentId: id,
+        currentStyle: selected.props?.style || EMPTY_STYLE,
+        anchorEl: null,
+      })
+      return
+    }
+
+    if (id && selected && styleOpen && id !== styleComponentId) {
+      stylePreviewStore.clearPreview(styleComponentId)
+      setActiveStyleMenu(null)
+      setPuckRightSidebar(true)
+      return
+    }
 
     if (!styleOpen) {
       // Floating Fields: open on selection, hide when cleared (no grid width either way).
@@ -1060,7 +1123,7 @@ export function PuckHost({
         })
       })
     }
-  }, [activeStyleMenu?.opened, activeStyleMenu?.componentId, setPuckRightSidebar])
+  }, [activeStyleMenu?.opened, activeStyleMenu?.componentId, handleOpenStyleMenu, setAtomLinkId, setActiveStyleMenu, setPuckRightSidebar])
 
   const openAtomLink = useCallback(
     (componentId: string) => {
@@ -1068,17 +1131,10 @@ export function PuckHost({
       setActiveStyleMenu(null)
       setAtomLinkId(componentId)
     },
-    [],
+    [setActiveStyleMenu, setAtomLinkId],
   )
 
-  const closeAtomSettings = useCallback(() => {
-    setPuckRightSidebar(false)
-    fieldsTriggerRef.current?.focus()
-    fieldsTriggerRef.current = null
-  }, [setPuckRightSidebar])
-
-  const openAtomSettings = useCallback((trigger?: HTMLButtonElement) => {
-    fieldsTriggerRef.current = trigger ?? null
+  const openAtomSettings = useCallback(() => {
     const api = puckApiRef.current
     const styleOpen = Boolean(activeStyleMenu?.opened)
     const atomSettingsVisible = Boolean(api?.getAppState()?.ui?.rightSideBarVisible)
@@ -1113,7 +1169,7 @@ export function PuckHost({
     }
 
     revealAndFocus()
-  }, [activeStyleMenu?.opened, setPuckRightSidebar])
+  }, [activeStyleMenu?.opened, setActiveStyleMenu, setAtomLinkId, setPuckRightSidebar])
 
   const openSaveAsPattern = useCallback(() => {
     setSaveAsPatternOpened(true)
@@ -1136,6 +1192,7 @@ export function PuckHost({
       return
     }
     const nextStyle = (found.item?.props?.style as WidgetSemanticStyle) || EMPTY_STYLE
+    const nextPresentation = found.item?.props?.listPresentation
     const nextTag =
       typeof found.item?.props?.tag === 'string' ? found.item.props.tag : null
     setActiveStyleMenu((previous) => {
@@ -1143,28 +1200,25 @@ export function PuckHost({
       const styleSame =
         JSON.stringify(previous.currentStyle || {}) === JSON.stringify(nextStyle || {})
       const tagSame = (previous.htmlTag || null) === nextTag
-      if (styleSame && tagSame) return previous
-      return { ...previous, currentStyle: nextStyle, htmlTag: nextTag }
+      const presentationSame =
+        JSON.stringify(previous.listPresentation) === JSON.stringify(nextPresentation)
+      if (styleSame && tagSame && presentationSame) return previous
+      return { ...previous, currentStyle: nextStyle, htmlTag: nextTag, listPresentation: nextPresentation }
     })
   }, [localDoc, activeStyleMenu?.opened, activeStyleMenu?.componentId, setPuckRightSidebar])
 
-  const historyCoordinator = React.useMemo(
-    () => createPuckHistoryCoordinator(() => puckApiRef.current?.getHistory?.() || null),
-    [],
-  )
-
   React.useEffect(() => {
-    onHistoryReady?.(historyCoordinator)
-  }, [historyCoordinator, onHistoryReady])
+    onHistoryReady?.(createPuckHistoryCoordinator(() => puckApiRef.current?.getHistory?.() || null))
+  }, [onHistoryReady])
 
   const bridgeValue: EditorBridgeValue = {
     openAtomSettings,
-    closeAtomSettings,
     openAtomLink,
     openSaveAsPattern,
     closeSaveAsPattern,
     saveAsPatternOpened,
     templateContext,
+    libraryLanguage,
     themeConfig,
     previewControlTarget,
     beforeOperation: () => true,
@@ -1172,7 +1226,6 @@ export function PuckHost({
     select: handleSelectionChange,
     openStyle: handleOpenStyleMenu,
     styleComponentId: activeStyleMenu?.opened ? activeStyleMenu.componentId : undefined,
-    history: historyCoordinator,
   }
   const activeViewports = desktopOnly ? DESKTOP_ONLY_VIEWPORT : viewports || RESPONSIVE_VIEWPORTS
   const puckUi = useMemo(
@@ -1194,6 +1247,7 @@ export function PuckHost({
   )
 
   return (
+    <BuilderTemplateProvider templateContext={templateContext as TemplateContext | undefined}>
     <BuilderChromeProvider themeConfig={themeConfig}>
     <EditorBridgeContext.Provider value={bridgeValue}>
       <Box
@@ -1206,6 +1260,7 @@ export function PuckHost({
           .filter(Boolean)
           .join(' ')}
         data-editor-workspace="true"
+        data-right-dock={activeStyleMenu?.opened ? 'style' : undefined}
         style={{
           display: 'flex',
           flexDirection: 'column',
@@ -1315,7 +1370,7 @@ export function PuckHost({
         {activeStyleMenu?.opened && (
           <WidgetStyleContextMenu
             opened={activeStyleMenu.opened}
-            inWorkspace={Boolean(templateContext)}
+            inWorkspace
             domain={activeStyleMenu.domain}
             requestNonce={activeStyleMenu.requestNonce}
             onClose={handleCloseStyleMenu}
@@ -1337,7 +1392,13 @@ export function PuckHost({
               ? findItemAndSelector(puckData, activeStyleMenu.componentId)?.item.props?.gap
               : undefined}
             themeConfig={themeConfig}
+            listPresentation={activeStyleMenu.listPresentation}
             onUpdateStyle={handleUpdateWidgetStyle}
+            onUpdateListPresentation={
+              activeStyleMenu.componentType === 'CategoryList'
+                ? handleUpdateListPresentation
+                : undefined
+            }
             onSaveAsPattern={
               canSaveSelectedAsPattern(activeStyleMenu.componentType)
                 ? () => {
@@ -1352,7 +1413,9 @@ export function PuckHost({
           componentId={atomLinkId}
           opened={Boolean(atomLinkId)}
           onClose={() => {
+            const item = atomLinkId ? puckApiRef.current?.findItem?.(atomLinkId)?.item : undefined
             setAtomLinkId(null)
+            if (item?.type === 'Button') return
             // Restore Widget Settings after Link Editor Cancel/Apply.
             setPuckRightSidebar(true)
             window.requestAnimationFrame(() => {
@@ -1372,5 +1435,6 @@ export function PuckHost({
       </Box>
     </EditorBridgeContext.Provider>
   </BuilderChromeProvider>
+    </BuilderTemplateProvider>
   )
 }

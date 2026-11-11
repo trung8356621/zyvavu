@@ -20,11 +20,13 @@ import {
 import { createUsePuck } from '@puckeditor/core'
 import {
   Columns3,
+  ContactRound,
   Image,
   LayoutGrid,
   MousePointer2,
   Type,
   Layers,
+  ListTree,
   Database,
   MoreHorizontal,
   Bookmark,
@@ -34,6 +36,8 @@ import {
 } from 'lucide-react'
 import type { TemplateContext, ThemeConfig } from '@/lib/theme-engine/types'
 import { getWidgetManifest } from '@/lib/theme-engine/widget-registry-manifests'
+import { isHiddenFromNewAuthoring } from '@/lib/theme-engine/legacy-item-widgets'
+import { foldLibrarySearchText } from '@/lib/theme-engine/library-search'
 import {
   getWidgetDesignPatterns,
   instantiatePattern,
@@ -46,7 +50,6 @@ import {
   type WidgetDesignPattern,
 } from '@/lib/theme-engine/widget-patterns'
 import {
-  isComplexPattern,
   serializeSelectedPattern,
   validatePatternJSON,
   type PatternJSON,
@@ -85,9 +88,14 @@ function clampOverlayWidth(
 }
 export function widgetLibraryCategory(type: string) {
   const manifest = getWidgetManifest(type)
+  // Reusable standalone widgets — not template-bound Dynamic Content.
+  if (type === 'CategoryList') return 'navigation'
+  if (type === 'ContactInformation') return 'general'
+  if (type === 'Icon') return 'icons'
+  // Template-bound document/archive/product bindings only (legacy Item* excluded from library).
   if (
     manifest?.capabilities.some((capability) =>
-      /^(document|archive|item|site|product)\./.test(capability),
+      /^(document|archive|product)\./.test(capability),
     )
   )
     return 'dynamic'
@@ -98,14 +106,19 @@ export function widgetLibraryCategory(type: string) {
   if (type === 'Button') return 'buttons'
   return manifest?.category && manifest.category !== 'general' ? manifest.category : 'layout'
 }
+
+export { foldLibrarySearchText } from '@/lib/theme-engine/library-search'
+
 const LABELS: Record<string, string> = {
   sections: 'Sections',
   layout: 'Layout',
   text: 'Text',
   media: 'Media',
   buttons: 'Buttons',
+  icons: 'Icons',
   header: 'Header',
   navigation: 'Navigation',
+  general: 'Contact Information',
   dynamic: 'Nội dung động',
 }
 const ICONS: Record<string, React.ElementType> = {
@@ -114,10 +127,14 @@ const ICONS: Record<string, React.ElementType> = {
   text: Type,
   media: Image,
   buttons: MousePointer2,
+  icons: Image,
+  navigation: ListTree,
+  general: ContactRound,
   dynamic: Database,
 }
 export function WidgetPatternLibrary({
   context,
+  language,
   themeConfig,
   beforeOperation,
   mode = 'blocks',
@@ -126,9 +143,11 @@ export function WidgetPatternLibrary({
   mode?: 'blocks' | 'theme' | 'user'
   embedded?: boolean
   context?: string
+  language?: string
   themeConfig?: ThemeConfig
   beforeOperation: () => boolean
 }) {
+  const labels = language?.split('-')[0] === 'vi' ? { ...LABELS, general: 'Liên hệ' } : LABELS
   const config = usePuck((state) => state.config)
   const data = usePuck((state) => state.appState.data)
   const selected = usePuck((state) => state.selectedItem)
@@ -146,6 +165,7 @@ export function WidgetPatternLibrary({
   const [message, setMessage] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [thumbnailRevisions, setThumbnailRevisions] = useState<Record<string, number>>({})
   const [preview, setPreview] = useState<{
     record: PatternJSON
     url?: string | null
@@ -162,15 +182,13 @@ export function WidgetPatternLibrary({
   const my = useMyPatterns(search, source === 'user')
   const types = Object.keys(config.components).filter(
     (type) =>
-      // Free Text atom stays registered for legacy docs but is hidden from new insertions.
+      // Free Text + obsolete Document/Item specialists stay registered for saved docs.
       type !== 'Text' &&
+      !isHiddenFromNewAuthoring(type) &&
       (mode === 'user' ||
         (mode === 'theme'
-          ? !!systemDescriptor(type) || type === 'PostContent' || type === 'CollectionLoop'
-          : !systemDescriptor(type) &&
-            !['PostTitle', 'PostContent', 'PostMeta', 'FeaturedMedia', 'CategoryHeader'].includes(
-              type,
-            ))),
+          ? type === 'PostContent' || type === 'CollectionLoop'
+          : !systemDescriptor(type) && type !== 'PostContent')),
   )
   const categoryFor = (type: string) =>
     mode === 'theme'
@@ -179,7 +197,8 @@ export function WidgetPatternLibrary({
       : widgetLibraryCategory(type)
   const categories = sortLibraryCategories([...new Set(types.map(categoryFor))])
   const active = categories.find((item) => item === category) || categories[0]
-  const matches = (text: string) => text.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())
+  const matches = (text: string) =>
+    foldLibrarySearchText(text).includes(foldLibrarySearchText(search.trim()))
   const searching = search.trim().length > 0
   const available = sortAtomTypesFirst(
     types.filter((type) => searching || categoryFor(type) === active),
@@ -221,6 +240,29 @@ export function WidgetPatternLibrary({
         `${config.components[type].label || ''} ${getWidgetManifest(type)?.label || ''} ${type}`,
       ),
   )
+
+  const presetGroups: { kind?: 'Image' | 'Button'; entries: typeof patterns }[] = []
+  for (const entry of patterns) {
+    const type = entry.pattern.widgetType
+    const kind = type === 'Image' || type === 'Button' ? type : undefined
+    const last = presetGroups.at(-1)
+    if (last && last.kind === kind) last.entries.push(entry)
+    else presetGroups.push({ kind, entries: [entry] })
+  }
+
+  const renderPresetCards = (renderCard: (entry: (typeof patterns)[number]) => React.ReactNode) =>
+    presetGroups.map(({ kind, entries }) =>
+      kind ? (
+        <div
+          key={entries[0].pattern.id}
+          className={`zyvavu-media-masonry ${styles.presetMasonry}`}
+          data-preset-masonry={kind}
+        >
+          {entries.map(renderCard)}
+        </div>
+      ) : entries.map(renderCard),
+    )
+
   // Prefer atoms when opening a mixed category; section/layout browse stays pattern-led.
   const orderedBasics =
     searching || isSectionPatternCategory(active) ? basicTypes : sortAtomTypesFirst(basicTypes)
@@ -389,7 +431,7 @@ export function WidgetPatternLibrary({
       id: metadata?.id || `user-${crypto.randomUUID()}`,
       name: metadata?.name || `${config.components[selected.type]?.label || 'Widget'} pattern`,
       description: metadata?.description || '',
-      category: metadata?.category || LABELS[widgetLibraryCategory(selected.type)] || 'Widgets',
+      category: metadata?.category || labels[widgetLibraryCategory(selected.type)] || 'Widgets',
       ...(context ? { context: context as TemplateContext } : {}),
     })
   }
@@ -450,7 +492,7 @@ export function WidgetPatternLibrary({
                 mode === 'theme'
                   ? config.components[types.find((type) => categoryFor(type) === name) || '']
                       ?.label || name
-                  : LABELS[name] || 'Widgets'
+                  : labels[name] || 'Widgets'
               return (
                 <React.Fragment key={name}>
                   {name === 'dynamic' && <Divider className={styles.categoryDivider} />}
@@ -528,7 +570,7 @@ export function WidgetPatternLibrary({
             >
               <div className={styles.overlayHeader}>
                 <Text fw={600} size="sm">
-                  {mode === 'theme' ? config.components[types.find((type) => categoryFor(type) === active) || '']?.label || active : LABELS[active] || active}
+                  {mode === 'theme' ? config.components[types.find((type) => categoryFor(type) === active) || '']?.label || active : labels[active] || active}
                 </Text>
                 {!embedded && <ActionIcon
                   variant="subtle"
@@ -634,21 +676,22 @@ export function WidgetPatternLibrary({
                         className={styles.card}
                         data-selected={selectedCard === cardId || undefined}
                       >
+                        {record.widgetType === 'CategoryList' && (
+                          <div className={styles.preview} data-category-preview>
+                            <LivePatternPreview record={record} />
+                          </div>
+                        )}
                         <UnstyledButton
                           className={styles.insertTile}
                           aria-label={`Insert ${label}`}
                           title={label}
                           onClick={() => run(pattern, false)}
                         >
-                          <div className={styles.preview}>
-                            {isComplexPattern(record) ? (
-                              <Text size="sm" c="dimmed">
-                                {label} container
-                              </Text>
-                            ) : (
-                              <LivePatternPreview record={record} />
-                            )}
-                          </div>
+                          {record.widgetType !== 'CategoryList' && (
+                            <div className={styles.preview}>
+                              <LivePatternPreview record={record} basic />
+                            </div>
+                          )}
                         </UnstyledButton>
                       </div>
                     )
@@ -721,8 +764,10 @@ export function WidgetPatternLibrary({
                       <Text className={styles.groupLabel} fw={600} size="sm">
                         Styled Presets
                       </Text>
-                      <div className={styles.cards}>
-                        {patterns.map(({ pattern, doc }) => {
+                      <div
+                        className={styles.cards}
+                      >
+                        {renderPresetCards(({ pattern, doc }) => {
                     const record = pattern.canonical!
                     const thumbnailRecord = doc
                       ? {
@@ -747,16 +792,34 @@ export function WidgetPatternLibrary({
                         onMouseEnter={() => hover(pattern)}
                         onMouseLeave={clearHover}
                       >
+                        {record.widgetType === 'CategoryList' && (
+                          <div className={styles.preview} data-category-preview>
+                            <PatternThumbnail key={thumbnailRevisions[cardId]} record={thumbnailRecord} url={doc?.url} />
+                          </div>
+                        )}
                         <UnstyledButton
                           className={styles.insertTile}
                           aria-label={`Insert ${pattern.name}`}
                           title={pattern.name}
                           onClick={() => run(pattern)}
                         >
-                          <div className={styles.preview}>
-                            <PatternThumbnail record={thumbnailRecord} url={doc?.url} />
-                          </div>
+                          {record.widgetType !== 'CategoryList' && (
+                            <div className={styles.preview}>
+                              <PatternThumbnail key={thumbnailRevisions[cardId]} record={thumbnailRecord} url={doc?.url} />
+                            </div>
+                          )}
+                          <Text size="xs" truncate={record.widgetType !== 'Image' && record.widgetType !== 'Button'}>{pattern.name}</Text>
                         </UnstyledButton>
+                        {!doc && record.widgetType === 'CategoryList' && (
+                          <div className={styles.management}>
+                            <Button variant="subtle" size="xs"
+                              aria-label={`Preview ${pattern.name}`}
+                              onClick={() => setPreview({ record, key: cardId })}
+                            >
+                              Preview
+                            </Button>
+                          </div>
+                        )}
                         {doc && (
                           <div className={styles.management}>
                             <ActionIcon
@@ -923,7 +986,7 @@ export function WidgetPatternLibrary({
           <nav className={styles.categories} aria-label="Widget categories">
             {categories.map((name) => {
               const Icon = ICONS[name] || LayoutGrid
-              const label = LABELS[name] || 'Widgets'
+              const label = labels[name] || 'Widgets'
               return (
                 <React.Fragment key={name}>
                   {name === 'dynamic' && <Divider className={styles.categoryDivider} />}
@@ -1019,21 +1082,22 @@ export function WidgetPatternLibrary({
                       className={styles.card}
                       data-selected={selectedCard === cardId || undefined}
                     >
+                      {record.widgetType === 'CategoryList' && (
+                        <div className={styles.preview} data-category-preview>
+                          <LivePatternPreview record={record} />
+                        </div>
+                      )}
                       <UnstyledButton
                         className={styles.insertTile}
                         aria-label={`Insert ${label}`}
                         title={label}
                         onClick={() => run(pattern, false)}
                       >
-                        <div className={styles.preview}>
-                          {isComplexPattern(record) ? (
-                            <Text size="sm" c="dimmed">
-                              {label} container
-                            </Text>
-                          ) : (
-                            <LivePatternPreview record={record} />
-                          )}
-                        </div>
+                        {record.widgetType !== 'CategoryList' && (
+                          <div className={styles.preview}>
+                            <LivePatternPreview record={record} basic />
+                          </div>
+                        )}
                       </UnstyledButton>
                     </div>
                   )
@@ -1106,8 +1170,10 @@ export function WidgetPatternLibrary({
                     <Text className={styles.groupLabel} fw={600} size="sm">
                       Styled Presets
                     </Text>
-                    <div className={styles.cards}>
-                      {patterns.map(({ pattern, doc }) => {
+                    <div
+                      className={styles.cards}
+                    >
+                      {renderPresetCards(({ pattern, doc }) => {
                   const record = pattern.canonical!
                   const thumbnailRecord = doc
                     ? {
@@ -1132,16 +1198,34 @@ export function WidgetPatternLibrary({
                       onMouseEnter={() => hover(pattern)}
                       onMouseLeave={clearHover}
                     >
+                      {record.widgetType === 'CategoryList' && (
+                        <div className={styles.preview} data-category-preview>
+                          <PatternThumbnail key={thumbnailRevisions[cardId]} record={thumbnailRecord} url={doc?.url} />
+                        </div>
+                      )}
                       <UnstyledButton
                         className={styles.insertTile}
                         aria-label={`Insert ${pattern.name}`}
                         title={pattern.name}
                         onClick={() => run(pattern)}
                       >
-                        <div className={styles.preview}>
-                          <PatternThumbnail record={thumbnailRecord} url={doc?.url} />
-                        </div>
+                        {record.widgetType !== 'CategoryList' && (
+                          <div className={styles.preview}>
+                            <PatternThumbnail key={thumbnailRevisions[cardId]} record={thumbnailRecord} url={doc?.url} />
+                          </div>
+                        )}
+                        <Text size="xs" truncate={record.widgetType !== 'Image' && record.widgetType !== 'Button'}>{pattern.name}</Text>
                       </UnstyledButton>
+                      {!doc && record.widgetType === 'CategoryList' && (
+                        <div className={styles.management}>
+                          <Button variant="subtle" size="xs"
+                            aria-label={`Preview ${pattern.name}`}
+                            onClick={() => setPreview({ record, key: cardId })}
+                          >
+                            Preview
+                          </Button>
+                        </div>
+                      )}
                       {doc && (
                         <div className={styles.management}>
                           <ActionIcon
@@ -1250,6 +1334,10 @@ export function WidgetPatternLibrary({
           url={preview.url}
           previewKey={preview.key}
           onClose={() => setPreview(null)}
+          onCaptured={() => setThumbnailRevisions((previous) => ({
+            ...previous,
+            [preview.key]: (previous[preview.key] || 0) + 1,
+          }))}
         />
       )}
       <Modal

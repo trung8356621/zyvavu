@@ -2,7 +2,6 @@ import { getPayload } from 'payload'
 import config from '@/payload.config'
 import { isSiteStaff } from '@/access/roles'
 import { SYSTEM_PATTERNS } from '@/lib/theme-engine/patterns/catalog'
-import { capturePatternWebP } from '@/lib/theme-engine/patterns/capture'
 import { patternContentHash } from '@/lib/theme-engine/patterns/server'
 import {
   thumbnailCacheKey,
@@ -41,9 +40,13 @@ export async function GET(request: Request, { params }: { params: Promise<{ key:
       buffer = await readFile(file)
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+      if (record.widgetType === 'CategoryList' && new URL(request.url).searchParams.get('capture') !== '1') {
+        return new Response(null, { status: 404, headers: { 'cache-control': 'no-store' } })
+      }
       let job = pending.get(hash)
       if (!job) {
         job = (async () => {
+          const { capturePatternWebP } = await import('@/lib/theme-engine/patterns/capture')
           const image = await capturePatternWebP({
             key,
             hash: patternContentHash(record),

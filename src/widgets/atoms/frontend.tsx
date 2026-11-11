@@ -5,8 +5,12 @@ import { resolveButtonElementProps } from '@/lib/style-engine/button-style'
 import '@/lib/style-engine/button-style.css'
 import { withWidgetStyleSurface } from '@/lib/style-engine/WidgetStyleSurface'
 import { animationAttributes } from '@/lib/style-engine/animation-presets'
-import { resolveTextRender } from '@/components/builder/inline-edit/content-model'
+import {
+  resolveButtonLabelRender,
+  resolveTextRender,
+} from '@/components/builder/inline-edit/content-model'
 import { systemDescriptor, type AtomType } from '@/lib/theme-engine/widget-contracts'
+import { IconRendererStatic, type IconRef } from '@/lib/icons'
 import {
   isSafeMediaHref,
   MEDIA_STYLE_DEFAULTS,
@@ -14,13 +18,22 @@ import {
   type ObjectFitValue,
   type ObjectPositionValue,
 } from './media-props'
+import {
+  recordFromDataContext,
+  resolveAtomBindings,
+  type AtomBindingProps,
+} from '@/lib/theme-engine/item-binding'
 
-export type AtomProps = {
+export type AtomProps = AtomBindingProps & {
   id?: string
   tag?: 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'p'
   text?: string
   href?: string
   newTab?: boolean
+  icon?: IconRef | null
+  iconPosition?: 'left' | 'right'
+  iconSize?: number
+  iconGap?: number
   src?: string
   alt?: string
   caption?: string
@@ -37,6 +50,93 @@ export type AtomProps = {
   style?: WidgetSemanticStyle
   dataContext?: ThemeDataContext
   previewOnly?: boolean
+}
+
+function renderButtonLabel(text: string | undefined) {
+  const render = resolveButtonLabelRender(text)
+  if (render.mode === 'html') {
+    return (
+      <span
+        className="zyvavu-widget-button__label"
+        dangerouslySetInnerHTML={{ __html: render.html || '' }}
+      />
+    )
+  }
+  return <span className="zyvavu-widget-button__label">{render.plain}</span>
+}
+
+function resolveButtonIcon(props: {
+  icon?: IconRef | null
+  iconPosition?: 'left' | 'right'
+  iconSize?: number
+  iconGap?: number
+  style?: WidgetSemanticStyle
+}) {
+  const shellIcon = props.style?.button?.icon
+  const ref = shellIcon?.ref ?? props.icon ?? null
+  if (!ref) return null
+  return {
+    ref,
+    position: shellIcon?.position || props.iconPosition || 'left',
+    size:
+      typeof shellIcon?.size === 'number'
+        ? shellIcon.size
+        : typeof props.iconSize === 'number'
+          ? props.iconSize
+          : 18,
+    gap:
+      typeof shellIcon?.gap === 'number'
+        ? shellIcon.gap
+        : typeof props.iconGap === 'number'
+          ? props.iconGap
+          : 8,
+    color: shellIcon?.colorToken ? undefined : 'currentColor',
+  }
+}
+
+function ButtonContent({
+  text,
+  icon,
+  iconPosition,
+  iconSize,
+  iconGap,
+  style,
+}: {
+  text?: string
+  icon?: IconRef | null
+  iconPosition?: 'left' | 'right'
+  iconSize?: number
+  iconGap?: number
+  style?: WidgetSemanticStyle
+}) {
+  const resolved = resolveButtonIcon({ icon, iconPosition, iconSize, iconGap, style })
+  const iconNode = resolved ? (
+    <IconRendererStatic
+      icon={resolved.ref}
+      size={resolved.size}
+      color={resolved.color || 'currentColor'}
+      decorative
+      style={{ flex: '0 0 auto' }}
+    />
+  ) : null
+  return (
+    <span
+      className="zyvavu-widget-button__inner"
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: iconNode ? resolved?.gap || 0 : 0,
+        minWidth: 0,
+        maxWidth: '100%',
+        verticalAlign: 'middle',
+      }}
+    >
+      {resolved?.position !== 'right' ? iconNode : null}
+      {renderButtonLabel(text)}
+      {resolved?.position === 'right' ? iconNode : null}
+    </span>
+  )
 }
 
 function renderInlineText(
@@ -141,6 +241,10 @@ export function AtomPresentation({
   tag,
   href,
   newTab,
+  icon,
+  iconPosition,
+  iconSize,
+  iconGap,
   controls = true,
   loop = false,
   muted = true,
@@ -150,10 +254,26 @@ export function AtomPresentation({
   const resolved = resolveWidgetStyles(style)
   const buttonProps =
     kind === 'Button' ? resolveButtonElementProps(style as any) : { className: undefined, style: {} }
-  const buttonStyle = { ...resolved, ...buttonProps.style }
+  const buttonStyle = {
+    ...resolved,
+    ...buttonProps.style,
+    ...(kind === 'Button'
+      ? { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 0 }
+      : {}),
+  }
   const HeadingTag = (tag || (primaryHeading ? 'h1' : 'h2')) as keyof React.JSX.IntrinsicElements
   const anim = animationAttributes(style?.animation)
   const mediaStyle = mediaBoxStyle(aspectRatio, objectFit, objectPosition)
+  const buttonInner = (
+    <ButtonContent
+      text={text}
+      icon={icon}
+      iconPosition={iconPosition}
+      iconSize={iconSize}
+      iconGap={iconGap}
+      style={style}
+    />
+  )
 
   let node: React.ReactElement
   if (kind === 'Image') {
@@ -230,7 +350,11 @@ export function AtomPresentation({
   } else if (kind === 'Heading') {
     node = renderInlineText(HeadingTag, text, resolved, anim)
   } else if (kind === 'Button' && previewOnly) {
-    node = <span className={buttonProps.className} style={buttonStyle}>{text}</span>
+    node = (
+      <span className={buttonProps.className} style={buttonStyle}>
+        {buttonInner}
+      </span>
+    )
   } else if (kind === 'Button' && href && isSafeMediaHref(href)) {
     node = (
       <a
@@ -241,13 +365,13 @@ export function AtomPresentation({
         style={buttonStyle}
         {...anim}
       >
-        {text}
+        {buttonInner}
       </a>
     )
   } else if (kind === 'Button') {
     node = (
       <button type="button" className={buttonProps.className} style={buttonStyle} {...anim}>
-        {text}
+        {buttonInner}
       </button>
     )
   } else {
@@ -260,7 +384,28 @@ export function AtomPresentation({
 export function createAtomRenderer(type: string) {
   return function AtomRenderer(props: AtomProps) {
     const descriptor = systemDescriptor(type)
-    if (!descriptor) return <AtomPresentation {...props} kind={type as AtomType} />
+    if (!descriptor) {
+      const record = recordFromDataContext(props.dataContext)
+      const bound = resolveAtomBindings(props, record)
+      if (bound.omit) return null
+      const primaryHeading =
+        props.textBinding === 'title' &&
+        (props.dataContext?.type === 'single' ||
+          props.dataContext?.type === 'page' ||
+          props.dataContext?.type === 'category') &&
+        !props.dataContext?.item
+      return (
+        <AtomPresentation
+          {...props}
+          text={bound.text}
+          href={bound.href}
+          src={bound.src}
+          alt={bound.alt}
+          kind={type as AtomType}
+          primaryHeading={Boolean(primaryHeading)}
+        />
+      )
+    }
     const doc = props.dataContext?.document
     const archive = props.dataContext?.archive
     let text = ''

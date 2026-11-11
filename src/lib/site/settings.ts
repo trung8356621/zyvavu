@@ -13,6 +13,7 @@ import {
   DEFAULT_TAG_PERMALINK_STRUCTURE,
   normalizePermalinkPattern,
 } from '@/lib/permalinks'
+import { normalizeContactEntries, type ContactEntry } from './contact'
 import { canonicalPublicOrigin } from './origin'
 import { assessSiteSetup, isLanguageCode, type SiteSetupAssessment } from './setup'
 
@@ -36,6 +37,7 @@ export type PublicSiteSettings = {
   pagePermalinkStructure: string
   categoryPermalinkStructure: string
   tagPermalinkStructure: string
+  contactEntries: ContactEntry[]
 }
 
 const fallback: PublicSiteSettings = {
@@ -55,6 +57,7 @@ const fallback: PublicSiteSettings = {
   pagePermalinkStructure: DEFAULT_PAGE_PERMALINK_STRUCTURE,
   categoryPermalinkStructure: DEFAULT_CATEGORY_PERMALINK_STRUCTURE,
   tagPermalinkStructure: DEFAULT_TAG_PERMALINK_STRUCTURE,
+  contactEntries: [],
 }
 
 export async function loadPublicSiteSettings(payload: Payload): Promise<PublicSiteSettings> {
@@ -95,6 +98,7 @@ export async function loadPublicSiteSettings(payload: Payload): Promise<PublicSi
       pagePermalinkStructure: normalizePermalinkPattern(settings.pagePermalinkStructure as string, 'pages'),
       categoryPermalinkStructure: normalizePermalinkPattern(settings.categoryPermalinkStructure as string, 'categories'),
       tagPermalinkStructure: normalizePermalinkPattern(settings.tagPermalinkStructure as string, 'tags'),
+      contactEntries: normalizeContactEntries((settings as { contactEntries?: unknown }).contactEntries),
     }
   } catch {
     return fallback

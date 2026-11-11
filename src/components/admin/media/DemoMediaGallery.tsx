@@ -8,7 +8,6 @@ import {
   Group,
   Image,
   Loader,
-  SimpleGrid,
   Stack,
   Text,
   UnstyledButton,
@@ -94,7 +93,7 @@ export function DemoMediaGallery({
           <Text>{kind === 'image' ? 'Loading image…' : 'Loading video…'}</Text>
         </Group>
       )}
-      <SimpleGrid cols={{ base: 1, sm: 2, lg: 3, xl: 4 }}>
+      <div className="zyvavu-media-masonry">
         {assets.map((asset) =>
           useAfterImport ? (
             <UnstyledButton
@@ -105,7 +104,7 @@ export function DemoMediaGallery({
               onClick={() => void importAsset(asset.id)}
             >
               <Stack gap="xs">
-                <Image src={asset.thumbnailURL} alt="" h={120} fit="cover" loading="lazy" />
+                <Image src={asset.thumbnailURL} alt="" className="zyvavu-media-masonry__image" loading="lazy" />
                 <Text size="sm" truncate>
                   {asset.label}
                 </Text>
@@ -116,8 +115,7 @@ export function DemoMediaGallery({
               <Image
                 src={asset.thumbnailURL}
                 alt={asset.label}
-                h={120}
-                fit="contain"
+                className="zyvavu-media-masonry__image"
                 loading="lazy"
               />
               <Text fw={600}>{asset.label}</Text>
@@ -141,7 +139,7 @@ export function DemoMediaGallery({
             </Stack>
           ),
         )}
-      </SimpleGrid>
+      </div>
     </Stack>
   )
 }

@@ -1,4 +1,5 @@
 import type { Config } from '@puckeditor/core'
+import type { ContactEntry } from '@/lib/site/contact'
 
 export type TemplateContext =
   | 'single'
@@ -8,6 +9,7 @@ export type TemplateContext =
   | 'footer'
   | 'category'
   | 'product'
+  | 'loopItem'
 
 export type TemplateEditorMode = 'document' | 'free' | 'structured-header'
 
@@ -20,6 +22,7 @@ export type WidgetCapability =
   | 'site.brand'
   | 'site.header'
   | 'site.footer'
+  | 'site.contact'
   | 'archive.list'
   | 'archive.header'
   | 'layout.container'
@@ -220,24 +223,40 @@ export type ThemeCustomizerState = {
 }
 
 export type LoopItemRecord = {
-  id?: string | number
+  id?: string | number | null
+  type?: string
   title: string
-  slug?: string
-  url?: string
-  excerpt?: string
-  date?: string
-  category?: string
+  slug?: string | null
+  url?: string | null
+  excerpt?: string | null
+  date?: string | null
+  /** Legacy single-category label for Item* widgets. */
+  category?: string | null
+  taxonomy?: Array<{
+    id?: string | number
+    title: string
+    slug?: string
+    url?: string
+  }> | null
+  thumbnail?: {
+    url: string
+    alt?: string
+    width?: number
+    height?: number
+    mediaId?: string | number
+  } | null
   image?: {
     url?: string
     alt?: string
     width?: number
     height?: number
-  }
+  } | null
   raw?: any
 }
 
 export type ThemeDataContext = {
   type: TemplateContext
+  patternPreview?: true
   document?: Record<string, any>
   item?: LoopItemRecord
   archive?: {
@@ -257,6 +276,8 @@ export type ThemeDataContext = {
     menuItems?: any[]
     menuTree?: any[]
     menuDoc?: any
+    /** Site Settings contact entries — widgets reference by entryId only. */
+    contactEntries?: ContactEntry[]
   }
 }
 

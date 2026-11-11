@@ -734,7 +734,7 @@ body {
 
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--zyvavu-theme-font-heading, var(--zyvavu-theme-font, inherit));
-  color: var(--zyvavu-inherited-foreground, var(--zyvavu-theme-text, inherit));
+  color: inherit;
 }
 
 h1 {

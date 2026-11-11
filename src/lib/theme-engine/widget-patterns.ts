@@ -8,6 +8,7 @@ import { validateUniversalStyle } from '@/lib/style-engine/validation'
 import { validateThemeTemplateDocument } from './validation'
 import type { TemplateContext, ThemeTemplateDocument } from './types'
 import { isPageContentContext } from './normalization'
+import { canonicalizeZonesToSlots } from './document-slots'
 
 export interface WidgetDesignPattern {
   canonical?: PatternJSON
@@ -194,17 +195,18 @@ export function validatePatternOperation(
   context: TemplateContext,
   config: Config,
 ) {
+  const canonical = canonicalizeZonesToSlots(next) as Data
   const ids = new Set<string>()
-  walkPatternDocument(next, config, (node) => {
+  walkPatternDocument(canonical, config, (node) => {
     if (ids.has(node.props.id)) throw new Error('Duplicate widget ID')
     ids.add(node.props.id)
     const result = validateUniversalStyle(node.props.style)
     if (!result.valid) throw new Error(result.errors.join('; '))
   })
   const result = validateThemeTemplateDocument(
-    expandedDocument(next, context, config),
+    expandedDocument(canonical, context, config),
     context,
-    expandedDocument(previous, context, config),
+    expandedDocument(canonicalizeZonesToSlots(previous) as Data, context, config),
   )
   if (!result.valid) throw new Error(result.errors.join('; '))
 }

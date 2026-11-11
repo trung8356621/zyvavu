@@ -1,4 +1,8 @@
 import * as migration_20261018_160000_widget_patterns from './20261018_160000_widget_patterns'
+import * as migration_20261111_120000_category_parent from './20261111_120000_category_parent'
+import * as migration_20261111_210000_settings_contact_entries from './20261111_210000_settings_contact_entries'
+import * as migration_20261112_000000_contact_entry_icon from './20261112_000000_contact_entry_icon'
+import * as migration_20261112_120000_category_thumbnail from './20261112_120000_category_thumbnail'
 import * as migration_20261013_053306_initial from './20261013_053306_initial'
 import * as migration_20261013_140500_url_registry_foundation from './20261013_140500_url_registry_foundation'
 import * as migration_20261013_150600_settings_foundation from './20261013_150600_settings_foundation'
@@ -65,5 +69,25 @@ export const migrations = [
     up: migration_20261018_160000_widget_patterns.up,
     down: migration_20261018_160000_widget_patterns.down,
     name: '20261018_160000_widget_patterns',
+  },
+  {
+    up: migration_20261111_120000_category_parent.up,
+    down: migration_20261111_120000_category_parent.down,
+    name: '20261111_120000_category_parent',
+  },
+  {
+    up: migration_20261111_210000_settings_contact_entries.up,
+    down: migration_20261111_210000_settings_contact_entries.down,
+    name: '20261111_210000_settings_contact_entries',
+  },
+  {
+    up: migration_20261112_000000_contact_entry_icon.up,
+    down: migration_20261112_000000_contact_entry_icon.down,
+    name: '20261112_000000_contact_entry_icon',
+  },
+  {
+    up: migration_20261112_120000_category_thumbnail.up,
+    down: migration_20261112_120000_category_thumbnail.down,
+    name: '20261112_120000_category_thumbnail',
   },
 ]

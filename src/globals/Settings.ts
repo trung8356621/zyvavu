@@ -21,6 +21,13 @@ import {
   validatePermalinkPattern,
 } from '@/lib/permalinks'
 import { isValidThemeId } from '@/lib/theme-engine/themes'
+import {
+  ensureContactEntryId,
+  normalizeContactIcon,
+  SAMPLE_CONTACT_ENTRIES,
+  validateContactEntryFields,
+  validateContactLink,
+} from '@/lib/site/contact'
 
 const wholeNumber = (min: number, max: number) => (value: unknown) => {
   if (typeof value !== 'number' || !Number.isInteger(value) || value < min || value > max) {
@@ -311,6 +318,145 @@ export const Settings: GlobalConfig = {
               admin: {
                 description: 'Enables the desktop Mega Menu visual builder and structured mobile menu navigation.',
               },
+            },
+          ],
+        },
+        {
+          label: 'Contact Information',
+          fields: [
+            {
+              name: 'contactEntries',
+              type: 'array',
+              labels: {
+                singular: 'Contact Entry',
+                plural: 'Contact Entries',
+              },
+              admin: {
+                description:
+                  'Ordered site contact entries. Widgets reference stable Entry IDs — renaming the Key does not break widgets. Phone/Email auto-links use Special link, not the Key label.',
+                initCollapsed: false,
+                components: {
+                  RowLabel: '@/components/admin/settings/ContactEntryRowLabel#ContactEntryRowLabel',
+                },
+              },
+              defaultValue: SAMPLE_CONTACT_ENTRIES.map((entry, index) => ({
+                ...entry,
+                order: index,
+              })),
+              validate: (value: unknown) => {
+                if (value == null) return true
+                if (!Array.isArray(value)) return 'Contact entries must be a list.'
+                for (const row of value) {
+                  if (!row || typeof row !== 'object') return 'Each contact entry must be an object.'
+                  const record = row as Record<string, unknown>
+                  const result = validateContactEntryFields({
+                    key: record.key,
+                    value: record.value,
+                    link: record.link,
+                    semantics: record.semantics,
+                  })
+                  if (result !== true) return result
+                }
+                return true
+              },
+              fields: [
+                {
+                  name: 'entryId',
+                  type: 'text',
+                  required: true,
+                  label: 'Entry ID',
+                  admin: {
+                    readOnly: true,
+                    description: 'Stable internal ID used by Contact Information widgets.',
+                  },
+                  hooks: {
+                    beforeValidate: [
+                      ({ value }) => ensureContactEntryId(value),
+                    ],
+                  },
+                },
+                {
+                  name: 'key',
+                  type: 'text',
+                  required: true,
+                  label: 'Key (label)',
+                  admin: {
+                    description: 'Editable display label. Renaming does not change Entry ID or auto-links.',
+                  },
+                },
+                {
+                  name: 'value',
+                  type: 'textarea',
+                  required: true,
+                  label: 'Value',
+                },
+                {
+                  name: 'link',
+                  type: 'text',
+                  label: 'Link (optional)',
+                  admin: {
+                    description:
+                      'Optional URL. When set and Special link is empty, the value renders as a clickable link. Unsafe schemes are rejected.',
+                  },
+                  validate: (value: unknown) => validateContactLink(value),
+                },
+                {
+                  name: 'semantics',
+                  type: 'select',
+                  label: 'Special link',
+                  options: [
+                    { label: 'Phone (tel: from value)', value: 'phone' },
+                    { label: 'Email (mailto: from value)', value: 'email' },
+                  ],
+                  admin: {
+                    description:
+                      'Optional. Stable auto-link for phone/email — independent of the editable Key. Leave empty for plain text or optional Link. Not a general contact type.',
+                    isClearable: true,
+                  },
+                },
+                {
+                  name: 'icon',
+                  type: 'json',
+                  label: 'Icon (optional)',
+                  admin: {
+                    components: {
+                      Field: '@/components/admin/settings/ContactEntryIconField#ContactEntryIconField',
+                    },
+                  },
+                  validate: async (value, { req }) => {
+                    if (value == null) return true
+                    const icon = normalizeContactIcon(value)
+                    if (!icon) return 'Choose a valid icon from the Media Library.'
+                    if (icon.source !== 'media') return true
+                    try {
+                      const media = await req.payload.findByID({
+                        collection: 'media',
+                        id: icon.mediaId!,
+                        depth: 0,
+                        req,
+                        overrideAccess: false,
+                      })
+                      if (media.mimeType?.startsWith('image/') && media.url === icon.mediaUrl) return true
+                    } catch {
+                      // The reference may be missing or inaccessible.
+                    }
+                    return 'Choose an available image from the Media Library.'
+                  },
+                  hooks: {
+                    beforeChange: [({ value }) => normalizeContactIcon(value)],
+                  },
+                },
+                {
+                  name: 'order',
+                  type: 'number',
+                  label: 'Display order',
+                  admin: {
+                    description: 'Lower numbers appear first. Drag-reorder the array to change sequence.',
+                    step: 1,
+                  },
+                  defaultValue: 0,
+                },
+              ],
             },
           ],
         },

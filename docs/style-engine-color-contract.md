@@ -75,7 +75,7 @@ These examples specify required integration behavior, not new implementations:
 - **Border:** reuse the existing border target with `supportedModes={['solid']}`; preview/accept the token into `border.colorToken` using the same transaction.
 - **Pattern:** click the Pattern Color control, open this same modal with `supportedModes={['solid']}`, select a System Color Token, and return its identity to the owning pattern color field. Gradient/Mesh stay hidden. Replacing the existing Pattern selectbox is future implementation work, explicitly excluded from this documentation task.
 
-`PageSettingsPanel` currently omits `supportedModes` and wires `onApplyToken` only. Since the shared default exposes all modes, this is a caller gap, not evidence that Page Settings supports Gradient/Mesh. Future work must constrain modes to its actual data/renderer support. Existing selectboxes or other noncompliant controls do not establish an architectural exception; this task leaves them unchanged.
+`PageSettingsPanel` uses `supportedModes={['solid']}` for its background token and text token controls. Its background schema supports Theme, a solid palette token, and an image URL. Gradient and Mesh remain available in the Style Engine surfaces that store and render those modes.
 
 ## Compatibility and prohibited patterns
 

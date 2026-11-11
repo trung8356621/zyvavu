@@ -5,6 +5,7 @@ import {
   Box,
   Button,
   Group,
+  NumberInput,
   Paper,
   SegmentedControl,
   Select,
@@ -12,7 +13,9 @@ import {
   Tabs,
   Text,
 } from '@mantine/core'
+import { IconPickerField } from '@/components/admin/icons/IconPicker'
 import { ThemeColorPaletteModal } from '@/components/admin/shared/ThemeColorPaletteModal'
+import type { IconRef } from '@/lib/icons'
 import {
   BUTTON_HOVER_SUPPORTED,
   BUTTON_NORMAL_SUPPORTED,
@@ -118,8 +121,9 @@ export function ButtonStyleControl({
   const commit = (next: ButtonStyleShell) => {
     const normalized = normalizeButtonStyle(next)
     // Optimistic merge so rapid Normal→Hover edits keep prior state before parent re-render.
-    liveRef.current = normalized.normal || normalized.hover ? normalized : { version: 1 }
-    if (!normalized.normal && !normalized.hover) onChange({ version: 1 })
+    const hasContent = Boolean(normalized.normal || normalized.hover || normalized.icon)
+    liveRef.current = hasContent ? normalized : { version: 1 }
+    if (!hasContent) onChange({ version: 1 })
     else onChange(normalized)
   }
 
@@ -128,6 +132,7 @@ export function ButtonStyleControl({
       version: 1,
       normal: { ...liveRef.current.normal, ...partial },
       hover: liveRef.current.hover,
+      icon: liveRef.current.icon,
     })
   }
 
@@ -136,6 +141,16 @@ export function ButtonStyleControl({
       version: 1,
       normal: liveRef.current.normal,
       hover: { ...liveRef.current.hover, ...partial },
+      icon: liveRef.current.icon,
+    })
+  }
+
+  const updateIcon = (partial: NonNullable<ButtonStyleShell['icon']> | null) => {
+    commit({
+      version: 1,
+      normal: liveRef.current.normal,
+      hover: liveRef.current.hover,
+      icon: partial || undefined,
     })
   }
 
@@ -188,10 +203,13 @@ export function ButtonStyleControl({
               ? displayShell.hover?.border?.colorToken
               : undefined
 
+  const iconShell = displayShell.icon
+  const iconRef = (iconShell?.ref || null) as IconRef | null
+
   return (
     <Stack gap="sm">
       <Text size="xs" c="dimmed">
-        Normal / Hover persist with the document. Icon and Normal Layout are not available yet.
+        Normal / Hover / Icon persist with the document. Close keeps edits; Cancel restores the session.
       </Text>
 
       <Select
@@ -214,6 +232,83 @@ export function ButtonStyleControl({
       <Button component="div" variant="default" className={BUTTON_STYLE_CLASS} style={previewStyle}>
         Button sample
       </Button>
+
+      <Paper p="xs" withBorder radius="xs">
+        <Stack gap="xs">
+          <Text size="sm" fw={600}>
+            Icon
+          </Text>
+          <IconPickerField
+            label="Button icon"
+            value={iconRef}
+            onChange={(ref) =>
+              updateIcon(
+                ref
+                  ? {
+                      ...iconShell,
+                      ref,
+                      position: iconShell?.position || 'left',
+                      size: iconShell?.size || 18,
+                      gap: iconShell?.gap || 8,
+                      visible: true,
+                    }
+                  : null,
+              )
+            }
+          />
+          {iconRef ? (
+            <>
+              <Select
+                size="sm"
+                label="Position"
+                value={iconShell?.position || 'left'}
+                data={[
+                  { value: 'left', label: 'Before label' },
+                  { value: 'right', label: 'After label' },
+                ]}
+                onChange={(position) =>
+                  updateIcon({
+                    ...iconShell,
+                    ref: iconRef,
+                    position: (position as 'left' | 'right') || 'left',
+                  })
+                }
+              />
+              <NumberInput
+                size="sm"
+                label="Size (px)"
+                min={10}
+                max={64}
+                value={typeof iconShell?.size === 'number' ? iconShell.size : 18}
+                onChange={(size) =>
+                  updateIcon({
+                    ...iconShell,
+                    ref: iconRef,
+                    size: typeof size === 'number' ? size : 18,
+                  })
+                }
+              />
+              <NumberInput
+                size="sm"
+                label="Gap (px)"
+                min={0}
+                max={48}
+                value={typeof iconShell?.gap === 'number' ? iconShell.gap : 8}
+                onChange={(gap) =>
+                  updateIcon({
+                    ...iconShell,
+                    ref: iconRef,
+                    gap: typeof gap === 'number' ? gap : 8,
+                  })
+                }
+              />
+              <Text size="xs" c="dimmed">
+                Icon color inherits Button text color by default.
+              </Text>
+            </>
+          ) : null}
+        </Stack>
+      </Paper>
 
       <SegmentedControl
         value={state}

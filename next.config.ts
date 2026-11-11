@@ -8,6 +8,7 @@ const dirname = path.dirname(__filename)
 
 const nextConfig: NextConfig = {
   agentRules: false,
+  // Worker-only Playwright; keep external if anything still resolves the packages.
   serverExternalPackages: ['@playwright/test', 'playwright', 'playwright-core'],
   allowedDevOrigins: ['zyvavu.test', '127.0.0.1:3107', 'localhost:3107', '127.0.0.1', 'localhost'],
   images: {

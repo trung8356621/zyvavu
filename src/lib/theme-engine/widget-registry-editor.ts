@@ -73,6 +73,12 @@ import { footerEditor } from '@/widgets/Footer/editor'
 import { collectionLoopManifest } from '@/widgets/CollectionLoop/manifest'
 import { collectionLoopEditor } from '@/widgets/CollectionLoop/editor'
 
+import { featuredPostManifest } from '@/widgets/FeaturedPost/manifest'
+import { featuredPostEditor } from '@/widgets/FeaturedPost/editor'
+
+import { postCollectionManifest } from '@/widgets/PostCollection/manifest'
+import { postCollectionEditor } from '@/widgets/PostCollection/editor'
+
 import { itemTitleManifest } from '@/widgets/ItemTitle/manifest'
 import { itemTitleEditor } from '@/widgets/ItemTitle/editor'
 
@@ -85,8 +91,21 @@ import { itemExcerptEditor } from '@/widgets/ItemExcerpt/editor'
 import { itemLinkManifest } from '@/widgets/ItemLink/manifest'
 import { itemLinkEditor } from '@/widgets/ItemLink/editor'
 
+import { itemDateManifest } from '@/widgets/ItemDate/manifest'
+import { itemDateEditor } from '@/widgets/ItemDate/editor'
+
 import { sectionManifest } from '@/widgets/Section/manifest'
 import { sectionEditor } from '@/widgets/Section/editor'
+
+import { contactInformationManifest } from '@/widgets/ContactInformation/manifest'
+import { contactInformationEditor, createContactInformationEditor } from '@/widgets/ContactInformation/editor'
+import type { ContactEntry } from '@/lib/site/contact'
+
+import { iconManifest } from '@/widgets/Icon/manifest'
+import { iconEditor } from '@/widgets/Icon/editor'
+
+import { categoryListManifest } from '@/widgets/CategoryList/manifest'
+import { categoryListEditor } from '@/widgets/CategoryList/editor'
 
 export type EditorWidgetEntry = {
   manifest: any
@@ -113,10 +132,16 @@ const defaultEditorRegistry: Record<string, EditorWidgetEntry> = {
   HeaderTopBarText: { manifest: headerTopBarTextManifest, config: headerTopBarTextEditor },
   Footer: { manifest: footerManifest, config: footerEditor },
   CollectionLoop: { manifest: collectionLoopManifest, config: collectionLoopEditor },
+  FeaturedPost: { manifest: featuredPostManifest, config: featuredPostEditor },
+  PostCollection: { manifest: postCollectionManifest, config: postCollectionEditor },
   ItemTitle: { manifest: itemTitleManifest, config: itemTitleEditor },
   ItemImage: { manifest: itemImageManifest, config: itemImageEditor },
   ItemExcerpt: { manifest: itemExcerptManifest, config: itemExcerptEditor },
   ItemLink: { manifest: itemLinkManifest, config: itemLinkEditor },
+  ItemDate: { manifest: itemDateManifest, config: itemDateEditor },
+  ContactInformation: { manifest: contactInformationManifest, config: contactInformationEditor },
+  Icon: { manifest: iconManifest, config: iconEditor },
+  CategoryList: { manifest: categoryListManifest, config: categoryListEditor },
 }
 
 const customEditorOverrides: Record<string, any> = {}
@@ -132,6 +157,7 @@ export function registerEditorWidget(id: string, config: any) {
 export function getEditorConfigForContext(
   context: TemplateContext,
   themeConfig?: ThemeConfig,
+  contactEntries?: ContactEntry[],
 ): Config {
   const policy = getTemplatePolicy(context)
   const allowedComponents: Record<string, any> = {}
@@ -144,11 +170,26 @@ export function getEditorConfigForContext(
   if (context === 'footer') {
     allowedSet.add('Footer')
   }
+  // Register legacy Item* for editor render of existing documents only.
+  // Widget Library hides them from new insertion (see WidgetPatternLibrary).
+  if (['home', 'single', 'page', 'category', 'loopItem'].includes(context)) {
+    for (const legacyId of [
+      'ItemTitle',
+      'ItemImage',
+      'ItemExcerpt',
+      'ItemLink',
+      'ItemDate',
+    ]) {
+      allowedSet.add(legacyId)
+    }
+  }
 
   for (const widgetId of allowedSet) {
     const custom = customEditorOverrides[widgetId]
     const base = defaultEditorRegistry[widgetId]
-    if (custom) {
+    if (widgetId === 'ContactInformation' && contactEntries) {
+      allowedComponents[widgetId] = wrapWithStylePreview(createContactInformationEditor(contactEntries))
+    } else if (custom) {
       allowedComponents[widgetId] = wrapWithStylePreview(custom)
     } else if (base) {
       allowedComponents[widgetId] = wrapWithStylePreview(base.config)
@@ -156,21 +197,33 @@ export function getEditorConfigForContext(
   }
 
   for (const [type, component] of Object.entries(allowedComponents)) {
-    const role = widgetRole({ type, props: { id: '' } })
+    const role = widgetRole({ type, props: { id: '' } }, context)
     if (
       !role ||
       !['document.title', 'document.content', 'archive.title', 'archive.content'].includes(role)
     )
       continue
-    if (!(['single', 'page'].includes(context) ? role.startsWith('document.') : context === 'category' && role.startsWith('archive.'))) continue
+    if (
+      !(
+        ['single', 'page'].includes(context)
+          ? role.startsWith('document.')
+          : context === 'category' && role.startsWith('archive.')
+      )
+    )
+      continue
     const original = component.resolvePermissions
     component.resolvePermissions = async (
-      item: { props: { id?: string } },
+      item: { props: { id?: string; textBinding?: string; srcBinding?: string } },
       params: { appState: { data: any }; permissions: Record<string, boolean> },
     ) => {
       const base = original ? await original(item, params) : params.permissions
+      const itemRole = widgetRole(
+        { type, props: { id: item.props?.id || '', ...item.props } },
+        context,
+      )
+      if (itemRole !== role) return base
       const occupied = collectTemplateWidgets(params.appState.data).some(
-        (node) => widgetRole(node) === role,
+        (node) => widgetRole(node, context) === role,
       )
       return { ...base, ...(occupied ? { insert: false, duplicate: false } : {}) }
     }

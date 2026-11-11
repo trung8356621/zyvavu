@@ -12,7 +12,7 @@ type MediaGridViewProps = {
 
 export function MediaGridSkeleton() {
   return (
-    <div aria-hidden="true" className="zyvavu-media-grid">
+    <div aria-hidden="true" className="zyvavu-media-grid zyvavu-media-masonry">
       {Array.from({ length: 8 }, (_, index) => (
         <div className="zyvavu-media-card zyvavu-media-card--skeleton" key={index}>
           <div className="zyvavu-media-card__frame" />
@@ -34,7 +34,7 @@ export function MediaGridView({ docs }: MediaGridViewProps) {
   } = useConfig()
 
   return (
-    <div className="zyvavu-media-grid">
+    <div className="zyvavu-media-grid zyvavu-media-masonry">
       {docs.map((doc) => (
         <MediaGridCard
           doc={doc}

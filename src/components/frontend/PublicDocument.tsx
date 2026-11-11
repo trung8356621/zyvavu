@@ -3,6 +3,8 @@ import { getPayload } from 'payload'
 import React from 'react'
 
 import { buildEntityGraph, resolveSeoPageContext, SeoJsonLd } from '@/lib/seo'
+import { loadPublicSiteSettings } from '@/lib/site/settings'
+import { toThemeSiteContext } from '@/lib/site/theme-site-context'
 import { attachCanonicalUrls } from '@/lib/url/registry'
 import config from '@/payload.config'
 import { ThemeRenderer, resolveThemeTemplate } from '@/lib/theme-engine'
@@ -17,6 +19,8 @@ export async function PublicDocument({
   missing?: React.ReactNode
 }) {
   const payload = await getPayload({ config })
+  const settings = await loadPublicSiteSettings(payload)
+  const site = toThemeSiteContext(settings)
   const seoContext = await resolveSeoPageContext(payload, path)
 
   if (seoContext.status === 'not_found') {
@@ -43,6 +47,7 @@ export async function PublicDocument({
           dataContext={{
             type: 'page',
             document: page,
+            site,
           }}
         />
       </>
@@ -80,6 +85,7 @@ export async function PublicDocument({
           dataContext={{
             type: 'category',
             document: term,
+            site,
             archive: {
               taxonomyType: seoContext.resourceType,
               title: term.title,
@@ -106,6 +112,7 @@ export async function PublicDocument({
         dataContext={{
           type: 'single',
           document: post,
+          site,
         }}
       />
     </>

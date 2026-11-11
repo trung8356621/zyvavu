@@ -15,7 +15,12 @@ import {
   getAllInstalledThemes,
   getBundledTemplateForTheme,
 } from '@/lib/theme-engine'
+import {
+  listLoopItemTemplates,
+  resolveLoopItemTemplate,
+} from '@/lib/theme-engine/loop-item-templates'
 import { ThemeBuilder } from './ThemeBuilder'
+import { loadPublicSiteSettings } from '@/lib/site/settings'
 
 export async function ThemeBuilderView(props: AdminViewServerProps) {
   try {
@@ -84,10 +89,20 @@ export async function ThemeBuilderView(props: AdminViewServerProps) {
     )
 
     // Resolve all templates for target theme
-    const templateKeys: TemplateContext[] = ['single', 'page', 'home', 'header', 'footer', 'category', 'product']
+    const templateKeys: TemplateContext[] = [
+      'single',
+      'page',
+      'home',
+      'header',
+      'footer',
+      'category',
+      'product',
+      'loopItem',
+    ]
     const initialTemplates: Record<string, ThemeTemplateDocument> = {}
 
     for (const key of templateKeys) {
+      if (key === 'loopItem') continue
       try {
         const resolved = await resolveThemeTemplate(payload, key, targetThemeId)
         initialTemplates[key] = resolved || getBundledTemplateForTheme(targetThemeId, key)
@@ -96,15 +111,28 @@ export async function ThemeBuilderView(props: AdminViewServerProps) {
       }
     }
 
+    const loopItems = await listLoopItemTemplates(payload, targetThemeId).catch(() => [])
+    const loopDocuments: Record<string, ThemeTemplateDocument> = {}
+    for (const meta of loopItems) {
+      const doc = await resolveLoopItemTemplate(payload, meta.id, targetThemeId).catch(() => null)
+      if (doc) loopDocuments[meta.id] = doc
+    }
+
     const rawContext = resolvedSearchParams?.template
     const initialContext = (
       typeof rawContext === 'string' && templateKeys.includes(rawContext as TemplateContext)
         ? rawContext
         : 'single'
     ) as TemplateContext
+    const rawLoopItem = resolvedSearchParams?.loopItem
+    const initialLoopItemId =
+      typeof rawLoopItem === 'string' && loopItems.some((item) => item.id === rawLoopItem)
+        ? rawLoopItem
+        : loopItems[0]?.id
 
     const installedThemes = getAllInstalledThemes()
     const activeThemeConfig = await resolveActiveThemeConfig(payload, targetThemeId).catch(() => undefined)
+    const { contactEntries } = await loadPublicSiteSettings(payload)
 
     return (
       <div
@@ -128,7 +156,12 @@ export async function ThemeBuilderView(props: AdminViewServerProps) {
           installedThemes={installedThemes}
           initialTemplates={initialTemplates as Record<TemplateContext, ThemeTemplateDocument>}
           initialContext={initialContext}
+          initialLoopItemId={initialLoopItemId}
+          initialLoopItems={loopItems}
+          initialLoopDocuments={loopDocuments}
           themeConfig={activeThemeConfig}
+          contactEntries={contactEntries}
+          libraryLanguage={req?.i18n?.language}
         />
       </div>
     )

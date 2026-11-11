@@ -8,6 +8,7 @@ import {
   Box,
   Button,
   Group,
+  Image,
   Paper,
   SegmentedControl,
   Select,
@@ -20,12 +21,18 @@ import { AlertTriangle, Code, Layout, Palette, RotateCcw, Settings, Type } from 
 import { createUsePuck } from '@puckeditor/core'
 
 import type { PageSettings, ThemeConfig } from '@/lib/theme-engine/types'
-import { resolveColorToken, isLegacySystemDefaultLayout } from '@/lib/theme-engine/page-settings'
+import {
+  resolveColorToken,
+  isLegacySystemDefaultLayout,
+  normalizePageBackgroundImageURL,
+  resolvePageForeground,
+} from '@/lib/theme-engine/page-settings'
 import {
   CONTAINER_WIDTH_LABELS,
   SPACING_TOKEN_LABELS,
 } from '@/lib/style-engine/semantic-preset-labels'
 import { ThemeColorPaletteModal } from '@/components/admin/shared/ThemeColorPaletteModal'
+import { MediaSourcePicker } from '@/components/admin/media/MediaSourcePicker'
 
 const usePuck = createUsePuck()
 
@@ -40,12 +47,14 @@ export function PageSettingsPanel({ themeConfig, templateName }: PageSettingsPan
 
   const [colorModalTarget, setColorModalTarget] = useState<'background' | 'text' | null>(null)
   const [colorModalAnchor, setColorModalAnchor] = useState<HTMLElement | null>(null)
+  const [failedImage, setFailedImage] = useState<string>()
 
   // Current page settings from Puck document root
   const pageSettings: PageSettings = (rootProps.pageSettings as PageSettings) || {}
 
   const background = pageSettings.background || { type: 'theme' }
-  const text = pageSettings.text || { typography: 'p1', colorToken: 'text' }
+  const text = pageSettings.text || {}
+  const imageURL = normalizePageBackgroundImageURL(background.imageUrl)
   const rawLayout = pageSettings.layout
   const customCSS = pageSettings.customCSS || ''
   const customJS = pageSettings.customJS || ''
@@ -69,6 +78,7 @@ export function PageSettingsPanel({ themeConfig, templateName }: PageSettingsPan
     }
     dispatch({
       type: 'setData',
+      recordHistory: true,
       data: (prev) => ({
         ...prev,
         root: {
@@ -96,20 +106,19 @@ export function PageSettingsPanel({ themeConfig, templateName }: PageSettingsPan
 
   // Helper to commit updated page settings to root props
   const updateSettings = (partial: Partial<PageSettings>) => {
-    const updated: PageSettings = {
-      ...pageSettings,
-      ...partial,
-    }
-
     dispatch({
       type: 'setData',
+      recordHistory: true,
       data: (prev) => ({
         ...prev,
         root: {
           ...prev.root,
           props: {
             ...prev.root?.props,
-            pageSettings: updated,
+            pageSettings: {
+              ...(prev.root?.props as { pageSettings?: PageSettings } | undefined)?.pageSettings,
+              ...partial,
+            },
           },
         },
       }),
@@ -121,9 +130,7 @@ export function PageSettingsPanel({ themeConfig, templateName }: PageSettingsPan
     ? resolveColorToken(background.token, '#ffffff')
     : resolveColorToken('background', '#ffffff')
 
-  const currentTextColor = text.colorToken
-    ? resolveColorToken(text.colorToken, '#17201f')
-    : resolveColorToken('text', '#17201f')
+  const { color: currentTextColor, warning: contrastWarning } = resolvePageForeground(pageSettings, themeConfig?.tokens)
 
   return (
     <Box
@@ -270,11 +277,48 @@ export function PageSettingsPanel({ themeConfig, templateName }: PageSettingsPan
 
                 {background.type === 'image' && (
                   <Stack gap="xs">
+                    {imageURL && failedImage !== imageURL && (
+                      <Image
+                        key={imageURL}
+                        src={imageURL}
+                        alt="Page background preview"
+                        fit="contain"
+                        mah={160}
+                        onError={() => setFailedImage(imageURL)}
+                      />
+                    )}
+                    {imageURL && failedImage === imageURL && (
+                      <Alert color="orange">Image unavailable. Check the URL or choose another image.</Alert>
+                    )}
+                    <Group gap="xs">
+                      <MediaSourcePicker
+                        kind="image"
+                        triggerLabel={background.imageUrl ? 'Change Image' : 'Choose Image'}
+                        onSelect={(media) => {
+                          const url = normalizePageBackgroundImageURL(media.url)
+                          if (!url) return
+                          setFailedImage(undefined)
+                          updateSettings({ background: { ...background, imageUrl: url } })
+                        }}
+                      />
+                      {background.imageUrl && (
+                        <Button
+                          variant="subtle"
+                          onClick={() => {
+                            setFailedImage(undefined)
+                            updateSettings({ background: { ...background, imageUrl: undefined } })
+                          }}
+                        >
+                          Remove Image
+                        </Button>
+                      )}
+                    </Group>
                     <TextInput
                       label="Background Image URL"
                       placeholder="https://... or /media/..."
                       size="xs"
                       value={background.imageUrl || ''}
+                      error={background.imageUrl && !imageURL ? 'Enter an HTTP(S) URL or a path starting with /.' : undefined}
                       onChange={(e) =>
                         updateSettings({
                           background: {
@@ -388,7 +432,7 @@ export function PageSettingsPanel({ themeConfig, templateName }: PageSettingsPan
                       />
                       <Box style={{ minWidth: 0, flex: 1 }}>
                         <Text size="xs" fw={600} truncate>
-                          Token: {text.colorToken || 'text'}
+                          {text.colorToken ? `Token: ${text.colorToken}` : 'Theme foreground'}
                         </Text>
                         <Text size="xs" c="dimmed" style={{ fontSize: 10 }}>
                           Theme Palette Reference
@@ -408,6 +452,15 @@ export function PageSettingsPanel({ themeConfig, templateName }: PageSettingsPan
                     </Button>
                   </Group>
                 </Paper>
+                {text.colorToken && (
+                  <Button variant="subtle" size="xs" onClick={() => updateSettings({ text: { ...text, colorToken: undefined } })}>
+                    Reset text color to Theme
+                  </Button>
+                )}
+                {contrastWarning && <Alert color="orange">{contrastWarning} Applies to the page defaults.</Alert>}
+                {imageURL && background.type === 'image' && (
+                  <Text size="xs" c="dimmed">Text contrast varies across the background image.</Text>
+                )}
               </Stack>
             </Accordion.Panel>
           </Accordion.Item>
@@ -596,10 +649,11 @@ export function PageSettingsPanel({ themeConfig, templateName }: PageSettingsPan
         <ThemeColorPaletteModal
           opened={Boolean(colorModalTarget)}
           anchorEl={colorModalAnchor}
-          title={colorModalTarget === 'background' ? 'Background Color Token' : 'Text Color Token'}
+          title={colorModalTarget === 'background' ? 'Theme Background & Palette' : 'Text Color Token'}
           subtitle="Select semantic theme color token"
           value={colorModalTarget === 'background' ? background.token || 'background' : text.colorToken || 'text'}
           tokens={themeConfig?.tokens}
+          supportedModes={['solid']}
           includeBackgroundTokens={colorModalTarget === 'background'}
           onClose={() => {
             setColorModalTarget(null)

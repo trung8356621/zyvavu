@@ -19,11 +19,17 @@ import { headerActionManifest } from '@/widgets/HeaderAction/manifest'
 import { headerTopBarTextManifest } from '@/widgets/HeaderTopBarText/manifest'
 import { footerManifest } from '@/widgets/Footer/manifest'
 import { collectionLoopManifest } from '@/widgets/CollectionLoop/manifest'
+import { featuredPostManifest } from '@/widgets/FeaturedPost/manifest'
+import { postCollectionManifest } from '@/widgets/PostCollection/manifest'
 import { itemTitleManifest } from '@/widgets/ItemTitle/manifest'
 import { itemImageManifest } from '@/widgets/ItemImage/manifest'
 import { itemExcerptManifest } from '@/widgets/ItemExcerpt/manifest'
 import { itemLinkManifest } from '@/widgets/ItemLink/manifest'
+import { itemDateManifest } from '@/widgets/ItemDate/manifest'
 import { sectionManifest } from '@/widgets/Section/manifest'
+import { contactInformationManifest } from '@/widgets/ContactInformation/manifest'
+import { iconManifest } from '@/widgets/Icon/manifest'
+import { categoryListManifest } from '@/widgets/CategoryList/manifest'
 
 const defaultManifestRegistry: Record<string, WidgetManifest> = {
   ...atomManifests,
@@ -45,10 +51,16 @@ const defaultManifestRegistry: Record<string, WidgetManifest> = {
   HeaderTopBarText: headerTopBarTextManifest,
   Footer: footerManifest,
   CollectionLoop: collectionLoopManifest,
+  FeaturedPost: featuredPostManifest,
+  PostCollection: postCollectionManifest,
   ItemTitle: itemTitleManifest,
   ItemImage: itemImageManifest,
   ItemExcerpt: itemExcerptManifest,
   ItemLink: itemLinkManifest,
+  ItemDate: itemDateManifest,
+  ContactInformation: contactInformationManifest,
+  Icon: iconManifest,
+  CategoryList: categoryListManifest,
 }
 
 const customManifestOverrides: Record<string, Partial<WidgetManifest>> = {}

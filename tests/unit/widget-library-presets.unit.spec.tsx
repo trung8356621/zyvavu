@@ -22,7 +22,7 @@ vi.mock('@/components/admin/media/MediaSourcePicker', () => ({
 }))
 
 import { WidgetPatternLibrary } from '@/components/admin/theme-builder/WidgetPatternLibrary'
-import { PatternThumbnail } from '@/components/admin/theme-builder/PatternPreview'
+import { LivePatternPreview, PatternThumbnail } from '@/components/admin/theme-builder/PatternPreview'
 
 beforeEach(() => {
   window.matchMedia = vi
@@ -48,6 +48,7 @@ it('registers the required atom/container preset inventory', () => {
     Button: 8,
     Image: 6,
     Video: 2,
+    Icon: 3,
     Container: 4,
   })
   // Body `copy-*` presets now insert Heading+P (free Text hidden from library).
@@ -91,6 +92,60 @@ it('keeps atom HTML previews simple and section thumbnails complex', () => {
   expect(isComplexPattern(SYSTEM_PATTERNS.find((pattern) => pattern.id === 'section-airy')!)).toBe(
     true,
   )
+})
+
+it('uses deterministic CategoryList examples and the shared thumbnail route', () => {
+  const categories = SYSTEM_PATTERNS.filter((record) => record.widgetType === 'CategoryList')
+  expect(categories).toHaveLength(3)
+  for (const record of categories) {
+    expect(() => validatePatternJSON(record)).not.toThrow()
+    expect(record.thumbnail?.url).toBe(`/api/pattern-thumbnails/${record.id}`)
+    expect(record.payload.content[0].props.selectedCategoryIds).toEqual([])
+  }
+  render(<MantineProvider><LivePatternPreview record={categories[0]} /></MantineProvider>)
+  expect(screen.getByText('Furniture and lighting')).toBeTruthy()
+  expect(screen.getByText('Outdoor & Garden')).toBeTruthy()
+  expect(screen.queryByText('Plants and planters')).toBeNull()
+})
+
+it('registers existing ContactInformation designs in General', () => {
+  const contactPatterns = SYSTEM_PATTERNS.filter((record) => record.widgetType === 'ContactInformation')
+  expect(contactPatterns.map((record) => record.payload.content[0].props.preset)).toEqual([
+    'vertical', 'inline', 'cards',
+  ])
+  for (const record of contactPatterns) {
+    expect(record.category).toBe('general')
+    expect(() => validatePatternJSON(record)).not.toThrow()
+  }
+})
+
+it('renders each CategoryList capture at intrinsic proportions and opens full preview', () => {
+  vi.stubGlobal('IntersectionObserver', undefined)
+  render(<MantineProvider><WidgetPatternLibrary context="home" beforeOperation={() => true} /></MantineProvider>)
+  const navigation = screen.getByRole('button', { name: 'Navigation' })
+  expect(navigation.querySelector('.lucide-list-tree')).toBeTruthy()
+  expect(screen.getByRole('button', { name: 'Contact Information' }).querySelector('.lucide-contact-round')).toBeTruthy()
+  fireEvent.click(navigation)
+  for (const name of ['Classic Tree', 'Compact Tree', 'Boxed Tree']) {
+    const card = screen.getByRole('button', { name: `Insert ${name}` })
+    expect(card.closest('[data-category-presets]')).toBeNull()
+    const image = card.parentElement?.querySelector('img')
+    expect(image?.closest('[data-category-thumbnail="card"]')).toBeTruthy()
+    expect(image?.getAttribute('src')).toBe(`/api/pattern-thumbnails/category-list-${name.toLowerCase().replace(' ', '-')}`)
+    expect(image?.hasAttribute('height')).toBe(false)
+    expect(image?.hasAttribute('width')).toBe(false)
+  }
+  fireEvent.click(screen.getByRole('button', { name: 'Preview Boxed Tree' }))
+  fireEvent.click(screen.getByRole('button', { name: 'View with active theme' }))
+  expect(screen.getByTitle('Boxed Tree with active theme').getAttribute('src'))
+    .toBe('/pattern-preview/category-list-boxed-tree')
+})
+
+it('localizes the existing Contact Information category without adding a duplicate', () => {
+  render(<MantineProvider><WidgetPatternLibrary language="vi" context="home" beforeOperation={() => true} /></MantineProvider>)
+  const category = screen.getByRole('button', { name: 'Liên hệ' })
+  expect(category.querySelector('.lucide-contact-round')).toBeTruthy()
+  expect(screen.queryByRole('button', { name: 'General' })).toBeNull()
 })
 
 it('inserts atom presets as the declared widget type through Puck setData', () => {
@@ -147,17 +202,35 @@ it('groups media together and finds Video from the Text category search', () => 
   expect(screen.getByRole('button', { name: 'Insert Video' })).toBeTruthy()
   fireEvent.change(screen.getByRole('textbox', { name: 'Search widgets and patterns' }), { target: { value: '' } })
   fireEvent.click(screen.getByRole('button', { name: 'Media' }))
-  expect(screen.getByRole('button', { name: 'Insert Video' })).toBeTruthy()
-  expect(screen.getByRole('button', { name: 'Insert Image' })).toBeTruthy()
+  for (const kind of ['Image', 'Video', 'Gallery']) {
+    const basic = screen.getByRole('button', { name: `Insert ${kind === 'Gallery' ? 'Image Gallery' : kind}` })
+    expect(basic.querySelector(`[data-library-placeholder="${kind}"]`)).toBeTruthy()
+    expect(basic.querySelector('img')).toBeNull()
+    expect(basic.textContent).not.toMatch(/not configured/i)
+  }
   const landscape = screen.getByRole('button', { name: 'Insert Landscape image' }).querySelector('img')
   const portrait = screen.getByRole('button', { name: 'Insert Portrait image' }).querySelector('img')
   expect(landscape?.getAttribute('src')).toContain('1470770841072')
   expect(portrait?.getAttribute('src')).toContain('1511818966892')
+  expect(landscape?.closest('[data-library-image-preview]')).toBeTruthy()
+  expect((portrait as HTMLImageElement).style.objectFit).toBe('contain')
+  const imagePreset = screen.getByRole('button', { name: 'Insert Landscape image' })
+  expect(imagePreset.closest('[data-preset-masonry="Image"]')?.classList.contains('zyvavu-media-masonry')).toBe(true)
+  expect(screen.getByRole('button', { name: 'Insert Standard video' }).closest('[data-preset-masonry]')).toBeNull()
+  fireEvent.click(imagePreset)
+  const inserted = state.current.dispatch.mock.calls[0][0].data.content[0].props.content[0]
+  expect(inserted.type).toBe('Image')
+  expect(inserted.props.aspectRatio).toBe('16:9')
+  expect(inserted.props.src).toBeUndefined()
+  expect(imagePreset.closest('[data-selected="true"]')).toBeTruthy()
 })
 
 it('uses the same Button Style V1 defaults for preview and insertion', () => {
   render(<MantineProvider><WidgetPatternLibrary context="home" beforeOperation={() => true} /></MantineProvider>)
   fireEvent.click(screen.getByRole('button', { name: 'Buttons' }))
+  const preset = screen.getByRole('button', { name: 'Insert Filled' })
+  expect(preset.closest('[data-preset-masonry="Button"]')?.classList.contains('zyvavu-media-masonry')).toBe(true)
+  expect(preset.querySelector('.zyvavu-styled-button')?.getAttribute('style')).toContain('--zyvavu-theme-primary')
   const card = screen.getByRole('button', { name: 'Insert Button' })
   const preview = card.querySelector('.zyvavu-styled-button')
   expect(preview?.tagName).toBe('SPAN')
@@ -166,6 +239,12 @@ it('uses the same Button Style V1 defaults for preview and insertion', () => {
   const inserted = state.current.dispatch.mock.calls[0][0].data.content[0].props.content[0]
   expect(inserted.type).toBe('Button')
   expect(inserted.props.style.button.normal.preset).toBe('theme')
+  state.current.dispatch.mockClear()
+  fireEvent.click(preset)
+  const styled = state.current.dispatch.mock.calls[0][0].data.content[0].props.content[0]
+  expect(styled.type).toBe('Button')
+  expect(styled.props.style.button.normal.preset).toBe('theme')
+  expect(preset.closest('[data-selected="true"]')).toBeTruthy()
 })
 
 it('does not mount section thumbnail images until near viewport', async () => {
@@ -201,6 +280,17 @@ it('does not mount section thumbnail images until near viewport', async () => {
   expect(container.querySelector('img')).toBeTruthy()
   expect(container.querySelector('img')?.getAttribute('loading')).toBe('lazy')
   expect(container.querySelector('img')?.getAttribute('decoding')).toBe('async')
+})
+
+it('replaces an unavailable captured thumbnail with the live preview', () => {
+  const record = SYSTEM_PATTERNS.find((pattern) => pattern.id === 'section-airy')!
+  const { container } = render(<MantineProvider><PatternThumbnail record={record} eager /></MantineProvider>)
+  const thumbnail = container.querySelector('img')
+  expect(thumbnail).toBeTruthy()
+  fireEvent.error(thumbnail!)
+  expect(container.querySelector('img')).toBeNull()
+  expect(screen.queryByRole('status')).toBeNull()
+  expect(container.textContent).toContain('Không gian cho câu chuyện')
 })
 
 it('keeps Patterns category order when Sections is selected', () => {

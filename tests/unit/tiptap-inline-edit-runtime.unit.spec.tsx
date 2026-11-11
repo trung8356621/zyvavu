@@ -6,6 +6,7 @@ import React from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, waitFor } from '@testing-library/react'
 import { MantineProvider } from '@mantine/core'
+import type { Editor } from '@tiptap/core'
 
 const dispatch = vi.fn()
 const puckState = {
@@ -31,6 +32,12 @@ import { InlineEditableAtom } from '@/components/builder/inline-edit/InlineEdita
 
 beforeEach(() => {
   dispatch.mockClear()
+  // jsdom has no CSS.escape or Range geometry. The fixture IDs are selector-safe.
+  vi.stubGlobal('CSS', { escape: (id: string) => id })
+  Object.defineProperties(Range.prototype, {
+    getClientRects: { configurable: true, value: () => [] },
+    getBoundingClientRect: { configurable: true, value: () => new DOMRect() },
+  })
   vi.stubGlobal('matchMedia', () => ({
     matches: false,
     addEventListener() {},
@@ -51,6 +58,8 @@ beforeEach(() => {
 afterEach(() => {
   cleanup()
   document.getElementById('puck-pointer-gate')?.remove()
+  Reflect.deleteProperty(Range.prototype, 'getClientRects')
+  Reflect.deleteProperty(Range.prototype, 'getBoundingClientRect')
   vi.unstubAllGlobals()
 })
 
@@ -212,12 +221,8 @@ describe('Tiptap inline edit — canvas double-click runtime', () => {
     await enterEdit(container)
     const host = container.querySelector('[data-puck-component]') as HTMLElement
     mockRect(host, { top: 40, left: 20, right: 340, bottom: 120, width: 320, height: 80 })
-    // Mutate draft via ProseMirror textContent path used by serialize on commit — force different text.
-    const prose = container.querySelector('.ProseMirror') as HTMLElement
-    prose.textContent = 'Edited Heading'
-    // Directly update is hard; instead click outside and assert exit to idle (commit attempted).
-    // Seed dispatch expectation by replacing item text through typing simulation:
-    fireEvent.input(prose, { bubbles: true })
+    const prose = container.querySelector('.ProseMirror') as HTMLElement & { editor: Editor }
+    prose.editor.commands.setContent('<p>Edited Heading</p>')
     fireEvent.pointerDown(container.querySelector('[data-outside]')!, {
       clientX: 8,
       clientY: 8,
@@ -226,5 +231,11 @@ describe('Tiptap inline edit — canvas double-click runtime', () => {
     await waitFor(() =>
       expect(container.querySelector('[data-inline-edit="idle"]')).toBeTruthy(),
     )
+    expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'replace',
+      data: expect.objectContaining({
+        props: expect.objectContaining({ text: 'Edited Heading' }),
+      }),
+    }))
   })
 })

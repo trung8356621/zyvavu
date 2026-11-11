@@ -9,6 +9,8 @@ import { getTemplatePolicy } from './policy'
 import { getWidgetManifest } from './widget-registry-manifests'
 import { validateUniversalStyle } from '@/lib/style-engine/validation'
 import { isPageContentContext } from './normalization'
+import { canonicalizeZonesToSlots } from './document-slots'
+import { isLegacyItemWidget } from './legacy-item-widgets'
 
 export function validateThemeTemplateDocument(
   doc: unknown,
@@ -21,7 +23,13 @@ export function validateThemeTemplateDocument(
     return { valid: false, errors: ['Template document must be a valid JSON object'] }
   }
 
-  const candidate = doc as Partial<ThemeTemplateDocument>
+  // Collapse dual zone+slot storage before ID uniqueness checks.
+  const candidate = canonicalizeZonesToSlots(
+    doc as ThemeTemplateDocument,
+  ) as Partial<ThemeTemplateDocument>
+  const previousCanonical = previousDoc
+    ? (canonicalizeZonesToSlots(previousDoc) as ThemeTemplateDocument)
+    : null
 
   if (typeof candidate.version !== 'number' || candidate.version <= 0) {
     errors.push('Template version must be a positive number')
@@ -98,7 +106,7 @@ export function validateThemeTemplateDocument(
   errors.push(
     ...validateRoleContract(
       { ...candidate, template: context } as ThemeTemplateDocument,
-      previousDoc,
+      previousCanonical,
     ),
   )
 
@@ -153,8 +161,8 @@ export function validateThemeTemplateDocument(
     const capabilityCounts = new Map<string, number>()
 
     for (const widget of placedWidgets) {
-      // 1. Allowed widgets
-      if (!allowedSet.has(widget.type)) {
+      // 1. Allowed widgets (legacy Item* remain valid for existing saved documents)
+      if (!allowedSet.has(widget.type) && !isLegacyItemWidget(widget.type)) {
         errors.push(`Widget "${widget.type}" is not permitted in template "${context}"`)
       }
 
@@ -210,10 +218,10 @@ export function validateThemeTemplateDocument(
       }
     }
 
-    // 6. Widget Instance Locks (enforced against previousDoc)
-    if (previousDoc) {
+    // 6. Widget Instance Locks (enforced against previous document)
+    if (previousCanonical) {
       const prevWidgets = new Map<string, ThemeComponentData>()
-      for (const w of collectTemplateWidgets(previousDoc)) prevWidgets.set(w.props.id, w)
+      for (const w of collectTemplateWidgets(previousCanonical)) prevWidgets.set(w.props.id, w)
 
       const currWidgetIds = new Set(placedWidgets.map((w) => w.props.id))
 

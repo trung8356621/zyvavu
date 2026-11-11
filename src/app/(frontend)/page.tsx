@@ -8,6 +8,8 @@ import {
   resolveSeoPageContext,
   SeoJsonLd,
 } from '@/lib/seo'
+import { loadPublicSiteSettings } from '@/lib/site/settings'
+import { toThemeSiteContext } from '@/lib/site/theme-site-context'
 import { ThemeRenderer, resolveThemeTemplate } from '@/lib/theme-engine'
 import { attachCanonicalUrls, resolvePublicPath } from '@/lib/url/registry'
 import config from '@/payload.config'
@@ -40,6 +42,7 @@ export default async function HomePage() {
 
   const postsWithCanonical = await attachCanonicalUrls(payload, 'post', recentPosts.docs)
   const templateDoc = await resolveThemeTemplate(payload, 'home')
+  const settings = await loadPublicSiteSettings(payload)
   return (
     <>
       <SeoJsonLd graph={graph} />
@@ -47,6 +50,7 @@ export default async function HomePage() {
         document={templateDoc}
         dataContext={{
           type: 'home',
+          site: toThemeSiteContext(settings),
           archive: {
             posts: postsWithCanonical,
           },

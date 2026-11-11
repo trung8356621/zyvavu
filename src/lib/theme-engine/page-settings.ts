@@ -1,6 +1,43 @@
 import type { CSSProperties } from 'react'
 import type { PageSettings, PageSettingsLayout, TemplateContext, ThemeTokens } from './types'
+import { calculateContrastRatio, resolveContrastForegroundToken } from './presets'
 export type { PageLayoutContextType } from './page-layout-context'
+
+export function normalizePageBackgroundImageURL(value?: string): string | undefined {
+  const url = value?.trim()
+  if (!url || /[\s"'\\]/.test(url)) return undefined
+  if (url.startsWith('/') && !url.startsWith('//')) return url
+  try {
+    const parsed = new URL(url)
+    if (parsed.protocol === 'https:' || parsed.protocol === 'http:') return url
+  } catch {
+    return undefined
+  }
+}
+
+export function resolvePageForeground(settings?: PageSettings, tokens?: ThemeTokens) {
+  const bg = settings?.background
+  const backgroundToken = bg?.type === 'palette' && bg.token ? bg.token : 'background'
+  const explicitText = settings?.text?.colorToken
+  const colors: Record<string, string | undefined> = tokens?.colors || {}
+  const background = colors[backgroundToken] || (backgroundToken === 'background' ? '#ffffff' : undefined)
+  const themeText = colors.text || '#17201f'
+  const automaticToken = background
+    ? resolveContrastForegroundToken(background, themeText, colors.background || '#ffffff')
+    : undefined
+  const color = explicitText || backgroundToken === 'background'
+    ? resolveColorToken(explicitText || 'text', '#17201f')
+    : `var(--zyvavu-theme-foreground-on-${tokenToKebab(backgroundToken)}, var(--zyvavu-theme-text, #17201f))`
+  const foreground = explicitText ? colors[explicitText] || (explicitText === 'text' ? themeText : undefined)
+    : colors[automaticToken || 'text'] || (automaticToken === 'background' ? '#ffffff' : themeText)
+  const hasImage = bg?.type === 'image' && normalizePageBackgroundImageURL(bg.imageUrl)
+  return {
+    color,
+    warning: !hasImage && foreground && background
+      ? calculateContrastRatio(foreground, background).warning
+      : undefined,
+  }
+}
 
 export const DEFAULT_PAGE_SETTINGS: PageSettings = {
   background: {
@@ -266,11 +303,13 @@ export function resolvePageSettingsStyles(
 
   // 1. Background
   const bg = settings.background
+  const imageURL = bg?.type === 'image' ? normalizePageBackgroundImageURL(bg.imageUrl) : undefined
   if (bg) {
     if (bg.type === 'palette' && bg.token) {
       style.backgroundColor = resolveColorToken(bg.token, '#ffffff')
-    } else if (bg.type === 'image' && bg.imageUrl) {
-      style.backgroundImage = `url("${bg.imageUrl}")`
+    } else if (imageURL) {
+      style.backgroundColor = resolveColorToken('background', '#ffffff')
+      style.backgroundImage = `url("${imageURL}")`
       style.backgroundPosition = bg.imagePosition || 'center'
       style.backgroundSize = bg.imageSize || 'cover'
       style.backgroundRepeat = bg.imageRepeat || 'no-repeat'
@@ -281,18 +320,23 @@ export function resolvePageSettingsStyles(
   }
 
   // 2. Default Text
-  const txt = settings.text
-  if (txt) {
-    if (txt.colorToken) {
-      style.color = resolveColorToken(txt.colorToken, '#17201f')
-    }
-    if (txt.typography) {
-      classNames.push(`zyvavu-preset-${txt.typography}`)
-    }
+  const foreground = resolvePageForeground(pageSettings, themeTokens)
+  style.color = foreground.color
+  Object.assign(style, { '--zyvavu-inherited-foreground': foreground.color })
+  const typography = settings.text?.typography || DEFAULT_PAGE_SETTINGS.text?.typography
+  if (typography && /^[a-z][a-z0-9-]*$/i.test(typography)) {
+    classNames.push(`zyvavu-preset-${typography}`)
+    const prefix = `--zyvavu-theme-${tokenToKebab(typography)}`
+    style.fontSize = `var(${prefix}-size, inherit)`
+    style.fontWeight = `var(${prefix}-weight, inherit)`
+    style.lineHeight = `var(${prefix}-line-height, inherit)`
+    style.letterSpacing = `var(${prefix}-letter-spacing, inherit)`
   }
 
   // 3. Layout & Spacing
-  style.textAlign = effectiveLayout.alignment
+  style.textAlign = effectiveLayout.isOverridden.alignment
+    ? effectiveLayout.alignment
+    : ('var(--zyvavu-theme-alignment, left)' as CSSProperties['textAlign'])
 
   // Only apply maxWidth to root container if NOT in sectioned mode or if explicitly requested,
   // preventing artificial max-width constraints on full-width sections.

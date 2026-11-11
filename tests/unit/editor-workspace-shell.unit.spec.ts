@@ -8,7 +8,7 @@ import {
 } from '@/components/builder/core/atom-settings'
 
 describe('Editor Workspace Shell (PO 2026-11-11)', () => {
-  it('exports workspace shell + floating Fields chrome classes', () => {
+  it('exports workspace shell + docked Fields chrome classes', () => {
     expect(workspaceStyles.workspaceShell).toBeTruthy()
     expect(workspaceStyles.fieldsPanel).toBeTruthy()
     expect(workspaceStyles.fieldsHeader).toBeTruthy()

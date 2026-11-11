@@ -9,15 +9,16 @@ export const RICHTEXT_MARKER = '<!--zyvavu-rt:v1-->'
 
 const ALLOWED_TAGS = new Set(['p', 'br', 'strong', 'em', 'b', 'i', 'u', 's', 'a'])
 
-export type InlineAtomKind = 'Heading' | 'Text'
+export type InlineAtomKind = 'Heading' | 'Text' | 'Button'
 export type HeadingTag = 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'p'
 
 export function isParagraphTag(tag?: string | null): boolean {
   return (tag || '').toLowerCase() === 'p'
 }
 
-/** Multi-paragraph Enter behavior for P tags and legacy Text atoms. */
+/** Multi-paragraph Enter behavior for P tags and legacy Text atoms. Button is single-line. */
 export function allowsMultilineEnter(kind: InlineAtomKind, tag?: string | null): boolean {
+  if (kind === 'Button') return false
   return kind === 'Text' || isParagraphTag(tag)
 }
 
@@ -215,5 +216,119 @@ export function resolveTextRender(stored: string | undefined | null): {
 }
 
 export function canInlineEditAtom(type: string, bound: boolean): type is InlineAtomKind {
-  return !bound && (type === 'Heading' || type === 'Text')
+  return !bound && (type === 'Heading' || type === 'Text' || type === 'Button')
+}
+
+/** Button labels: text + bold/italic/underline only (no links, blocks, or nested interactives). */
+const BUTTON_LABEL_TAGS = new Set(['strong', 'em', 'b', 'i', 'u'])
+const BUTTON_STRIP_CONTENT_TAGS = new Set([
+  'script',
+  'style',
+  'iframe',
+  'object',
+  'embed',
+  'noscript',
+])
+
+/**
+ * SSR-safe inline sanitizer for Button labels.
+ * Strips paragraphs, breaks, links, scripts and unknown tags; keeps B/I/U marks.
+ */
+export function sanitizeButtonLabelHtml(input: string): string {
+  if (!input) return ''
+  let i = 0
+  let out = ''
+  const openStack: string[] = []
+  let stripping: string | null = null
+
+  const pushText = (raw: string) => {
+    if (!raw || stripping) return
+    out += escapeHtml(decodeBasicEntities(raw))
+  }
+
+  while (i < input.length) {
+    const lt = input.indexOf('<', i)
+    if (lt === -1) {
+      pushText(input.slice(i))
+      break
+    }
+    pushText(input.slice(i, lt))
+    const gt = input.indexOf('>', lt + 1)
+    if (gt === -1) {
+      pushText(input.slice(lt))
+      break
+    }
+    const rawTag = input.slice(lt + 1, gt).trim()
+    i = gt + 1
+
+    if (!rawTag || rawTag.startsWith('!') || rawTag.startsWith('?')) continue
+
+    const isClose = rawTag.startsWith('/')
+    const nameMatch = (isClose ? rawTag.slice(1) : rawTag).match(/^([a-zA-Z][\w:-]*)/)
+    if (!nameMatch) continue
+    const name = nameMatch[1].toLowerCase()
+
+    if (stripping) {
+      if (isClose && name === stripping) stripping = null
+      continue
+    }
+
+    if (BUTTON_STRIP_CONTENT_TAGS.has(name)) {
+      if (!isClose && !rawTag.endsWith('/')) stripping = name
+      continue
+    }
+
+    // Unwrap structural / interactive tags — button owns the destination URL.
+    if (name === 'p' || name === 'br' || name === 'a' || name === 'div' || name === 'span') {
+      continue
+    }
+    if (!BUTTON_LABEL_TAGS.has(name)) continue
+
+    if (isClose) {
+      const idx = openStack.lastIndexOf(name)
+      if (idx === -1) continue
+      while (openStack.length > idx) {
+        const tag = openStack.pop()!
+        out += `</${tag}>`
+      }
+      continue
+    }
+    if (rawTag.endsWith('/')) continue
+    openStack.push(name)
+    out += `<${name}>`
+  }
+
+  while (openStack.length) {
+    out += `</${openStack.pop()}>`
+  }
+  return out.trim()
+}
+
+export function buttonLabelEditorContent(stored: string | undefined | null): string {
+  const { mode, content } = unwrapStoredText(stored)
+  if (mode === 'html') {
+    const inline = sanitizeButtonLabelHtml(content)
+    return `<p>${inline || ''}</p>`
+  }
+  if (!content) return '<p></p>'
+  return `<p>${escapeHtml(content)}</p>`
+}
+
+export function serializeButtonLabelFromEditor(html: string): string {
+  const sanitized = sanitizeButtonLabelHtml(html)
+  if (!sanitized) return ''
+  if (!/<(strong|em|b|i|u)\b/i.test(sanitized)) {
+    return htmlToPlainText(`<p>${sanitized}</p>`)
+  }
+  return wrapRichTextHtml(sanitized)
+}
+
+export function resolveButtonLabelRender(stored: string | undefined | null): {
+  mode: 'plain' | 'html'
+  plain?: string
+  html?: string
+} {
+  const { mode, content } = unwrapStoredText(stored)
+  if (mode === 'plain') return { mode: 'plain', plain: content }
+  return { mode: 'html', html: sanitizeButtonLabelHtml(content) }
 }

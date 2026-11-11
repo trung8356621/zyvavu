@@ -234,7 +234,7 @@ export interface UniversalStyle {
   align?: TextAlign
 }
 
-/** Button Design V1 — Normal/Hover appearance; Icon + Normal Layout remain shell-only. */
+/** Button Design V1 — Normal/Hover appearance; icon lives on the shell (Design surface). */
 export interface ButtonStyleShell {
   version: 1
   normal?: ButtonShellState
@@ -243,6 +243,19 @@ export interface ButtonStyleShell {
     border?: Pick<BorderConfig, 'colorToken'>
     opacity?: number
     transform?: 'none' | 'lift' | 'grow'
+  }
+  /** Icon content/placement owned by Button Design (not Atom Settings). */
+  icon?: {
+    ref?: import('@/lib/icons').IconRef | null
+    position?: 'left' | 'right'
+    size?: number
+    gap?: number
+    colorToken?: string
+    /** Legacy shell-only fields kept for compatibility */
+    visible?: boolean
+    sizeToken?: string
+    spacingToken?: string
+    rotation?: number
   }
 }
 

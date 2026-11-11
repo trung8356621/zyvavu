@@ -73,19 +73,44 @@ export function collectTemplateWidgets(
   Object.values(doc.zones || {}).forEach(walk)
   return result
 }
-export function widgetRole(node: ThemeComponentData): string | undefined {
-  return (
-    systemDescriptor(node.type)?.role ||
-    (
-      {
-        PostTitle: 'document.title',
-        PostContent: 'document.content',
-        CategoryHeader: 'archive.title',
-        CollectionLoop: 'archive.content',
-        RecentPosts: 'archive.content',
-      } as Record<string, string>
-    )[node.type]
-  )
+/**
+ * Role for contract validation. Shared Atoms with dynamic bindings can satisfy
+ * document/archive roles without DocumentTitle / CategoryTitle system widgets.
+ */
+export function widgetRole(
+  node: ThemeComponentData,
+  template?: string,
+): string | undefined {
+  const fromSystem = systemDescriptor(node.type)?.role
+  if (fromSystem) return fromSystem
+
+  const legacy = (
+    {
+      PostTitle: 'document.title',
+      PostContent: 'document.content',
+      CategoryHeader: 'archive.title',
+      CollectionLoop: 'archive.content',
+      RecentPosts: 'archive.content',
+      // FeaturedPost / PostCollection are optional archive helpers and must not
+      // consume the exclusive category archive.content role slot.
+    } as Record<string, string>
+  )[node.type]
+  if (legacy) return legacy
+
+  const textBinding = typeof node.props?.textBinding === 'string' ? node.props.textBinding : ''
+  const srcBinding = typeof node.props?.srcBinding === 'string' ? node.props.srcBinding : ''
+
+  if (node.type === 'Heading' && textBinding === 'title') {
+    return template === 'category' ? 'archive.title' : 'document.title'
+  }
+  if (node.type === 'Text' && textBinding === 'excerpt' && template === 'category') {
+    return 'archive.description'
+  }
+  if (node.type === 'Text' && textBinding === 'date') return 'document.date'
+  if (node.type === 'Text' && textBinding === 'taxonomy') return 'document.categories'
+  if (node.type === 'Image' && srcBinding === 'thumbnail') return 'document.media'
+
+  return undefined
 }
 export function validateFixedBinding(node: ThemeComponentData): string[] {
   const descriptor = systemDescriptor(node.type)
@@ -133,9 +158,12 @@ export function validateRoleContract(
         ? ['document.title', 'document.content']
         : []
   for (const role of roles) {
-    const count = nodes.filter((n) => widgetRole(n) === role).length
+    const count = nodes.filter((n) => widgetRole(n, doc.template) === role).length
     const legacyArchiveCount = !strict && !previous && role === 'archive.content' ? nodes.filter(n => n.type === 'RecentPosts' || n.type === 'CollectionLoop').length : 0
-    const oldCount = Math.max(legacyArchiveCount, baseline.filter((n) => widgetRole(n) === role).length)
+    const oldCount = Math.max(
+      legacyArchiveCount,
+      baseline.filter((n) => widgetRole(n, doc.template) === role).length,
+    )
     if ((strict || oldCount > 0) && count === 0) errors.push(`Required role ${role} is missing`)
     if (count > Math.max(1, strict ? 1 : oldCount))
       errors.push(`Only one widget with capability "${role}" is allowed (role must be unique)`)
@@ -161,8 +189,6 @@ export function homeHeadingWarning(doc?: ThemeTemplateDocument): string | undefi
     : 'SEO: this Home layout has no explicit H1. Saving is allowed.'
 }
 export function createRoleTemplate(context: 'single' | 'page' | 'category'): ThemeTemplateDocument & { root: { props: { title?: string } } } {
-  const titleType = context === 'category' ? 'CategoryTitle' : 'DocumentTitle'
-  const descriptor = systemDescriptor(titleType)!
   return {
     version: 1,
     template: context,
@@ -175,9 +201,37 @@ export function createRoleTemplate(context: 'single' | 'page' | 'category'): The
           id: `${context}-section`,
           content: [
             {
-              type: titleType,
-              props: { id: `${context}-title`, binding: descriptor.binding, role: descriptor.role },
+              type: 'Heading',
+              props: {
+                id: `${context}-title`,
+                text: '',
+                tag: 'h1',
+                textBinding: 'title',
+              },
             },
+            ...(context === 'single'
+              ? [
+                  {
+                    type: 'Image',
+                    props: {
+                      id: `${context}-media`,
+                      src: '',
+                      alt: '',
+                      srcBinding: 'thumbnail',
+                      aspectRatio: '16:9',
+                      objectFit: 'cover',
+                    },
+                  },
+                  {
+                    type: 'Text',
+                    props: {
+                      id: `${context}-date`,
+                      text: '',
+                      textBinding: 'date',
+                    },
+                  },
+                ]
+              : []),
             {
               type: context === 'category' ? 'CollectionLoop' : 'PostContent',
               props: { id: `${context}-content` },

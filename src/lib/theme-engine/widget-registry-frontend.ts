@@ -55,6 +55,12 @@ import { FooterFrontend } from '@/widgets/Footer/frontend'
 import { collectionLoopManifest } from '@/widgets/CollectionLoop/manifest'
 import { CollectionLoopFrontend } from '@/widgets/CollectionLoop/frontend'
 
+import { featuredPostManifest } from '@/widgets/FeaturedPost/manifest'
+import { FeaturedPostFrontend } from '@/widgets/FeaturedPost/frontend'
+
+import { postCollectionManifest } from '@/widgets/PostCollection/manifest'
+import { PostCollectionFrontend } from '@/widgets/PostCollection/frontend'
+
 import { itemTitleManifest } from '@/widgets/ItemTitle/manifest'
 import { ItemTitleFrontend } from '@/widgets/ItemTitle/frontend'
 
@@ -67,8 +73,20 @@ import { ItemExcerptFrontend } from '@/widgets/ItemExcerpt/frontend'
 import { itemLinkManifest } from '@/widgets/ItemLink/manifest'
 import { ItemLinkFrontend } from '@/widgets/ItemLink/frontend'
 
+import { itemDateManifest } from '@/widgets/ItemDate/manifest'
+import { ItemDateFrontend } from '@/widgets/ItemDate/frontend'
+
 import { sectionManifest } from '@/widgets/Section/manifest'
 import { SectionFrontend } from '@/widgets/Section/frontend'
+
+import { contactInformationManifest } from '@/widgets/ContactInformation/manifest'
+import { ContactInformationFrontend } from '@/widgets/ContactInformation/frontend'
+
+import { iconManifest } from '@/widgets/Icon/manifest'
+import { IconFrontend } from '@/widgets/Icon/frontend'
+
+import { categoryListManifest } from '@/widgets/CategoryList/manifest'
+import { CategoryListFrontend } from '@/widgets/CategoryList/frontend'
 
 export type FrontendWidgetEntry = {
   manifest: WidgetManifest
@@ -101,10 +119,19 @@ const defaultFrontendRegistry: Record<string, FrontendWidgetEntry> = {
   HeaderTopBarText: { manifest: headerTopBarTextManifest, component: HeaderTopBarTextFrontend },
   Footer: { manifest: footerManifest, component: FooterFrontend },
   CollectionLoop: { manifest: collectionLoopManifest, component: CollectionLoopFrontend },
+  FeaturedPost: { manifest: featuredPostManifest, component: FeaturedPostFrontend },
+  PostCollection: { manifest: postCollectionManifest, component: PostCollectionFrontend },
   ItemTitle: { manifest: itemTitleManifest, component: ItemTitleFrontend },
   ItemImage: { manifest: itemImageManifest, component: ItemImageFrontend },
   ItemExcerpt: { manifest: itemExcerptManifest, component: ItemExcerptFrontend },
   ItemLink: { manifest: itemLinkManifest, component: ItemLinkFrontend },
+  ItemDate: { manifest: itemDateManifest, component: ItemDateFrontend },
+  ContactInformation: {
+    manifest: contactInformationManifest,
+    component: ContactInformationFrontend,
+  },
+  Icon: { manifest: iconManifest, component: IconFrontend },
+  CategoryList: { manifest: categoryListManifest, component: CategoryListFrontend },
 }
 
 import { registerWidgetManifest } from './widget-registry-manifests'

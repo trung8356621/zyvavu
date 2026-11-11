@@ -1,13 +1,14 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Alert, Button, Group, Modal, Stack, Text } from '@mantine/core'
+import { Alert, Button, Modal } from '@mantine/core'
 import { useAuth, useConfig, useDocumentDrawer, useListDrawer } from '@payloadcms/ui'
 
 import './media-library.scss'
 import { DemoMediaGallery } from './DemoMediaGallery'
 import { MediaBrowser } from './MediaBrowser'
 import { ADMIN_OVERLAY_LAYERS } from '@/theme/layers'
+import type { IconRef } from '@/lib/icons'
 
 export type SelectedMedia = {
   id: number | string
@@ -17,6 +18,8 @@ export type SelectedMedia = {
   posterMediaId?: number | string
   filename?: string
 }
+
+export type MediaPickerKind = 'image' | 'video' | 'icon'
 
 const mediaCollection: NonNullable<Parameters<typeof useListDrawer>[0]['collectionSlugs']> = ['media']
 const mediaFilters = {
@@ -29,16 +32,17 @@ function NativeMediaPicker({
   kind,
   onSelect,
   onClose,
+  icon,
 }: {
   kind: 'image' | 'video'
   onSelect: (doc: SelectedMedia) => void
   onClose: () => void
+  icon?: { value?: IconRef | null; onSelect: (value: IconRef) => void }
 }) {
   const { config } = useConfig()
   const { permissions } = useAuth()
   const canCreate = !!permissions?.collections?.media?.create
   const [error, setError] = useState<string | null>(null)
-  const [pending, setPending] = useState<SelectedMedia | null>(null)
   const [ListDrawer, , list] = useListDrawer({
     // Payload memoizes the drawer component type using these references.
     collectionSlugs: mediaCollection,
@@ -57,15 +61,15 @@ function NativeMediaPicker({
     }
     list.closeDrawer()
     document.closeDrawer()
-    setError(null)
-    setPending(media)
+    onSelect(media)
+    onClose()
   }
   return (
     <>
       <Modal
         opened={!list.isDrawerOpen && !document.isDrawerOpen}
         onClose={onClose}
-        title={`Choose ${kind}`}
+        title={icon ? 'Media Library' : `Choose ${kind}`}
         size="min(90vw, 1400px)"
         classNames={{ content: 'zyvavu-media-picker', body: 'zyvavu-media-picker__body' }}
         styles={{
@@ -75,49 +79,29 @@ function NativeMediaPicker({
         }}
         zIndex={ADMIN_OVERLAY_LAYERS.PALETTE_MODAL}
       >
-        {pending ? (
-          <Stack>
-            <Text>{pending.filename || pending.url?.split('/').pop()}</Text>
-            <Group>
-              <Button
-                onClick={() => {
-                  onSelect(pending)
-                  onClose()
-                }}
-              >
-                Use {kind}
+        <MediaBrowser
+          canImport={canCreate}
+          api={config.routes.api}
+          kind={kind}
+          onSelect={(doc) => select({ doc })}
+          onCancel={onClose}
+          icons={icon && {
+            value: icon.value,
+            onSelect: (value) => {
+              icon.onSelect(value)
+              onClose()
+            },
+          }}
+          upload={
+            canCreate ? (
+              <Button variant="light" onClick={document.openDrawer}>
+                Upload {kind}
               </Button>
-              <Button variant="default" onClick={() => setPending(null)}>Choose another</Button>
-              <Button variant="subtle" onClick={onClose}>Cancel</Button>
-            </Group>
-          </Stack>
-        ) : (
-          <>
-            <MediaBrowser
-              canImport={canCreate}
-              api={config.routes.api}
-              kind={kind}
-              onSelect={(doc) => select({ doc })}
-              onCancel={onClose}
-              upload={
-                canCreate ? (
-                  <Button variant="light" onClick={document.openDrawer}>
-                    Upload {kind}
-                  </Button>
-                ) : undefined
-              }
-            />
-            <Group mt="md" className="zyvavu-media-picker__actions">
-              <Button variant="default" onClick={list.openDrawer}>
-                Browse My Media
-              </Button>
-              <Button variant="subtle" onClick={onClose}>
-                Close media actions
-              </Button>
-            </Group>
-            {error && <Alert color="red" role="alert">{error}</Alert>}
-          </>
-        )}
+            ) : undefined
+          }
+          browse={<Button variant="default" onClick={list.openDrawer}>Browse My Media</Button>}
+        />
+        {error && <Alert mt="sm" color="red" role="alert">{error}</Alert>}
       </Modal>
       <ListDrawer onSelect={select} />
       <DocumentDrawer onSave={select} />
@@ -125,36 +109,72 @@ function NativeMediaPicker({
   )
 }
 
-export function MediaSourcePicker(props: {
+type MediaSourcePickerImageVideoProps = {
   kind: 'image' | 'video'
   onSelect: (doc: SelectedMedia) => void
   onOpenChange?: (opened: boolean) => void
   triggerLabel?: string
   renderTrigger?: (props: { label: string; disabled?: boolean; onClick: () => void }) => React.ReactNode
   disabled?: boolean
-}) {
+}
+
+type MediaSourcePickerIconProps = {
+  kind: 'icon'
+  onSelect: (icon: IconRef) => void
+  value?: IconRef | null
+  onOpenChange?: (opened: boolean) => void
+  triggerLabel?: string
+  renderTrigger?: (props: { label: string; disabled?: boolean; onClick: () => void }) => React.ReactNode
+  disabled?: boolean
+}
+
+export type MediaSourcePickerProps = MediaSourcePickerImageVideoProps | MediaSourcePickerIconProps
+
+export function MediaSourcePicker(props: MediaSourcePickerProps) {
   const [opened, setOpened] = useState(false)
   const trigger = {
-    label: props.triggerLabel || `Choose ${props.kind} from Media`,
+    label:
+      props.triggerLabel ||
+      (props.kind === 'icon' ? 'Choose from Media Library' : `Choose ${props.kind} from Media`),
     disabled: props.disabled,
     onClick: () => {
       setOpened(true)
       props.onOpenChange?.(true)
     },
   }
-  return opened ? (
-    <NativeMediaPicker
-      {...props}
-      onClose={() => {
-        setOpened(false)
-        props.onOpenChange?.(false)
-      }}
-    />
-  ) : props.renderTrigger ? props.renderTrigger(trigger) : (
-    <Button variant="default" disabled={trigger.disabled} onClick={trigger.onClick}>
-      {trigger.label}
-    </Button>
-  )
+  const close = () => {
+    setOpened(false)
+    props.onOpenChange?.(false)
+  }
+
+  if (!opened) {
+    return props.renderTrigger ? (
+      props.renderTrigger(trigger)
+    ) : (
+      <Button variant="default" disabled={trigger.disabled} onClick={trigger.onClick}>
+        {trigger.label}
+      </Button>
+    )
+  }
+
+  if (props.kind === 'icon') {
+    return (
+      <NativeMediaPicker
+        kind="image"
+        icon={props}
+        onSelect={(media) => props.onSelect({
+          source: 'media',
+          mediaId: media.id,
+          mediaUrl: media.url,
+          mediaFilename: media.filename,
+          recolorable: false,
+        })}
+        onClose={close}
+      />
+    )
+  }
+
+  return <NativeMediaPicker kind={props.kind} onSelect={props.onSelect} onClose={close} />
 }
 
 /** Inline Background-tab gallery; importing accepts only the parent's draft. */

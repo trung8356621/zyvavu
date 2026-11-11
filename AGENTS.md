@@ -37,6 +37,14 @@
 - Report changed files, tests, visual limitations and environment issues.
 - Never commit or push without explicit permission.
 
+## Zyvavu Item Context Binding
+
+Before implementing or changing **CollectionLoop**, **Loop Item Templates** (`loopItem`), **dynamic Atom bindings** (`textBinding` / `srcBinding` / `hrefBinding`), **normalized item adapters**, or **item preview rendering**, agents MUST read and follow:
+
+- [`.agents/skills/zyvavu-item-context-binding/SKILL.md`](.agents/skills/zyvavu-item-context-binding/SKILL.md)
+
+Summary only: one `loopItem` document type; Collection Loop references by stable ID; reuse shared Atoms (no new Item* authoring widgets); missing data → null / omit; no automatic rewrite of persisted templates by name. Full contract lives in the skill — do not invent a second binding or Style system.
+
 ## Mandatory execution discipline (ported from SEO-OPS)
 
 For every coding, debugging, testing or editing task, read and apply:

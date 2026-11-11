@@ -8,6 +8,7 @@ import { FrontendAdminToolbar } from '@/components/frontend/admin-toolbar/Fronte
 import { SiteHeader } from '@/components/frontend/SiteHeader'
 import { buildRootLayoutMetadata } from '@/lib/seo'
 import { loadPublicSiteSettings } from '@/lib/site/settings'
+import { toThemeSiteContext } from '@/lib/site/theme-site-context'
 import { linksForMenu, resolveMenuHierarchy } from '@/lib/url/menu-links'
 import config from '@/payload.config'
 import { themeVariables } from '@/theme/cssVariables'
@@ -114,15 +115,7 @@ export default async function RootLayout(props: { children: React.ReactNode }) {
             document={headerDoc}
             dataContext={{
               type: 'header',
-              site: {
-                siteName: settings.siteName,
-                tagline: settings.tagline,
-                logoUrl: settings.logoUrl,
-                logoAlt: settings.logoAlt,
-                menuItems: items,
-                menuTree,
-                menuDoc,
-              },
+              site: toThemeSiteContext(settings, { menuItems: items, menuTree, menuDoc }),
             }}
           />
         ) : (
@@ -140,15 +133,7 @@ export default async function RootLayout(props: { children: React.ReactNode }) {
             document={footerDoc}
             dataContext={{
               type: 'footer',
-              site: {
-                siteName: settings.siteName,
-                tagline: settings.tagline,
-                logoUrl: settings.logoUrl,
-                logoAlt: settings.logoAlt,
-                menuItems: items,
-                menuTree,
-                menuDoc,
-              },
+              site: toThemeSiteContext(settings, { menuItems: items, menuTree, menuDoc }),
             }}
           />
         )}

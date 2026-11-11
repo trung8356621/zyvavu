@@ -1,4 +1,7 @@
 import type { TemplateContext, ThemeConfig, ThemeTemplateDocument } from './types'
+import { createEmptyLoopItemDocument } from './loop-item-document'
+
+type BundledTemplateContext = Exclude<TemplateContext, 'loopItem'>
 
 // Corporate Clean Theme Imports
 import corporateThemeJson from '@/themes/corporate/theme.json'
@@ -50,7 +53,7 @@ export type InstalledTheme = {
   description: string
   version: number
   themeConfig: ThemeConfig
-  templates: Record<TemplateContext, ThemeTemplateDocument>
+  templates: Record<BundledTemplateContext, ThemeTemplateDocument>
   preview: ThemePreviewTokens
 }
 
@@ -165,8 +168,11 @@ export function getBundledTemplateForTheme(
   themeId: string,
   context: TemplateContext,
 ): ThemeTemplateDocument {
+  if (context === 'loopItem') {
+    return createEmptyLoopItemDocument('Loop Item', 'default')
+  }
   const theme = getInstalledTheme(themeId)
-  const doc = theme.templates[context]
+  const doc = theme.templates[context as BundledTemplateContext]
   if (!doc) {
     throw new Error(`Template "${context}" not found in theme "${theme.id}"`)
   }

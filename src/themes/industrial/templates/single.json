@@ -1,9 +1,8 @@
 {
   "version": 1,
   "template": "single",
-  "root": {
-    "props": {}
-  },
+  "metadata": { "roleContract": 1 },
+  "root": { "props": {} },
   "content": [
     {
       "type": "Section",
@@ -28,38 +27,32 @@
     ],
     "ind-single-layout:column1": [
       {
-        "type": "PostTitle",
+        "type": "Heading",
         "props": {
           "id": "ind-single-title",
+          "text": "",
           "tag": "h1",
-          "align": "left",
-          "lock": {
-            "canDelete": false,
-            "canMove": false,
-            "canEditProps": true
-          }
+          "textBinding": "title",
+          "lock": { "canDelete": false, "canMove": false, "canEditProps": true }
         }
       },
       {
-        "type": "PostMeta",
-        "props": {
-          "id": "ind-single-meta",
-          "showDate": true,
-          "showAuthor": true,
-          "showCategories": true,
-          "lock": {
-            "canDelete": false,
-            "canMove": true,
-            "canEditProps": true
-          }
-        }
+        "type": "Text",
+        "props": { "id": "ind-single-date", "text": "", "textBinding": "date" }
       },
       {
-        "type": "FeaturedMedia",
+        "type": "Text",
+        "props": { "id": "ind-single-taxonomy", "text": "", "textBinding": "taxonomy" }
+      },
+      {
+        "type": "Image",
         "props": {
           "id": "ind-single-media",
+          "src": "",
+          "alt": "",
+          "srcBinding": "thumbnail",
           "aspectRatio": "16:9",
-          "caption": "Tài liệu kỹ thuật và hình ảnh vận hành"
+          "objectFit": "cover"
         }
       },
       {
@@ -67,11 +60,7 @@
         "props": {
           "id": "ind-single-content",
           "showExcerpt": false,
-          "lock": {
-            "canDelete": false,
-            "canMove": false,
-            "canEditProps": true
-          }
+          "lock": { "canDelete": false, "canMove": false, "canEditProps": true }
         }
       }
     ],

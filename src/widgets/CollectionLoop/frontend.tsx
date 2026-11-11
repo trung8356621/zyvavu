@@ -2,24 +2,44 @@ import type { UniversalStyle } from '@/lib/style-engine/types'
 import { resolveWidgetStyles } from '@/lib/style-engine/serializer'
 import { animationAttributes } from '@/lib/style-engine/animation-presets'
 import React from 'react'
-import type { LoopItemRecord, ThemeDataContext } from '@/lib/theme-engine/types'
-import { ItemTitleFrontend } from '@/widgets/ItemTitle/frontend'
-import { ItemExcerptFrontend } from '@/widgets/ItemExcerpt/frontend'
-import { ItemLinkFrontend } from '@/widgets/ItemLink/frontend'
+import type { LoopItemRecord, ThemeDataContext, ThemeTemplateDocument } from '@/lib/theme-engine/types'
+import {
+  boundPostLimit,
+  mapDocToRecord,
+  resolvePosts,
+  type PostSort,
+} from '@/lib/theme-engine/post-query'
+import { resolveCategories } from '@/lib/theme-engine/category-query'
+import { isProductSchemaSupported } from '@/lib/theme-engine/normalized-item'
+import {
+  collectionGridStyle,
+  collectionResponsiveCss,
+} from '@/lib/theme-engine/post-collection-render'
+import { ThemeRenderer } from '@/lib/theme-engine/renderer'
 
 export type CollectionLoopProps = {
   style?: UniversalStyle
   id?: string
   mode?: 'dynamic' | 'manual'
-  source?: 'posts' | 'products'
+  source?: 'posts' | 'products' | 'categories'
+  layout?: 'list' | 'grid'
   columns?: number
+  columnsTablet?: number
+  columnsMobile?: number
   gap?: string
   heading?: string
   limit?: number
   categoryId?: string
-  sort?: 'newest' | 'oldest'
+  sort?: PostSort
   emptyText?: string
   manualItems?: LoopItemRecord[]
+  /** Stable reference to a standalone Loop Item Template. */
+  loopItemTemplateId?: string
+  /**
+   * Resolved Loop Item Template document (SSR / parent injects once).
+   * Not persisted on the Collection Loop widget — identity is loopItemTemplateId.
+   */
+  loopItemTemplateDocument?: ThemeTemplateDocument | null
   itemTemplate?: React.ReactNode
   dataContext?: ThemeDataContext
   renderSlot?: (
@@ -29,53 +49,50 @@ export type CollectionLoopProps = {
   ) => React.ReactNode
 }
 
-function mapDocToRecord(doc: any): LoopItemRecord {
-  const imgDoc =
-    typeof doc.featuredMedia === 'object'
-      ? doc.featuredMedia
-      : typeof doc.heroImage === 'object'
-        ? doc.heroImage
-        : null
-  const imgUrl =
-    imgDoc?.url ||
-    (typeof doc.featuredMedia === 'string' ? `/api/media/file/${doc.featuredMedia}` : undefined)
-
-  const firstCat =
-    Array.isArray(doc.categories) && doc.categories[0]
-      ? typeof doc.categories[0] === 'object'
-        ? doc.categories[0]
-        : null
-      : null
-
-  return {
-    id: doc.id,
-    title: doc.title,
-    slug: doc.slug,
-    url:
-      doc.canonicalPath ||
-      doc.canonicalUrl ||
-      doc.url ||
-      doc.publicPath ||
-      `/posts/${doc.slug || doc.id}`,
-    excerpt: doc.excerpt || '',
-    date: doc.publishedAt || doc.createdAt,
-    category: firstCat ? firstCat.title || firstCat.name : undefined,
-    image: imgUrl ? { url: imgUrl, alt: imgDoc?.alt || doc.title } : undefined,
-    raw: doc,
-  }
+function renderCardShell(
+  record: LoopItemRecord,
+  idx: number,
+  content: React.ReactNode,
+) {
+  return (
+    <article
+      key={record.id || idx}
+      className="zyvavu-widget-collection-loop__card"
+      style={{
+        border: '1px solid var(--zyvavu-theme-border, #e2e8f0)',
+        borderRadius: '8px',
+        padding: '20px',
+        background: 'var(--zyvavu-theme-surface, #ffffff)',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        gap: '12px',
+      }}
+    >
+      {content}
+    </article>
+  )
 }
 
 function renderRecords(props: CollectionLoopProps, records: LoopItemRecord[]) {
   const {
     id = 'collection-loop',
+    layout = 'grid',
     columns = 3,
+    columnsTablet = 2,
+    columnsMobile = 1,
     gap = '24px',
     heading,
     emptyText = 'Chưa có bài viết nào.',
     dataContext,
     renderSlot,
+    loopItemTemplateId,
+    loopItemTemplateDocument,
     style: semanticStyle,
   } = props
+
+  const gridClass = 'zyvavu-widget-collection-loop__grid'
+  const useLinkedTemplate = Boolean(loopItemTemplateId && loopItemTemplateDocument)
 
   return (
     <div
@@ -83,6 +100,7 @@ function renderRecords(props: CollectionLoopProps, records: LoopItemRecord[]) {
       {...animationAttributes(semanticStyle?.animation)}
       style={{ padding: '24px 0', ...resolveWidgetStyles(semanticStyle) }}
     >
+      <style dangerouslySetInnerHTML={{ __html: collectionResponsiveCss(gridClass) }} />
       {heading && (
         <h2
           className="zyvavu-widget-collection-loop__heading"
@@ -100,51 +118,60 @@ function renderRecords(props: CollectionLoopProps, records: LoopItemRecord[]) {
       {records.length === 0 ? (
         <p
           className="zyvavu-widget-collection-loop__empty"
-          style={{ color: 'var(--zyvavu-inherited-foreground, var(--zyvavu-theme-text-muted, #888))', fontStyle: 'italic' }}
+          style={{
+            color: 'var(--zyvavu-inherited-foreground, var(--zyvavu-theme-text-muted, #888))',
+            fontStyle: 'italic',
+          }}
         >
           {emptyText}
         </p>
       ) : (
         <div
-          className="zyvavu-widget-collection-loop__grid"
-          style={{
-            display: 'grid',
-            gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
-            gap: gap || '24px',
-          }}
+          className={gridClass}
+          data-layout={layout === 'list' ? 'list' : 'grid'}
+          data-loop-item-template={loopItemTemplateId || undefined}
+          style={collectionGridStyle(layout === 'list' ? 'list' : 'grid', columns, gap, {
+            tablet: columnsTablet,
+            mobile: columnsMobile,
+          })}
         >
           {records.map((record, idx) => {
             const itemContext: ThemeDataContext = {
               ...(dataContext || { type: 'home' }),
               item: record,
             }
+
+            if (useLinkedTemplate && loopItemTemplateDocument) {
+              return renderCardShell(
+                record,
+                idx,
+                <ThemeRenderer
+                  document={loopItemTemplateDocument}
+                  dataContext={itemContext}
+                  isNested
+                />,
+              )
+            }
+
             const slotContent = renderSlot
               ? renderSlot('itemTemplate', itemContext, `loop-${id}-item-${record.id || idx}`)
               : null
 
-            return (
-              <article
-                key={record.id || idx}
-                className="zyvavu-widget-collection-loop__card"
-                style={{
-                  border: '1px solid var(--zyvavu-theme-border, #e2e8f0)',
-                  borderRadius: '8px',
-                  padding: '20px',
-                  background: 'var(--zyvavu-theme-surface, #ffffff)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  gap: '12px',
-                }}
-              >
-                {slotContent || (
-                  <>
-                    <ItemTitleFrontend dataContext={itemContext} />
-                    <ItemExcerptFrontend dataContext={itemContext} />
-                    <ItemLinkFrontend dataContext={itemContext} />
-                  </>
-                )}
-              </article>
+            return renderCardShell(
+              record,
+              idx,
+              slotContent || (
+                <p
+                  className="zyvavu-widget-collection-loop__missing-template"
+                  style={{
+                    margin: 0,
+                    fontSize: 13,
+                    color: 'var(--zyvavu-theme-text-muted, #64748b)',
+                  }}
+                >
+                  Select a Loop Item Template for this Collection Loop.
+                </p>
+              ),
             )
           })}
         </div>
@@ -153,59 +180,26 @@ function renderRecords(props: CollectionLoopProps, records: LoopItemRecord[]) {
   )
 }
 
-async function renderDynamicAsync(
+async function loadLinkedTemplate(
   props: CollectionLoopProps,
-  boundedLimit: number,
-): Promise<React.ReactNode> {
-  const { categoryId, sort = 'newest', dataContext } = props
-  let records: LoopItemRecord[] = []
-
+): Promise<ThemeTemplateDocument | null> {
+  if (props.loopItemTemplateDocument) return props.loopItemTemplateDocument
+  const id = props.loopItemTemplateId?.trim()
+  if (!id) return null
   try {
     const { getPayload } = await import('payload')
     const config = (await import('@/payload.config')).default
     const payload = await getPayload({ config })
-
-    const where: Record<string, any> = {
-      _status: { equals: 'published' },
-    }
-
-    if (categoryId && categoryId.trim()) {
-      const catTrim = categoryId.trim()
-      if (/^\d+$/.test(catTrim)) {
-        where['categories.id'] = { equals: Number(catTrim) }
-      } else {
-        const catRes = await payload.find({
-          collection: 'categories',
-          where: { slug: { equals: catTrim } },
-          limit: 1,
-          overrideAccess: true,
-        })
-        if (catRes.docs.length > 0) {
-          where['categories.id'] = { equals: catRes.docs[0].id }
-        }
-      }
-    }
-
-    const sortField = sort === 'oldest' ? 'publishedAt' : '-publishedAt'
-
-    const postResults = await payload.find({
-      collection: 'posts',
-      where,
-      sort: sortField,
-      limit: boundedLimit,
-      depth: 2,
-      overrideAccess: true,
-    })
-
-    records = postResults.docs.map(mapDocToRecord)
+    const { resolveLoopItemTemplate } = await import('@/lib/theme-engine/loop-item-templates')
+    const themeId =
+      typeof (props.dataContext as any)?.site?.themeId === 'string'
+        ? (props.dataContext as any).site.themeId
+        : undefined
+    return await resolveLoopItemTemplate(payload, id, themeId)
   } catch (err) {
-    console.error('[CollectionLoop] Failed to fetch dynamic posts:', err)
-    if (Array.isArray(dataContext?.archive?.posts)) {
-      records = dataContext.archive.posts.slice(0, boundedLimit).map(mapDocToRecord)
-    }
+    console.error('[CollectionLoop] failed to load Loop Item Template', err)
+    return null
   }
-
-  return renderRecords(props, records)
 }
 
 export function CollectionLoopFrontend(
@@ -218,11 +212,62 @@ export function CollectionLoopFrontend(
     manualItems = [],
     dataContext,
     categoryId,
+    sort = 'newest',
+    loopItemTemplateId,
   } = props
 
-  const boundedLimit = Math.min(Math.max(1, limit || 6), 24)
+  const boundedLimit = boundPostLimit(limit, 6)
 
-  if (mode === 'manual') {
+  const run = async () => {
+    // Resolve shared template once per Collection Loop render (not per item).
+    const linkedDoc = loopItemTemplateId?.trim()
+      ? await loadLinkedTemplate(props)
+      : props.loopItemTemplateDocument || null
+    const nextProps = { ...props, loopItemTemplateDocument: linkedDoc }
+
+    if (mode === 'manual') {
+      const records: LoopItemRecord[] = (manualItems || [])
+        .slice(0, boundedLimit)
+        .map((item, idx) => ({
+          id: item.id || `manual-${idx}`,
+          title: item.title || `Mục ${idx + 1}`,
+          excerpt: item.excerpt || '',
+          url: item.url || '#',
+          image: item.image,
+          category: item.category,
+          date: item.date,
+          raw: item,
+        }))
+      return renderRecords(nextProps, records)
+    }
+
+    if (source === 'products') {
+      if (!isProductSchemaSupported()) return renderRecords(nextProps, [])
+      return renderRecords(nextProps, [])
+    }
+
+    if (source === 'categories') {
+      const records = await resolveCategories({ limit: boundedLimit, sort }, dataContext)
+      return renderRecords(nextProps, records)
+    }
+
+    // Sync path: archive posts already resolved by the page (editor/SSR parity without suspend).
+    if (Array.isArray(dataContext?.archive?.posts) && !(categoryId && categoryId.trim())) {
+      return renderRecords(
+        nextProps,
+        dataContext.archive.posts.slice(0, boundedLimit).map(mapDocToRecord),
+      )
+    }
+
+    const records = await resolvePosts({ limit: boundedLimit, categoryId, sort }, dataContext)
+    return renderRecords(nextProps, records)
+  }
+
+  // Sync paths when the linked template is already resolved (or unused).
+  const linkedReady =
+    !loopItemTemplateId?.trim() || Boolean(props.loopItemTemplateDocument)
+
+  if (linkedReady && mode === 'manual') {
     const records: LoopItemRecord[] = (manualItems || [])
       .slice(0, boundedLimit)
       .map((item, idx) => ({
@@ -238,17 +283,24 @@ export function CollectionLoopFrontend(
     return renderRecords(props, records)
   }
 
-  if (source === 'products') {
-    // Products collection boundary (contract-only, catalog not yet implemented)
+  if (
+    linkedReady &&
+    mode === 'dynamic' &&
+    source === 'posts' &&
+    Array.isArray(dataContext?.archive?.posts) &&
+    !(categoryId && categoryId.trim())
+  ) {
+    return renderRecords(
+      props,
+      dataContext.archive.posts.slice(0, boundedLimit).map(mapDocToRecord),
+    )
+  }
+
+  if (linkedReady && source === 'products') {
     return renderRecords(props, [])
   }
 
-  // Dynamic posts: if archive posts are provided in dataContext and no specific categoryId filter
-  if (Array.isArray(dataContext?.archive?.posts) && !categoryId) {
-    const records = dataContext.archive.posts.slice(0, boundedLimit).map(mapDocToRecord)
-    return renderRecords(props, records)
-  }
-
-  // Otherwise query payload asynchronously in Next.js Server Component
-  return renderDynamicAsync(props, boundedLimit)
+  return run()
 }
+
+export { mapDocToRecord }

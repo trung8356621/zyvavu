@@ -115,7 +115,21 @@ describe('Image builder contract', () => {
             }
           }
         }
-        if (file === 'single.json') expect(widgets.some((node) => node.type === 'FeaturedMedia')).toBe(true)
+        if (file === 'single.json') {
+          expect(
+            widgets.some(
+              (node) =>
+                node.type === 'Image' &&
+                node.props?.srcBinding === 'thumbnail',
+            ),
+            `${theme}/single.json should default to Image+thumbnail binding`,
+          ).toBe(true)
+          expect(
+            widgets.some((node) =>
+              ['FeaturedMedia', 'DocumentFeaturedMedia', 'PostTitle'].includes(node.type),
+            ),
+          ).toBe(false)
+        }
       }
     }
   })

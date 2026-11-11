@@ -1,13 +1,14 @@
 /*
- * Editor Workspace Shell — PO 2026-11-11 (stabilization hotfix)
- * Keep Puck data/selection/history/Fields. Presentation only:
- * full remaining height, 60px library rail, floating Fields, no right grid width.
+ * Editor Workspace Shell — PO 2026-11-11 (right dock correction)
+ * Keep Puck data/selection/history/Fields. Presentation:
+ * 60px library rail (floating overlay library), docked Fields when open.
+ * Closed right panel allocates 0 width — no empty reserved column.
  */
 
 .workspaceShell {
   --zyvavu-builder-library-rail-width: 60px;
   --zyvavu-builder-fields-width: min(360px, 42vw);
-  --zyvavu-builder-fields-z: 40;
+  --zyvavu-builder-fields-z: 30;
   --zyvavu-builder-library-z: 25;
   --zyvavu-builder-plugin-nav-width: 7.5rem;
   --puck-user-sidebar-left-width: var(--zyvavu-builder-library-rail-width);
@@ -77,11 +78,9 @@
 }
 
 @media (min-width: 638px) {
+  /* Right panel closed: no reserved Fields column. */
   .workspaceShell:not(.themeNavigation) :global([class*='_PuckLayout-inner_']),
   .workspaceShell:not(.themeNavigation) :global([class*='_PuckLayout--leftSideBarVisible_'] [class*='_PuckLayout-inner_']),
-  .workspaceShell:not(.themeNavigation) :global([class*='_PuckLayout--rightSideBarVisible_'] [class*='_PuckLayout-inner_']),
-  .workspaceShell:not(.themeNavigation)
-    :global([class*='_PuckLayout--leftSideBarVisible_'][class*='_PuckLayout--rightSideBarVisible_'] [class*='_PuckLayout-inner_']),
   .workspaceShell:not(.themeNavigation)
     :global([class*='_PuckLayout--mobilePanelHeightToggle_'][class*='_PuckLayout--leftSideBarVisible_'] [class*='_PuckLayout-inner_']),
   .workspaceShell:not(.themeNavigation)
@@ -94,6 +93,47 @@
     grid-template-rows: minmax(40px, auto) minmax(0, 1fr) !important;
   }
 
+  /* Right panel open: dock Fields and shrink Canvas to remaining width. */
+  .workspaceShell:not(.themeNavigation) :global([class*='_PuckLayout--rightSideBarVisible_'] [class*='_PuckLayout-inner_']),
+  .workspaceShell:not(.themeNavigation)
+    :global([class*='_PuckLayout--leftSideBarVisible_'][class*='_PuckLayout--rightSideBarVisible_'] [class*='_PuckLayout-inner_']) {
+    grid-template-columns:
+      var(--puck-pluginbar-width)
+      var(--zyvavu-builder-library-rail-width)
+      minmax(0, 1fr)
+      var(--zyvavu-builder-fields-width) !important;
+    grid-template-rows: minmax(40px, auto) minmax(0, 1fr) !important;
+    --puck-sidebar-right-width: var(--zyvavu-builder-fields-width);
+  }
+
+  /* Style Design dock: reserve the same right column while Fields are hidden. */
+  .workspaceShell:not(.themeNavigation)[data-right-dock='style'] :global([class*='_PuckLayout-inner_']),
+  .workspaceShell:not(.themeNavigation)[data-right-dock='style']
+    :global([class*='_PuckLayout--leftSideBarVisible_'] [class*='_PuckLayout-inner_']) {
+    grid-template-columns:
+      var(--puck-pluginbar-width)
+      var(--zyvavu-builder-library-rail-width)
+      minmax(0, 1fr)
+      var(--zyvavu-builder-fields-width) !important;
+    grid-template-rows: minmax(40px, auto) minmax(0, 1fr) !important;
+  }
+}
+
+/* Docked Style panel occupies the reserved right workspace column. */
+.workspaceShell[data-right-dock='style'] :global([data-testid='unified-style-modal']) {
+  position: absolute !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  left: auto !important;
+  width: var(--zyvavu-builder-fields-width) !important;
+  max-width: var(--zyvavu-builder-fields-width) !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  border-inline-start: 1px solid var(--zyvavu-border, var(--puck-color-border));
+  z-index: var(--zyvavu-builder-fields-z);
 }
 
 /* Left rail only — overlay library must not expand the grid column. */
@@ -142,22 +182,19 @@
 }
 
 /*
- * Floating Fields: share the editor grid cell (overlay right edge).
- * Canvas cell width stays full; Fields does not allocate a grid column.
+ * Docked Fields: own grid column when visible; Canvas uses remaining width.
+ * Left Widget Library stays floating/absolute over the rail.
  */
 .workspaceShell :global([class*='_Sidebar--right_']),
 .workspaceShell :global([class*='_PuckLayout-rightSideBar_']),
 .workspaceShell :global([class*='_PuckLayout-right_']) {
-  grid-area: editor !important;
-  justify-self: end;
-  align-self: stretch;
   position: relative !important;
   top: auto;
   right: auto;
   bottom: auto;
   left: auto;
-  width: var(--zyvavu-builder-fields-width) !important;
-  max-width: var(--zyvavu-builder-fields-width);
+  width: 100% !important;
+  max-width: none;
   min-width: 0;
   height: auto !important;
   max-height: 100%;
@@ -167,7 +204,7 @@
   flex-direction: column;
   background: var(--mantine-color-body, #fff);
   border-inline-start: 1px solid var(--zyvavu-border, var(--puck-color-border));
-  box-shadow: -8px 0 24px rgba(15, 23, 32, 0.1);
+  box-shadow: none;
   pointer-events: auto;
 }
 
@@ -298,8 +335,7 @@
   border-inline-end: 1px solid var(--zyvavu-border);
 }
 
-.toolPanel,
-.themeNavigation :global([class*='_Sidebar--right_']) {
+.toolPanel {
   background: var(--mantine-color-body);
   border: 1px solid var(--mantine-color-default-border);
   box-shadow: var(--mantine-shadow-md);
@@ -321,23 +357,23 @@
   min-height: 0;
 }
 
-/* Keep the native Canvas, FrameProvider and viewport controls in one grid cell. */
+/* Reserve the same right column for native Fields and the workspace Design dock. */
 .themeNavigation :global([class*='_PuckLayout-inner_']) {
-  grid-template: 'editor' minmax(0, 1fr) / minmax(0, 1fr) !important;
+  --theme-builder-dock-width: 0px;
+  grid-template: 'editor right' minmax(0, 1fr) / minmax(0, 1fr) var(--theme-builder-dock-width) !important;
   transition: none;
+}
+
+.themeNavigation :global([class*='_PuckLayout--rightSideBarVisible_'] [class*='_PuckLayout-inner_']),
+.themeNavigation[data-right-dock='style'] :global([class*='_PuckLayout-inner_']) {
+  --theme-builder-dock-width: var(--zyvavu-builder-fields-width);
+  --puck-sidebar-right-width: var(--zyvavu-builder-fields-width);
 }
 
 .themeNavigation :global([class*='_PuckLayout-header_']),
 .themeNavigation :global([class*='_PuckLayout-nav_']),
 .themeNavigation :global([class*='_Sidebar--left_']) {
   display: none !important;
-}
-
-.themeNavigation :global([class*='_Sidebar--right_']) {
-  position: absolute !important;
-  inset: 0 0 0 auto;
-  width: min(360px, 100%) !important;
-  max-width: 100%;
 }
 
 .themeNavigation :global([class*='_Sidebar--right_'] [class*='_SidebarSection_']),
@@ -381,7 +417,10 @@
   }
 
   .workspaceShell:not(.themeNavigation) :global([class*='_Sidebar--right_']) {
+    position: absolute !important;
+    inset: 0 0 0 auto;
     width: min(100vw, 380px) !important;
     max-width: 100vw;
+    z-index: var(--zyvavu-builder-fields-z);
   }
 }

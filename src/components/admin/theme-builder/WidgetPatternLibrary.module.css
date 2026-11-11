@@ -148,9 +148,7 @@
   font-size: 0.75rem;
 }
 .preview {
-  overflow: hidden;
   min-height: 0;
-  max-height: 7.5rem;
   border-radius: var(--mantine-radius-sm);
   border: 0;
   padding: 4px 6px;
@@ -172,6 +170,48 @@
   grid-template-columns: minmax(0, 1fr);
   gap: 6px;
 }
+.results {
+  container-type: inline-size;
+}
+
+.cards .presetMasonry {
+  columns: 8.5rem 2;
+  min-width: 0;
+}
+
+.presetMasonry .card {
+  box-sizing: border-box;
+  display: inline-flex;
+}
+
+.presetMasonry .insertTile {
+  overflow-wrap: anywhere;
+}
+
+.presetMasonry[data-preset-masonry='Image'] .preview img {
+  width: 100%;
+  height: auto;
+  /* Atom previews carry the preset's saved aspect ratio inline. */
+  aspect-ratio: auto !important;
+  object-fit: contain;
+}
+
+.presetMasonry[data-preset-masonry='Button'] .preview {
+  text-align: center;
+}
+
+.presetMasonry[data-preset-masonry='Button'] .preview :global(.zyvavu-styled-button) {
+  box-sizing: border-box;
+  max-inline-size: 100%;
+  white-space: normal;
+}
+
+.presetMasonry[data-preset-masonry='Button'] .preview :global(.zyvavu-widget-button__label) {
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
 .card {
   position: relative;
   min-width: 0;
@@ -225,7 +265,7 @@
   justify-content: flex-end;
   gap: var(--mantine-spacing-xs);
 }
-/* Structure/atom previews may size themselves; captured thumbs use cover inside PatternPreview. */
+/* Structure/atom previews may size themselves; captured thumbnails use intrinsic sizing inside PatternPreview. */
 .preview img:not([class*='thumbnailImage']) {
   max-width: 100%;
   height: auto;

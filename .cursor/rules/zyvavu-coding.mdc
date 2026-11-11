@@ -13,4 +13,6 @@ For Admin UI, also read `cms-knowledge-pack/skills/cms-admin-design/SKILL.md` an
 
 Do not auto-activate `docs-bulk-update`; it requires a relevant user request.
 
+For CollectionLoop, Loop Item Templates, dynamic Atom bindings, or normalized item adapters, also read `.agents/skills/zyvavu-item-context-binding/SKILL.md` (see scoped rule `zyvavu-item-context-binding.mdc`).
+
 Read root `AGENTS.md`, including its Unified Color Picker contract, and the linked `docs/style-engine-color-contract.md` before Builder color-control work. These are the shared authority for all agents.

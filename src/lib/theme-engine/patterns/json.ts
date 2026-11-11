@@ -8,9 +8,14 @@ import { validateUniversalStyle } from '@/lib/style-engine/validation'
 // Serialization/preview allowlist for existing renderers, not another widget registration.
 export const PATTERN_SLOTS: Record<string, readonly string[]> = {
   ...Object.fromEntries(Object.keys(atomManifests).map((type) => [type, []])),
+  Icon: [],
+  CategoryList: [],
+  ContactInformation: [],
   Section: ['content'],
   Columns: ['column1', 'column2', 'column3', 'column4'],
   CollectionLoop: ['itemTemplate'],
+  FeaturedPost: [],
+  PostCollection: [],
   Header: [
     'topBarLeft',
     'topBarCenter',
@@ -35,6 +40,7 @@ export const PATTERN_SLOTS: Record<string, readonly string[]> = {
   ItemExcerpt: [],
   ItemImage: [],
   ItemLink: [],
+  ItemDate: [],
   HeaderBrand: [],
   HeaderNav: [],
   HeaderAction: [],
@@ -281,11 +287,13 @@ export function instantiatePatternJSON(
   return copy
 }
 export const SIMPLE_PATTERN_TYPES = [
+  'ContactInformation',
   'Heading',
   'Text',
   'Button',
   'Image',
   'Video',
+  'Icon',
   'DocumentTitle',
   'DocumentDate',
   'DocumentCategory',
@@ -298,6 +306,9 @@ export const SIMPLE_PATTERN_TYPES = [
   'ItemTitle',
   'ItemExcerpt',
   'ItemLink',
+  'ItemDate',
+  'FeaturedPost',
+  'PostCollection',
 ]
 export function isComplexPattern(record: PatternJSON) {
   const root = record.payload.content[0]

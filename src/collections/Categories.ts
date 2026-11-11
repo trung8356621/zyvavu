@@ -49,5 +49,32 @@ export const Categories: CollectionConfig = {
       },
     },
     slugField,
+    {
+      name: 'parent',
+      type: 'relationship',
+      relationTo: 'categories',
+      admin: {
+        position: 'sidebar',
+        description: 'Optional parent category for hierarchical navigation lists.',
+      },
+      filterOptions: ({ id }) => (id ? { id: { not_equals: id } } : true),
+    },
+    {
+      name: 'thumbnail',
+      type: 'upload',
+      relationTo: 'media',
+      required: false,
+      filterOptions: {
+        mimeType: {
+          contains: 'image',
+        },
+      },
+      admin: {
+        description: 'Optional category thumbnail from the Media Library.',
+        components: {
+          Field: '@/components/admin/settings/MediaPickerField#MediaPickerField',
+        },
+      },
+    },
   ],
 }

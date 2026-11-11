@@ -8,10 +8,12 @@ export function MediaLibraryNavigation({
   value,
   onChange,
   allowedKind,
+  onOpenBuiltInIcons,
 }: {
-  value: LibraryView
+  value: LibraryView | 'builtin-icons'
   onChange: (kind: LibraryView) => void
   allowedKind?: 'image' | 'video'
+  onOpenBuiltInIcons?: () => void
 }) {
   return (
     <Stack gap="xs" component="nav" aria-label="Media library categories">
@@ -26,6 +28,15 @@ export function MediaLibraryNavigation({
       )}
       {(!allowedKind || allowedKind === 'video') && (
         <NavLink label="Videos" active={value === 'video'} onClick={() => onChange('video')} />
+      )}
+      {onOpenBuiltInIcons && (
+        <NavLink
+          component="button"
+          type="button"
+          label="Built-in icons"
+          active={value === 'builtin-icons'}
+          onClick={onOpenBuiltInIcons}
+        />
       )}
       <Text size="xs" fw={600} c="dimmed" mt="md">
         DEMO ASSETS

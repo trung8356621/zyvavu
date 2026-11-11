@@ -10,7 +10,6 @@ import {
   Image,
   Loader,
   Pagination,
-  SimpleGrid,
   Stack,
   Text,
   TextInput,
@@ -20,6 +19,8 @@ import { DemoMediaGallery } from './DemoMediaGallery'
 import { mediaLibraryURL, type LibraryView } from './mediaLibraryQuery'
 import { mediaPreviewSrc, type MediaListDoc } from './mediaThumbnail'
 import { MediaLibraryNavigation } from './MediaLibraryNavigation'
+import { IconLibraryBrowser } from './IconLibraryBrowser'
+import type { IconRef } from '@/lib/icons'
 import type { SelectedMedia } from './MediaSourcePicker'
 
 export function MediaBrowser({
@@ -28,6 +29,8 @@ export function MediaBrowser({
   onSelect,
   onCancel,
   upload,
+  browse,
+  icons,
   canImport = false,
 }: {
   api: string
@@ -35,11 +38,16 @@ export function MediaBrowser({
   onSelect: (doc: SelectedMedia) => void
   onCancel: () => void
   upload?: React.ReactNode
+  browse?: React.ReactNode
+  icons?: { value?: IconRef | null; onSelect: (value: IconRef) => void }
   canImport?: boolean
 }) {
   const [navigationOpened, setNavigationOpened] = useState(false)
-  const [library, setLibrary] = useState<LibraryView>(kind)
+  const [library, setLibrary] = useState<LibraryView | 'builtin-icons'>(
+    icons && icons.value?.source !== 'media' ? 'builtin-icons' : kind,
+  )
   const demo = library.startsWith('demo-')
+  const builtIn = library === 'builtin-icons'
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [result, setResult] = useState<{ docs: MediaListDoc[]; totalPages: number } | null>(null)
@@ -48,7 +56,7 @@ export function MediaBrowser({
   const [retry, setRetry] = useState(0)
 
   useEffect(() => {
-    if (demo) return
+    if (demo || builtIn) return
     const controller = new AbortController()
     const timer = setTimeout(async () => {
       setLoading(true)
@@ -73,7 +81,7 @@ export function MediaBrowser({
       clearTimeout(timer)
       controller.abort()
     }
-  }, [api, kind, search, page, retry, demo])
+  }, [api, kind, search, page, retry, demo, builtIn])
 
   return (
     <Stack className="zyvavu-media-browser">
@@ -93,6 +101,7 @@ export function MediaBrowser({
           <MediaLibraryNavigation
             value={library}
             allowedKind={kind}
+            onOpenBuiltInIcons={icons ? () => setLibrary('builtin-icons') : undefined}
             onChange={(value) => {
               if (value === library) return
               setLibrary(value)
@@ -101,7 +110,9 @@ export function MediaBrowser({
           />
         </Box>
         <Box className="zyvavu-media-browser__main">
-          {demo ? (
+          {builtIn && icons ? (
+            <IconLibraryBrowser value={icons.value} onSelect={icons.onSelect} />
+          ) : demo ? (
             <DemoMediaGallery kind={kind} api={api} canImport={canImport} onSelect={onSelect} />
           ) : (
             <Stack>
@@ -138,7 +149,7 @@ export function MediaBrowser({
                 </Alert>
               ) : result?.docs.length ? (
                 <>
-                  <SimpleGrid cols={{ base: 2, sm: 3, lg: 4, xl: 5 }} spacing="sm">
+                  <div className="zyvavu-media-masonry">
                     {result.docs
                       .filter((doc) => doc.mimeType?.startsWith(`${kind}/`))
                       .map((doc) => {
@@ -151,6 +162,8 @@ export function MediaBrowser({
                             key={doc.id}
                             variant="default"
                             h="auto"
+                            fullWidth
+                            styles={{ inner: { width: '100%' }, label: { width: '100%', display: 'block' } }}
                             p="xs"
                             aria-label={`Select ${doc.filename || doc.id}`}
                             disabled={!doc.url}
@@ -159,11 +172,12 @@ export function MediaBrowser({
                                 onSelect({
                                   id: doc.id,
                                   url: doc.url,
+                                  filename: doc.filename || undefined,
                                   mimeType: doc.mimeType || undefined,
                                 })
                             }}
                           >
-                            <Stack gap="xs" align="center" miw={0}>
+                            <Stack gap="xs" align="center" miw={0} w="100%">
                               {thumbnail ? (
                                 thumbnail.startsWith('/api/media/file/') ? (
                                   <NextImage
@@ -173,20 +187,18 @@ export function MediaBrowser({
                                     height={160}
                                     sizes="(max-width: 48em) 45vw, 180px"
                                     loading="lazy"
-                                    style={{ width: '100%', height: 96, objectFit: 'contain' }}
+                                    className="zyvavu-media-masonry__image"
                                   />
                                 ) : (
                                   <Image
                                     src={thumbnail}
                                     alt={doc.alt || ''}
-                                    h={96}
-                                    w="100%"
-                                    fit="contain"
+                                    className="zyvavu-media-masonry__image"
                                     loading="lazy"
                                   />
                                 )
                               ) : (
-                                <Box h={96}>
+                                <Box className="zyvavu-media-masonry__placeholder">
                                   {kind === 'video' ? (
                                     <Film aria-label="Video" />
                                   ) : (
@@ -201,7 +213,7 @@ export function MediaBrowser({
                           </Button>
                         )
                       })}
-                  </SimpleGrid>
+                  </div>
                   <Pagination
                     total={result.totalPages || 1}
                     value={page}
@@ -223,6 +235,7 @@ export function MediaBrowser({
         </Box>
       </Box>
       <Group justify="flex-end" className="zyvavu-media-browser__footer">
+        {!builtIn && browse}
         <Button variant="default" onClick={onCancel}>
           Cancel
         </Button>

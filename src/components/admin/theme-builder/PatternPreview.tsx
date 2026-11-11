@@ -2,8 +2,9 @@
 
 import { atomManifests } from '@/widgets/atoms/manifests'
 import { createAtomRenderer } from '@/widgets/atoms/frontend'
-import React, { useEffect, useRef, useState } from 'react'
-import { Alert, Button, Loader, Modal, Stack, Text } from '@mantine/core'
+import React, { useCallback, useState } from 'react'
+import { Alert, Button, Modal, Stack, Text } from '@mantine/core'
+import { Image, LayoutList, Play } from 'lucide-react'
 import { TextBlockFrontend } from '@/widgets/TextBlock/frontend'
 import { GalleryFrontend } from '@/widgets/Gallery/frontend'
 import { PostTitleFrontend } from '@/widgets/PostTitle/frontend'
@@ -12,6 +13,9 @@ import { HeaderTopBarTextFrontend } from '@/widgets/HeaderTopBarText/frontend'
 import { ItemTitleFrontend } from '@/widgets/ItemTitle/frontend'
 import { ItemExcerptFrontend } from '@/widgets/ItemExcerpt/frontend'
 import { ItemLinkFrontend } from '@/widgets/ItemLink/frontend'
+import { CategoryListPatternPreview } from '@/widgets/CategoryList/pattern-preview'
+import { ContactInformationFrontend } from '@/widgets/ContactInformation/frontend'
+import { sampleContactEntriesWithOrder } from '@/lib/site/contact'
 import type { PatternJSON } from '@/lib/theme-engine/patterns/json'
 import { isComplexPattern, PATTERN_SLOTS } from '@/lib/theme-engine/patterns/json'
 import { resolveSectionLayerStyles, resolveWidgetStyles } from '@/lib/style-engine/serializer'
@@ -31,12 +35,15 @@ const SIMPLE: Record<string, React.ComponentType<any>> = {
   ItemTitle: ItemTitleFrontend,
   ItemExcerpt: ItemExcerptFrontend,
   ItemLink: ItemLinkFrontend,
+  CategoryList: CategoryListPatternPreview,
+  ContactInformation: ContactInformationFrontend,
 }
 
 const PREVIEW_CONTEXT = {
   type: 'home' as const,
   document: { title: 'Tiêu đề minh họa' },
   item: { title: 'Nội dung minh họa', excerpt: 'Nội dung mẫu', url: '#' },
+  site: { contactEntries: sampleContactEntriesWithOrder() },
 }
 
 const MEDIA_PREVIEWS: Record<string, { photo: string; ratio: number }> = {
@@ -178,15 +185,10 @@ function SectionStructurePreview({
 }
 
 /** Faithful lightweight structure preview for library cards (not a full page capture). */
-export function LivePatternPreview({ record }: { record: PatternJSON }) {
+export function LivePatternPreview({ record, basic = false }: { record: PatternJSON; basic?: boolean }) {
+  const [failedRecord, setFailedRecord] = useState<PatternJSON | null>(null)
   const root = record.payload.content[0]
-  if (!root) {
-    return (
-      <Text size="xs" c="dimmed">
-        Empty pattern
-      </Text>
-    )
-  }
+  if (!root) return <NeutralPreview kind="content" />
 
   if (root.type === 'Section') {
     return (
@@ -231,29 +233,62 @@ export function LivePatternPreview({ record }: { record: PatternJSON }) {
       ? { posterUrl: sample.thumbnailURL, text: '▶', autoplay: false }
       : { src: sample.thumbnailURL, alt: sample.label }
     : undefined
-  const preview = Component && (
-    <Component {...root.props} {...sampleProps} previewOnly={root.type === 'Button' || undefined} dataContext={PREVIEW_CONTEXT} />
+  const previewProps: Record<string, unknown> = { ...root.props, ...sampleProps }
+  if (!Component || failedRecord === record) return <NeutralPreview kind={root.type} />
+  if (root.type === 'Image' && (basic || !previewProps.src)) return <NeutralPreview kind="Image" />
+  if (root.type === 'Video' && (basic || (!previewProps.src && !previewProps.posterUrl))) {
+    return <NeutralPreview kind="Video" />
+  }
+  if (root.type === 'Gallery' &&
+      (basic || !Array.isArray(previewProps.items) || !previewProps.items.some((item) => item?.src))) {
+    return <NeutralPreview kind="Gallery" />
+  }
+
+  const imagePreview = root.type === 'Image'
+  const preview = (
+    <Component
+      {...previewProps}
+      {...(imagePreview ? { objectFit: 'contain' } : undefined)}
+      previewOnly={root.type === 'Button' || undefined}
+      dataContext={PREVIEW_CONTEXT}
+    />
   )
-  return Component ? (
-    <div inert className={styles.previewRoot}>
-      {media ? (
+  return (
+    <div
+      inert
+      className={styles.previewRoot}
+      data-library-image-preview={imagePreview || undefined}
+      onErrorCapture={() => setFailedRecord(record)}
+    >
+      {media && !imagePreview ? (
         <div style={{ width: `min(100%, ${6 * media.ratio}rem)`, marginInline: 'auto' }}>{preview}</div>
       ) : preview}
     </div>
-  ) : (
-    <Text size="xs" c="dimmed">
-      Live preview unavailable for {root.type}
-    </Text>
+  )
+}
+
+function NeutralPreview({ kind }: { kind: string }) {
+  if (kind === 'Gallery') {
+    return (
+      <div className={styles.galleryPlaceholder} data-library-placeholder="Gallery" aria-hidden>
+        {[0, 1, 2].map((tile) => (
+          <div key={tile} className={styles.mediaPlaceholder}><Image size={22} /></div>
+        ))}
+      </div>
+    )
+  }
+  const Icon = kind === 'Video' ? Play : kind === 'Image' ? Image : LayoutList
+  return (
+    <div className={styles.mediaPlaceholder} data-library-placeholder={kind} aria-hidden>
+      <Icon size={28} />
+    </div>
   )
 }
 
 function useNearViewport(enabled: boolean) {
-  const ref = useRef<HTMLDivElement | null>(null)
-  const [visible, setVisible] = useState(!enabled)
-  useEffect(() => {
-    if (!enabled || visible) return
-    const node = ref.current
-    if (!node) return
+  const [visible, setVisible] = useState(false)
+  const ref = useCallback((node: HTMLDivElement | null) => {
+    if (!node || !enabled || visible) return
     if (typeof IntersectionObserver === 'undefined') {
       setVisible(true)
       return
@@ -270,7 +305,7 @@ function useNearViewport(enabled: boolean) {
     observer.observe(node)
     return () => observer.disconnect()
   }, [enabled, visible])
-  return { ref, visible }
+  return { ref, visible: !enabled || visible }
 }
 
 export function PatternThumbnail({
@@ -284,54 +319,33 @@ export function PatternThumbnail({
   eager?: boolean
 }) {
   const [failedURL, setFailedURL] = useState<string | null>(null)
-  const [attempt, setAttempt] = useState(0)
   const [loaded, setLoaded] = useState<string | null>(null)
   const complex = isComplexPattern(record)
   const { ref, visible } = useNearViewport(complex && !eager)
 
   if (!complex) return <LivePatternPreview record={record} />
 
-  const base = url || record.thumbnail?.url
-  const source = base ? `${base}${base.includes('?') ? '&' : '?'}retry=${attempt}` : undefined
+  const source = url || record.thumbnail?.url
   const showImage = visible && source && source !== failedURL
-
-  // Prefer captured thumbnail when available; fall back to live structure preview.
-  if (visible && (!source || source === failedURL)) {
-    return (
-      <div ref={ref} className={styles.thumbnailFallback}>
-        <LivePatternPreview record={record} />
-      </div>
-    )
-  }
+  const categoryThumbnail = record.widgetType === 'CategoryList'
+  const categorySize = categoryThumbnail ? (eager ? 'full' : 'card') : undefined
 
   return (
-    <div ref={ref} className={styles.thumbnailFrame}>
-      {showImage ? (
-        <>
-          {loaded !== source && (
-            <div
-              role="status"
-              className={styles.thumbnailLoader}
-            >
-              <Loader size="sm" aria-label="Preparing thumbnail" />
-            </div>
-          )}
-          <img
-            key={source}
-            src={source}
-            alt={record.name}
-            loading="lazy"
-            decoding="async"
-            fetchPriority="low"
-            width={1200}
-            height={800}
-            className={styles.thumbnailImage}
-            onLoad={() => setLoaded(source)}
-            onError={() => setFailedURL(source)}
-          />
-        </>
-      ) : (
-        <div role="status" aria-label={`${record.name} thumbnail deferred`} className={styles.thumbnailDeferred} />
+    <div ref={ref} className={styles.thumbnailFrame} data-category-thumbnail={categorySize}>
+      {(!showImage || loaded !== source) && <LivePatternPreview record={record} />}
+      {showImage && (
+        <img
+          key={source}
+          src={source}
+          alt={record.name}
+          loading={eager ? 'eager' : 'lazy'}
+          decoding="async"
+          fetchPriority="low"
+          className={styles.thumbnailImage}
+          data-loading={loaded !== source || undefined}
+          onLoad={() => setLoaded(source)}
+          onError={() => setFailedURL(source)}
+        />
       )}
     </div>
   )
@@ -342,13 +356,41 @@ export function PatternPreviewModal({
   url,
   previewKey,
   onClose,
+  onCaptured,
 }: {
   record: PatternJSON
   url?: string | null
   previewKey: string
   onClose: () => void
+  onCaptured?: () => void
 }) {
   const [live, setLive] = useState(false)
+  const [capturing, setCapturing] = useState(false)
+  const [captureError, setCaptureError] = useState(false)
+  const [captureRevision, setCaptureRevision] = useState(0)
+  const captureUrl = record.source === 'system' && record.widgetType === 'CategoryList'
+    ? record.thumbnail?.url
+    : undefined
+
+  const captureThumbnail = async () => {
+    if (!captureUrl) return
+    setCapturing(true)
+    setCaptureError(false)
+    try {
+      const response = await fetch(`${captureUrl}?capture=1`, { cache: 'no-store' })
+      if (!response.ok) {
+        setCaptureError(true)
+        return
+      }
+      await response.blob()
+      setCaptureRevision((revision) => revision + 1)
+      onCaptured?.()
+    } catch {
+      setCaptureError(true)
+    } finally {
+      setCapturing(false)
+    }
+  }
   return (
     <Modal
       opened
@@ -369,7 +411,13 @@ export function PatternPreviewModal({
           />
         ) : (
           <>
-            <PatternThumbnail record={record} url={url} eager />
+            <PatternThumbnail key={captureRevision} record={record} url={url} eager />
+            {captureUrl && (
+              <Button variant="default" loading={capturing} onClick={captureThumbnail}>
+                Generate thumbnail
+              </Button>
+            )}
+            {captureError && <Alert color="red" role="alert">Thumbnail capture failed. Try again.</Alert>}
             <Button onClick={() => setLive(true)}>View with active theme</Button>
             <Alert>Live preview loads only when requested. It does not open another editor.</Alert>
           </>

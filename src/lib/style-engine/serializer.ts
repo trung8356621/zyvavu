@@ -289,7 +289,10 @@ export function resolveSectionLayerStyles(
     boxSizing: 'border-box',
     ...inheritedForeground(s),
     ...(s.typography?.colorToken || s.colorToken
-      ? { color: resolveColorToken(s.typography?.colorToken || s.colorToken) }
+      ? {
+          color: resolveColorToken(s.typography?.colorToken || s.colorToken),
+          '--zyvavu-inherited-foreground': resolveColorToken(s.typography?.colorToken || s.colorToken),
+        }
       : {}),
   }
 

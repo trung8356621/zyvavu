@@ -18,11 +18,14 @@ export function ImageQuickAction({
   id,
   beforeOperation,
   kind = 'Image',
+  disabled: disabledProp = false,
   renderTrigger,
 }: {
   id: string
   beforeOperation: () => boolean
   kind?: MediaAtomType
+  /** When media source is dynamically bound, block manual replace. */
+  disabled?: boolean
   renderTrigger?: React.ComponentProps<typeof MediaSourcePicker>['renderTrigger']
 }) {
   const getItemById = usePuck((s) => s.getItemById)
@@ -34,13 +37,15 @@ export function ImageQuickAction({
 
   const mediaKind = kind === 'Video' ? 'video' : 'image'
   const triggerLabel = kind === 'Video' ? 'Change Video' : 'Change Image'
+  const sourceBound =
+    typeof item.props?.srcBinding === 'string' && item.props.srcBinding.trim().length > 0
 
   return (
     <MediaSourcePicker
       kind={mediaKind}
       triggerLabel={triggerLabel}
       renderTrigger={renderTrigger}
-      disabled={!getPermissions({ item }).edit}
+      disabled={disabledProp || sourceBound || !getPermissions({ item }).edit}
       onSelect={(media) => {
         const current = getItemById(id)
         const selector = getSelectorForId(id)

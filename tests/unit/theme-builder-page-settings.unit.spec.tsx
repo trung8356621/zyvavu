@@ -7,6 +7,7 @@ import { validateThemeTemplateDocument } from '@/lib/theme-engine/validation'
 import {
   DEFAULT_PAGE_SETTINGS,
   resolveColorToken,
+  resolvePageForeground,
   resolveContainerWidth,
   resolvePageSettingsStyles,
   resolveRadiusToken,
@@ -20,6 +21,37 @@ import { TextBlockFrontend } from '@/widgets/TextBlock/frontend'
 import { getThemePaletteSwatches } from '@/components/admin/shared/ThemeColorPaletteModal'
 
 describe('Theme Builder — Page Settings & Atomic Design System', () => {
+  it('renders valid background images over the theme fallback with the configured geometry', () => {
+    const background = {
+      type: 'image', imageUrl: '/api/media/file/cover.webp',
+      imagePosition: 'top', imageSize: 'contain', imageRepeat: 'repeat-x',
+    } as const
+    expect(resolvePageSettingsStyles({ background }).style).toMatchObject({
+      backgroundColor: expect.stringContaining('--zyvavu-theme-background'),
+      backgroundImage: 'url("/api/media/file/cover.webp")',
+      backgroundPosition: 'top', backgroundSize: 'contain', backgroundRepeat: 'repeat-x',
+    })
+    expect(resolvePageSettingsStyles({ background: { ...background, imageUrl: undefined } }).style.backgroundImage).toBeUndefined()
+    expect(resolvePageSettingsStyles({ background: { ...background, imageUrl: 'javascript:bad' } }).style.backgroundImage).toBeUndefined()
+  })
+
+  it('preserves explicit foreground and warns on low contrast against the selected page surface', () => {
+    const theme = {
+      colors: { text: '#17201f', background: '#ffffff', surface: '#4b0825' },
+    } as ThemeConfig['tokens']
+    const settings = { background: { type: 'palette', token: 'surface' }, text: { colorToken: 'text', typography: 'p2' } } as const
+    expect(resolvePageForeground(settings, theme).warning).toContain('Low contrast')
+    const style = resolvePageSettingsStyles(settings, theme).style
+    expect(style).toMatchObject({
+      color: expect.stringContaining('--zyvavu-theme-text'),
+      '--zyvavu-inherited-foreground': style.color,
+      fontSize: 'var(--zyvavu-theme-p2-size, inherit)',
+    })
+    expect(resolvePageForeground({ background: settings.background }, theme)).toMatchObject({
+      color: expect.stringContaining('--zyvavu-theme-foreground-on-surface'),
+      warning: undefined,
+    })
+  })
   const mockDoc: ThemeTemplateDocument = {
     version: 1,
     template: 'single',

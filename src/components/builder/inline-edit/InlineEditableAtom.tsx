@@ -14,12 +14,14 @@ import type { WidgetSemanticStyle } from '@/lib/theme-engine/types'
 import { commitAtomText } from './commit-atom-text'
 import {
   allowsMultilineEnter,
+  buttonLabelEditorContent,
+  serializeButtonLabelFromEditor,
   serializeInlineFromEditor,
   textEditorContent,
   type HeadingTag,
   type InlineAtomKind,
 } from './content-model'
-import { inlineContentExtensions } from './extensions'
+import { buttonLabelExtensions, inlineContentExtensions } from './extensions'
 import { InlineFormatToolbar } from './InlineFormatToolbar'
 import { InlineLinkEditor } from './InlineLinkEditor'
 import {
@@ -58,9 +60,11 @@ type EditableProps = {
  * Clicks inside the Heading host must not commit; bubbled Section reselection is ignored.
  */
 export function InlineEditableAtom({ kind, id, text, tag, style, children }: EditableProps) {
-  const [editing, setEditing] = React.useState(false)
-  const startTextRef = React.useRef(text ?? '')
-  const clickPointRef = React.useRef<{ x: number; y: number } | null>(null)
+  const [session, setSession] = React.useState<{
+    text: string
+    clickPoint: { x: number; y: number }
+  } | null>(null)
+  const editing = session !== null
   const idleRef = React.useRef<HTMLDivElement | null>(null)
   const selected = usePuck((s) => s.selectedItem)
   const getItemById = usePuck((s) => s.getItemById)
@@ -80,30 +84,26 @@ export function InlineEditableAtom({ kind, id, text, tag, style, children }: Edi
         nextText,
         { recordHistory: true },
       )
-      setEditing(false)
-      clickPointRef.current = null
+      setSession(null)
     },
     [dispatch, getItemById, getSelectorForId, id],
   )
 
   const cancel = React.useCallback(() => {
     traceInlineEdit({ phase: 'cancel', id })
-    setEditing(false)
-    clickPointRef.current = null
+    setSession(null)
   }, [id])
 
   const enterEditing = React.useCallback(
     (event: React.MouseEvent) => {
       event.preventDefault()
       event.stopPropagation()
-      startTextRef.current = text ?? ''
-      clickPointRef.current = { x: event.clientX, y: event.clientY }
       traceInlineEdit({
         phase: 'enter',
         id,
         detail: { selectedId: selected?.props?.id },
       })
-      setEditing(true)
+      setSession({ text: text ?? '', clickPoint: { x: event.clientX, y: event.clientY } })
     },
     [id, selected?.props?.id, text],
   )
@@ -123,6 +123,14 @@ export function InlineEditableAtom({ kind, id, text, tag, style, children }: Edi
         data-inline-edit="idle"
         data-inline-edit-kind={kind}
         data-inline-edit-id={id}
+        onClick={
+          kind === 'Button'
+            ? (event) => {
+                // Select without following the Button destination URL.
+                event.preventDefault()
+              }
+            : undefined
+        }
         onDoubleClick={enterEditing}
       >
         {children}
@@ -134,10 +142,10 @@ export function InlineEditableAtom({ kind, id, text, tag, style, children }: Edi
     <ActiveInlineEditor
       kind={kind}
       id={id}
-      initialText={startTextRef.current}
+      initialText={session.text}
       tag={tag}
       style={style}
-      clickPoint={clickPointRef.current}
+      clickPoint={session.clickPoint}
       onCommit={commit}
       onCancel={cancel}
       selectedId={selected?.props?.id as string | undefined}
@@ -175,12 +183,15 @@ function ActiveInlineEditor({
   const [linkDraft, setLinkDraft] = React.useState<LinkEditorDraft | null>(null)
   const linkOpen = Boolean(linkDraft)
   const linkOpenRef = React.useRef(linkOpen)
-  linkOpenRef.current = linkOpen
+  React.useLayoutEffect(() => {
+    linkOpenRef.current = linkOpen
+  }, [linkOpen])
   const cancelLinkRef = React.useRef<() => void>(() => {})
 
   const serialize = React.useCallback(
-    (html: string) => serializeInlineFromEditor(html),
-    [],
+    (html: string) =>
+      kind === 'Button' ? serializeButtonLabelFromEditor(html) : serializeInlineFromEditor(html),
+    [kind],
   )
 
   const finishCommit = React.useCallback(
@@ -204,22 +215,26 @@ function ActiveInlineEditor({
     committedRef.current = true
     setLinkDraft(null)
     onCancel()
-  }, [onCancel])
+  }, [onCancel, setLinkDraft])
 
   const editor = useEditor({
-    extensions: inlineContentExtensions({ multiline }),
-    content: textEditorContent(initialText),
+    extensions:
+      kind === 'Button' ? buttonLabelExtensions() : inlineContentExtensions({ multiline }),
+    content:
+      kind === 'Button' ? buttonLabelEditorContent(initialText) : textEditorContent(initialText),
     immediatelyRender: false,
     editorProps: {
       attributes: {
         class: 'tiptap zyvavu-inline-tiptap',
         'data-inline-edit': 'active',
         'data-inline-edit-kind': kind,
-        'data-inline-edit-tag': tag || (kind === 'Text' ? 'p' : 'h2'),
+        'data-inline-edit-tag': tag || (kind === 'Text' ? 'p' : kind === 'Button' ? 'span' : 'h2'),
       },
       handleDOMEvents: {
         keydown: (_view, event) => {
-          if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a') {
+          const key = event.key.toLowerCase()
+          if ((event.ctrlKey || event.metaKey) &&
+              (key === 'a' || (kind === 'Button' && ['b', 'i', 'u'].includes(key)))) {
             event.stopPropagation()
             return false
           }
@@ -362,8 +377,7 @@ function ActiveInlineEditor({
       detail: { selectedId, selectedIsAncestor, linkOpen },
     })
     if (selectedIsAncestor) return
-    // Explicit policy: discard uncommitted Link draft; commit text session once.
-    if (linkOpen) setLinkDraft(null)
+    // Leaving the session discards the uncommitted link draft.
     finishCommit('selectedItem-changed', { ignoreLinkGuard: true })
   }, [finishCommit, id, linkOpen, selectedId])
 
@@ -394,7 +408,7 @@ function ActiveInlineEditor({
         { href: attrs.href, target: attrs.target, rel: attrs.rel },
       ),
     )
-  }, [])
+  }, [setLinkDraft])
 
   const applyLink = React.useCallback(
     (draft: LinkEditorDraft) => {
@@ -420,7 +434,7 @@ function ActiveInlineEditor({
       draftRef.current = serialize(editor.getHTML())
       setLinkDraft(null)
     },
-    [editor, serialize],
+    [editor, serialize, setLinkDraft],
   )
 
   const cancelLink = React.useCallback(() => {
@@ -429,8 +443,10 @@ function ActiveInlineEditor({
     if (editor && !editor.isDestroyed) {
       editor.commands.focus()
     }
-  }, [editor])
-  cancelLinkRef.current = cancelLink
+  }, [editor, setLinkDraft])
+  React.useLayoutEffect(() => {
+    cancelLinkRef.current = cancelLink
+  }, [cancelLink])
 
   const onToolbarMetrics = React.useCallback(
     (next: { mounted: boolean; rect: DOMRect | null }) => {
@@ -467,13 +483,14 @@ function ActiveInlineEditor({
           anchorEl={surfaceEl}
           onOpenLink={openLinkModal}
           onMetrics={onToolbarMetrics}
+          allowLink={kind !== 'Button'}
         />
       ) : null}
       <div ref={setSurfaceEl} className={styles.surface} data-widget-id={id}>
         <EditorContent editor={editor} />
       </div>
       <InlineLinkEditor
-        opened={linkOpen}
+        opened={kind !== 'Button' && linkOpen}
         draft={linkDraft}
         onChange={setLinkDraft}
         onApply={applyLink}
