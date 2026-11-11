@@ -107,10 +107,16 @@ export type StyleDomainGroup =
  * Does not clear sibling groups or unrelated domains.
  */
 export function resetStyleGroup<T extends object>(style: T, group: StyleDomainGroup): T {
-  const next = { ...(style as T & Record<string, unknown>) } as T & Record<string, any>
+  const next: Record<string, any> = { ...style }
+  const result = next as T
   if (group === 'spacing') {
     delete next.spacing
-    return next
+    if (next.section) {
+      const { verticalPadding: _padding, ...rest } = next.section
+      if (Object.keys(rest).length) next.section = rest
+      else delete next.section
+    }
+    return result
   }
   if (group === 'dimensions') {
     if (next.dimensions) {
@@ -118,8 +124,12 @@ export function resetStyleGroup<T extends object>(style: T, group: StyleDomainGr
       next.dimensions = Object.keys(rest).length ? rest : undefined
       if (!next.dimensions) delete next.dimensions
     }
-    delete next.section
-    return next
+    if (next.section) {
+      const { containerWidth: _w, minHeight: _h, ...rest } = next.section
+      if (Object.keys(rest).length) next.section = rest
+      else delete next.section
+    }
+    return result
   }
   if (group === 'alignment') {
     if (next.dimensions) {
@@ -127,15 +137,15 @@ export function resetStyleGroup<T extends object>(style: T, group: StyleDomainGr
       next.dimensions = Object.keys(rest).length ? rest : undefined
       if (!next.dimensions) delete next.dimensions
     }
-    return next
+    return result
   }
   if (group === 'border') {
     delete next.border
-    return next
+    return result
   }
   if (group === 'radius') {
     delete next.radius
-    return next
+    return result
   }
   if (group === 'surface' || group === 'pattern' || group === 'media') {
     const bg = { ...(next.background || {}) }
@@ -159,8 +169,8 @@ export function resetStyleGroup<T extends object>(style: T, group: StyleDomainGr
     const keys = Object.keys(bg).filter((k) => bg[k] !== undefined)
     if (keys.length) next.background = bg
     else delete next.background
-    return next
+    return result
   }
-  return next
+  return result
 }
 

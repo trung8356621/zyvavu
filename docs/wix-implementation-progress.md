@@ -1,5 +1,25 @@
 # Wix Implementation Progress
 
+## Media and Widget Library recovery — 2026-11-11
+
+- **Browse My Media:** the installed Payload `useListDrawer` memoizes its returned component using `collectionSlugs` and `filterOptions`. The picker previously constructed both on every render, allowing drawer remounts to start a new `render-list` request. The picker now uses stable collection and MIME filter references. Native list and upload drawers remain in place. The searchable picker grid retains empty and retry states. Selection is pending until Use is clicked.
+- **Media cards:** Image previews use the existing curated demo catalog for lakeside landscape, coffee, architecture, colorful salad, ocean horizon and circuit board. Video cards use flower and forest posters. The cards demonstrate landscape, square, portrait, rounded, banner and contained framed presentation. Inserted presets contain the style and media framing settings. Preview photos and posters are supplied only to the preview renderer.
+- **Media binding:** Image owns its selected media source. FeaturedMedia resolves the current document's featured image, including the existing legacy document field fallbacks. A saved widget-level `src` cannot override it. Canvas shows a document-bound placeholder when there is no document media. Frontend omits an empty image.
+- **Categories:** Text, Buttons, Media, Layout, Sections, Dynamic Content and context-specific Header/Navigation where configured. Media contains Image, Video and Gallery where permitted. Search spans all available categories in the current library mode.
+- **Basic Button:** insertion and preview share the same atom defaults with Button Style V1 Filled, Theme typography and padding, Medium radius and Hover opacity. The Library renders a noninteractive sample to keep its insert button valid. Canvas and frontend keep the existing Button and Link render paths.
+- **Browser UI BLOCKED:** this session has no browser controls. Request counts before and after, viewport checks, and real media selection remain unmeasured. Preview thumbnails use existing catalog URLs. The shell could not resolve the catalog host for local copies, so thumbnail availability depends on the browser reaching that host.
+- **Regression:** focused Vitest **53/53 PASS** across six suites. TypeScript reports 50 existing errors, with no diagnostics in files changed for this batch. Scoped ESLint reports the two existing effect-state errors in PatternPreview and WidgetPatternLibrary.
+- **Files:** `MediaSourcePicker.tsx`, `MediaBrowser.tsx`, `WidgetPatternLibrary.tsx`, `PatternPreview.tsx`, `atom-presets.ts`, the atom manifest and renderer, the FeaturedMedia editor and renderer, and the media-source-picker, image-builder, widget-library-presets and style-expansion unit suites.
+
+## Effective Style defaults — 2026-11-11
+
+- [Property and widget defaults, precedence and exceptions](style-engine-effective-defaults.md). Layout, borders, backgrounds, Button Design, typography and Image Settings display more of the existing effective appearance. Section shares layout resolution with its renderer. Columns uses the frontend gap and margin defaults in the editor.
+- Mobile inherits unset properties through Tablet, then Desktop. Responsive declarations now override inline base CSS. Scoped resets leave wider breakpoints and sibling properties in place. Display values stay outside document writes.
+- Focused Vitest reached **50/51**. The remaining test found both Mantine's select and its listbox by label. The assertion was updated to target the reported combobox role and remains unverified after the two-attempt stop rule.
+- TypeScript reported **50 diagnostics**, with none in the changed source or responsive test in the final typecheck. Scoped ESLint reported **19 errors** in existing render/effect code in TypographyStyleControl, WidgetStyleContextMenu and PuckHost. No build or migration ran.
+- **UI NOT VERIFIED**. The session had no browser control. Save/reopen stayed blocked by the existing fixture-isolation requirement. Canvas and frontend parity for all widget-specific renderer defaults remains open.
+- Changed files include `effective-defaults.ts`, `responsive-style.ts`, `serializer.ts`, `domains.ts`, `button-style.ts`, `PuckHost.tsx`, `WidgetStyleContextMenu.tsx`, the five affected Style controls, the Columns editor/frontend, atom Image fields and media presentation, both typography/responsive test suites, and the Style contract, UX and progress documents.
+
 ## Workspace recovery batch — 2026-11-11
 
 - Replaced Theme Builder's bottom-positioned Puck plugin navigation with a workspace rail. The floating tool panels reuse the existing library, Puck Outline and Page Settings. Puck Fields keep their original form and use the same panel header and close control.

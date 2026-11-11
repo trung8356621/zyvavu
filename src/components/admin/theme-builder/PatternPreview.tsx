@@ -17,6 +17,7 @@ import { isComplexPattern, PATTERN_SLOTS } from '@/lib/theme-engine/patterns/jso
 import { resolveSectionLayerStyles, resolveWidgetStyles } from '@/lib/style-engine/serializer'
 import type { UniversalStyle } from '@/lib/style-engine/types'
 import { ADMIN_OVERLAY_LAYERS } from '@/theme/layers'
+import { CURATED_DEMO_IMAGES } from '@/lib/media/demo-catalog'
 import styles from './PatternPreview.module.css'
 
 const SIMPLE: Record<string, React.ComponentType<any>> = {
@@ -36,6 +37,17 @@ const PREVIEW_CONTEXT = {
   type: 'home' as const,
   document: { title: 'Tiêu đề minh họa' },
   item: { title: 'Nội dung minh họa', excerpt: 'Nội dung mẫu', url: '#' },
+}
+
+const MEDIA_PREVIEWS: Record<string, { photo: string; ratio: number }> = {
+  'image-landscape': { photo: '1470770841072-f978cf4d019e', ratio: 16 / 9 },
+  'image-square': { photo: '1495474472287-4d71bcdd2085', ratio: 1 },
+  'image-portrait': { photo: '1511818966892-d7d671e672a2', ratio: 3 / 4 },
+  'image-rounded': { photo: '1540189549336-e6e99c3679fe', ratio: 4 / 3 },
+  'image-banner': { photo: '1518837695005-2083093ee35b', ratio: 21 / 9 },
+  'image-framed': { photo: '1518770660439-4636190af475', ratio: 16 / 9 },
+  'video-standard': { photo: '1496062031456-07b8f162a322', ratio: 16 / 9 },
+  'video-square': { photo: '1441974231531-c6227db76b6e', ratio: 1 },
 }
 
 const COLUMN_TEMPLATES: Record<string, string> = {
@@ -67,7 +79,7 @@ function previewNode(
   }
   return (
     <div key={key} className={styles.atomScale}>
-      <Component {...node.props} dataContext={PREVIEW_CONTEXT} />
+      <Component {...node.props} previewOnly={node.type === 'Button' || undefined} dataContext={PREVIEW_CONTEXT} />
     </div>
   )
 }
@@ -212,9 +224,21 @@ export function LivePatternPreview({ record }: { record: PatternJSON }) {
   }
 
   const Component = SIMPLE[root.type]
+  const media = record.source === 'system' ? MEDIA_PREVIEWS[record.id] : undefined
+  const sample = media && CURATED_DEMO_IMAGES.find((asset) => asset.id === `unsplash-${media.photo}`)
+  const sampleProps = sample
+    ? root.type === 'Video'
+      ? { posterUrl: sample.thumbnailURL, text: '▶', autoplay: false }
+      : { src: sample.thumbnailURL, alt: sample.label }
+    : undefined
+  const preview = Component && (
+    <Component {...root.props} {...sampleProps} previewOnly={root.type === 'Button' || undefined} dataContext={PREVIEW_CONTEXT} />
+  )
   return Component ? (
     <div inert className={styles.previewRoot}>
-      <Component {...root.props} dataContext={PREVIEW_CONTEXT} />
+      {media ? (
+        <div style={{ width: `min(100%, ${6 * media.ratio}rem)`, marginInline: 'auto' }}>{preview}</div>
+      ) : preview}
     </div>
   ) : (
     <Text size="xs" c="dimmed">

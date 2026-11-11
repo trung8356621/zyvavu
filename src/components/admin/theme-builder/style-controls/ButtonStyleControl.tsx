@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Box,
   Button,
@@ -16,6 +16,7 @@ import { ThemeColorPaletteModal } from '@/components/admin/shared/ThemeColorPale
 import {
   BUTTON_HOVER_SUPPORTED,
   BUTTON_NORMAL_SUPPORTED,
+  BUTTON_PRESET_DEFAULTS,
   BUTTON_STYLE_CLASS,
   normalizeButtonStyle,
   resolveButtonHoverCssVars,
@@ -49,10 +50,12 @@ export interface ButtonStyleControlProps {
 function ColorRow({
   label,
   token,
+  fallback = 'Current color',
   onChange,
 }: {
   label: string
   token?: string
+  fallback?: string
   onChange: (anchor: HTMLElement) => void
 }) {
   return (
@@ -64,13 +67,13 @@ function ColorRow({
               width: 22,
               height: 22,
               borderRadius: 4,
-              backgroundColor: resolveColorToken(token, '#dfe5e2'),
+              backgroundColor: token ? resolveColorToken(token) : 'transparent',
               border: '1px solid rgba(0,0,0,0.18)',
               flex: 'none',
             }}
           />
           <Text size="xs" fw={500} truncate>
-            {label}: {token ? colorTokenLabel(token) : '—'}
+            {label}: {token ? colorTokenLabel(token) : fallback}
           </Text>
         </Group>
         <Button
@@ -94,15 +97,16 @@ export function ButtonStyleControl({
 }: ButtonStyleControlProps) {
   const shell = useMemo(() => normalizeButtonStyle(value), [value])
   const liveRef = useRef(shell)
-  // Sync from props only when the parent value changes — do not clobber optimistic edits
-  // on local UI state updates (Normal/Hover tab switches) before the parent re-renders.
-  const valueKey = JSON.stringify(value || { version: 1 })
-  const lastValueKey = useRef(valueKey)
-  if (lastValueKey.current !== valueKey) {
-    lastValueKey.current = valueKey
+  // Use the current document for display, and keep the ref for rapid event merges.
+  useEffect(() => {
     liveRef.current = shell
-  }
-  const displayShell = liveRef.current
+  }, [shell])
+  const displayShell = shell
+  const normal = displayShell.normal
+  const preset = normal?.preset && BUTTON_PRESET_DEFAULTS[normal.preset]
+  const normalBackground = normal?.background?.colorToken || preset?.backgroundToken
+  const normalBorder = normal?.border?.style || (preset ? 'solid' : 'none')
+  const normalBorderColor = normal?.border?.colorToken || (!normal?.border?.style ? preset?.borderToken : undefined)
   const preColorRef = useRef<ButtonStyleShell | null>(null)
 
   const [state, setState] = useState<'normal' | 'hover'>('normal')
@@ -244,14 +248,16 @@ export function ButtonStyleControl({
             {group === 'Background' && state === 'normal' && (
               <ColorRow
                 label="Background"
-                token={displayShell.normal?.background?.colorToken}
+                token={normalBackground}
+                fallback={preset ? 'Transparent' : 'Widget default'}
                 onChange={(el) => openColor('normal.background', el)}
               />
             )}
             {group === 'Background' && state === 'hover' && (
               <ColorRow
                 label="Hover background"
-                token={displayShell.hover?.background?.colorToken}
+                token={displayShell.hover?.background?.colorToken || normalBackground}
+                fallback={preset ? 'Transparent' : 'Widget default'}
                 onChange={(el) => openColor('hover.background', el)}
               />
             )}
@@ -260,7 +266,7 @@ export function ButtonStyleControl({
             {group === 'Text' && state === 'hover' && (
               <ColorRow
                 label="Hover text"
-                token={displayShell.hover?.text?.colorToken}
+                token={displayShell.hover?.text?.colorToken || normal?.text?.colorToken || preset?.textToken}
                 onChange={(el) => openColor('hover.text', el)}
               />
             )}
@@ -270,7 +276,8 @@ export function ButtonStyleControl({
                 <Select
                   size="sm"
                   label="Border style"
-                  value={displayShell.normal?.border?.style || 'none'}
+                  value={normalBorder}
+                  clearable={Boolean(normal?.border?.style)}
                   data={[
                     { value: 'none', label: 'None' },
                     { value: 'solid', label: 'Solid' },
@@ -281,7 +288,7 @@ export function ButtonStyleControl({
                     updateNormal({
                       border: {
                         ...liveRef.current.normal?.border,
-                        style: (style as 'none' | 'solid' | 'dashed' | 'dotted') || 'none',
+                        style: (style as 'none' | 'solid' | 'dashed' | 'dotted') || undefined,
                       },
                     })
                   }
@@ -289,27 +296,27 @@ export function ButtonStyleControl({
                 <Select
                   size="sm"
                   label="Border width"
-                  disabled={
-                    !displayShell.normal?.border?.style ||
-                    displayShell.normal.border.style === 'none'
-                  }
-                  value={displayShell.normal?.border?.widthToken || 'thin'}
-                  data={['thin', 'medium', 'thick'].map((value) => ({
+                  disabled={normalBorder === 'none'}
+                  value={normalBorder === 'none' ? 'none' : normal?.border?.widthToken || 'thin'}
+                  clearable={Boolean(normal?.border?.widthToken)}
+                  data={['none', 'thin', 'medium', 'thick'].map((value) => ({
                     value,
-                    label: BORDER_WIDTH_LABELS[value],
+                    label: value === 'none' ? '0 px' : BORDER_WIDTH_LABELS[value],
+                    disabled: value === 'none',
                   }))}
                   onChange={(widthToken) =>
                     updateNormal({
                       border: {
                         ...liveRef.current.normal?.border,
-                        widthToken: widthToken || 'thin',
+                        widthToken: widthToken || undefined,
                       },
                     })
                   }
                 />
                 <ColorRow
                   label="Border"
-                  token={displayShell.normal?.border?.colorToken}
+                  token={normalBorderColor}
+                  fallback={normalBorder === 'none' ? 'None' : preset && !normal?.border?.style ? 'Transparent' : 'Current color'}
                   onChange={(el) => openColor('normal.border', el)}
                 />
               </>
@@ -317,7 +324,7 @@ export function ButtonStyleControl({
             {group === 'Border' && state === 'hover' && (
               <ColorRow
                 label="Hover border"
-                token={displayShell.hover?.border?.colorToken}
+                token={displayShell.hover?.border?.colorToken || normalBorderColor}
                 onChange={(el) => openColor('hover.border', el)}
               />
             )}
@@ -357,7 +364,7 @@ export function ButtonStyleControl({
               <Select
                 size="sm"
                 label="Hover shadow"
-                value={displayShell.hover?.shadow?.shadowToken || 'none'}
+                value={displayShell.hover?.shadow?.shadowToken || normal?.shadow?.shadowToken || 'none'}
                 data={[
                   { value: 'none', label: 'None' },
                   { value: 'shadowSoft', label: 'Soft' },

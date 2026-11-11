@@ -2,7 +2,7 @@
 
 import React from 'react'
 import type { ComponentConfig } from '@puckeditor/core'
-import { FeaturedMediaFrontend, type FeaturedMediaProps } from './frontend'
+import { FeaturedMediaFrontend, resolveFeaturedMedia, type FeaturedMediaProps } from './frontend'
 import { resolveWidgetStyles } from '@/lib/style-engine/serializer'
 import { animationAttributes } from '@/lib/style-engine/animation-presets'
 
@@ -38,16 +38,22 @@ export const featuredMediaEditor: ComponentConfig<FeaturedMediaProps> = {
     objectFit: 'cover',
     rounded: true,
   },
-  render: (props) =>
-    props.src ? (
-      <FeaturedMediaFrontend {...props} dataContext={undefined} />
+  render: (props) => {
+    const dataContext = props.dataContext as FeaturedMediaProps['dataContext']
+    return resolveFeaturedMedia(dataContext?.document).src ? (
+      <FeaturedMediaFrontend {...props} dataContext={dataContext} />
     ) : (
       <div
         className="zyvavu-widget-featured-media"
         {...animationAttributes(props.style?.animation)}
-        style={{ minHeight: '120px', ...resolveWidgetStyles(props.style) }}
+        style={{
+          minHeight: '120px',
+          aspectRatio: props.aspectRatio === 'auto' ? undefined : (props.aspectRatio || '16:9').replace(':', '/'),
+          ...resolveWidgetStyles(props.style),
+        }}
       >
         Featured Media · {props.aspectRatio} · Image loads from the document
       </div>
-    ),
+    )
+  },
 }

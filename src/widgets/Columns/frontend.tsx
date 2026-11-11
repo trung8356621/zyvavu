@@ -1,6 +1,7 @@
 import { withWidgetStyleSurface } from '@/lib/style-engine/WidgetStyleSurface'
 import type { UniversalStyle } from '@/lib/style-engine/types'
 import { resolveWidgetStyles } from '@/lib/style-engine/serializer'
+import { COLUMNS_LAYOUT_DEFAULTS } from '@/lib/style-engine/effective-defaults'
 import { animationAttributes } from '@/lib/style-engine/animation-presets'
 import React from 'react'
 import type { ThemeDataContext } from '@/lib/theme-engine/types'
@@ -32,7 +33,7 @@ export function ColumnsFrontend({
   id: surfaceId,
   style: semanticStyle,
   distribution = 'equal-2',
-  gap = '24px',
+  gap = COLUMNS_LAYOUT_DEFAULTS.gap,
   column1,
   column2,
   column3,
@@ -52,7 +53,7 @@ export function ColumnsFrontend({
         gridTemplateColumns: template,
         gap,
         width: '100%',
-        margin: '24px 0',
+        margin: `${COLUMNS_LAYOUT_DEFAULTS.verticalMargin} 0`,
         boxSizing: 'border-box',
         ...resolveWidgetStyles(semanticStyle),
       }}

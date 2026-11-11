@@ -94,24 +94,25 @@ export function widgetLibraryCategory(type: string) {
   if (type === 'Section') return 'sections'
   if (type === 'Columns') return 'layout'
   if (['Heading', 'Text', 'TextBlock'].includes(type)) return 'text'
-  if (type === 'Image') return 'images'
+  if (['Image', 'Video', 'Gallery'].includes(type)) return 'media'
   if (type === 'Button') return 'buttons'
-  return manifest?.category || 'general'
+  return manifest?.category && manifest.category !== 'general' ? manifest.category : 'layout'
 }
 const LABELS: Record<string, string> = {
   sections: 'Sections',
   layout: 'Layout',
   text: 'Text',
-  images: 'Images',
+  media: 'Media',
   buttons: 'Buttons',
-  general: 'Widgets',
+  header: 'Header',
+  navigation: 'Navigation',
   dynamic: 'Nội dung động',
 }
 const ICONS: Record<string, React.ElementType> = {
   sections: Layers,
   layout: Columns3,
   text: Type,
-  images: Image,
+  media: Image,
   buttons: MousePointer2,
   dynamic: Database,
 }
@@ -178,15 +179,15 @@ export function WidgetPatternLibrary({
       : widgetLibraryCategory(type)
   const categories = sortLibraryCategories([...new Set(types.map(categoryFor))])
   const active = categories.find((item) => item === category) || categories[0]
-  const matches = (text: string) => text.toLocaleLowerCase().includes(search.toLocaleLowerCase())
+  const matches = (text: string) => text.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())
   const searching = search.trim().length > 0
   const available = sortAtomTypesFirst(
-    types.filter((type) => categoryFor(type) === active),
+    types.filter((type) => searching || categoryFor(type) === active),
   )
   const eligible = (record: PatternJSON) =>
     types.includes(record.widgetType) &&
-    categoryFor(record.widgetType) === active &&
-    (!widgetFilter || record.widgetType === widgetFilter) &&
+    (searching || categoryFor(record.widgetType) === active) &&
+    (searching || !widgetFilter || record.widgetType === widgetFilter) &&
     matches(`${record.name} ${record.description} ${record.category} ${record.widgetType}`)
   const patterns = (
     source === 'user'
@@ -215,7 +216,7 @@ export function WidgetPatternLibrary({
   }
   const basicTypes = available.filter(
     (type) =>
-      (!widgetFilter || widgetFilter === type) &&
+      (searching || !widgetFilter || widgetFilter === type) &&
       matches(
         `${config.components[type].label || ''} ${getWidgetManifest(type)?.label || ''} ${type}`,
       ),
@@ -573,7 +574,7 @@ export function WidgetPatternLibrary({
                     Dynamic Content / Nội dung động
                   </Text>
                 )}
-                {available.length > 1 && (
+                {!searching && available.length > 1 && (
                   <Select
                     aria-label="Filter widget type"
                     placeholder="All widget types"
@@ -594,7 +595,7 @@ export function WidgetPatternLibrary({
                   </Group>
                 )}
                 {(() => {
-                  const isTextLibrary = active === 'text'
+                  const isTextLibrary = active === 'text' && !searching
                   const renderBasicCard = (type: string) => {
                     const label =
                       config.components[type].label || getWidgetManifest(type)?.label || type
@@ -958,7 +959,7 @@ export function WidgetPatternLibrary({
                   Dynamic Content / Nội dung động
                 </Text>
               )}
-              {available.length > 1 && (
+              {!searching && available.length > 1 && (
                 <Select
                   aria-label="Filter widget type"
                   placeholder="All widget types"
@@ -979,7 +980,7 @@ export function WidgetPatternLibrary({
                 </Group>
               )}
               {(() => {
-                const isTextLibrary = active === 'text'
+                const isTextLibrary = active === 'text' && !searching
                 const renderBasicCard = (type: string) => {
                   const label =
                     config.components[type].label || getWidgetManifest(type)?.label || type

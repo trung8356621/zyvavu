@@ -190,7 +190,7 @@ describe('Style expansion contracts', () => {
       <ItemTitleFrontend key="2" style={style} tag="h4" dataContext={context} />,
       <ItemExcerptFrontend key="3" style={style} />,
       <ItemImageFrontend key="4" style={style} dataContext={context} />,
-      <FeaturedMediaFrontend key="5" style={style} src="/image.jpg" />,
+      <FeaturedMediaFrontend key="5" style={style} dataContext={{ type: 'single', document: { featuredImage: { url: '/image.jpg' } } }} />,
       <ColumnsFrontend key="6" style={style} />,
     ]) {
       const html = renderToStaticMarkup(element)

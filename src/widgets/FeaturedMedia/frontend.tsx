@@ -16,23 +16,23 @@ export type FeaturedMediaProps = {
   dataContext?: ThemeDataContext
 }
 
+export function resolveFeaturedMedia(document?: ThemeDataContext['document']) {
+  const media = document?.featuredImage || document?.image || document?.media
+  return {
+    src: typeof media === 'string' ? media : media?.url,
+    alt: (typeof media === 'object' && media?.alt) || document?.title || '',
+  }
+}
+
 export function FeaturedMediaFrontend({
   id: surfaceId,
   style: semanticStyle,
   aspectRatio = '16:9',
   objectFit = 'cover',
   rounded = true,
-  src: customSrc,
-  alt: customAlt,
   dataContext,
 }: FeaturedMediaProps) {
-  const doc = dataContext?.document
-  const mediaObj = doc?.featuredImage || doc?.image || doc?.media
-  const src =
-    customSrc ||
-    (typeof mediaObj === 'object' && mediaObj?.url) ||
-    (typeof mediaObj === 'string' ? mediaObj : null)
-  const alt = customAlt || (typeof mediaObj === 'object' && mediaObj?.alt) || doc?.title || ''
+  const { src, alt } = resolveFeaturedMedia(dataContext?.document)
 
   if (!src) return null
 

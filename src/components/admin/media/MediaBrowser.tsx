@@ -94,6 +94,7 @@ export function MediaBrowser({
             value={library}
             allowedKind={kind}
             onChange={(value) => {
+              if (value === library) return
               setLibrary(value)
               setLoading(true)
             }}

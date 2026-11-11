@@ -3,6 +3,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ActionIcon, Box, Button, Group, Stack, Text, Tooltip } from '@mantine/core'
 import { Bookmark, ChevronRight, Minimize2, Paintbrush } from 'lucide-react'
+import { resolveSectionLayout, type SectionLayoutProps } from '@/lib/style-engine/effective-defaults'
+import { resetResponsiveSpacing, type ResponsiveBreakpoint } from '@/lib/style-engine/responsive-style'
 import {
   getStyleModalDomains,
   orderStyleToolbarDomains,
@@ -144,6 +146,8 @@ export interface WidgetStyleContextMenuProps {
   /** Semantic HTML tag from Atom Settings — independent of typography overrides. */
   htmlTag?: string | null
   currentStyle?: WidgetSemanticStyle
+  sectionLayoutProps?: SectionLayoutProps
+  columnGap?: string
   themeConfig?: ThemeConfig
   inWorkspace?: boolean
   /** Direct-commit into Puck document (recordHistory handled by host). */
@@ -173,6 +177,8 @@ function WidgetStyleSession({
   componentId,
   htmlTag = null,
   currentStyle = EMPTY_STYLE,
+  sectionLayoutProps,
+  columnGap,
   themeConfig,
   inWorkspace = false,
   onUpdateStyle,
@@ -184,6 +190,7 @@ function WidgetStyleSession({
     createStyleSessionSnapshot(componentId, currentStyle, domain),
   )
   const [liveStyle, setLiveStyle] = useState<WidgetSemanticStyle>(() => currentStyle || {})
+  const [spacingBreakpoint, setSpacingBreakpoint] = useState<ResponsiveBreakpoint>('desktop')
   const [validationError, setValidationError] = useState<string | null>(null)
   const [mediaPickerOpened, setMediaPickerOpened] = useState(false)
   const [animationPickerOpened, setAnimationPickerOpened] = useState(false)
@@ -195,6 +202,7 @@ function WidgetStyleSession({
   const [colorModalTarget, setColorModalTarget] = useState<
     'text' | 'background' | 'overlay' | 'border' | 'fallback' | 'pattern' | null
   >(null)
+  const [borderColorSide, setBorderColorSide] = useState<'top' | 'right' | 'bottom' | 'left'>()
   /** UX V5 — collapse hides chrome but keeps session/domain/target. */
   const [designCollapsed, setDesignCollapsed] = useState(false)
 
@@ -321,15 +329,9 @@ function WidgetStyleSession({
 
   const updatePartial = useCallback(
     (partial: Partial<UniversalStyle>) => {
-      const prevNorm = normalizeStyle(liveStyle)
       const merged: WidgetSemanticStyle & Record<string, unknown> = {
         ...liveStyle,
-        ...prevNorm,
         ...partial,
-        backgroundToken:
-          partial.background?.colorToken ||
-          prevNorm.background?.colorToken ||
-          liveStyle.backgroundToken,
       }
       if (partial.typography !== undefined) {
         // Typography object is the SoT; clear legacy flats when overrides are removed.
@@ -338,14 +340,15 @@ function WidgetStyleSession({
         else delete merged.colorToken
         if (partial.typography?.align) merged.align = partial.typography.align
         else delete merged.align
-      } else {
-        merged.colorToken =
-          prevNorm.typography?.colorToken || liveStyle.colorToken || merged.colorToken
-        merged.align = prevNorm.typography?.align || liveStyle.align || merged.align
       }
-      commitStyle(merged)
+      for (const [key, value] of Object.entries(partial)) {
+        if (value === undefined || (value && typeof value === 'object' && !Object.keys(value).length)) {
+          delete merged[key]
+        }
+      }
+      if (!stylesEqual(merged, liveStyle)) commitStyle(merged)
     },
-    [liveStyle, normalizeStyle, commitStyle],
+    [liveStyle, commitStyle],
   )
 
   const handleCancelSession = useCallback(() => {
@@ -358,13 +361,17 @@ function WidgetStyleSession({
 
   const handleResetDomain = useCallback(
     (target: StyleModalDomain) => {
+      if (target === 'spacing' && spacingBreakpoint !== 'desktop') {
+        updatePartial({ responsive: resetResponsiveSpacing(liveStyle.responsive, spacingBreakpoint) })
+        return
+      }
       setShellRevision((value) => value + 1)
       const next = getDomainResetStyle(liveStyle, target, {
         sectionClearsShadowEffects: componentType === 'Section',
       })
       commitStyle(next)
     },
-    [liveStyle, componentType, commitStyle],
+    [liveStyle, componentType, commitStyle, spacingBreakpoint, updatePartial],
   )
 
   const handleResetGroup = useCallback(
@@ -378,6 +385,7 @@ function WidgetStyleSession({
   const handleOpenColorModal = (
     target: 'text' | 'background' | 'overlay' | 'border' | 'fallback' | 'pattern',
     anchor?: HTMLElement | null,
+    side?: 'top' | 'right' | 'bottom' | 'left',
   ) => {
     if (
       typeof document !== 'undefined' &&
@@ -389,6 +397,7 @@ function WidgetStyleSession({
     prePaletteStyleRef.current = liveStyle
     paletteLiveRef.current = liveStyle
     setColorAnchorEl(anchor || null)
+    setBorderColorSide(side)
     setColorModalTarget(target)
   }
 
@@ -485,6 +494,21 @@ function WidgetStyleSession({
         }
       }
       if (target === 'border') {
+        if (borderColorSide) {
+          return {
+            ...base,
+            border: {
+              ...baseNorm.border,
+              sides: {
+                ...baseNorm.border?.sides,
+                [borderColorSide]: {
+                  ...baseNorm.border?.sides?.[borderColorSide],
+                  colorToken: tokenId,
+                },
+              },
+            },
+          }
+        }
         return {
           ...base,
           border: { ...baseNorm.border, colorToken: tokenId },
@@ -502,7 +526,7 @@ function WidgetStyleSession({
         backgroundToken: tokenId,
       }
     },
-    [liveStyle, normalizeStyle],
+    [liveStyle, normalizeStyle, borderColorSide],
   )
 
   const buildCandidateDraftWithGradient = useCallback(
@@ -613,9 +637,24 @@ function WidgetStyleSession({
         <SpacingDimensionsControl
           spacing={normalizedLive.spacing}
           dimensions={normalizedLive.dimensions}
+          sectionLayout={componentType === 'Section' ? resolveSectionLayout(normalizedLive, sectionLayoutProps) : undefined}
+          sectionOverrides={normalizedLive.section}
+          columns={componentType === 'Columns'}
+          columnGap={columnGap}
+          activeBreakpoint={spacingBreakpoint}
+          onBreakpointChange={setSpacingBreakpoint}
           showDimensions={capabilities.includes('dimensions') || capabilities.includes('section')}
           onChangeSpacing={(sp) => updatePartial({ spacing: sp })}
-          onChangeDimensions={(dim) => updatePartial({ dimensions: dim })}
+          onChangeDimensions={(dim, key) => {
+            const section = normalizedLive.section
+            if (section && (key === 'containerWidth' || key === 'minHeight')) {
+              const remaining = { ...section }
+              delete remaining[key]
+              updatePartial({ dimensions: dim, section: remaining })
+            } else {
+              updatePartial({ dimensions: dim })
+            }
+          }}
           onResetGroup={handleResetGroup}
           responsive={normalizedLive.responsive}
           onChangeResponsive={(responsive) => updatePartial({ responsive })}
@@ -639,7 +678,7 @@ function WidgetStyleSession({
           onChangeRadius={(radius) => updatePartial({ radius })}
           onChangeShadow={(shadow) => updatePartial({ shadow })}
           onChangeEffects={(effects) => updatePartial({ effects })}
-          onOpenColorModal={(el) => handleOpenColorModal('border', el)}
+          onOpenColorModal={(el, side) => handleOpenColorModal('border', el, side)}
           onResetGroup={handleResetGroup}
         />
       )
@@ -840,7 +879,9 @@ function WidgetStyleSession({
                       ? normalizedLive.background?.image?.overlay?.colorToken
                       : normalizedLive.background?.video?.overlay?.colorToken) || 'text'
                   : colorModalTarget === 'border'
-                    ? normalizedLive.border?.colorToken || 'border'
+                    ? (borderColorSide
+                      ? normalizedLive.border?.sides?.[borderColorSide]?.colorToken
+                      : normalizedLive.border?.colorToken) || 'border'
                     : colorModalTarget === 'fallback'
                       ? (normalizedLive.background?.mode === 'image'
                           ? normalizedLive.background?.image?.fallbackColorToken

@@ -2,6 +2,8 @@
 
 Implementation on `codex/style-engine-feature-expansion`, based on `4697624`.
 
+The [effective Style defaults contract](style-engine-effective-defaults.md) records the 2026-11-11 display, precedence and reset decision. Named presets retain semantic option labels. Typography can show the resolved value beside its source.
+
 ## Architecture and working behavior
 
 - `PuckHost` owns document updates. The stable Puck overrides remain module-level; style sessions sit outside the transient ActionBar.

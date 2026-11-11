@@ -49,6 +49,8 @@ import {
 import { matchLineHeightPreset, resolveColorToken } from '@/lib/style-engine/token-resolver'
 import {
   type ResponsiveBreakpoint,
+  effectiveAlignAtBreakpoint,
+  effectiveTypographyAtBreakpoint,
   resetResponsiveTypographyProperty,
   setResponsiveTypographyProperty,
 } from '@/lib/style-engine/responsive-style'
@@ -95,6 +97,9 @@ function FieldLabel({
 }) {
   const source = field ? formatSourceIndicator(field) : null
   const overrideMark = field && !field.inherited && !field.unresolved
+  const resolvedDetail = ['Font', 'Size', 'Line height'].includes(label) && field && !field.unresolved
+    ? field.display.replace(/^(\d+(?:\.\d+)?)(px|rem)$/, '$1 $2')
+    : null
   return (
     <Group gap={6} justify="space-between" wrap="nowrap" mb={2}>
       <Text
@@ -115,7 +120,7 @@ function FieldLabel({
             data-effective-source={field?.source}
             data-effective-inherited={field?.inherited ? 'true' : 'false'}
           >
-            {source}
+            {resolvedDetail ? `${resolvedDetail} · ${source}` : source}
           </Text>
         ) : overrideMark ? (
           <Text
@@ -126,7 +131,7 @@ function FieldLabel({
             data-effective-source={field.source}
             data-effective-inherited="false"
           >
-            Override
+            {resolvedDetail ? `${resolvedDetail} · Custom` : 'Custom'}
           </Text>
         ) : null}
         {end}
@@ -245,6 +250,10 @@ export function TypographyStyleControl({
       }),
     [value, themeConfig, htmlTag, widgetType],
   )
+  const cascadedTypography = effectiveTypographyAtBreakpoint(value, responsive, breakpoint)
+  const breakpointEffective = bpActive
+    ? resolveEffectiveTypography({ override: cascadedTypography, themeConfig, htmlTag, widgetType })
+    : effective
 
   const currentColorToken = value.colorToken
   const currentTextColor = currentColorToken
@@ -297,7 +306,8 @@ export function TypographyStyleControl({
     const hasBp =
       bpActive &&
       (field === 'fontSize' || field === 'lineHeight' || field === 'align') &&
-      bpOverride[field as 'fontSize' | 'lineHeight' | 'align'] !== undefined
+      (bpOverride[field as 'fontSize' | 'lineHeight' | 'align'] !== undefined ||
+        (field === 'align' && overrideBp && responsive?.[overrideBp]?.align !== undefined))
     const hasDesktop = value[field] !== undefined && value[field] !== null
     if (bpActive) {
       if (!hasBp) return null
@@ -332,10 +342,10 @@ export function TypographyStyleControl({
   }
 
   const inheritedPreset = effective.basePreset || null
-  const sizeEffectiveValue = value.fontSize || inheritedPreset
+  const sizeEffectiveValue = cascadedTypography.fontSize || inheritedPreset
   const sizeOverride = bpActive ? bpOverride.fontSize : value.fontSize
   const lineOverride = bpActive ? bpOverride.lineHeight : value.lineHeight
-  const alignOverride = bpActive ? bpOverride.align : value.align
+  const displayedAlign = effectiveAlignAtBreakpoint(effective.align.raw as TextAlign, responsive, breakpoint)
 
   return (
     <Stack gap={8}>
@@ -445,20 +455,7 @@ export function TypographyStyleControl({
           </Box>
         )}
         <Box style={{ flex: 1 }}>
-          <FieldLabel
-            label="Size"
-            field={
-              bpActive && bpOverride.fontSize
-                ? {
-                    display: bpOverride.fontSize,
-                    sourceLabel: 'Override',
-                    source: 'override',
-                    inherited: false,
-                    unresolved: false,
-                  }
-                : effective.fontSize
-            }
-          />
+          <FieldLabel label="Size" field={breakpointEffective.fontSize} />
           <Group gap={4} align="center" wrap="nowrap">
             <EffectiveSelect
               ariaLabel="Size"
@@ -528,7 +525,7 @@ export function TypographyStyleControl({
         <SegmentedControl
           size="sm"
           fullWidth
-          value={alignOverride || (effective.align.raw as TextAlign) || 'left'}
+          value={displayedAlign || 'left'}
           onChange={(val) =>
             bpActive
               ? setBreakpointTypo('align', val)
@@ -626,16 +623,16 @@ export function TypographyStyleControl({
           </Box>
         )}
         <Box style={{ flex: 1 }}>
-          <FieldLabel label="Line height" field={effective.lineHeight} />
+          <FieldLabel label="Line height" field={breakpointEffective.lineHeight} />
           <Group gap={4} align="center" wrap="nowrap">
             <EffectiveSelect
               ariaLabel="Line height"
               overrideValue={lineOverride}
               effectiveValue={
-                matchLineHeightPreset(effective.lineHeight.raw) ||
-                matchLineHeightPreset(effective.lineHeight.display) ||
-                effective.lineHeight.raw ||
-                effective.lineHeight.display ||
+                matchLineHeightPreset(breakpointEffective.lineHeight.raw) ||
+                matchLineHeightPreset(breakpointEffective.lineHeight.display) ||
+                breakpointEffective.lineHeight.raw ||
+                breakpointEffective.lineHeight.display ||
                 null
               }
               data={Object.entries(LINE_HEIGHT_LABELS).map(([value, label]) => ({

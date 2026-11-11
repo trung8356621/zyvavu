@@ -1,5 +1,11 @@
 /** Shared media presentation props for Image / Video atoms. */
 
+export const MEDIA_STYLE_DEFAULTS = {
+  aspectRatio: 'auto',
+  objectFit: 'cover',
+  objectPosition: 'center',
+} as const
+
 export const ASPECT_RATIO_OPTIONS = [
   { label: 'Auto', value: 'auto' },
   { label: 'Landscape 16:9', value: '16:9' },

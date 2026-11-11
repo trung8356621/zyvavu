@@ -41,7 +41,20 @@ export const atomManifests: Record<string, WidgetManifest> = Object.fromEntries(
             : id === 'Heading'
               ? { text: 'Heading', tag: 'h2' }
               : id === 'Button'
-                ? { text: 'Button', href: '', newTab: false }
+                ? {
+                    text: 'Button',
+                    href: '',
+                    newTab: false,
+                    style: {
+                      typography: { typography: 'p1', align: 'center' },
+                      spacing: { padding: { token: 'md' } },
+                      button: {
+                        version: 1,
+                        normal: { preset: 'theme', radius: { radiusToken: 'md' } },
+                        hover: { opacity: 0.9 },
+                      },
+                    },
+                  }
                 : { text: 'Your text' },
     },
   ]),

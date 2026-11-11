@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react'
 import { tokenToKebab } from '@/lib/theme-engine/page-settings'
 import type { BackgroundConfig, UniversalStyle } from './types'
+import { resolveSectionLayout, type SectionLayoutProps } from './effective-defaults'
 import {
   resolveBorderWidthToken,
   resolveColorToken,
@@ -273,14 +274,10 @@ export function resolveWidgetStyles(style?: UniversalStyle): CSSProperties {
  */
 export function resolveSectionLayerStyles(
   style?: UniversalStyle,
-  sectionProps?: {
-    containerWidth?: string
-    pageContainerWidth?: string
-    verticalPadding?: string
-    minHeight?: string
-  },
+  sectionProps?: SectionLayoutProps,
 ): SectionResolvedLayers {
   const s = style || {}
+  const layout = resolveSectionLayout(s, sectionProps)
   const bg = s.background || {}
 
   // 1. Root Section style
@@ -296,15 +293,13 @@ export function resolveSectionLayerStyles(
       : {}),
   }
 
-  const verticalPadding = s.section?.verticalPadding || sectionProps?.verticalPadding || 'md'
+  const { verticalPadding, minHeight, containerWidth: containerWidthToken } = layout
   if (verticalPadding !== 'none') {
     const padVal = resolveSpacingToken(verticalPadding)
     rootStyle.paddingTop = padVal
     rootStyle.paddingBottom = padVal
   }
 
-  const minHeight =
-    s.section?.minHeight || s.dimensions?.minHeight || sectionProps?.minHeight || 'auto'
   if (minHeight === 'screen') {
     rootStyle.minHeight = '100vh'
   } else if (minHeight === 'sm') {
@@ -450,13 +445,6 @@ export function resolveSectionLayerStyles(
   }
 
   // 5. Container & Content Layer (zIndex 10)
-  const rawWidthToken =
-    s.section?.containerWidth || s.dimensions?.containerWidth || sectionProps?.containerWidth
-  const containerWidthToken =
-    !rawWidthToken || rawWidthToken === 'inherit'
-      ? sectionProps?.pageContainerWidth || 'containerWidth'
-      : rawWidthToken
-
   const containerStyle: CSSProperties = {
     position: 'relative',
     zIndex: 10,

@@ -46,6 +46,7 @@ import {
   normalizeComponentType,
 } from '@/lib/style-engine/capabilities'
 import { PageSettingsPanel } from '@/components/admin/theme-builder/PageSettingsPanel'
+import { resolveEffectivePageLayout } from '@/lib/theme-engine/page-settings'
 import {
   WidgetStyleContextMenu,
   computeTranslatedAnchorPosition,
@@ -1325,6 +1326,16 @@ export function PuckHost({
             componentId={activeStyleMenu.componentId}
             htmlTag={activeStyleMenu.htmlTag}
             currentStyle={activeStyleMenu.currentStyle}
+            sectionLayoutProps={activeStyleMenu.componentType === 'Section' ? {
+              ...findItemAndSelector(puckData, activeStyleMenu.componentId)?.item.props,
+              pageContainerWidth: resolveEffectivePageLayout(
+                localDoc.root?.props?.pageSettings,
+                themeConfig?.tokens,
+              ).containerWidth,
+            } : undefined}
+            columnGap={activeStyleMenu.componentType === 'Columns'
+              ? findItemAndSelector(puckData, activeStyleMenu.componentId)?.item.props?.gap
+              : undefined}
             themeConfig={themeConfig}
             onUpdateStyle={handleUpdateWidgetStyle}
             onSaveAsPattern={

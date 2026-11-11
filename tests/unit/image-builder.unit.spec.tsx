@@ -7,6 +7,10 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { MantineProvider } from '@mantine/core'
 import type { CustomField } from '@puckeditor/core'
 
+vi.mock('@puckeditor/core', async (importOriginal) => ({
+  ...await importOriginal<typeof import('@puckeditor/core')>(),
+  createUsePuck: () => (selector: (state: { selectedItem: null }) => unknown) => selector({ selectedItem: null }),
+}))
 vi.mock('@/components/admin/media/MediaSourcePicker', () => ({
   MediaSourcePicker: ({ onSelect }: { onSelect: (media: unknown) => void }) => (
     <button onClick={() => onSelect({ id: 7, url: '/media/chosen.webp' })}>Select media</button>
@@ -30,7 +34,8 @@ const Image = createAtomRenderer('Image')
 describe('Image builder contract', () => {
   it.each([
     ['Section', 'sections'], ['Columns', 'layout'], ['Heading', 'text'],
-    ['Text', 'text'], ['TextBlock', 'text'], ['Image', 'images'], ['Button', 'buttons'],
+    ['Text', 'text'], ['TextBlock', 'text'], ['Image', 'media'], ['Video', 'media'],
+    ['Gallery', 'media'], ['Button', 'buttons'],
     ['DocumentFeaturedMedia', 'dynamic'],
   ])('categorizes %s as %s', (type, category) => {
     expect(widgetLibraryCategory(type)).toBe(category)
@@ -49,11 +54,11 @@ describe('Image builder contract', () => {
     const view = render(<MantineProvider><Field {...props} /></MantineProvider>)
     fireEvent.click(screen.getByText('Select media'))
     expect(onChange).toHaveBeenLastCalledWith('/media/chosen.webp')
-    fireEvent.click(screen.getByText('Remove image'))
+    fireEvent.click(screen.getByRole('button', { name: 'Remove' }))
     expect(onChange).toHaveBeenLastCalledWith('')
     view.rerender(<MantineProvider><Field {...props} readOnly /></MantineProvider>)
     expect(screen.queryByText('Select media')).toBeNull()
-    expect(screen.queryByText('Remove image')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Remove' })).toBeNull()
     vi.unstubAllGlobals()
   })
 
@@ -84,6 +89,11 @@ describe('Image builder contract', () => {
       }
     }
     expect(renderToStaticMarkup(<DocumentMedia src="/static.webp" />)).toBe('')
+    expect(renderToStaticMarkup(<FeaturedMediaFrontend src="/static.webp" />)).toBe('')
+    expect(renderToStaticMarkup(<FeaturedMediaFrontend
+      src="/stale.webp"
+      dataContext={{ type: 'single', document: { featuredImage: { url: '/bound.webp' } } }}
+    />)).toContain('src="/bound.webp"')
   })
 
   it('validates every bundled template and keeps sample media static only on home', () => {

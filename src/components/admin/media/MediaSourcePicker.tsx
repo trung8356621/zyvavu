@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Alert, Button, Group, Modal } from '@mantine/core'
+import { Alert, Button, Group, Modal, Stack, Text } from '@mantine/core'
 import { useAuth, useConfig, useDocumentDrawer, useListDrawer } from '@payloadcms/ui'
 
 import './media-library.scss'
@@ -15,6 +15,13 @@ export type SelectedMedia = {
   mimeType?: string
   posterUrl?: string
   posterMediaId?: number | string
+  filename?: string
+}
+
+const mediaCollection: NonNullable<Parameters<typeof useListDrawer>[0]['collectionSlugs']> = ['media']
+const mediaFilters = {
+  image: { media: { mimeType: { contains: 'image/' } } },
+  video: { media: { mimeType: { contains: 'video/' } } },
 }
 
 // Mount native drawers only on demand; their providers remain owned by Payload.
@@ -31,11 +38,13 @@ function NativeMediaPicker({
   const { permissions } = useAuth()
   const canCreate = !!permissions?.collections?.media?.create
   const [error, setError] = useState<string | null>(null)
+  const [pending, setPending] = useState<SelectedMedia | null>(null)
   const [ListDrawer, , list] = useListDrawer({
-    collectionSlugs: ['media'],
+    // Payload memoizes the drawer component type using these references.
+    collectionSlugs: mediaCollection,
     selectedCollection: 'media',
     uploads: true,
-    filterOptions: { media: { mimeType: { contains: `${kind}/` } } },
+    filterOptions: mediaFilters[kind],
   })
   const [DocumentDrawer, , document] = useDocumentDrawer({ collectionSlug: 'media' })
   const select = ({ doc }: { doc: unknown }) => {
@@ -46,10 +55,10 @@ function NativeMediaPicker({
       setError(`Choose a valid ${kind} with an available file.`)
       return
     }
-    onSelect(media)
     list.closeDrawer()
     document.closeDrawer()
-    onClose()
+    setError(null)
+    setPending(media)
   }
   return (
     <>
@@ -66,33 +75,48 @@ function NativeMediaPicker({
         }}
         zIndex={ADMIN_OVERLAY_LAYERS.PALETTE_MODAL}
       >
-        <MediaBrowser
-          canImport={canCreate}
-          api={config.routes.api}
-          kind={kind}
-          onSelect={(doc) => select({ doc })}
-          onCancel={onClose}
-          upload={
-            canCreate ? (
-              <Button variant="light" onClick={document.openDrawer}>
-                Upload {kind}
+        {pending ? (
+          <Stack>
+            <Text>{pending.filename || pending.url?.split('/').pop()}</Text>
+            <Group>
+              <Button
+                onClick={() => {
+                  onSelect(pending)
+                  onClose()
+                }}
+              >
+                Use {kind}
               </Button>
-            ) : undefined
-          }
-        />
-        <Group mt="md" className="zyvavu-media-picker__actions">
-          <Button variant="default" onClick={list.openDrawer}>
-            Browse My Media
-          </Button>
-
-          <Button variant="subtle" onClick={onClose}>
-            Close media actions
-          </Button>
-        </Group>
-        {error && (
-          <Alert color="red" role="alert">
-            {error}
-          </Alert>
+              <Button variant="default" onClick={() => setPending(null)}>Choose another</Button>
+              <Button variant="subtle" onClick={onClose}>Cancel</Button>
+            </Group>
+          </Stack>
+        ) : (
+          <>
+            <MediaBrowser
+              canImport={canCreate}
+              api={config.routes.api}
+              kind={kind}
+              onSelect={(doc) => select({ doc })}
+              onCancel={onClose}
+              upload={
+                canCreate ? (
+                  <Button variant="light" onClick={document.openDrawer}>
+                    Upload {kind}
+                  </Button>
+                ) : undefined
+              }
+            />
+            <Group mt="md" className="zyvavu-media-picker__actions">
+              <Button variant="default" onClick={list.openDrawer}>
+                Browse My Media
+              </Button>
+              <Button variant="subtle" onClick={onClose}>
+                Close media actions
+              </Button>
+            </Group>
+            {error && <Alert color="red" role="alert">{error}</Alert>}
+          </>
         )}
       </Modal>
       <ListDrawer onSelect={select} />

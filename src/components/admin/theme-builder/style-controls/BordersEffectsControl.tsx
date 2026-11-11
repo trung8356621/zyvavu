@@ -14,6 +14,7 @@ import {
   Switch,
 } from '@mantine/core'
 import type { StyleDomainGroup } from '@/lib/style-engine/domains'
+import { STYLE_DEFAULTS } from '@/lib/style-engine/effective-defaults'
 import type {
   BorderConfig,
   EffectsConfig,
@@ -24,6 +25,7 @@ import { resolveColorToken } from '@/lib/style-engine/token-resolver'
 import {
   BLUR_SCALE_LABELS,
   BORDER_WIDTH_LABELS,
+  colorTokenLabel,
   RADIUS_SCALE_LABELS,
 } from '@/lib/style-engine/semantic-preset-labels'
 import type { ThemeConfig } from '@/lib/theme-engine/types'
@@ -39,7 +41,7 @@ export interface BordersEffectsControlProps {
   onChangeRadius: (radius: RadiusConfig) => void
   onChangeShadow: (shadow: ShadowConfig) => void
   onChangeEffects: (effects: EffectsConfig) => void
-  onOpenColorModal: (anchor?: HTMLElement | null) => void
+  onOpenColorModal: (anchor?: HTMLElement | null, side?: 'top' | 'right' | 'bottom' | 'left') => void
   onResetGroup?: (group: StyleDomainGroup) => void
 }
 
@@ -58,6 +60,7 @@ export function BordersEffectsControl({
   onResetGroup,
 }: BordersEffectsControlProps) {
   const currentBorderColor = resolveColorToken(border.colorToken, '#dfe5e2')
+  const activeBorder = Boolean(border.style && border.style !== 'none')
   const [opened, setOpened] = useState<string[]>(['border', 'radius'])
 
   return (
@@ -94,11 +97,12 @@ export function BordersEffectsControl({
                   <Select
                     size="sm"
                     label="Border Style"
+                    clearable={Boolean(border.style)}
                     value={border.style || 'none'}
                     onChange={(val) =>
                       onChangeBorder({
                         ...border,
-                        style: (val as any) || 'none',
+                        style: (val as BorderConfig['style']) || undefined,
                       })
                     }
                     data={[
@@ -111,17 +115,19 @@ export function BordersEffectsControl({
                   <Select
                     size="sm"
                     label="Border Width"
-                    disabled={!border.style || border.style === 'none'}
-                    value={border.widthToken || 'thin'}
+                    clearable={Boolean(border.widthToken)}
+                    disabled={!activeBorder}
+                    value={activeBorder ? border.widthToken || STYLE_DEFAULTS.activeBorderWidth : 'none'}
                     onChange={(val) =>
                       onChangeBorder({
                         ...border,
-                        widthToken: val || 'thin',
+                        widthToken: val || undefined,
                       })
                     }
-                    data={['thin', 'medium', 'thick'].map((value) => ({
+                    data={['none', 'thin', 'medium', 'thick'].map((value) => ({
                       value,
-                      label: BORDER_WIDTH_LABELS[value],
+                      label: value === 'none' ? '0 px' : BORDER_WIDTH_LABELS[value],
+                      disabled: value === 'none',
                     }))}
                   />
                 </Group>
@@ -136,25 +142,15 @@ export function BordersEffectsControl({
                       onChangeBorder({ ...border, linked: true })
                       return
                     }
-                    const seedStyle = border.style && border.style !== 'none' ? border.style : 'solid'
-                    const seedWidth = border.widthToken || 'thin'
-                    const seedColor = border.colorToken
-                    const sides = { ...(border.sides || {}) }
-                    for (const side of ['top', 'right', 'bottom', 'left'] as const) {
-                      if (!sides[side] || !Object.values(sides[side] || {}).some(Boolean)) {
-                        sides[side] = {
-                          style: seedStyle,
-                          widthToken: seedWidth,
-                          ...(seedColor ? { colorToken: seedColor } : {}),
-                        }
-                      }
-                    }
-                    onChangeBorder({ ...border, linked: false, sides })
+                    onChangeBorder({ ...border, linked: false })
                   }}
                 />
                 {border.linked === false &&
                   (['top', 'right', 'bottom', 'left'] as const).map((side) => {
                     const value = border.sides?.[side] || {}
+                    const hasSide = Boolean(value.style || value.widthToken || value.colorToken)
+                    const baseApplies = !border.side || border.side === 'all' || border.side === side
+                    const effectiveSideStyle = hasSide ? value.style || 'solid' : baseApplies ? border.style || 'none' : 'none'
                     const update = (partial: Partial<BorderConfig>) =>
                       onChangeBorder({
                         ...border,
@@ -164,9 +160,8 @@ export function BordersEffectsControl({
                       <Group key={side} grow align="flex-end">
                         <Select
                           label={`${side} style`}
-                          clearable
-                          placeholder="Inherit"
-                          value={value.style || null}
+                          clearable={Boolean(value.style)}
+                          value={effectiveSideStyle}
                           data={[
                             { value: 'none', label: 'None' },
                             { value: 'solid', label: 'Solid' },
@@ -179,23 +174,34 @@ export function BordersEffectsControl({
                         />
                         <Select
                           label={`${side} width`}
-                          clearable
-                          value={value.widthToken || null}
-                          data={['thin', 'medium', 'thick'].map((token) => ({
+                          clearable={Boolean(value.widthToken)}
+                          value={effectiveSideStyle === 'none' ? 'none' : (hasSide ? value.widthToken : border.widthToken) || STYLE_DEFAULTS.activeBorderWidth}
+                          data={['none', 'thin', 'medium', 'thick'].map((token) => ({
                             value: token,
-                            label: BORDER_WIDTH_LABELS[token],
+                            label: token === 'none' ? '0 px' : BORDER_WIDTH_LABELS[token],
+                            disabled: token === 'none',
                           }))}
                           onChange={(widthToken) => update({ widthToken: widthToken || undefined })}
                         />
-                        <Select
-                          label={`${side} color`}
-                          clearable
-                          value={value.colorToken || null}
-                          data={Object.keys(
-                            themeConfig?.tokens.colors || { primary: '', text: '', border: '' },
+                        <Stack gap={4}>
+                          <Button
+                            size="compact-sm"
+                            variant="light"
+                            aria-label={`Change ${side} border color`}
+                            onClick={(event) => onOpenColorModal(event.currentTarget, side)}
+                          >
+                            {value.colorToken
+                              ? colorTokenLabel(value.colorToken)
+                              : effectiveSideStyle === 'none'
+                                ? 'None'
+                                : hasSide ? 'Current color' : colorTokenLabel(border.colorToken || 'border')}
+                          </Button>
+                          {value.colorToken && (
+                            <Button size="compact-xs" variant="subtle" onClick={() => update({ colorToken: undefined })}>
+                              Reset color
+                            </Button>
                           )}
-                          onChange={(colorToken) => update({ colorToken: colorToken || undefined })}
-                        />
+                        </Stack>
                       </Group>
                     )
                   })}
@@ -255,11 +261,12 @@ export function BordersEffectsControl({
                 <Select
                   size="sm"
                   label="Border Radius"
+                  clearable={Boolean(radius.radiusToken)}
                   value={radius.radiusToken || 'none'}
                   onChange={(val) =>
                     onChangeRadius({
                       ...radius,
-                      radiusToken: val || 'none',
+                      radiusToken: val || undefined,
                     })
                   }
                   data={['none', 'sm', 'md', 'lg', 'pill'].map((value) => ({
@@ -277,12 +284,7 @@ export function BordersEffectsControl({
                       onChangeRadius({ ...radius, linked: true })
                       return
                     }
-                    const seed = radius.radiusToken && radius.radiusToken !== 'none' ? radius.radiusToken : 'md'
-                    const corners = { ...(radius.corners || {}) }
-                    for (const corner of ['topLeft', 'topRight', 'bottomRight', 'bottomLeft'] as const) {
-                      if (!corners[corner]) corners[corner] = seed
-                    }
-                    onChangeRadius({ ...radius, linked: false, corners })
+                    onChangeRadius({ ...radius, linked: false })
                   }}
                 />
                 {radius.linked === false &&
@@ -307,9 +309,8 @@ export function BordersEffectsControl({
                       <Select
                         key={corner}
                         label={labels[corner]}
-                        clearable
-                        placeholder="Inherit"
-                        value={radius.corners?.[corner] || null}
+                        clearable={Boolean(radius.corners?.[corner])}
+                        value={radius.corners?.[corner] || radius.radiusToken || STYLE_DEFAULTS.radius}
                         data={radiusKeys.map((value) => ({
                           value,
                           label: RADIUS_SCALE_LABELS[value] || value,

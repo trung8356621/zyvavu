@@ -3,6 +3,7 @@
 import { withWidgetStyleSurface } from '@/lib/style-engine/WidgetStyleSurface'
 
 import { resolveWidgetStyles } from '@/lib/style-engine/serializer'
+import { COLUMNS_LAYOUT_DEFAULTS } from '@/lib/style-engine/effective-defaults'
 import { animationAttributes } from '@/lib/style-engine/animation-presets'
 
 import React from 'react'
@@ -45,6 +46,7 @@ export const columnsEditor: ComponentConfig<ColumnsProps> = {
     id: surfaceId,
     style: semanticStyle,
     distribution = 'equal-2',
+    gap = COLUMNS_LAYOUT_DEFAULTS.gap,
     column1: Col1,
     column2: Col2,
     column3: Col3,
@@ -62,9 +64,9 @@ export const columnsEditor: ComponentConfig<ColumnsProps> = {
         style={{
           display: 'grid',
           gridTemplateColumns: template,
-          gap: '24px',
+          gap,
           width: '100%',
-          padding: '12px 0',
+          margin: `${COLUMNS_LAYOUT_DEFAULTS.verticalMargin} 0`,
           boxSizing: 'border-box',
           ...resolveWidgetStyles(semanticStyle),
         }}

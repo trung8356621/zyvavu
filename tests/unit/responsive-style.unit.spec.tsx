@@ -5,6 +5,10 @@ import { MantineProvider } from '@mantine/core'
 import { renderToStaticMarkup } from 'react-dom/server'
 
 import { TypographyStyleControl } from '@/components/admin/theme-builder/style-controls/TypographyStyleControl'
+import { SpacingDimensionsControl } from '@/components/admin/theme-builder/style-controls/SpacingDimensionsControl'
+import { resolveSectionLayout, resolveSpacingDisplay } from '@/lib/style-engine/effective-defaults'
+import { resolveSectionLayerStyles } from '@/lib/style-engine/serializer'
+import { resetStyleGroup } from '@/lib/style-engine/domains'
 import {
   RESPONSIVE_BREAKPOINTS,
   resetResponsiveTypographyProperty,
@@ -14,7 +18,7 @@ import {
 } from '@/lib/style-engine/responsive-style'
 import { validateUniversalStyle } from '@/lib/style-engine/validation'
 import { withWidgetStyleSurface } from '@/lib/style-engine/WidgetStyleSurface'
-import type { ResponsiveConfig } from '@/lib/style-engine/types'
+import type { ResponsiveConfig, UniversalStyle } from '@/lib/style-engine/types'
 
 beforeEach(() => {
   vi.stubGlobal('matchMedia', () => ({
@@ -49,6 +53,51 @@ const themeConfig = {
 } as any
 
 describe('Responsive Style Engine V1', () => {
+  it('renders unset Layout values without writing to the document', () => {
+    const onChangeSpacing = vi.fn()
+    const onChangeDimensions = vi.fn()
+    render(
+      <MantineProvider>
+        <SpacingDimensionsControl onChangeSpacing={onChangeSpacing} onChangeDimensions={onChangeDimensions} />
+      </MantineProvider>,
+    )
+    expect(screen.getByRole<HTMLInputElement>('combobox', { name: 'Padding' }).value).toBe('0 px')
+    expect(screen.getByRole<HTMLInputElement>('combobox', { name: 'Minimum Height' }).value).toBe('Auto')
+    expect(onChangeSpacing).not.toHaveBeenCalled()
+    expect(onChangeDimensions).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('switch', { name: 'Link padding sides' }))
+    expect(screen.getByRole<HTMLInputElement>('combobox', { name: 'Top' }).value).toBe('0 px')
+    expect(onChangeSpacing).not.toHaveBeenCalled()
+  })
+
+  it('cascades responsive spacing per side and isolates reset from root and tablet', () => {
+    const desktop = { padding: { token: 'md' }, margin: { token: 'sm' } }
+    const responsive = {
+      tablet: { spacing: { padding: { topToken: 'lg' } } },
+      mobile: { spacing: { padding: { bottomToken: 'none' } } },
+    }
+    const mobile = resolveSpacingDisplay(desktop, responsive, 'mobile')
+    expect(mobile.padding('topToken')).toBe('lg')
+    expect(mobile.padding('leftToken')).toBe('md')
+    expect(mobile.padding('bottomToken')).toBe('none')
+    const reset = setResponsiveSpacing(responsive, 'mobile', undefined)
+    expect(reset.tablet).toEqual(responsive.tablet)
+    expect(resolveSpacingDisplay(desktop, reset, 'mobile').padding('bottomToken')).toBe('md')
+    expect(desktop.padding.token).toBe('md')
+  })
+
+  it('uses Section layout defaults in both display and CSS and scopes the Dimensions reset', () => {
+    const props = { containerWidth: 'inherit', pageContainerWidth: 'wideWidth', verticalPadding: 'lg' }
+    const style: UniversalStyle = { section: { minHeight: 'sm', verticalPadding: 'xs' } }
+    expect(resolveSectionLayout(style, props)).toEqual({
+      containerWidth: 'wideWidth', minHeight: 'sm', verticalPadding: 'xs',
+    })
+    expect(resolveSectionLayerStyles(style, props).rootStyle.minHeight).toBe('200px')
+    const reset = resetStyleGroup(style, 'dimensions')
+    expect(reset.section).toEqual({ verticalPadding: 'xs' })
+    expect(resolveSectionLayout(reset, props).minHeight).toBe('auto')
+  })
+
   it('documents additive schema — hide/stack coexist with tablet/mobile overrides', () => {
     const responsive: ResponsiveConfig = {
       hideOnMobile: true,
@@ -74,7 +123,7 @@ describe('Responsive Style Engine V1', () => {
     expect(css).toContain('data-zyvavu-style-id="w1"')
     expect(css).toContain('--zyvavu-theme-h2-size')
     expect(css).toContain('line-height:1.5')
-    expect(css).toContain('text-align:center')
+    expect(css).toContain('text-align:center!important')
     expect(css).toContain('--zyvavu-theme-h3-size')
     expect(css).toContain('padding:')
     // Desktop base is NOT rewritten into the stylesheet.

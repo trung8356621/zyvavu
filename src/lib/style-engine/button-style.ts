@@ -9,6 +9,11 @@ import {
 
 export const BUTTON_STYLE_CLASS = 'zyvavu-styled-button'
 
+export const BUTTON_PRESET_DEFAULTS = {
+  theme: { backgroundToken: 'primary', textToken: 'background', borderToken: undefined },
+  outline: { backgroundToken: undefined, textToken: 'primary', borderToken: 'primary' },
+} as const
+
 /** Supported Normal groups for Button Design V1. Icon stays shell-only. */
 export const BUTTON_NORMAL_SUPPORTED = [
   'Background',
@@ -42,23 +47,14 @@ export function normalizeButtonStyle(button?: ButtonStyleShell | null): ButtonSt
 }
 
 function applyPreset(preset: 'theme' | 'outline' | undefined, base: CSSProperties): CSSProperties {
-  if (preset === 'outline') {
-    return {
-      ...base,
-      backgroundColor: 'transparent',
-      color: resolveColorToken('primary'),
-      border: `1px solid ${resolveColorToken('primary')}`,
-    }
+  if (!preset) return base
+  const defaults = BUTTON_PRESET_DEFAULTS[preset]
+  return {
+    ...base,
+    backgroundColor: defaults.backgroundToken ? resolveColorToken(defaults.backgroundToken) : 'transparent',
+    color: resolveColorToken(defaults.textToken, preset === 'theme' ? '#fff' : undefined),
+    border: `1px solid ${defaults.borderToken ? resolveColorToken(defaults.borderToken) : 'transparent'}`,
   }
-  if (preset === 'theme') {
-    return {
-      ...base,
-      backgroundColor: resolveColorToken('primary'),
-      color: resolveColorToken('background', '#fff'),
-      border: '1px solid transparent',
-    }
-  }
-  return base
 }
 
 /**
@@ -86,8 +82,13 @@ export function resolveButtonNormalStyles(button?: ButtonStyleShell | null): CSS
   if (normal.text?.colorToken) {
     result.color = resolveColorToken(normal.text.colorToken)
   }
-  if (normal.border?.style && normal.border.style !== 'none') {
-    result.border = `${resolveBorderWidthToken(normal.border.widthToken)} ${normal.border.style} ${resolveColorToken(normal.border.colorToken, 'currentColor')}`
+  const preset = normal.preset && BUTTON_PRESET_DEFAULTS[normal.preset]
+  const borderStyle = normal.border?.style || (preset ? 'solid' : undefined)
+  if (borderStyle && normal.border && Object.values(normal.border).some(Boolean)) {
+    const borderColor = normal.border.colorToken || (!normal.border.style ? preset?.borderToken : undefined)
+    result.border = borderStyle === 'none'
+      ? 'none'
+      : `${resolveBorderWidthToken(normal.border.widthToken)} ${borderStyle} ${resolveColorToken(borderColor, !normal.border.style && preset ? 'transparent' : 'currentColor')}`
   }
   if (normal.radius?.radiusToken) {
     result.borderRadius = resolveRadiusToken(normal.radius.radiusToken)

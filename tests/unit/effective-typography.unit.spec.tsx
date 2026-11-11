@@ -190,7 +190,7 @@ describe('Effective typography resolution', () => {
         />
       </MantineProvider>,
     )
-    expect(screen.getByText('Override')).toBeTruthy()
+    expect(screen.getByText('Custom')).toBeTruthy()
     expect((screen.getByRole('combobox', { name: 'Weight' }) as HTMLInputElement).value).toBe(
       'Semi Bold',
     )

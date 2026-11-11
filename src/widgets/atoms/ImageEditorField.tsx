@@ -7,6 +7,7 @@ import { Button, Group, Image, Select, Stack, Text, TextInput } from '@mantine/c
 import { MediaSourcePicker } from '@/components/admin/media/MediaSourcePicker'
 import {
   ASPECT_RATIO_OPTIONS,
+  MEDIA_STYLE_DEFAULTS,
   OBJECT_FIT_OPTIONS,
   OBJECT_POSITION_OPTIONS,
 } from './media-props'
@@ -121,7 +122,7 @@ export function ImageEditorPanel({
         size="sm"
         label="Aspect ratio"
         data={[...ASPECT_RATIO_OPTIONS]}
-        value={String(props.aspectRatio || '16:9')}
+        value={String(props.aspectRatio || MEDIA_STYLE_DEFAULTS.aspectRatio)}
         disabled={readOnly}
         onChange={(value) => patch({ aspectRatio: value || '16:9' })}
       />
@@ -129,7 +130,7 @@ export function ImageEditorPanel({
         size="sm"
         label="Object fit"
         data={[...OBJECT_FIT_OPTIONS]}
-        value={String(props.objectFit || 'cover')}
+        value={String(props.objectFit || MEDIA_STYLE_DEFAULTS.objectFit)}
         disabled={readOnly}
         onChange={(value) => patch({ objectFit: value || 'cover' })}
       />
@@ -137,7 +138,7 @@ export function ImageEditorPanel({
         size="sm"
         label="Focal position"
         data={[...OBJECT_POSITION_OPTIONS]}
-        value={String(props.objectPosition || 'center')}
+        value={String(props.objectPosition || MEDIA_STYLE_DEFAULTS.objectPosition)}
         disabled={readOnly}
         onChange={(value) => patch({ objectPosition: value || 'center' })}
       />

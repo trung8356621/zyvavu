@@ -10,9 +10,7 @@ export const LIBRARY_HIDDEN_ATOM_TYPES = ['Text'] as const
 export const LIBRARY_CATEGORY_ORDER = [
   'text',
   'buttons',
-  'images',
   'media',
-  'general',
   'layout',
   'sections',
   'dynamic',
@@ -32,11 +30,9 @@ function atomPattern(
     ? 'sections'
     : type === 'Button'
       ? 'buttons'
-      : type === 'Image'
-        ? 'images'
-        : type === 'Video'
-          ? 'media'
-          : 'text',
+      : type === 'Image' || type === 'Video'
+        ? 'media'
+        : 'text',
 ): PatternJSON {
   const payload = {
     content: [{ type, props: { ...props, id: `${id}-root`, style } }],
@@ -491,9 +487,7 @@ export const BUTTON_PRESETS: PatternJSON[] = [
   ),
 ]
 
-const IMAGE_SAMPLE = '/pattern-library/media-sample.svg'
-
-/** Image: aspect/frame presets with local sample thumbnail (no second asset backend). */
+/** Image presets store presentation only. Sample media belongs to the library preview. */
 export const IMAGE_PRESETS: PatternJSON[] = [
   atomPattern(
     'Image',
@@ -501,7 +495,7 @@ export const IMAGE_PRESETS: PatternJSON[] = [
     'Landscape image',
     'Widescreen media frame.',
     { radius: { radiusToken: 'sm' } },
-    { src: IMAGE_SAMPLE, alt: 'Sample landscape', aspectRatio: '16:9' },
+    { aspectRatio: '16:9', objectFit: 'cover' },
   ),
   atomPattern(
     'Image',
@@ -509,7 +503,7 @@ export const IMAGE_PRESETS: PatternJSON[] = [
     'Square image',
     'Equal crop for galleries and avatars.',
     { radius: { radiusToken: 'md' } },
-    { src: IMAGE_SAMPLE, alt: 'Sample square', aspectRatio: '1:1' },
+    { aspectRatio: '1:1', objectFit: 'cover' },
   ),
   atomPattern(
     'Image',
@@ -517,7 +511,7 @@ export const IMAGE_PRESETS: PatternJSON[] = [
     'Portrait image',
     'Tall media frame for people and products.',
     { radius: { radiusToken: 'sm' } },
-    { src: IMAGE_SAMPLE, alt: 'Sample portrait', aspectRatio: '3:4' },
+    { aspectRatio: '3:4', objectFit: 'cover' },
   ),
   atomPattern(
     'Image',
@@ -525,7 +519,7 @@ export const IMAGE_PRESETS: PatternJSON[] = [
     'Rounded frame',
     'Soft-corner media frame.',
     { radius: { radiusToken: 'lg' }, shadow: { shadowToken: 'shadowSoft' } },
-    { src: IMAGE_SAMPLE, alt: 'Sample rounded', aspectRatio: '4:3' },
+    { aspectRatio: '4:3', objectFit: 'cover' },
   ),
   atomPattern(
     'Image',
@@ -533,7 +527,7 @@ export const IMAGE_PRESETS: PatternJSON[] = [
     'Banner image',
     'Wide panoramic media frame.',
     {},
-    { src: IMAGE_SAMPLE, alt: 'Sample banner', aspectRatio: '21:9' },
+    { aspectRatio: '21:9', objectFit: 'cover' },
   ),
   atomPattern(
     'Image',
@@ -546,7 +540,7 @@ export const IMAGE_PRESETS: PatternJSON[] = [
       spacing: padding('sm'),
       background: { colorToken: 'surface' },
     },
-    { src: IMAGE_SAMPLE, alt: 'Sample framed', aspectRatio: '16:9' },
+    { aspectRatio: '16:9', objectFit: 'contain' },
   ),
 ]
 
@@ -560,7 +554,6 @@ export const VIDEO_PRESETS: PatternJSON[] = [
     { radius: { radiusToken: 'md' } },
     {
       src: '',
-      posterUrl: IMAGE_SAMPLE,
       alt: 'Video',
       aspectRatio: '16:9',
       objectFit: 'cover',
@@ -578,7 +571,6 @@ export const VIDEO_PRESETS: PatternJSON[] = [
     { radius: { radiusToken: 'lg' }, shadow: { shadowToken: 'shadowSoft' } },
     {
       src: '',
-      posterUrl: IMAGE_SAMPLE,
       alt: 'Square video',
       aspectRatio: '1:1',
       objectFit: 'cover',

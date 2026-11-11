@@ -9,6 +9,7 @@ import { resolveTextRender } from '@/components/builder/inline-edit/content-mode
 import { systemDescriptor, type AtomType } from '@/lib/theme-engine/widget-contracts'
 import {
   isSafeMediaHref,
+  MEDIA_STYLE_DEFAULTS,
   type AspectRatioValue,
   type ObjectFitValue,
   type ObjectPositionValue,
@@ -35,6 +36,7 @@ export type AtomProps = {
   autoplay?: boolean
   style?: WidgetSemanticStyle
   dataContext?: ThemeDataContext
+  previewOnly?: boolean
 }
 
 function renderInlineText(
@@ -70,8 +72,8 @@ function mediaBoxStyle(
     display: 'block',
     borderRadius: 'inherit',
     aspectRatio: !aspectRatio || aspectRatio === 'auto' ? undefined : aspectRatio.replace(':', '/'),
-    objectFit: objectFit || 'cover',
-    objectPosition: objectPosition || 'center',
+    objectFit: objectFit || MEDIA_STYLE_DEFAULTS.objectFit,
+    objectPosition: objectPosition || MEDIA_STYLE_DEFAULTS.objectPosition,
   }
 }
 
@@ -143,6 +145,7 @@ export function AtomPresentation({
   loop = false,
   muted = true,
   autoplay = false,
+  previewOnly = false,
 }: AtomProps & { kind: AtomType; primaryHeading?: boolean }) {
   const resolved = resolveWidgetStyles(style)
   const buttonProps =
@@ -205,7 +208,7 @@ export function AtomPresentation({
       <div
         style={{
           ...mediaStyle,
-          minHeight: 120,
+          minHeight: posterUrl ? undefined : 120,
           display: 'grid',
           placeItems: 'center',
           background: 'var(--zyvavu-theme-surface, #f4f7f6)',
@@ -226,6 +229,8 @@ export function AtomPresentation({
     )
   } else if (kind === 'Heading') {
     node = renderInlineText(HeadingTag, text, resolved, anim)
+  } else if (kind === 'Button' && previewOnly) {
+    node = <span className={buttonProps.className} style={buttonStyle}>{text}</span>
   } else if (kind === 'Button' && href && isSafeMediaHref(href)) {
     node = (
       <a

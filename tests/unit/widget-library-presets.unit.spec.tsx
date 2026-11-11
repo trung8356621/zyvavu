@@ -46,7 +46,8 @@ it('registers the required atom/container preset inventory', () => {
     Heading: 23,
     Text: 0,
     Button: 8,
-    Image: 4,
+    Image: 6,
+    Video: 2,
     Container: 4,
   })
   // Body `copy-*` presets now insert Heading+P (free Text hidden from library).
@@ -101,6 +102,7 @@ it('inserts atom presets as the declared widget type through Puck setData', () =
     let n = 0
     const item = instantiatePattern(pattern, config, () => `id-${++n}`)
     expect(item.type).toBe(record.widgetType)
+    if (item.type === 'Image') expect(item.props.src).toBeUndefined()
     const next = insertWidgetPattern(base, item, 'home', config, undefined, () => `wrap-${++n}`)
     expect(next.content[0].type).toBe('Section')
     const leaf = next.content[0].props.content.at(-1)
@@ -109,10 +111,10 @@ it('inserts atom presets as the declared widget type through Puck setData', () =
 })
 
 it('opens with Text category first as one continuous Heading+Text library', () => {
-  expect(sortLibraryCategories(['sections', 'dynamic', 'buttons', 'text', 'images'])).toEqual([
+  expect(sortLibraryCategories(['sections', 'dynamic', 'buttons', 'text', 'media'])).toEqual([
     'text',
     'buttons',
-    'images',
+    'media',
     'sections',
     'dynamic',
   ])
@@ -136,6 +138,34 @@ it('opens with Text category first as one continuous Heading+Text library', () =
   expect(state.current.dispatch.mock.calls[0][0].data.content[0].props.content.at(-1).type).toBe(
     'Heading',
   )
+})
+
+it('groups media together and finds Video from the Text category search', () => {
+  render(<MantineProvider><WidgetPatternLibrary context="home" beforeOperation={() => true} /></MantineProvider>)
+  expect(screen.queryByRole('button', { name: 'Widgets' })).toBeNull()
+  fireEvent.change(screen.getByRole('textbox', { name: 'Search widgets and patterns' }), { target: { value: 'Video' } })
+  expect(screen.getByRole('button', { name: 'Insert Video' })).toBeTruthy()
+  fireEvent.change(screen.getByRole('textbox', { name: 'Search widgets and patterns' }), { target: { value: '' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Media' }))
+  expect(screen.getByRole('button', { name: 'Insert Video' })).toBeTruthy()
+  expect(screen.getByRole('button', { name: 'Insert Image' })).toBeTruthy()
+  const landscape = screen.getByRole('button', { name: 'Insert Landscape image' }).querySelector('img')
+  const portrait = screen.getByRole('button', { name: 'Insert Portrait image' }).querySelector('img')
+  expect(landscape?.getAttribute('src')).toContain('1470770841072')
+  expect(portrait?.getAttribute('src')).toContain('1511818966892')
+})
+
+it('uses the same Button Style V1 defaults for preview and insertion', () => {
+  render(<MantineProvider><WidgetPatternLibrary context="home" beforeOperation={() => true} /></MantineProvider>)
+  fireEvent.click(screen.getByRole('button', { name: 'Buttons' }))
+  const card = screen.getByRole('button', { name: 'Insert Button' })
+  const preview = card.querySelector('.zyvavu-styled-button')
+  expect(preview?.tagName).toBe('SPAN')
+  expect(preview?.getAttribute('style')).toContain('--zyvavu-theme-primary')
+  fireEvent.click(card)
+  const inserted = state.current.dispatch.mock.calls[0][0].data.content[0].props.content[0]
+  expect(inserted.type).toBe('Button')
+  expect(inserted.props.style.button.normal.preset).toBe('theme')
 })
 
 it('does not mount section thumbnail images until near viewport', async () => {

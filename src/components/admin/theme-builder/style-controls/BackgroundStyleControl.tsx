@@ -126,8 +126,9 @@ export function BackgroundStyleControl({
     })
   }
 
-  const currentColorToken = value.colorToken || 'surface'
-  const currentBgColor = resolveColorToken(currentColorToken, '#ffffff')
+  const currentColorToken = value.colorToken
+  const currentBgColor = currentColorToken ? resolveColorToken(currentColorToken, '#ffffff') : 'transparent'
+  const currentColorLabel = currentColorToken ? colorTokenLabel(currentColorToken) : 'Transparent'
 
   const fallbackColorToken =
     mode === 'image'
@@ -288,7 +289,7 @@ export function BackgroundStyleControl({
                   ? `Mesh (${value.mesh.points?.length || 0} pts)`
                   : value.gradient
                     ? `Gradient (${value.gradient.type})`
-                    : `Color: ${colorTokenLabel(currentColorToken)}`
+                    : currentColorLabel
                 : mode === 'image'
                   ? value.image?.url
                     ? `Image: ${value.image.size || 'cover'}`
@@ -427,14 +428,14 @@ export function BackgroundStyleControl({
                       ? 'Mesh Gradient'
                       : value.gradient
                         ? 'Theme Gradient'
-                        : currentColorToken}
+                        : currentColorLabel}
                   </Text>
                   <Text size="xs" c="dimmed" truncate style={{ fontSize: 12 }}>
                     {value.mesh
                       ? `${value.mesh.points?.length || 0} color points`
                       : value.gradient
                         ? `${value.gradient.type} gradient (${value.gradient.stops?.length || 0} stops)`
-                        : 'Solid theme color (Click to change)'}
+                        : currentColorToken ? 'Theme color' : 'Default'}
                   </Text>
                 </Box>
               </Group>

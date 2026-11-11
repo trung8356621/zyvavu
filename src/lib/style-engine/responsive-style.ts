@@ -102,7 +102,8 @@ function overrideDecls(override?: ResponsiveStyleOverride): string {
     ...(override.align && !override.typography?.align ? [`text-align:${override.align}`] : []),
     ...spacingDecls(override.spacing),
   ]
-  return decls.join(';')
+  // Responsive declarations must take precedence over renderer-owned inline base styles.
+  return decls.map((decl) => `${decl}!important`).join(';')
 }
 
 export function hasResponsiveStyleOverrides(responsive?: ResponsiveConfig | null): boolean {
@@ -149,8 +150,11 @@ export function effectiveTypographyAtBreakpoint(
 ): TypographyStyleConfig {
   const base = desktop || {}
   if (breakpoint === 'desktop') return base
-  const over = responsive?.[breakpoint]?.typography || {}
-  return { ...base, ...over }
+  return {
+    ...base,
+    ...responsive?.tablet?.typography,
+    ...(breakpoint === 'mobile' ? responsive?.mobile?.typography : undefined),
+  }
 }
 
 export function effectiveSpacingAtBreakpoint(
@@ -171,6 +175,7 @@ export function effectiveAlignAtBreakpoint(
   return (
     responsive?.[breakpoint]?.typography?.align ||
     responsive?.[breakpoint]?.align ||
+    (breakpoint === 'mobile' ? responsive?.tablet?.typography?.align || responsive?.tablet?.align : undefined) ||
     desktopAlign
   )
 }
