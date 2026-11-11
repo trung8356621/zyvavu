@@ -20,6 +20,7 @@ describe('Editor Workspace Shell (PO 2026-11-11)', () => {
     expect(actionBarStyles.toolbar).toBeTruthy()
     expect(actionBarStyles.libraryHost).toBeTruthy()
     expect(actionBarStyles.styleTrigger).toBeTruthy()
+    expect(actionBarStyles.overflowTrigger).toBeTruthy()
   })
 
   it('opening Style still hides Fields visibility without inventing a second form', () => {

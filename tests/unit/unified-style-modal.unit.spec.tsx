@@ -31,8 +31,8 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-describe('Unified Style modal host (PO 2026-11-11)', () => {
-  it('opens every primary Style domain in one shared dialog host', () => {
+describe('Floating Design Panel host (PO UX V5 2026-11-11)', () => {
+  it('opens every primary Design domain in one shared non-modal floating panel', () => {
     const domains = orderStyleToolbarDomains(getStyleModalDomains('Section'))
     expect(domains).toEqual(['animation', 'background', 'spacing', 'borders'])
 
@@ -53,10 +53,35 @@ describe('Unified Style modal host (PO 2026-11-11)', () => {
         </MantineProvider>,
       )
       const dialog = screen.getByTestId('unified-style-modal')
-      expect(dialog.getAttribute('data-modal-mode')).toBe('dialog')
+      expect(dialog.getAttribute('data-modal-mode')).toBe('floating')
+      expect(dialog.getAttribute('aria-modal')).not.toBe('true')
       expect(screen.getByRole('dialog', { name: new RegExp(`${STYLE_MODAL_TITLES[domain]} ·`) })).toBeTruthy()
       expect(screen.queryByTestId('style-domain-launcher')).toBeNull()
     }
+  })
+
+  it('collapse hides the panel chrome and restore brings it back', () => {
+    render(
+      <MantineProvider>
+        <WidgetStyleContextMenu
+          opened
+          domain="background"
+          anchorEl={null}
+          componentType="Section"
+          componentId="sec-collapse"
+          currentStyle={{}}
+          onClose={vi.fn()}
+          onUpdateStyle={vi.fn(() => true)}
+        />
+      </MantineProvider>,
+    )
+    expect(screen.getByTestId('unified-style-modal')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse Design panel' }))
+    expect(screen.queryByTestId('unified-style-modal')).toBeNull()
+    expect(screen.getByTestId('design-panel-collapsed')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Restore Design panel' }))
+    expect(screen.getByTestId('unified-style-modal')).toBeTruthy()
+    expect(screen.getByRole('dialog', { name: /Background ·/ })).toBeTruthy()
   })
 
   it('Escape closes via Cancel semantics without an Apply button', () => {

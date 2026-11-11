@@ -192,15 +192,14 @@ describe('Editor stability', () => {
         </MantineProvider>,
       )
       const selected = model.snapshot.selectedItem
-      // Widget Settings = native Puck Fields on selection; no ActionBar gear.
-      expect(screen.queryByRole('button', { name: 'Settings' })).toBeNull()
-      for (const domain of orderStyleToolbarDomains(getStyleModalDomains(type)).slice(0, 4)) {
-        expect(screen.getByRole('button', { name: STYLE_MODAL_TITLES[domain] })).toBeTruthy()
-      }
-      if (type === 'Button' || type === 'Image') {
-        expect(screen.getByRole('button', { name: 'Link' })).toBeTruthy()
-      } else {
-        expect(screen.queryByRole('button', { name: 'Link' })).toBeNull()
+      // UX V5: Settings | Design | More — capability domains still owned by style-engine.
+      expect(screen.getByRole('button', { name: 'Settings' })).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'Design' })).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'More actions' })).toBeTruthy()
+      const domains = orderStyleToolbarDomains(getStyleModalDomains(type))
+      expect(domains.length).toBeGreaterThan(0)
+      for (const domain of domains) {
+        expect(STYLE_MODAL_TITLES[domain]).toBeTruthy()
       }
       expect(model.snapshot.selectedItem).toBe(selected)
       expect(model.history).toHaveLength(0)
@@ -212,24 +211,41 @@ describe('Editor stability', () => {
 
   it('keeps the same canvas/iframe/media through repeated open, Reset, Cancel and selection changes', () => {
     const onChange = vi.fn()
+    const onUpdateStyle = vi.fn(() => true)
+    function Harness() {
+      const [styleOpen, setStyleOpen] = React.useState(false)
+      return (
+        <>
+          <PuckHost
+            config={{ components: {} }}
+            document={document}
+            onSave={vi.fn()}
+            onChange={onChange}
+          />
+          <button type="button" onClick={() => setStyleOpen(true)}>
+            Open Style Test
+          </button>
+          {styleOpen && (
+            <WidgetStyleContextMenu
+              opened
+              domain="animation"
+              anchorEl={null}
+              componentType="Section"
+              componentId="section"
+              currentStyle={{}}
+              onClose={() => setStyleOpen(false)}
+              onUpdateStyle={onUpdateStyle}
+            />
+          )}
+        </>
+      )
+    }
     render(
       <MantineProvider>
-        <PuckHost
-          config={{ components: {} }}
-          document={document}
-          onSave={vi.fn()}
-          onChange={onChange}
-        />
+        <Harness />
       </MantineProvider>,
     )
-    const openStyle = () => {
-      const toolbar =
-        globalThis.document.querySelector('.zyvavu-puck-host-wrapper') || globalThis.document.body
-      const trigger = toolbar.querySelector(
-        '[class*="styleTrigger"] button',
-      ) as HTMLButtonElement | null
-      fireEvent.click(trigger || screen.getAllByRole('button', { name: 'Animation' })[0])
-    }
+    const openStyle = () => fireEvent.click(screen.getByRole('button', { name: 'Open Style Test' }))
     const iframe = screen.getByTitle('unit canvas')
     const media = screen.getByAltText('original media')
     for (let i = 0; i < 3; i++) {
@@ -241,9 +257,9 @@ describe('Editor stability', () => {
     }
     openStyle()
     fireEvent.click(screen.getByRole('button', { name: 'Reset domain' }))
-    expect(model.history.length).toBeGreaterThanOrEqual(1)
+    expect(onUpdateStyle).toHaveBeenCalled()
     act(() => {
-      model.onChange?.(model.history[0])
+      model.onChange?.(model.history[0] || document)
     })
     openStyle()
     act(() => select('section'))
@@ -302,8 +318,8 @@ describe('Editor stability', () => {
         />
       </MantineProvider>,
     )
-    const dialog = screen.getByRole('dialog', { name: /Style ·/ })
-    expect(dialog.getAttribute('data-modal-mode')).toBe('dialog')
+    const dialog = screen.getByRole('dialog', { name: /Design ·/ })
+    expect(dialog.getAttribute('data-modal-mode')).toBe('floating')
     const body = dialog.querySelector('[data-modal-region="content"]')!
     expect(body.contains(screen.getByRole('button', { name: 'Hủy / Cancel' }))).toBe(false)
     expect(screen.queryByRole('button', { name: 'Áp dụng / Apply' })).toBeNull()

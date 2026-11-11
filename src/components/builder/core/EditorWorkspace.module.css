@@ -1,37 +1,76 @@
 /*
- * Editor Workspace Shell — PO 2026-11-11
- * Retires Puck's permanent 3-column width reservation while keeping Puck
- * document/selection/history/Fields ownership. Floating panels overlay Canvas.
+ * Editor Workspace Shell — PO 2026-11-11 (stabilization hotfix)
+ * Keep Puck data/selection/history/Fields. Presentation only:
+ * full remaining height, 60px library rail, floating Fields, no right grid width.
  */
 
 .workspaceShell {
   --zyvavu-builder-library-rail-width: 60px;
-  --zyvavu-builder-fields-width: min(400px, 92vw);
+  --zyvavu-builder-fields-width: min(360px, 42vw);
   --zyvavu-builder-fields-z: 40;
   --zyvavu-builder-library-z: 25;
+  --zyvavu-builder-plugin-nav-width: 7.5rem;
   --puck-user-sidebar-left-width: var(--zyvavu-builder-library-rail-width);
   --puck-user-sidebar-right-width: 0px;
+  display: flex;
+  flex-direction: column;
   height: 100%;
   min-width: 0;
   min-height: 0;
   position: relative;
+  overflow: hidden;
 }
 
-/* Kill permanent left/right column growth; canvas takes remaining width. */
-.workspaceShell :global([class*='_PuckLayout_']) {
-  height: 100% !important;
+/* Height chain: viewport → .Puck → layout must fill host (not 100dvh / content height). */
+.workspaceShell :global(.zyvavu-puck-viewport) {
+  flex: 1 1 auto;
   min-height: 0;
   min-width: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+.workspaceShell :global(.Puck),
+.workspaceShell :global([class*='_Puck_tzaxg']) {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  height: 100% !important;
+  max-height: 100%;
+  display: flex !important;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.workspaceShell :global([class*='_PuckLayout_']) {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  height: 100% !important;
+  max-height: 100% !important;
+  overflow: hidden;
+}
+
+.workspaceShell :global([class*='_Puck-portal_']) {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  pointer-events: none;
 }
 
 .workspaceShell :global([class*='_PuckLayout-inner_']) {
-  /* Mega Menu etc. keep a compact plugin rail; Theme Builder zeros it via .themeNavigation. */
   --puck-pluginbar-width: 68px;
   --puck-sidebar-width: 0px;
   --puck-sidebar-left-width: var(--zyvavu-builder-library-rail-width);
   --puck-sidebar-right-width: 0px;
   --puck-frame-width: minmax(0, 1fr);
-  height: 100%;
+  flex: 1 1 auto;
+  height: 100% !important;
+  max-height: 100%;
   min-width: 0;
   min-height: 0;
   transition: none;
@@ -56,7 +95,16 @@
       var(--zyvavu-builder-library-rail-width)
       minmax(0, 1fr)
       0 !important;
-    grid-template-rows: min-content minmax(0, 1fr);
+    grid-template-rows: minmax(40px, auto) minmax(0, 1fr) !important;
+  }
+
+  /* UX V5: Theme Builder collapses Puck header row (undo/page title moved up). */
+  .workspaceShell.themeNavigation :global([class*='_PuckLayout-inner_']),
+  .workspaceShell.themeNavigation :global([class*='_PuckLayout--leftSideBarVisible_'] [class*='_PuckLayout-inner_']),
+  .workspaceShell.themeNavigation :global([class*='_PuckLayout--rightSideBarVisible_'] [class*='_PuckLayout-inner_']),
+  .workspaceShell.themeNavigation
+    :global([class*='_PuckLayout--leftSideBarVisible_'][class*='_PuckLayout--rightSideBarVisible_'] [class*='_PuckLayout-inner_']) {
+    grid-template-rows: 0 minmax(0, 1fr) !important;
   }
 }
 
@@ -71,67 +119,103 @@
   overflow: visible !important;
   z-index: var(--zyvavu-builder-library-z);
   border-inline-end: 1px solid var(--zyvavu-border, var(--puck-color-border));
+  box-sizing: border-box;
 }
 
-.workspaceShell :global([class*='_Sidebar--left_'] + [class*='_Sidebar-resizeHandle_']) {
+.workspaceShell :global([class*='_Sidebar--left_'] [data-widget-pattern-library]) {
+  width: 100%;
+  min-width: 0;
+}
+
+/* Kill Puck Blocks/plugin padding that shoves the 60px rail into the canvas. */
+.workspaceShell :global([class*='_Sidebar--left_'] [class*='_PuckPluginTab']),
+.workspaceShell :global([class*='_Sidebar--left_'] [class*='_PuckPluginTab-body_']),
+.workspaceShell :global([class*='_Sidebar--left_'] [class*='_BlocksPlugin_']),
+.workspaceShell :global([class*='_Sidebar--left_'] [class*='_SidebarSection_']),
+.workspaceShell :global([class*='_Sidebar--left_'] [class*='_SidebarSection-content_']),
+.workspaceShell :global([class*='_Sidebar--left_'] [class*='_SidebarSection-title_']) {
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.workspaceShell :global([class*='_Sidebar--left_'] [class*='_SidebarSection-title_']) {
   display: none !important;
 }
 
-/* Floating Fields — real Puck Fields, zero grid width. */
+.workspaceShell :global([class*='_Sidebar--left_'] + [class*='_Sidebar-resizeHandle_']),
+.workspaceShell :global([class*='_Sidebar--right_'] + [class*='_Sidebar-resizeHandle_']) {
+  display: none !important;
+  pointer-events: none !important;
+}
+
+/*
+ * Floating Fields: share the editor grid cell (overlay right edge).
+ * Canvas cell width stays full; Fields does not allocate a grid column.
+ */
 .workspaceShell :global([class*='_Sidebar--right_']),
 .workspaceShell :global([class*='_PuckLayout-rightSideBar_']),
 .workspaceShell :global([class*='_PuckLayout-right_']) {
-  position: absolute !important;
-  top: 0;
-  right: 0;
-  bottom: 0;
+  grid-area: editor !important;
+  justify-self: end;
+  align-self: stretch;
+  position: relative !important;
+  top: auto;
+  right: auto;
+  bottom: auto;
+  left: auto;
   width: var(--zyvavu-builder-fields-width) !important;
   max-width: var(--zyvavu-builder-fields-width);
   min-width: 0;
   height: auto !important;
+  max-height: 100%;
   z-index: var(--zyvavu-builder-fields-z);
   overflow: hidden;
-  display: flex;
+  display: none;
   flex-direction: column;
   background: var(--mantine-color-body, #fff);
   border-inline-start: 1px solid var(--zyvavu-border, var(--puck-color-border));
-  box-shadow: -8px 0 24px rgba(15, 23, 32, 0.08);
+  box-shadow: -8px 0 24px rgba(15, 23, 32, 0.1);
   pointer-events: auto;
 }
 
-.workspaceShell :global([class*='_Sidebar--right_']:not([class*='_Sidebar--isVisible_'])) {
-  display: none !important;
+.workspaceShell :global([class*='_Sidebar--right_'][class*='_Sidebar--isVisible_']) {
+  display: flex !important;
 }
 
-.workspaceShell :global([class*='_Sidebar--right_'] + [class*='_Sidebar-resizeHandle_']) {
-  display: none !important;
-}
-
-/* Compact Puck chrome header (viewport / undo live here). */
+/* Compact Puck chrome (viewport / undo). */
 .workspaceShell :global([class*='_PuckHeader_']) {
   padding-inline-start: 0 !important;
   max-width: none;
+  min-height: 0;
 }
 
 .workspaceShell :global([class*='_PuckHeader-inner_']) {
   align-items: center;
-  padding-block: 4px;
+  padding-block: 2px;
   padding-inline: var(--mantine-spacing-xs);
   gap: var(--mantine-spacing-xs);
   grid-template-columns: auto minmax(0, 1fr) auto;
+  min-height: 36px;
 }
 
 .workspaceShell :global([class*='_PuckHeader-toggle_']) {
   display: none !important;
 }
 
-/* Canvas: full remaining area; single scroll owner aligned to preview. */
+/* Canvas fills editor row; Puck JS owns preview width/zoom — do not force iframe height. */
 .workspaceShell :global([class*='_PuckCanvas_']) {
   min-width: 0;
   min-height: 0;
-  padding: 4px 0 0;
+  height: 100%;
+  padding: 6px 12px 12px;
   overflow: auto;
   overflow-anchor: none;
+  box-sizing: border-box;
 }
 
 .workspaceShell :global([class*='_PuckCanvas-inner_']) {
@@ -139,26 +223,32 @@
   width: 100%;
   height: 100%;
   justify-content: center;
+  position: relative;
 }
 
-.workspaceShell :global([class*='_PuckCanvas-root_']) {
-  /* Keep Puck zoom/transform contract; avoid extra outer blank strip. */
-  box-sizing: border-box;
-  max-width: 100%;
-}
-
-.workspaceShell :global([class*='_PuckPreview_']),
-.workspaceShell :global([class*='_PuckPreview-frame_']),
-.workspaceShell iframe {
-  display: block;
-  width: 100%;
-  max-width: 100%;
-  height: 100%;
-  border: 0;
+.workspaceShell :global([class*='_PuckCanvas-controls_']) {
+  flex: none;
+  z-index: 6;
 }
 
 .workspaceShell :global([class*='_ViewportControls_']) {
-  z-index: 5;
+  z-index: 6;
+}
+
+/* Thin selection outline — avoid oversized black frames. */
+.workspaceShell
+  :global(
+    [class*='_DraggableComponent--isSelected_']
+      > [class*='_DraggableComponent-overlayWrapper_']
+      > [class*='_DraggableComponent-overlay_']
+  ) {
+  outline-width: 1px !important;
+  outline-color: var(--zyvavu-primary, var(--puck-color-selection-border)) !important;
+  box-shadow: none !important;
+}
+
+.workspaceShell :global([class*='_DraggableComponent-actionsOverlay_']) {
+  filter: none;
 }
 
 /* Fields panel chrome (wraps real Puck Fields children). */
@@ -199,24 +289,82 @@
   padding: var(--mantine-spacing-xs);
 }
 
-/* Marker class composed with workspaceShell for Theme Builder plugin nav. */
 .themeNavigation {
-  /* layout rules require .workspaceShell.themeNavigation */
+  /* composed with .workspaceShell */
 }
 
-/* Theme plugin nav stays in header strip without reserving a side column. */
+/*
+ * UX V5 — collapse Puck's second header row (Page title + native undo).
+ * Undo/Redo live in ThemeBuilder. Viewport/Zoom stay on canvas controls.
+ * Plugin tabs (Blocks/Outline/Page Settings/Theme) move into the left rail.
+ */
+.workspaceShell.themeNavigation :global([class*='_PuckLayout-inner_']) {
+  grid-template-rows: 0 minmax(0, 1fr) !important;
+}
+
+.workspaceShell.themeNavigation :global([class*='_PuckLayout-header_']),
+.workspaceShell.themeNavigation :global([class*='_PuckHeader_']) {
+  display: none !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  max-height: 0 !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+}
+
 .workspaceShell.themeNavigation :global([class*='_PuckLayout-nav_']) {
-  grid-area: header;
-  align-self: stretch;
-  width: min(14rem, 28vw);
-  min-width: 0;
-  z-index: 1;
-  border-top: 0;
+  grid-area: left;
+  position: absolute;
+  left: 0;
+  bottom: 52px;
+  width: var(--zyvavu-builder-library-rail-width);
+  max-width: var(--zyvavu-builder-library-rail-width);
+  height: auto;
+  max-height: 40%;
+  z-index: 28;
+  border: 0;
+  overflow: hidden;
+  background: transparent;
 }
 
-.workspaceShell.themeNavigation :global([class*='_PuckLayout-header_']) {
-  padding-inline-start: min(14rem, 28vw);
+.workspaceShell.themeNavigation :global([class*='_Nav-list_']) {
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  height: auto;
+  padding: 0;
+  gap: 2px;
+}
+
+.workspaceShell.themeNavigation :global([class*='_NavItem_']) {
+  flex: none;
+  padding: 0;
   min-width: 0;
+  width: 100%;
+}
+
+.workspaceShell.themeNavigation :global([class*='_NavItem-link_']) {
+  width: 100%;
+  height: 36px;
+  min-height: 36px;
+  max-height: 36px;
+  justify-content: center;
+  align-items: center;
+  border: 0;
+  border-inline-start: 2px solid transparent;
+  padding-inline: 2px;
+  overflow: hidden;
+}
+
+.workspaceShell.themeNavigation :global([class*='_NavItem-link_'] > span:not([class*='_NavItem-linkIcon_'])) {
+  display: none !important;
+}
+
+.workspaceShell.themeNavigation :global([class*='_NavItem--active_'] > [class*='_NavItem-link_']) {
+  border-inline-start-color: var(--puck-color-interactive);
+  border-bottom-color: transparent;
 }
 
 @media (max-width: 637px) {
@@ -239,13 +387,14 @@
   }
 
   .workspaceShell :global([class*='_Sidebar--right_']) {
-    width: min(100vw, 400px) !important;
+    width: min(100vw, 380px) !important;
     max-width: 100vw;
   }
 
   .workspaceShell.themeNavigation :global([class*='_PuckLayout-nav_']) {
     grid-area: sidenav;
     width: 100%;
+    max-height: none;
   }
 
   .workspaceShell.themeNavigation :global([class*='_PuckLayout-header_']) {

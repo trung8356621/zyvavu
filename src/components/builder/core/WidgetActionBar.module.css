@@ -21,14 +21,14 @@
   background: var(--zyvavu-surface);
   border: 1px solid var(--zyvavu-border);
   border-radius: var(--mantine-radius-lg);
-  box-shadow: var(--mantine-shadow-md);
+  box-shadow: var(--mantine-shadow-sm);
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
   gap: var(--mantine-spacing-xs);
-  padding: var(--mantine-spacing-xs);
+  padding: 4px;
   width: max-content;
-  min-height: calc(var(--zyvavu-actionbar-control-size) + (var(--mantine-spacing-xs) * 2));
+  min-height: calc(var(--zyvavu-actionbar-control-size) + 8px);
   box-sizing: border-box;
 }
 
@@ -122,11 +122,12 @@
   outline-offset: -2px;
 }
 
-/* Keep selected outline readable while the Style dialog is open. */
+/* Keep a thin selected outline while Style dialog is open — never a thick black frame. */
 .libraryHost :global([data-style-modal-open='true'] [class*='_DraggableComponent--isSelected_'] > [class*='_DraggableComponent-overlayWrapper_'] > [class*='_DraggableComponent-overlay_']),
 :global(.zyvavu-puck-viewport[data-style-modal-open='true'] [class*='_DraggableComponent--isSelected_'] > [class*='_DraggableComponent-overlayWrapper_'] > [class*='_DraggableComponent-overlay_']) {
-  outline-width: 2px;
+  outline-width: 1px;
   outline-color: var(--zyvavu-primary, var(--puck-color-selection-border));
+  box-shadow: none;
 }
 
 /* Rail stays in layout flow; expanded library overlays the canvas (not the sidebar width). */
@@ -144,11 +145,10 @@
   }
 }
 
-/* Theme Builder only: relocate the existing plugin navigation, keeping Puck's
-   plugin selection, panels, resize behavior and header tools intact. */
+/* Theme Builder plugin nav — compact; height/fill owned by EditorWorkspace shell. */
 .themeNavigation {
   --zyvavu-builder-library-rail-width: 60px;
-  --zyvavu-builder-plugin-nav-width: min(14rem, 28vw);
+  --zyvavu-builder-plugin-nav-width: min(11rem, 26vw);
   --zyvavu-builder-library-width: var(--zyvavu-builder-library-rail-width);
 }
 .themeNavigation :global([class*='_PuckLayout-inner_']) {
@@ -158,62 +158,13 @@
 .themeNavigation :global([class*='_PuckHeader-toggle_']) {
   display: none;
 }
-.themeNavigation :global([class*='_PuckHeader_']) {
-  padding-inline-start: 0;
-}
-.themeNavigation :global([class*='_PuckLayout-nav_']) {
-  grid-area: header;
-  align-self: stretch;
-  width: var(--zyvavu-builder-plugin-nav-width);
-  min-width: 0;
-  z-index: 1;
-  border-top: 0;
-}
-.themeNavigation :global([class*='_PuckLayout-header_']) {
-  padding-inline-start: var(--zyvavu-builder-plugin-nav-width);
-  min-width: 0;
-}
-.themeNavigation :global([class*='_Nav-list_']) {
-  flex-direction: row;
-  align-items: stretch;
-  width: 100%;
-  padding: 0;
-  gap: 0;
-}
-.themeNavigation :global([class*='_NavItem-link_']) {
-  width: 100%;
-  height: 100%;
-  justify-content: center;
-  border: 0;
-  border-bottom: var(--puck-border-width-strong) solid transparent;
-}
-.themeNavigation :global([class*='_NavItem_']) {
-  flex: 1;
-  padding: 0;
-}
-.themeNavigation :global([class*='_NavItem--active_']) > :global([class*='_NavItem-link_']) {
-  border-bottom-color: var(--puck-color-interactive);
-}
-@media (max-width: 765px) and (min-width: 638px) {
-  .themeNavigation {
-    --zyvavu-builder-plugin-nav-width: min(12rem, 40vw);
-  }
-}
 @media (max-width: 637px) {
-  /* Native mobile Fields and expand/minimize actions remain reachable. */
   .themeNavigation :global([class*='_PuckLayout-nav_']) {
     grid-area: sidenav;
     width: 100%;
+    max-height: none;
   }
   .themeNavigation :global([class*='_PuckLayout-header_']) {
     padding-inline-start: 0;
-  }
-  .themeNavigation :global([class*='_PuckLayout--isExpanded_']) {
-    --zyvavu-mobile-library-height: 55%;
-  }
-  .themeNavigation.themeNavigation :global([class*='_PuckLayout-inner_']) {
-    grid-template-areas: 'sidenav' 'editor' 'left' 'right' 'header';
-    grid-template-rows: auto minmax(0, 1fr) var(--zyvavu-mobile-library-height, 35%) 0 auto;
-    --puck-user-sidebar-left-width: 100%;
   }
 }

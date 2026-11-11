@@ -88,9 +88,9 @@ describe('Direct Style Editing & Overlay Layers', { timeout: 25000 }, () => {
     )
 
     const dialog = screen.getByTestId('unified-style-modal')
-    expect(dialog.getAttribute('data-modal-mode')).toBe('dialog')
+    expect(dialog.getAttribute('data-modal-mode')).toBe('floating')
     expect(screen.getByText(/Background ·/i)).toBeTruthy()
-    expect(screen.getByText(/Changes apply immediately/i)).toBeTruthy()
+    expect(screen.getByText(/Live preview/i)).toBeTruthy()
     expect(screen.queryByRole('button', { name: /Áp dụng \/ Apply/i })).toBeNull()
     expect(screen.getByRole('button', { name: /Hủy \/ Cancel/i })).toBeTruthy()
     expect(screen.getByRole('button', { name: /Reset domain/i })).toBeTruthy()

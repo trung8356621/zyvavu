@@ -75,4 +75,20 @@ describe('Editor history helpers', () => {
     expect(coordinator.canRedo()).toBe(false)
     expect(coordinator.getIndex()).toBe(2)
   })
+
+  it('Puck history coordinator accepts UsePuckData boolean hasPast/hasFuture', () => {
+    const history = {
+      back: vi.fn(),
+      forward: vi.fn(),
+      hasPast: true,
+      hasFuture: false,
+      index: 1,
+      histories: [{}, {}],
+    }
+    const coordinator = createPuckHistoryCoordinator(() => history)
+    expect(coordinator.canUndo()).toBe(true)
+    expect(coordinator.canRedo()).toBe(false)
+    coordinator.undo()
+    expect(history.back).toHaveBeenCalledTimes(1)
+  })
 })

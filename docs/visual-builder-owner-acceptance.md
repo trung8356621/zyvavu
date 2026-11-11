@@ -27,11 +27,12 @@ No commit/push in this workstream. Coverage: `docs/wix-research-coverage-matrix.
 | Gallery per-item Fields (alt/caption/href) | DONE | CODE / TEST · UI NOT VERIFIED |
 | FeaturedMedia + ItemImage fit/aspect | DONE | CODE / TEST · UI NOT VERIFIED |
 | Atom Button / Image focused editors | DONE | CODE / TEST · UI NOT VERIFIED |
-| **Unified Style modal (PO 2026-11-11)** | **DONE** | CODE / TEST · UI NOT VERIFIED — supersedes Style dock |
+| **Editor UX V5 (PO 2026-11-11 final)** | **DONE** | CODE / TEST · UI NOT VERIFIED — one-row header, 3-action bar, floating Design Panel |
+| Floating Design Panel (non-modal) | DONE | CODE / TEST · UI NOT VERIFIED — supersedes centered Style modal |
 | Style selection lock + ActionBar alignment | DONE | CODE / TEST · UI NOT VERIFIED |
 | **Full-width Workspace Shell (PO 2026-11-11)** | **DONE** | CODE / TEST · UI NOT VERIFIED — no permanent 3-col width |
 | Floating Library + Floating Fields | DONE | CODE / TEST · UI NOT VERIFIED |
-| Compact Theme Builder header | DONE | CODE / TEST · UI NOT VERIFIED |
+| Compact Theme Builder header (UX V5) | DONE | CODE / TEST · UI NOT VERIFIED |
 
 ### Remaining / blocked (do not expand before UI FAIL)
 

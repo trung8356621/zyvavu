@@ -1,34 +1,32 @@
 # Wix Implementation Progress
 
-Checkpoint after **Unified Style Modal + Selection UX** (PO 2026-11-11; supersedes focused right-side Style dock).  
-Prior coverage-completion batch remains in history below. Do **not** treat unit PASS as UI VERIFIED.
+Checkpoint after **Editor UX V5** (PO 2026-11-11 final).  
+Supersedes Style Dock and centered blocking Style Modal. Do **not** treat unit PASS as UI VERIFIED.
 
-## PO decision — Unified Style modal (2026-11-11)
+## PO decision — Editor UX V5 (2026-11-11 final)
 
 | Item | Status | Notes |
 | --- | --- | --- |
-| Shared Style dialog host | **DONE (code)** | One `SharedDraggableModal` dialog for all Style domains; dock retired |
-| Selection persistence | **DONE (code)** | Puck SoT; lock/reselect Style target; close if deleted |
-| ActionBar alignment | **DONE (code)** | Shared 36px control row / icon box / overflow trigger |
+| One-row compact header | **DONE (code)** | Template menu + Page Select + Undo/Redo + unsaved dot + Save |
+| Three-action ActionBar | **DONE (code)** | Settings \| Design \| More (+ Puck native Dup/Delete) |
+| Floating Design Panel | **DONE (code)** | `mode="floating"`, ~420px, no backdrop / no focus trap |
+| Design collapse/restore | **DONE (code)** | Session/domain/target preserved |
+| Centered Style dialog | **REMOVED** | Superseded by floating panel |
 | Link Editor dock | PRESERVED | Apply/Cancel/Escape unchanged |
-| Widget Settings (Fields) | PRESERVED | Hidden while Style open; restored on close |
-| UI verification | **UI NOT VERIFIED** | Owner manual pass at 1366×768 / 1920×1080 |
+| Full-width Canvas shell | PRESERVED | 60px rail; Fields/Library/Design overlay |
+| UI verification | **UI NOT VERIFIED** | Owner pass A–Z at 1366×768 / 1920×1080 |
 
-Changed (Style modal PO): `SharedDraggableModal.tsx`, `WidgetStyleContextMenu.tsx`, `PuckHost.tsx`, `WidgetActionBar.module.css`, `atom-settings.ts`, focused unit specs + `unified-style-modal.unit.spec.tsx`.
+Changed (UX V5): `ThemeBuilder.tsx`, `PuckHost.tsx`, `WidgetStyleContextMenu.tsx`, `EditorWorkspace.module.css`, focused unit specs.
 
-## PO decision — Replace Puck 3-column shell (2026-11-11)
+## Prior — Replace Puck 3-column shell (still in force)
 
 | Item | Status | Notes |
 | --- | --- | --- |
-| Full-width Canvas workspace | **DONE (code)** | `EditorWorkspace.module.css` forces 0 right column + 60px left rail only |
-| Floating Widget Library | **DONE (code)** | Existing rail + overlay; overlay does not resize Canvas |
-| Floating Widget Settings | **DONE (code)** | Real Puck Fields in absolute right panel; selection opens / close hides |
-| Compact Theme Builder header | **DONE (code)** | One primary toolbar row; theme details in menu |
-| Shared Style Modal | PRESERVED | Unchanged contract; does not resize Canvas |
-| Iframe/canvas scroll alignment | **DONE (code)** | Canvas padding/overflow tightened to preview edge |
-| UI verification | **UI NOT VERIFIED** | Owner pass A–R at 1366×768 / 1920×1080 |
+| Full-width Canvas workspace | **DONE (code)** | 0 right column + 60px left rail |
+| Floating Widget Library / Fields | **DONE (code)** | Overlay; does not resize Canvas |
+| UI verification | **UI NOT VERIFIED** | Owner pass |
 
-Layout ownership: Puck still owns document/selection/history/Fields/registry/canvas; only the CSS-grid presentation shell is overridden via supported `fields`/`components` overrides + workspace CSS (no second editor engine).
+Layout ownership: Puck still owns document/selection/history/Fields/registry/canvas; presentation only (no second editor engine).
 
 ## Baseline
 

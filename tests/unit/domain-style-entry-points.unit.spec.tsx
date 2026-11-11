@@ -81,7 +81,7 @@ describe('Domain-specific Style entry points', () => {
       </MantineProvider>,
     )
     const dialog = screen.getByTestId('unified-style-modal')
-    expect(dialog.getAttribute('data-modal-mode')).toBe('dialog')
+    expect(dialog.getAttribute('data-modal-mode')).toBe('floating')
     expect(screen.getByRole('dialog', { name: /Background ·/ })).toBeTruthy()
     expect(screen.getByText('Surface')).toBeTruthy()
     expect(screen.getByText('Pattern')).toBeTruthy()

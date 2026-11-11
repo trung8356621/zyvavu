@@ -1,8 +1,8 @@
 'use client'
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Button, Group, Stack, Text } from '@mantine/core'
-import { Bookmark, Sliders } from 'lucide-react'
+import { ActionIcon, Box, Button, Group, Stack, Text, Tooltip } from '@mantine/core'
+import { Bookmark, ChevronRight, Minimize2, Paintbrush } from 'lucide-react'
 import {
   getStyleModalDomains,
   orderStyleToolbarDomains,
@@ -193,6 +193,8 @@ function WidgetStyleSession({
   const [colorModalTarget, setColorModalTarget] = useState<
     'text' | 'background' | 'overlay' | 'border' | 'fallback' | 'pattern' | null
   >(null)
+  /** UX V5 — collapse hides chrome but keeps session/domain/target. */
+  const [designCollapsed, setDesignCollapsed] = useState(false)
 
   const domains = useMemo(
     () => orderStyleToolbarDomains(getStyleModalDomains(componentType, componentVariant)),
@@ -651,7 +653,37 @@ function WidgetStyleSession({
 
   const widgetLabel = manifest?.label || componentType
   const domainLabel = focusedDomain ? STYLE_MODAL_TITLES[focusedDomain] : null
-  const panelTitle = domainLabel ? `${domainLabel} · ${widgetLabel}` : `Style · ${widgetLabel}`
+  const panelTitle = domainLabel ? `${domainLabel} · ${widgetLabel}` : `Design · ${widgetLabel}`
+  const panelWidth = 'min(420px, calc(100vw - 24px))'
+
+  if (designCollapsed) {
+    return (
+      <Box
+        data-testid="design-panel-collapsed"
+        style={{
+          position: 'fixed',
+          top: '50%',
+          right: 8,
+          transform: 'translateY(-50%)',
+          zIndex: ADMIN_OVERLAY_LAYERS.STYLE_MODAL,
+          pointerEvents: 'auto',
+        }}
+      >
+        <Tooltip label={`Restore Design · ${widgetLabel}`} position="left">
+          <ActionIcon
+            size="lg"
+            variant="filled"
+            color="teal"
+            radius="md"
+            aria-label="Restore Design panel"
+            onClick={() => setDesignCollapsed(false)}
+          >
+            <ChevronRight size={18} />
+          </ActionIcon>
+        </Tooltip>
+      </Box>
+    )
+  }
 
   return (
     <>
@@ -661,18 +693,45 @@ function WidgetStyleSession({
         title={panelTitle}
         subtitle={
           focusedDomain
-            ? 'Changes apply immediately · Cancel restores this session · Reset clears this domain only'
-            : 'Choose a style domain'
+            ? 'Live preview · Cancel restores session · Reset clears this domain'
+            : 'Choose a design domain'
         }
-        headerExtra={<Sliders size={16} color="var(--mantine-color-teal-7, #0e6b66)" />}
-        width="min(720px, calc(100vw - 32px))"
-        mode="dialog"
-        withBackdrop
+        headerExtra={
+          <Group gap={4} wrap="nowrap">
+            <Paintbrush size={15} color="var(--mantine-color-teal-7, #0e6b66)" />
+            <Tooltip label="Collapse Design panel">
+              <ActionIcon
+                size="sm"
+                variant="subtle"
+                color="gray"
+                aria-label="Collapse Design panel"
+                onClick={() => setDesignCollapsed(true)}
+              >
+                <Minimize2 size={14} />
+              </ActionIcon>
+            </Tooltip>
+          </Group>
+        }
+        width={panelWidth}
+        mode="floating"
+        withBackdrop={false}
         draggable={false}
         showCloseButton={true}
         closeOnClickOutside={false}
+        initialPosition={
+          typeof window === 'undefined'
+            ? { x: 340, y: 56 }
+            : {
+                x: Math.max(12, window.innerWidth - Math.min(420, window.innerWidth - 24) - 12),
+                y: 56,
+              }
+        }
         data-testid="unified-style-modal"
-        style={{ visibility: mediaPickerOpened ? 'hidden' : undefined }}
+        style={{
+          visibility: mediaPickerOpened ? 'hidden' : undefined,
+          height: 'calc(100dvh - 68px)',
+          maxHeight: 'calc(100dvh - 68px)',
+        }}
         closeOnEscape={!mediaPickerOpened && !animationPickerOpened && !colorModalTarget}
         zIndex={ADMIN_OVERLAY_LAYERS.STYLE_MODAL}
         footer={
@@ -707,7 +766,7 @@ function WidgetStyleSession({
           {!focusedDomain ? (
             <Stack gap="xs" data-testid="style-domain-launcher">
               <Text size="sm" c="dimmed">
-                Open one style domain at a time.
+                Open one design domain at a time.
               </Text>
               {domains.map((item) => (
                 <Button
@@ -738,9 +797,9 @@ function WidgetStyleSession({
                   variant="subtle"
                   size="xs"
                   onClick={() => setActiveDomain(null)}
-                  aria-label="Back to style domains"
+                  aria-label="Back to design domains"
                 >
-                  All domains
+                  Back to Design menu
                 </Button>
               )}
               {renderDomainBody(focusedDomain)}

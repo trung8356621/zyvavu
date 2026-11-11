@@ -20,12 +20,18 @@ import type { StyleCommitOptions } from './style-session-contract'
 export type PuckHistoryApi = {
   back: () => void
   forward: () => void
-  hasPast: () => boolean
-  hasFuture: () => boolean
+  /** Puck HistorySlice uses functions; UsePuckData exposes booleans. */
+  hasPast: boolean | (() => boolean)
+  hasFuture: boolean | (() => boolean)
   index: number
   histories: unknown[]
   setHistories?: (histories: unknown[]) => void
   setHistoryIndex?: (index: number) => void
+}
+
+function readHistoryFlag(value: boolean | (() => boolean) | undefined): boolean {
+  if (typeof value === 'function') return Boolean(value())
+  return Boolean(value)
 }
 
 export type PuckDispatch = (action: {
@@ -51,8 +57,8 @@ export function createPuckHistoryCoordinator(getHistory: () => PuckHistoryApi | 
     owner: 'puck',
     undo: () => getHistory()?.back(),
     redo: () => getHistory()?.forward(),
-    canUndo: () => Boolean(getHistory()?.hasPast()),
-    canRedo: () => Boolean(getHistory()?.hasFuture()),
+    canUndo: () => readHistoryFlag(getHistory()?.hasPast),
+    canRedo: () => readHistoryFlag(getHistory()?.hasFuture),
     getIndex: () => getHistory()?.index ?? -1,
   }
 }

@@ -4,21 +4,21 @@ import { withRoleContract, homeHeadingWarning } from '@/lib/theme-engine/widget-
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import {
+  ActionIcon,
   Alert,
-  Badge,
   Box,
   Button,
   Group,
   Menu,
   Paper,
-  SegmentedControl,
   Select,
   Text,
   Tooltip,
 } from '@mantine/core'
-import { AlertCircle, ArrowLeft, Check, Info, Save } from 'lucide-react'
+import { AlertCircle, ArrowLeft, Check, ChevronDown, Redo2, Save, Undo2 } from 'lucide-react'
 
 import { PuckHost } from '@/components/builder/core/PuckHost'
+import type { EditorHistoryCoordinator } from '@/lib/style-engine/editor-history'
 import type { BuilderDocument } from '@/components/builder/core/types'
 import type { TemplateContext, ThemeConfig, ThemeTemplateDocument } from '@/lib/theme-engine/types'
 import { getTemplatePolicy } from '@/lib/theme-engine/policy'
@@ -71,6 +71,9 @@ export function ThemeBuilder({
   const [isSaving, setIsSaving] = useState<boolean>(false)
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [history, setHistory] = useState<EditorHistoryCoordinator | null>(null)
+  const [historyTick, setHistoryTick] = useState(0)
+  const bumpHistory = useCallback(() => setHistoryTick((n) => n + 1), [])
 
   const activeDoc = templates[selectedTemplate]
   const latestDocRef = useRef<ThemeTemplateDocument>(activeDoc)
@@ -218,32 +221,12 @@ export function ThemeBuilder({
       {fontUrl && <link rel="stylesheet" href={fontUrl} />}
       <style dangerouslySetInnerHTML={{ __html: themeCss }} />
 
-      {homeHeadingWarning(activeDoc) && <Text size="sm" c="dimmed">{homeHeadingWarning(activeDoc)}</Text>}
-      {['single', 'page', 'category'].includes(selectedTemplate) && activeDoc?.metadata?.roleContract !== 1 && (
-        <Button
-          variant="subtle"
-          size="sm"
-          onClick={() => {
-            const upgraded = withRoleContract(latestDocRef.current)
-            const result = validateThemeTemplateDocument(upgraded, selectedTemplate, templates[selectedTemplate])
-            if (!result.valid) {
-              setSaveError(`Upgrade requires: ${result.errors.join('; ')}`)
-              return
-            }
-            setTemplates((previous) => ({ ...previous, [selectedTemplate]: upgraded }))
-            latestDocRef.current = upgraded
-            setIsDirty(true)
-          }}
-        >
-          Enable required title/content roles
-        </Button>
-      )}
-
-      {/* ONE primary compact toolbar — secondary theme details in a menu */}
+      {/* PO UX V5 — one primary header row */}
       <Paper
         px="sm"
-        py={6}
+        py={4}
         withBorder
+        data-testid="theme-builder-header"
         style={{
           borderBottom: '1px solid var(--zyvavu-border, #dfe5e2)',
           borderRadius: 0,
@@ -252,8 +235,8 @@ export function ThemeBuilder({
           flexShrink: 0,
         }}
       >
-        <Group justify="space-between" wrap="nowrap" gap="sm" style={{ minWidth: 0 }}>
-          <Group gap="xs" wrap="nowrap" style={{ minWidth: 0 }}>
+        <Group justify="space-between" wrap="nowrap" gap="xs" style={{ minWidth: 0 }}>
+          <Group gap={6} wrap="nowrap" style={{ minWidth: 0 }}>
             <Button
               component={Link}
               href="/admin/themes"
@@ -271,36 +254,20 @@ export function ThemeBuilder({
               Themes
             </Button>
 
-            {installedThemes.length > 1 ? (
-              <Select
-                size="xs"
-                w={150}
-                data={installedThemes.map((t) => ({
-                  value: t.id,
-                  label: `${t.label}${t.id === activeThemeId ? ' (Active)' : ''}`,
-                }))}
-                value={themeId}
-                onChange={(val) => {
-                  if (val && val !== themeId) {
-                    if (isDirty && !confirm('You have unsaved changes. Switch themes anyway?')) return
-                    window.location.href = `/admin/theme-builder?theme=${val}&template=${selectedTemplate}`
-                  }
-                }}
-                aria-label="Theme"
-              />
-            ) : (
-              <Text size="sm" fw={700} c="var(--zyvavu-primary, #0e6b66)" style={{ whiteSpace: 'nowrap' }}>
-                {themeLabel}
-              </Text>
-            )}
-
             <Menu withinPortal position="bottom-start">
               <Menu.Target>
-                <Tooltip label="Theme & builder details">
-                  <Button size="compact-sm" variant="subtle" color="gray" leftSection={<Info size={14} />}>
-                    Details
-                  </Button>
-                </Tooltip>
+                <Button
+                  size="compact-sm"
+                  variant="light"
+                  color="gray"
+                  rightSection={<ChevronDown size={14} />}
+                  aria-label="Template menu"
+                  style={{ maxWidth: 180 }}
+                >
+                  <Text size="sm" fw={600} truncate>
+                    {themeLabel}
+                  </Text>
+                </Button>
               </Menu.Target>
               <Menu.Dropdown>
                 <Menu.Label>Theme</Menu.Label>
@@ -308,38 +275,140 @@ export function ThemeBuilder({
                   {themeLabel}
                   {themeId === activeThemeId ? ' · Active' : ''}
                 </Menu.Item>
-                <Menu.Label>Builder mode</Menu.Label>
+                {installedThemes.length > 1 && (
+                  <>
+                    <Menu.Divider />
+                    <Menu.Label>Switch theme</Menu.Label>
+                    {installedThemes.map((t) => (
+                      <Menu.Item
+                        key={t.id}
+                        disabled={t.id === themeId}
+                        onClick={() => {
+                          if (isDirty && !confirm('You have unsaved changes. Switch themes anyway?')) return
+                          window.location.href = `/admin/theme-builder?theme=${t.id}&template=${selectedTemplate}`
+                        }}
+                      >
+                        {t.label}
+                        {t.id === activeThemeId ? ' (Active)' : ''}
+                      </Menu.Item>
+                    ))}
+                  </>
+                )}
+                <Menu.Divider />
+                <Menu.Label>Builder</Menu.Label>
                 <Menu.Item disabled>{modeLabel}</Menu.Item>
-                <Menu.Label>Template</Menu.Label>
-                <Menu.Item disabled>{selectedTemplate}</Menu.Item>
+                <Menu.Item disabled>Context: {selectedTemplate}</Menu.Item>
+                {homeHeadingWarning(activeDoc) && (
+                  <>
+                    <Menu.Divider />
+                    <Menu.Label>Notice</Menu.Label>
+                    <Menu.Item disabled>{homeHeadingWarning(activeDoc)}</Menu.Item>
+                  </>
+                )}
+                {['single', 'page', 'category'].includes(selectedTemplate) &&
+                  activeDoc?.metadata?.roleContract !== 1 && (
+                    <>
+                      <Menu.Divider />
+                      <Menu.Item
+                        onClick={() => {
+                          const upgraded = withRoleContract(latestDocRef.current)
+                          const result = validateThemeTemplateDocument(
+                            upgraded,
+                            selectedTemplate,
+                            templates[selectedTemplate],
+                          )
+                          if (!result.valid) {
+                            setSaveError(`Upgrade requires: ${result.errors.join('; ')}`)
+                            return
+                          }
+                          setTemplates((previous) => ({ ...previous, [selectedTemplate]: upgraded }))
+                          latestDocRef.current = upgraded
+                          setIsDirty(true)
+                        }}
+                      >
+                        Enable required title/content roles
+                      </Menu.Item>
+                    </>
+                  )}
               </Menu.Dropdown>
             </Menu>
 
-            {isDirty && (
-              <Badge color="orange" variant="filled" size="sm">
-                Unsaved
-              </Badge>
-            )}
+            <Select
+              size="xs"
+              w={140}
+              aria-label="Page context"
+              data={TEMPLATE_OPTIONS.map((opt) => ({
+                label: opt.badge ? `${opt.label} (${opt.badge})` : opt.label,
+                value: opt.value,
+                disabled: opt.value === 'product',
+              }))}
+              value={selectedTemplate}
+              onChange={(val) => {
+                if (val) handleTemplateChange(val as TemplateContext)
+              }}
+              allowDeselect={false}
+              comboboxProps={{ withinPortal: true }}
+            />
           </Group>
 
-          <SegmentedControl
-            value={selectedTemplate}
-            onChange={(val) => handleTemplateChange(val as TemplateContext)}
-            data={TEMPLATE_OPTIONS.map((opt) => ({
-              label: opt.label,
-              value: opt.value,
-              disabled: opt.value === 'product',
-            }))}
-            size="xs"
-            color="teal"
-            style={{ flexShrink: 1, minWidth: 0 }}
-          />
+          <Group gap={4} wrap="nowrap">
+            <Tooltip label="Undo">
+              <ActionIcon
+                size="sm"
+                variant="subtle"
+                color="gray"
+                aria-label="Undo"
+                disabled={!history?.canUndo()}
+                onClick={() => {
+                  history?.undo()
+                  bumpHistory()
+                }}
+              >
+                <Undo2 size={15} />
+              </ActionIcon>
+            </Tooltip>
+            <Tooltip label="Redo">
+              <ActionIcon
+                size="sm"
+                variant="subtle"
+                color="gray"
+                aria-label="Redo"
+                disabled={!history?.canRedo()}
+                onClick={() => {
+                  history?.redo()
+                  bumpHistory()
+                }}
+              >
+                <Redo2 size={15} />
+              </ActionIcon>
+            </Tooltip>
+            {/* historyTick forces canUndo/canRedo re-read after undo/redo */}
+            <span style={{ display: 'none' }} aria-hidden>
+              {historyTick}
+            </span>
 
-          <Group gap="xs" wrap="nowrap">
+            <Tooltip label={isDirty ? 'Unsaved changes' : saveSuccess ? 'Saved' : 'All changes saved'}>
+              <Box
+                component="span"
+                aria-label={isDirty ? 'Unsaved changes' : 'Saved'}
+                data-testid="unsaved-indicator"
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: 999,
+                  backgroundColor: isDirty
+                    ? 'var(--mantine-color-orange-6)'
+                    : saveSuccess
+                      ? 'var(--mantine-color-teal-6)'
+                      : 'var(--mantine-color-gray-4)',
+                  flexShrink: 0,
+                }}
+              />
+            </Tooltip>
             {saveSuccess && (
-              <Badge color="green" variant="light" leftSection={<Check size={12} />} size="sm">
-                Saved
-              </Badge>
+              <Text size="xs" c="teal" style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                <Check size={12} /> Saved
+              </Text>
             )}
             <Button
               onClick={() => handleSave()}
@@ -392,6 +461,7 @@ export function ThemeBuilder({
           height="100%"
           themeConfig={themeConfig}
           templateContext={selectedTemplate}
+          onHistoryReady={setHistory}
         />
       </Box>
     </Box>

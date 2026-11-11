@@ -27,6 +27,8 @@ import {
   MoreHorizontal,
   Link as LinkIcon,
   Bookmark,
+  Settings2,
+  Paintbrush,
   X,
   type LucideIcon,
 } from 'lucide-react'
@@ -369,12 +371,17 @@ function PuckActionBarBridge({
     })
   }
 
+  const designDomains = orderStyleToolbarDomains(
+    getStyleModalDomains(componentType, resolvedItem?.props?.variant),
+  )
+
   return (
     <div
       ref={toolbarRef}
       className={actionBarStyles.toolbar}
       onClick={(event) => event.stopPropagation()}
       data-style-open={Boolean(componentId && styleMenuComponentId === componentId)}
+      data-testid="widget-actionbar-v5"
     >
       {rawType === 'Image' && componentId && (
         <ImageQuickAction
@@ -398,48 +405,68 @@ function PuckActionBarBridge({
           {label && <ActionBar.Label label={label} />}
         </ActionBar.Group>
         <ActionBar.Group>
-          {orderStyleToolbarDomains(
-            getStyleModalDomains(componentType, resolvedItem?.props?.variant),
-          )
-            .slice(0, 4)
-            .map((domain) => {
-              const Icon = STYLE_DOMAIN_ICONS[domain]
-              return (
-                <ActionBar.Action
-                  key={domain}
-                  label={STYLE_MODAL_TITLES[domain]}
-                  onClick={(event) => handleEditStyleClick(event, domain)}
-                >
-                  <span className={actionBarStyles.styleTrigger}>
-                    <Icon size={20} aria-hidden />
-                  </span>
-                </ActionBar.Action>
-              )
-            })}
-          <Menu withinPortal>
+          {/* UX V5: Settings | Design | More — preserve all capabilities */}
+          <ActionBar.Action
+            label="Settings"
+            onClick={(event) => {
+              event.stopPropagation()
+              bridge.openAtomSettings()
+            }}
+          >
+            <span className={actionBarStyles.styleTrigger}>
+              <Settings2 size={20} aria-hidden />
+            </span>
+          </ActionBar.Action>
+          <ActionBar.Action
+            label="Design"
+            onClick={(event) => {
+              // Opens floating Design Panel on the capability-aware domain launcher.
+              handleEditStyleClick(event, designDomains.length === 1 ? designDomains[0] : undefined)
+            }}
+          >
+            <span className={actionBarStyles.styleTrigger} data-testid="widget-design-trigger">
+              <Paintbrush size={20} aria-hidden />
+            </span>
+          </ActionBar.Action>
+          <Menu withinPortal={false} position="bottom-end" closeOnItemClick>
             <Menu.Target>
               <button
                 type="button"
                 className={actionBarStyles.overflowTrigger}
                 aria-label="More actions"
                 title="More actions"
+                data-testid="widget-more-trigger"
               >
                 <MoreHorizontal size={20} aria-hidden />
               </button>
             </Menu.Target>
-            <Menu.Dropdown>
-              {orderStyleToolbarDomains(
-                getStyleModalDomains(componentType, resolvedItem?.props?.variant),
-              )
-                .slice(4)
-                .map((domain) => (
+            <Menu.Dropdown data-testid="widget-more-menu">
+              {designDomains.map((domain) => {
+                const Icon = STYLE_DOMAIN_ICONS[domain]
+                return (
                   <Menu.Item
                     key={domain}
+                    leftSection={<Icon size={16} />}
                     onClick={(event) => handleEditStyleClick(event, domain)}
                   >
                     {STYLE_MODAL_TITLES[domain]}
                   </Menu.Item>
-                ))}
+                )
+              })}
+              {(componentType === 'Button' ||
+                componentType === 'Image' ||
+                componentType === 'Video') &&
+                componentId && (
+                  <Menu.Item
+                    leftSection={<LinkIcon size={16} />}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      bridge.openAtomLink(componentId)
+                    }}
+                  >
+                    Link
+                  </Menu.Item>
+                )}
               <Menu.Item
                 leftSection={<Bookmark size={16} />}
                 disabled={!canSaveSelectedAsPattern(componentType)}
@@ -452,22 +479,6 @@ function PuckActionBarBridge({
               </Menu.Item>
             </Menu.Dropdown>
           </Menu>
-          {/* Primary widget settings live in native Puck Fields on selection — no gear. */}
-          {(componentType === 'Button' ||
-            componentType === 'Image' ||
-            componentType === 'Video') &&
-            componentId && (
-            <ActionBar.Action
-              key="atom-link"
-              label="Link"
-              onClick={(event) => {
-                event.stopPropagation()
-                bridge.openAtomLink(componentId)
-              }}
-            >
-              <LinkIcon size={20} />
-            </ActionBar.Action>
-          )}
           <ActionBar.Separator />
           {children}
         </ActionBar.Group>
@@ -523,6 +534,8 @@ export type PuckHostProps = {
   desktopOnly?: boolean
   themeConfig?: ThemeConfig
   templateContext?: string
+  /** Lift Puck history undo/redo into the Theme Builder one-row header (UX V5). */
+  onHistoryReady?: (history: ReturnType<typeof createPuckHistoryCoordinator>) => void
 }
 
 export function PuckHost({
@@ -540,6 +553,7 @@ export function PuckHost({
   desktopOnly = false,
   themeConfig,
   templateContext,
+  onHistoryReady,
 }: PuckHostProps) {
   const [localDoc, setLocalDoc] = useState<BuilderDocument>(document)
   const [validationError, setValidationError] = useState<string | null>(null)
@@ -1017,6 +1031,10 @@ export function PuckHost({
     [],
   )
 
+  React.useEffect(() => {
+    onHistoryReady?.(historyCoordinator)
+  }, [historyCoordinator, onHistoryReady])
+
   const bridgeValue: EditorBridgeValue = {
     openAtomSettings,
     closeAtomSettings,
@@ -1151,6 +1169,8 @@ export function PuckHost({
             minHeight: 0,
             overflow: 'hidden',
             position: 'relative',
+            display: 'flex',
+            flexDirection: 'column',
           }}
         >
           <Puck
