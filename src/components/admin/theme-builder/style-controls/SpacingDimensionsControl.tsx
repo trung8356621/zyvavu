@@ -35,6 +35,10 @@ export interface SpacingDimensionsControlProps {
   spacing?: SpacingConfig
   dimensions?: DimensionsConfig
   showDimensions?: boolean
+  /** SlideItem: margin locked to protect slider track alignment. */
+  hideMargin?: boolean
+  /** Banner Slider Arrows: Top/Right/Bottom/Left when unlinked. */
+  fullMarginSides?: boolean
   onChangeSpacing: (spacing: SpacingConfig) => void
   onChangeDimensions: (dimensions: DimensionsConfig, key?: keyof DimensionsConfig) => void
   onResetGroup?: (group: StyleDomainGroup) => void
@@ -72,8 +76,11 @@ function hasPaddingSides(padding?: SpacingConfig['padding']): boolean {
   return Boolean(padding.topToken || padding.bottomToken || padding.leftToken || padding.rightToken)
 }
 
-function hasMarginSides(margin?: SpacingConfig['margin']): boolean {
+function hasMarginSides(margin?: SpacingConfig['margin'], full = false): boolean {
   if (!margin) return false
+  if (full) {
+    return Boolean(margin.topToken || margin.bottomToken || margin.leftToken || margin.rightToken)
+  }
   return Boolean(margin.topToken || margin.bottomToken)
 }
 
@@ -98,6 +105,8 @@ export function SpacingDimensionsControl({
   spacing = {},
   dimensions = {},
   showDimensions = true,
+  hideMargin = false,
+  fullMarginSides = false,
   onChangeSpacing,
   onChangeDimensions,
   onResetGroup,
@@ -140,7 +149,7 @@ export function SpacingDimensionsControl({
       ...partial,
     }
     if (!next.padding) delete next.padding
-    if (!next.margin) delete next.margin
+    if (hideMargin || !next.margin) delete next.margin
     if (!next.gapToken) delete next.gapToken
     commitSpacing(next)
   }
@@ -153,11 +162,16 @@ export function SpacingDimensionsControl({
   }
 
   const padValues = (['topToken', 'rightToken', 'bottomToken', 'leftToken'] as const).map(displayed.padding)
-  const marginValues = (['topToken', 'bottomToken'] as const).map(displayed.margin)
+  const marginSideKeys = fullMarginSides
+    ? (['topToken', 'rightToken', 'bottomToken', 'leftToken'] as const)
+    : (['topToken', 'bottomToken'] as const)
+  const marginValues = marginSideKeys.map(displayed.margin)
   const paddingLinked = split[breakpoint]?.padding === false ||
     (!hasPaddingSides(activeSpacing.padding) && split[breakpoint]?.padding !== true && new Set(padValues).size === 1)
   const marginLinked = split[breakpoint]?.margin === false ||
-    (!hasMarginSides(activeSpacing.margin) && split[breakpoint]?.margin !== true && new Set(marginValues).size === 1)
+    (!hasMarginSides(activeSpacing.margin, fullMarginSides) &&
+      split[breakpoint]?.margin !== true &&
+      new Set(marginValues).size === 1)
 
   const setPaddingLinked = (linked: boolean) => {
     setSplit((previous) => ({ ...previous, [breakpoint]: { ...previous[breakpoint], padding: !linked } }))
@@ -179,8 +193,13 @@ export function SpacingDimensionsControl({
   const setMarginLinked = (linked: boolean) => {
     setSplit((previous) => ({ ...previous, [breakpoint]: { ...previous[breakpoint], margin: !linked } }))
     const current = activeSpacing.margin || {}
-    if (linked && hasMarginSides(current)) {
-      const token = current.token || current.topToken || current.bottomToken
+    if (linked && hasMarginSides(current, fullMarginSides)) {
+      const token =
+        current.token ||
+        current.topToken ||
+        current.bottomToken ||
+        current.leftToken ||
+        current.rightToken
       updateSpacing({
         margin: token ? { token } : undefined,
       })
@@ -203,13 +222,18 @@ export function SpacingDimensionsControl({
     updateSpacing({ padding: empty ? undefined : next })
   }
 
-  const updateMarginSide = (side: 'topToken' | 'bottomToken', value: string | null) => {
+  const updateMarginSide = (
+    side: 'topToken' | 'bottomToken' | 'leftToken' | 'rightToken',
+    value: string | null,
+  ) => {
     const next = {
       topToken: activeSpacing.margin?.token || activeSpacing.margin?.topToken,
       bottomToken: activeSpacing.margin?.token || activeSpacing.margin?.bottomToken,
+      leftToken: activeSpacing.margin?.token || activeSpacing.margin?.leftToken,
+      rightToken: activeSpacing.margin?.token || activeSpacing.margin?.rightToken,
       [side]: value || undefined,
     }
-    const empty = !next.topToken && !next.bottomToken
+    const empty = !next.topToken && !next.bottomToken && !next.leftToken && !next.rightToken
     updateSpacing({ margin: empty ? undefined : next })
   }
 
@@ -306,45 +330,70 @@ export function SpacingDimensionsControl({
               </Group>
             )}
 
-            <Switch
-              size="sm"
-              label="Link margin (vertical)"
-              checked={marginLinked}
-              onChange={(event) => setMarginLinked(event.currentTarget.checked)}
-            />
-            {marginLinked ? (
-              <Select
-                size="sm"
-                label="Margin"
-                placeholder="Mixed"
-                clearable={Boolean(activeSpacing.margin?.token)}
-                value={new Set(marginValues).size === 1 ? marginValues[0] : null}
-                onChange={(val) =>
-                  updateSpacing({
-                    margin: val ? { token: val } : undefined,
-                  })
-                }
-                data={withEffectiveOption(MARGIN_OPTIONS, marginValues[0])}
-              />
-            ) : (
-              <Group grow gap="xs">
-                <Select
+            {!hideMargin && (
+              <>
+                <Switch
                   size="sm"
-                  label="Top"
-                  clearable={Boolean(activeSpacing.margin?.token || activeSpacing.margin?.topToken)}
-                  value={displayed.margin('topToken')}
-                  data={withEffectiveOption(MARGIN_OPTIONS, displayed.margin('topToken'))}
-                  onChange={(val) => updateMarginSide('topToken', val)}
+                  label={fullMarginSides ? 'Link margin sides' : 'Link margin (vertical)'}
+                  checked={marginLinked}
+                  onChange={(event) => setMarginLinked(event.currentTarget.checked)}
                 />
-                <Select
-                  size="sm"
-                  label="Bottom"
-                  clearable={Boolean(activeSpacing.margin?.token || activeSpacing.margin?.bottomToken)}
-                  value={displayed.margin('bottomToken')}
-                  data={withEffectiveOption(MARGIN_OPTIONS, displayed.margin('bottomToken'))}
-                  onChange={(val) => updateMarginSide('bottomToken', val)}
-                />
-              </Group>
+                {marginLinked ? (
+                  <Select
+                    size="sm"
+                    label="Margin"
+                    placeholder="Mixed"
+                    clearable={Boolean(activeSpacing.margin?.token)}
+                    value={new Set(marginValues).size === 1 ? marginValues[0] : null}
+                    onChange={(val) =>
+                      updateSpacing({
+                        margin: val ? { token: val } : undefined,
+                      })
+                    }
+                    data={withEffectiveOption(MARGIN_OPTIONS, marginValues[0])}
+                  />
+                ) : fullMarginSides ? (
+                  <Group grow gap="xs">
+                    {(
+                      [
+                        ['topToken', 'Top'],
+                        ['rightToken', 'Right'],
+                        ['bottomToken', 'Bottom'],
+                        ['leftToken', 'Left'],
+                      ] as const
+                    ).map(([side, label]) => (
+                      <Select
+                        key={side}
+                        size="sm"
+                        label={label}
+                        clearable={Boolean(activeSpacing.margin?.token || activeSpacing.margin?.[side])}
+                        value={displayed.margin(side)}
+                        data={withEffectiveOption(MARGIN_OPTIONS, displayed.margin(side))}
+                        onChange={(val) => updateMarginSide(side, val)}
+                      />
+                    ))}
+                  </Group>
+                ) : (
+                  <Group grow gap="xs">
+                    <Select
+                      size="sm"
+                      label="Top"
+                      clearable={Boolean(activeSpacing.margin?.token || activeSpacing.margin?.topToken)}
+                      value={displayed.margin('topToken')}
+                      data={withEffectiveOption(MARGIN_OPTIONS, displayed.margin('topToken'))}
+                      onChange={(val) => updateMarginSide('topToken', val)}
+                    />
+                    <Select
+                      size="sm"
+                      label="Bottom"
+                      clearable={Boolean(activeSpacing.margin?.token || activeSpacing.margin?.bottomToken)}
+                      value={displayed.margin('bottomToken')}
+                      data={withEffectiveOption(MARGIN_OPTIONS, displayed.margin('bottomToken'))}
+                      onChange={(val) => updateMarginSide('bottomToken', val)}
+                    />
+                  </Group>
+                )}
+              </>
             )}
             {(columns || (sectionLayout && !bpActive)) && (
               <Select

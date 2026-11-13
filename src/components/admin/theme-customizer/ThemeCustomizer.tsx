@@ -216,10 +216,17 @@ export function ThemeCustomizer({
   >(null)
   const initialTypographySnapshotRef = useRef<ThemeTokens['typography'] | null>(null)
 
-  // Preview iframe state
+  // Preview iframe state — routes always carry `preview_theme=<selected Theme ID>`
   const [previewRoute, setPreviewRoute] = useState<string>(previewRoutes[0]?.value || '/')
   const [previewDevice, setPreviewDevice] = useState<'desktop' | 'tablet' | 'mobile'>('desktop')
   const iframeRef = useRef<HTMLIFrameElement | null>(null)
+
+  useEffect(() => {
+    setPreviewRoute((current) => {
+      if (previewRoutes.some((route) => route.value === current)) return current
+      return previewRoutes[0]?.value || current
+    })
+  }, [previewRoutes, themeId])
 
   // Determine if draft differs from published
   const isDirty = useMemo(() => {

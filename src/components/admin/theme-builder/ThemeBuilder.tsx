@@ -6,8 +6,10 @@ import Link from 'next/link'
 import {
   ActionIcon,
   Alert,
+  Badge,
   Box,
   Button,
+  FileButton,
   Group,
   Menu,
   Modal,
@@ -17,18 +19,17 @@ import {
   TextInput,
   Tooltip,
 } from '@mantine/core'
-import { AlertCircle, ArrowLeft, ChevronDown, Plus, Redo2, Save, Undo2 } from 'lucide-react'
+import { AlertCircle, ArrowLeft, ChevronDown, Download, Plus, Redo2, Save, Undo2, Upload } from 'lucide-react'
 
 import { PuckHost } from '@/components/builder/core/PuckHost'
 import type { EditorHistoryCoordinator } from '@/lib/style-engine/editor-history'
 import type { BuilderDocument } from '@/components/builder/core/types'
 import type { TemplateContext, ThemeConfig, ThemeTemplateDocument } from '@/lib/theme-engine/types'
+import { THEME_BUILDER_TEMPLATE_OPTIONS } from '@/lib/theme-engine/builder-navigation'
 import { getTemplatePolicy } from '@/lib/theme-engine/policy'
 import { validateThemeTemplateDocument } from '@/lib/theme-engine/validation'
 import { normalizeThemeTemplateDocument } from '@/lib/theme-engine/normalization'
 import { getEditorConfigForContext } from '@/lib/theme-engine/widget-registry-editor'
-import { generateThemeCss } from '@/lib/theme-engine/styles'
-import { getGoogleFontUrl } from '@/lib/theme-engine/fonts'
 import { canonicalizeZonesToSlots } from '@/lib/theme-engine/document-slots'
 import type { LoopItemTemplateMeta } from '@/lib/theme-engine/loop-item-templates-types'
 import { LoopItemTemplatesProvider } from '@/lib/theme-engine/loop-item-templates-context'
@@ -36,6 +37,16 @@ import {
   buildLoopItemEditorUrl,
   createEmptyLoopItemDocument,
 } from '@/lib/theme-engine/loop-item-document'
+import {
+  LEGACY_TEMPLATE_VERSION_ID,
+  VERSIONABLE_TEMPLATE_CONTEXTS,
+  isVersionableTemplateContext,
+  setActiveVersionLabel,
+  templateVersionLabel,
+  type TemplateVersionMeta,
+  type VersionableTemplateContext,
+} from '@/lib/theme-engine/template-versions'
+import { MAX_TEMPLATE_IMPORT_BYTES } from '@/lib/theme-engine/theme-import-limit'
 
 export type ThemeBuilderProps = {
   themeId?: string
@@ -46,21 +57,16 @@ export type ThemeBuilderProps = {
   initialLoopItemId?: string
   initialLoopItems?: LoopItemTemplateMeta[]
   initialLoopDocuments?: Record<string, ThemeTemplateDocument>
+  initialVersionItems?: Partial<Record<VersionableTemplateContext, TemplateVersionMeta[]>>
+  initialVersionPrimary?: Partial<Record<VersionableTemplateContext, string>>
+  initialSelectedVersions?: Partial<Record<VersionableTemplateContext, string>>
+  initialVersionDocuments?: Partial<Record<VersionableTemplateContext, Record<string, ThemeTemplateDocument>>>
+  /** Wizard deep-link: open "Tạo phiên bản mới" so Nhập JSON is one click away. */
+  initialOpenVersionImport?: boolean
   themeConfig?: ThemeConfig
   contactEntries?: import('@/lib/site/contact').ContactEntry[]
   libraryLanguage?: string
 }
-
-const TEMPLATE_OPTIONS: { label: string; value: TemplateContext; badge?: string }[] = [
-  { label: 'Header', value: 'header' },
-  { label: 'Home', value: 'home' },
-  { label: 'Single Post', value: 'single' },
-  { label: 'Page', value: 'page' },
-  { label: 'Category', value: 'category' },
-  { label: 'Footer', value: 'footer' },
-  { label: 'Loop Item', value: 'loopItem' },
-  { label: 'Product (Contract)', value: 'product', badge: 'Pending' },
-]
 
 export function ThemeBuilder({
   themeId = 'corporate',
@@ -71,6 +77,11 @@ export function ThemeBuilder({
   initialLoopItemId,
   initialLoopItems = [],
   initialLoopDocuments = {},
+  initialVersionItems = {},
+  initialVersionPrimary = {},
+  initialSelectedVersions = {},
+  initialVersionDocuments = {},
+  initialOpenVersionImport = false,
   themeConfig,
   contactEntries,
   libraryLanguage,
@@ -99,9 +110,56 @@ export function ThemeBuilder({
   const [selectedLoopItemId, setSelectedLoopItemId] = useState<string | null>(
     initialLoopItemId || initialLoopItems[0]?.id || null,
   )
+  const [versionItems, setVersionItems] = useState<Partial<Record<VersionableTemplateContext, TemplateVersionMeta[]>>>(() => {
+    const next: Partial<Record<VersionableTemplateContext, TemplateVersionMeta[]>> = {}
+    for (const context of VERSIONABLE_TEMPLATE_CONTEXTS) {
+      next[context] = initialVersionItems[context] || [{
+        id: LEGACY_TEMPLATE_VERSION_ID,
+        name: `${templateVersionLabel(context)} v1`,
+      }]
+    }
+    return next
+  })
+  const [versionPrimary, setVersionPrimary] = useState<Partial<Record<VersionableTemplateContext, string>>>(() => {
+    const next: Partial<Record<VersionableTemplateContext, string>> = {}
+    for (const context of VERSIONABLE_TEMPLATE_CONTEXTS) {
+      next[context] = initialVersionPrimary[context] || LEGACY_TEMPLATE_VERSION_ID
+    }
+    return next
+  })
+  const [selectedVersions, setSelectedVersions] = useState<Partial<Record<VersionableTemplateContext, string>>>(() => {
+    const next: Partial<Record<VersionableTemplateContext, string>> = {}
+    for (const context of VERSIONABLE_TEMPLATE_CONTEXTS) {
+      next[context] =
+        initialSelectedVersions[context] ||
+        initialVersionPrimary[context] ||
+        LEGACY_TEMPLATE_VERSION_ID
+    }
+    return next
+  })
+  const [versionDocuments, setVersionDocuments] = useState<
+    Partial<Record<VersionableTemplateContext, Record<string, ThemeTemplateDocument>>>
+  >(() => {
+    const next: Partial<Record<VersionableTemplateContext, Record<string, ThemeTemplateDocument>>> = {}
+    for (const context of VERSIONABLE_TEMPLATE_CONTEXTS) {
+      const docs: Record<string, ThemeTemplateDocument> = {}
+      for (const [id, doc] of Object.entries(initialVersionDocuments[context] || {})) {
+        docs[id] = normalizeThemeTemplateDocument(doc)
+      }
+      if (!docs[LEGACY_TEMPLATE_VERSION_ID] && normalizedInitialTemplates[context]) {
+        docs[LEGACY_TEMPLATE_VERSION_ID] = normalizedInitialTemplates[context]
+      }
+      next[context] = docs
+    }
+    return next
+  })
   const [createOpen, setCreateOpen] = useState(false)
   const [createName, setCreateName] = useState('')
   const [createBusy, setCreateBusy] = useState(false)
+  const [versionCreateOpen, setVersionCreateOpen] = useState(
+    () => Boolean(initialOpenVersionImport && isVersionableTemplateContext(initialContext)),
+  )
+  const [versionImportBusy, setVersionImportBusy] = useState(false)
   const [isDirty, setIsDirty] = useState<boolean>(false)
   const [isSaving, setIsSaving] = useState<boolean>(false)
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false)
@@ -109,8 +167,18 @@ export function ThemeBuilder({
   const [history, setHistory] = useState<EditorHistoryCoordinator | null>(null)
   const [historyTick, setHistoryTick] = useState(0)
   const [previewControlTarget, setPreviewControlTarget] = useState<HTMLDivElement | null>(null)
+  const versionImportReset = useRef<() => void>(null)
   const bumpHistory = useCallback(() => setHistoryTick((n) => n + 1), [])
 
+  const versionable = isVersionableTemplateContext(selectedTemplate)
+  const selectedVersionId = versionable
+    ? (selectedVersions[selectedTemplate] || LEGACY_TEMPLATE_VERSION_ID)
+    : null
+  const activePrimaryId = versionable
+    ? (versionPrimary[selectedTemplate] || LEGACY_TEMPLATE_VERSION_ID)
+    : null
+  const activeVersionItems = versionable ? (versionItems[selectedTemplate] || []) : []
+  const activeVersionDocs = versionable ? (versionDocuments[selectedTemplate] || {}) : {}
   const activeDoc =
     selectedTemplate === 'loopItem'
       ? selectedLoopItemId
@@ -120,8 +188,11 @@ export function ThemeBuilder({
             selectedLoopItemId,
           )
         : createEmptyLoopItemDocument('Loop Item', 'draft')
-      : templates[selectedTemplate]
+      : versionable && selectedVersionId
+        ? activeVersionDocs[selectedVersionId] || templates[selectedTemplate]
+        : templates[selectedTemplate]
   const latestDocRef = useRef<ThemeTemplateDocument>(activeDoc)
+  const selectedVersionMeta = activeVersionItems.find((item) => item.id === selectedVersionId)
 
   useEffect(() => {
     latestDocRef.current = activeDoc
@@ -138,19 +209,6 @@ export function ThemeBuilder({
   const puckConfig = useMemo(() => {
     return getEditorConfigForContext(selectedTemplate, themeConfig, contactEntries)
   }, [selectedTemplate, themeConfig, contactEntries])
-
-  const themeCss = useMemo(() => {
-    return generateThemeCss(themeConfig)
-  }, [themeConfig])
-
-  const fontFamilies = useMemo(() => {
-    return [
-      themeConfig?.tokens?.typography?.fontFamily,
-      themeConfig?.tokens?.typography?.fontFamilyHeading,
-    ]
-  }, [themeConfig])
-
-  const fontUrl = useMemo(() => getGoogleFontUrl(fontFamilies), [fontFamilies])
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -198,10 +256,17 @@ export function ThemeBuilder({
               loopItemId: selectedLoopItemId,
               name: loopItems.find((item) => item.id === selectedLoopItemId)?.name,
             }
-          : (updated as any).metadata,
+          : versionable && selectedVersionId
+            ? {
+                ...(updated as any).metadata,
+                templateVersionId: selectedVersionId,
+                ...(selectedTemplate === 'home' ? { homeVersionId: selectedVersionId } : {}),
+                name: selectedVersionMeta?.name,
+              }
+            : (updated as any).metadata,
     }
     latestDocRef.current = asThemeDoc
-  }, [selectedTemplate, selectedLoopItemId, loopItems])
+  }, [selectedTemplate, selectedLoopItemId, loopItems, versionable, selectedVersionId, selectedVersionMeta])
 
   const handleSave = useCallback(
     async (customDoc?: BuilderDocument) => {
@@ -217,7 +282,14 @@ export function ThemeBuilder({
                 loopItemId: selectedLoopItemId,
                 name: loopItems.find((item) => item.id === selectedLoopItemId)?.name,
               }
-            : raw.metadata,
+            : versionable && selectedVersionId
+              ? {
+                  ...(raw.metadata || {}),
+                  templateVersionId: selectedVersionId,
+                  ...(selectedTemplate === 'home' ? { homeVersionId: selectedVersionId } : {}),
+                  name: selectedVersionMeta?.name,
+                }
+              : raw.metadata,
       }) as ThemeTemplateDocument
       latestDocRef.current = docToValidate
 
@@ -226,7 +298,9 @@ export function ThemeBuilder({
           ? selectedLoopItemId
             ? loopDocuments[selectedLoopItemId]
             : null
-          : templates[selectedTemplate]
+          : versionable && selectedVersionId
+            ? activeVersionDocs[selectedVersionId]
+            : templates[selectedTemplate]
 
       const validation = validateThemeTemplateDocument(
         docToValidate,
@@ -257,6 +331,8 @@ export function ThemeBuilder({
             document: docToValidate,
             themeId,
             loopItemId: selectedLoopItemId,
+            templateVersionId: versionable ? selectedVersionId : undefined,
+            homeVersionId: selectedTemplate === 'home' ? selectedVersionId : undefined,
           }),
         })
 
@@ -274,6 +350,25 @@ export function ThemeBuilder({
                 : item,
             ),
           )
+        } else if (versionable && selectedVersionId) {
+          const context = selectedTemplate as VersionableTemplateContext
+          setVersionDocuments((prev) => ({
+            ...prev,
+            [context]: { ...(prev[context] || {}), [selectedVersionId]: docToValidate },
+          }))
+          setVersionItems((prev) => ({
+            ...prev,
+            [context]: (prev[context] || []).map((item) =>
+              item.id === selectedVersionId
+                ? { ...item, updatedAt: docToValidate.updatedAt || new Date().toISOString() }
+                : item,
+            ),
+          }))
+          setTemplates((prev) =>
+            selectedVersionId === activePrimaryId
+              ? { ...prev, [context]: docToValidate }
+              : prev,
+          )
         } else {
           setTemplates((prev) => ({
             ...prev,
@@ -289,8 +384,173 @@ export function ThemeBuilder({
         setIsSaving(false)
       }
     },
-    [selectedTemplate, templates, themeId, selectedLoopItemId, loopDocuments, loopItems],
+    [
+      selectedTemplate, templates, themeId, selectedLoopItemId, loopDocuments, loopItems,
+      versionable, selectedVersionId, selectedVersionMeta, activeVersionDocs, activePrimaryId,
+    ],
   )
+
+  const exportTemplateJson = useCallback(() => {
+    if (!versionable || !selectedVersionId) return
+    const document = latestDocRef.current
+    const envelope = {
+      themeId,
+      template: selectedTemplate,
+      versionId: selectedVersionId,
+      document,
+    }
+    const blob = new Blob([JSON.stringify(envelope, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const anchor = window.document.createElement('a')
+    anchor.href = url
+    anchor.download = `${themeId}-${selectedTemplate}-${selectedVersionId}.json`
+    anchor.click()
+    URL.revokeObjectURL(url)
+    if (isDirty) {
+      window.alert('Exported the in-progress document (includes unsaved canvas changes).')
+    }
+  }, [themeId, selectedTemplate, selectedVersionId, versionable, isDirty])
+
+  const cloneTemplateVersion = useCallback(async () => {
+    if (!versionable || !selectedVersionId) return
+    setCreateBusy(true)
+    setSaveError(null)
+    try {
+      const res = await fetch('/api/theme-builder/template-version/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          themeId,
+          template: selectedTemplate,
+          document: latestDocRef.current,
+          sourceVersionId: selectedVersionId,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.success) {
+        throw new Error(data.errors?.join('; ') || data.message || 'Failed to create template version')
+      }
+      const meta = data.meta as TemplateVersionMeta
+      const document = normalizeThemeTemplateDocument(data.document as ThemeTemplateDocument)
+      const context = selectedTemplate as VersionableTemplateContext
+      setVersionItems((prev) => ({ ...prev, [context]: [...(prev[context] || []), meta] }))
+      setVersionDocuments((prev) => ({
+        ...prev,
+        [context]: { ...(prev[context] || {}), [meta.id]: document },
+      }))
+      setSelectedVersions((prev) => ({ ...prev, [context]: meta.id }))
+      latestDocRef.current = document
+      setIsDirty(false)
+      setVersionCreateOpen(false)
+      setSaveSuccess(true)
+      setTimeout(() => setSaveSuccess(false), 3000)
+    } catch (err: any) {
+      setSaveError(err.message || 'Failed to create template version')
+    } finally {
+      setCreateBusy(false)
+    }
+  }, [themeId, selectedTemplate, selectedVersionId, versionable])
+
+  const importTemplateJson = useCallback(async (file: File) => {
+    if (!versionable) return
+    versionImportReset.current?.()
+    if (file.size > MAX_TEMPLATE_IMPORT_BYTES) {
+      setSaveError('Template JSON must be 512 KB or smaller.')
+      return
+    }
+    setVersionImportBusy(true)
+    setSaveError(null)
+    try {
+      const previewQuery = new URLSearchParams({
+        themeId, template: selectedTemplate, action: 'preview',
+      })
+      const previewRes = await fetch(`/api/theme-builder/import?${previewQuery}`, {
+        method: 'POST',
+        body: file,
+        headers: { 'Content-Type': 'application/json' },
+      })
+      const preview = await previewRes.json()
+      if (!previewRes.ok || !preview.success) {
+        throw new Error(preview.errors?.join('; ') || 'Import preview failed')
+      }
+      const label = preview.preview?.destination?.label || 'new version'
+      const ok = window.confirm(
+        `Import will create ${label} from this JSON (source versionId is reference only; active version stays unchanged). Continue?`,
+      )
+      if (!ok) return
+      const saveQuery = new URLSearchParams({
+        themeId, template: selectedTemplate, action: 'save', revision: preview.revision,
+      })
+      const saveRes = await fetch(`/api/theme-builder/import?${saveQuery}`, {
+        method: 'POST',
+        body: file,
+        headers: { 'Content-Type': 'application/json' },
+      })
+      const saved = await saveRes.json()
+      if (!saveRes.ok || !saved.success) {
+        throw new Error(saved.errors?.join('; ') || 'Import save failed')
+      }
+      const meta = (saved.templateVersion || saved.homeVersion) as TemplateVersionMeta
+      const document = normalizeThemeTemplateDocument(saved.document as ThemeTemplateDocument)
+      const context = selectedTemplate as VersionableTemplateContext
+      setVersionItems((prev) => ({ ...prev, [context]: [...(prev[context] || []), meta] }))
+      setVersionDocuments((prev) => ({
+        ...prev,
+        [context]: { ...(prev[context] || {}), [meta.id]: document },
+      }))
+      setSelectedVersions((prev) => ({ ...prev, [context]: meta.id }))
+      latestDocRef.current = document
+      setIsDirty(false)
+      setVersionCreateOpen(false)
+      setSaveSuccess(true)
+      setTimeout(() => setSaveSuccess(false), 3000)
+    } catch (err: any) {
+      setSaveError(err.message || 'Failed to import template JSON')
+    } finally {
+      setVersionImportBusy(false)
+    }
+  }, [themeId, selectedTemplate, versionable])
+
+  const setTemplateAsPrimary = useCallback(async () => {
+    if (!versionable || !selectedVersionId) return
+    if (isDirty) {
+      setSaveError('Save the version before setting it as the active template.')
+      return
+    }
+    setCreateBusy(true)
+    setSaveError(null)
+    try {
+      const res = await fetch('/api/theme-builder/template-version/set-primary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          themeId,
+          template: selectedTemplate,
+          versionId: selectedVersionId,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.success) {
+        throw new Error(data.errors?.join('; ') || data.message || 'Failed to set active version')
+      }
+      const context = selectedTemplate as VersionableTemplateContext
+      setVersionPrimary((prev) => ({
+        ...prev,
+        [context]: data.index?.primaryId || selectedVersionId,
+      }))
+      if (data.index?.items) {
+        setVersionItems((prev) => ({ ...prev, [context]: data.index.items }))
+      }
+      const primaryDoc = activeVersionDocs[selectedVersionId]
+      if (primaryDoc) setTemplates((prev) => ({ ...prev, [context]: primaryDoc }))
+      setSaveSuccess(true)
+      setTimeout(() => setSaveSuccess(false), 3000)
+    } catch (err: any) {
+      setSaveError(err.message || 'Failed to set active version')
+    } finally {
+      setCreateBusy(false)
+    }
+  }, [themeId, selectedTemplate, selectedVersionId, versionable, isDirty, activeVersionDocs])
 
   const handleCreateLoopItem = useCallback(async () => {
     const name = createName.trim()
@@ -364,8 +624,7 @@ export function ThemeBuilder({
         overflow: 'hidden',
       }}
     >
-      {fontUrl && <link rel="stylesheet" href={fontUrl} />}
-      <style dangerouslySetInnerHTML={{ __html: themeCss }} />
+      {/* Content theme CSS/fonts are scoped to the Puck canvas iframe — not Admin chrome. */}
 
       {/* PO UX V5 — one primary header row */}
       <Paper
@@ -483,7 +742,7 @@ export function ThemeBuilder({
               size="xs"
               w={140}
               aria-label="Page context"
-              data={TEMPLATE_OPTIONS.map((opt) => ({
+              data={THEME_BUILDER_TEMPLATE_OPTIONS.map((opt) => ({
                 label: opt.badge ? `${opt.label} (${opt.badge})` : opt.label,
                 value: opt.value,
                 disabled: opt.value === 'product',
@@ -548,6 +807,69 @@ export function ThemeBuilder({
                 allowDeselect={false}
                 comboboxProps={{ withinPortal: true }}
               />
+            )}
+
+            {versionable && selectedVersionId && (
+              <Group gap={6} wrap="nowrap">
+                <Select
+                  size="xs"
+                  w={180}
+                  aria-label="Template version"
+                  data={activeVersionItems.map((item) => ({
+                    value: item.id,
+                    label: item.id === activePrimaryId ? `${item.name} · Đang dùng` : item.name,
+                  }))}
+                  value={selectedVersionId}
+                  onChange={(val) => {
+                    if (!val || val === selectedVersionId) return
+                    if (isDirty) {
+                      const ok = window.confirm(
+                        'You have unsaved changes. Switch version without saving?',
+                      )
+                      if (!ok) return
+                    }
+                    const context = selectedTemplate as VersionableTemplateContext
+                    setSelectedVersions((prev) => ({ ...prev, [context]: val }))
+                    const next = activeVersionDocs[val]
+                    if (next) latestDocRef.current = next
+                    setIsDirty(false)
+                    setSaveError(null)
+                  }}
+                  allowDeselect={false}
+                  comboboxProps={{ withinPortal: true }}
+                  data-testid="template-version-select"
+                />
+                {selectedVersionId === activePrimaryId ? (
+                  <Badge size="sm" color="teal" variant="light">Đang dùng</Badge>
+                ) : (
+                  <Badge size="sm" color="gray" variant="outline">Editing</Badge>
+                )}
+                <Menu withinPortal position="bottom-start">
+                  <Menu.Target>
+                    <ActionIcon size="sm" variant="default" aria-label="Template version actions" data-testid="template-version-menu">
+                      <ChevronDown size={14} />
+                    </ActionIcon>
+                  </Menu.Target>
+                  <Menu.Dropdown>
+                    <Menu.Label>
+                      {selectedVersionMeta?.name || templateVersionLabel(selectedTemplate as VersionableTemplateContext)} ({selectedVersionId})
+                      {selectedVersionId !== activePrimaryId ? ' · not active' : ''}
+                    </Menu.Label>
+                    <Menu.Item leftSection={<Download size={14} />} onClick={exportTemplateJson}>
+                      Xuất JSON
+                    </Menu.Item>
+                    <Menu.Item leftSection={<Plus size={14} />} onClick={() => setVersionCreateOpen(true)}>
+                      Tạo phiên bản mới
+                    </Menu.Item>
+                    <Menu.Item
+                      disabled={selectedVersionId === activePrimaryId || createBusy}
+                      onClick={() => void setTemplateAsPrimary()}
+                    >
+                      {setActiveVersionLabel(selectedTemplate as VersionableTemplateContext)}
+                    </Menu.Item>
+                  </Menu.Dropdown>
+                </Menu>
+              </Group>
             )}
           </Group>
 
@@ -655,7 +977,7 @@ export function ThemeBuilder({
         >
           <PuckHost
             libraryLanguage={libraryLanguage}
-            key={`${selectedTemplate}:${selectedLoopItemId || ''}`}
+            key={`${selectedTemplate}:${selectedLoopItemId || ''}:${selectedVersionId || ''}`}
             config={puckConfig}
             document={
               (activeDoc || { content: [], root: { props: {} } }) as unknown as BuilderDocument
@@ -667,11 +989,56 @@ export function ThemeBuilder({
             height="100%"
             themeConfig={themeConfig}
             templateContext={selectedTemplate}
+            themeId={themeId}
+            homeVersionId={versionable ? selectedVersionId : null}
             previewControlTarget={previewControlTarget}
             onHistoryReady={setHistory}
           />
         </LoopItemTemplatesProvider>
       </Box>
+
+      <Modal
+        opened={versionCreateOpen}
+        onClose={() => (!createBusy && !versionImportBusy ? setVersionCreateOpen(false) : undefined)}
+        title="Tạo phiên bản mới"
+        centered
+        size="sm"
+      >
+        <Text size="sm" c="dimmed" mb="xs">
+          Tạo phiên bản với ID mới rồi mở bản đó trong Builder. Bản đang dùng không đổi.
+        </Text>
+        <Text size="sm" c="dimmed" mb="sm">
+          Cả hai cách đều tạo phiên bản mới.
+        </Text>
+        <Group grow mb="sm">
+          <Button
+            color="teal"
+            loading={createBusy}
+            onClick={() => void cloneTemplateVersion()}
+            data-testid="template-clone-version"
+          >
+            Sao chép bản đang mở
+          </Button>
+        </Group>
+        <FileButton
+          accept=".json,application/json"
+          resetRef={versionImportReset}
+          onChange={(file) => { if (file) void importTemplateJson(file) }}
+        >
+          {(props) => (
+            <Button
+              {...props}
+              fullWidth
+              variant="light"
+              leftSection={<Upload size={14} />}
+              loading={versionImportBusy}
+              data-testid="template-import-json"
+            >
+              Tạo bản mới từ file JSON
+            </Button>
+          )}
+        </FileButton>
+      </Modal>
 
       <Modal
         opened={createOpen}

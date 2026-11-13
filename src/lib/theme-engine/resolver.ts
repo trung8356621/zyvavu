@@ -21,6 +21,10 @@ export async function resolveActiveThemeId(payload?: Payload): Promise<string> {
   if (!payload) return DEFAULT_THEME_ID
 
   try {
+    // Public SSR never hits Theme Builder APIs — register custom themes before isValidThemeId.
+    const { ensureCustomThemesRegistered } = await import('./register-custom-themes')
+    await ensureCustomThemesRegistered(payload)
+
     const settings = await payload
       .findGlobal({
         slug: 'settings',
@@ -96,10 +100,17 @@ export async function resolveCurrentThemeId(
 
 export async function getPreviewThemeFromCookie(): Promise<string | undefined> {
   try {
-    const { cookies } = await import('next/headers')
+    const { cookies, headers } = await import('next/headers')
     const cookieStore = await cookies()
     const token = cookieStore.get('payload-token')?.value
     if (!token) return undefined
+
+    // Per-request query preview (Customizer iframe) — does not mutate other tabs.
+    const headerPreview = (await headers()).get('x-zyvavu-preview-theme')
+    if (headerPreview && isValidThemeId(headerPreview)) {
+      return normalizeThemeId(headerPreview)
+    }
+
     const cookiePreview = cookieStore.get('zyvavu_preview_theme')?.value
     if (cookiePreview && isValidThemeId(cookiePreview)) {
       return normalizeThemeId(cookiePreview)
@@ -136,6 +147,10 @@ export async function resolveThemeTemplate(
   context: TemplateContext,
   themeId?: string,
 ): Promise<ThemeTemplateDocument> {
+  // Ensure custom themes are registered before normalizeThemeId (explicit themeId path).
+  const { ensureCustomThemesRegistered } = await import('./register-custom-themes')
+  await ensureCustomThemesRegistered(payload)
+
   const preview = await getPreviewThemeFromCookie()
   const targetTheme = normalizeThemeId(themeId || preview || (await resolveActiveThemeId(payload)))
   const fallback = getBundledTemplate(context, targetTheme)
@@ -153,6 +168,16 @@ export async function resolveThemeTemplate(
 
     const settingsTemplates = (settings as any)?.themeTemplates
     if (settingsTemplates && typeof settingsTemplates === 'object') {
+      // Versioned Primary — read-only; never materializes index on resolve.
+      const { isVersionableTemplateContext, resolvePrimaryTemplateDocument } =
+        await import('./template-versions')
+      if (isVersionableTemplateContext(context)) {
+        const primary = await resolvePrimaryTemplateDocument(
+          payload, context, targetTheme, settingsTemplates,
+        )
+        if (primary) return primary
+      }
+
       const doc = settingsTemplates[scopedKey] as ThemeTemplateDocument | undefined
       if (doc && typeof doc === 'object') {
         const validation = validateThemeTemplateDocument(doc, context)
@@ -223,6 +248,7 @@ export async function saveThemeTemplateOverride(
   document: ThemeTemplateDocument,
   user?: any,
   themeId?: string,
+  req?: Partial<{ transactionID: string | number }>,
 ): Promise<{ success: boolean; errors?: string[] }> {
   const targetTheme = normalizeThemeId(themeId || (await resolveActiveThemeId(payload)))
 
@@ -249,6 +275,7 @@ export async function saveThemeTemplateOverride(
       .findGlobal({
         slug: 'settings',
         overrideAccess: true,
+        ...(req ? { req } : {}),
       })
       .catch(() => null)
 
@@ -266,6 +293,7 @@ export async function saveThemeTemplateOverride(
         themeTemplates: updatedTemplates,
       },
       overrideAccess: true,
+      ...(req ? { req } : {}),
     })
 
     return { success: true }

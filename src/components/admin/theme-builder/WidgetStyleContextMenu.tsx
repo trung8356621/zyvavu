@@ -11,6 +11,15 @@ import {
   writeCategoryListTargetStyle,
   type CategoryListStyleTarget,
 } from '@/widgets/CategoryList/style-targets'
+import {
+  BANNER_SLIDER_STYLE_TARGETS,
+  getBannerSliderTargetMeta,
+  readBannerSliderTargetStyle,
+  stripSlideItemMargin,
+  writeBannerSliderTargetStyle,
+  type BannerSliderControlsStyle,
+  type BannerSliderStyleTarget,
+} from '@/widgets/BannerSlider/style-targets'
 import { IconPickerField } from '@/components/admin/icons/IconPicker'
 import { resolveSectionLayout, type SectionLayoutProps } from '@/lib/style-engine/effective-defaults'
 import { resetResponsiveSpacing, type ResponsiveBreakpoint } from '@/lib/style-engine/responsive-style'
@@ -29,6 +38,7 @@ import {
 import {
   createStyleSessionSnapshot,
   getDomainResetStyle,
+  BANNER_SLIDER_TARGET_FIELDS,
   restoreSessionOwnedPresentationTargets,
   restoreSessionOwnedStyleDomains,
   stylesEqual,
@@ -157,6 +167,10 @@ export interface WidgetStyleContextMenuProps {
   htmlTag?: string | null
   currentStyle?: WidgetSemanticStyle
   listPresentation?: ListPresentationConfig
+  controlsStyle?: BannerSliderControlsStyle
+  /** Active Banner Item (SlideItem) for the Banner Item Style Target. */
+  bannerItemId?: string
+  bannerItemStyle?: WidgetSemanticStyle
   sectionLayoutProps?: SectionLayoutProps
   columnGap?: string
   themeConfig?: ThemeConfig
@@ -169,6 +183,17 @@ export interface WidgetStyleContextMenuProps {
   /** CategoryList subpart styles — independent of root `props.style`. */
   onUpdateListPresentation?: (
     presentation: ListPresentationConfig,
+    options?: { recordHistory?: boolean },
+  ) => boolean | void
+  /** BannerSlider arrow/pagination Style Engine targets. */
+  onUpdateControlsStyle?: (
+    presentation: BannerSliderControlsStyle,
+    options?: { recordHistory?: boolean },
+  ) => boolean | void
+  /** Writes style onto the active SlideItem (Banner Item target). */
+  onUpdateBannerItemStyle?: (
+    slideId: string,
+    style: WidgetSemanticStyle,
     options?: { recordHistory?: boolean },
   ) => boolean | void
   /** Optional ActionBar-parity pattern save from the right-click domain launcher. */
@@ -194,16 +219,22 @@ function WidgetStyleSession({
   htmlTag = null,
   currentStyle = EMPTY_STYLE,
   listPresentation,
+  controlsStyle,
+  bannerItemId,
+  bannerItemStyle = EMPTY_STYLE,
   sectionLayoutProps,
   columnGap,
   themeConfig,
   inWorkspace = false,
   onUpdateStyle,
   onUpdateListPresentation,
+  onUpdateControlsStyle,
+  onUpdateBannerItemStyle,
   onSaveAsPattern,
 }: WidgetStyleContextMenuProps) {
   const componentType = normalizeComponentType(rawComponentType)
   const isCategoryList = componentType === 'CategoryList'
+  const isBannerSlider = componentType === 'BannerSlider'
 
   const sessionRef = useRef<StyleSessionSnapshot>(
     createStyleSessionSnapshot(componentId, currentStyle, domain),
@@ -211,27 +242,88 @@ function WidgetStyleSession({
   const presentationSessionRef = useRef<ListPresentationConfig>(
     JSON.parse(JSON.stringify(listPresentation || {})),
   )
+  const controlsSessionRef = useRef<BannerSliderControlsStyle>(
+    JSON.parse(JSON.stringify(controlsStyle || {})),
+  )
+  const bannerItemSessionRef = useRef<{ id?: string; style: WidgetSemanticStyle }>({
+    id: bannerItemId,
+    style: JSON.parse(JSON.stringify(bannerItemStyle || {})),
+  })
   /** Domains/targets mutated in this Style session — Cancel restores only these. */
   const dirtyDomainsRef = useRef<Set<StyleModalDomain>>(new Set())
-  const dirtyTargetsRef = useRef<Set<CategoryListStyleTarget>>(new Set())
+  const dirtyTargetsRef = useRef<Set<string>>(new Set())
   const [widgetStyle, setWidgetStyle] = useState<WidgetSemanticStyle>(currentStyle)
   const [livePresentation, setLivePresentation] = useState<ListPresentationConfig>(
     () => listPresentation || {},
   )
-  const [documentValues, setDocumentValues] = useState({ currentStyle, listPresentation })
+  const [liveControls, setLiveControls] = useState<BannerSliderControlsStyle>(
+    () => controlsStyle || {},
+  )
+  const [liveBannerItemStyle, setLiveBannerItemStyle] = useState<WidgetSemanticStyle>(
+    () => bannerItemStyle || EMPTY_STYLE,
+  )
+  const [liveBannerItemId, setLiveBannerItemId] = useState<string | undefined>(bannerItemId)
+  const [documentValues, setDocumentValues] = useState({
+    currentStyle,
+    listPresentation,
+    controlsStyle,
+    bannerItemId,
+    bannerItemStyle,
+  })
   // Reconcile host edits before rendering the next target or recording its baseline.
-  if (documentValues.currentStyle !== currentStyle || documentValues.listPresentation !== listPresentation) {
-    setDocumentValues({ currentStyle, listPresentation })
+  if (
+    documentValues.currentStyle !== currentStyle ||
+    documentValues.listPresentation !== listPresentation ||
+    documentValues.controlsStyle !== controlsStyle ||
+    documentValues.bannerItemId !== bannerItemId ||
+    documentValues.bannerItemStyle !== bannerItemStyle
+  ) {
+    setDocumentValues({ currentStyle, listPresentation, controlsStyle, bannerItemId, bannerItemStyle })
     if (documentValues.currentStyle !== currentStyle) setWidgetStyle(currentStyle)
     if (documentValues.listPresentation !== listPresentation) {
       setLivePresentation(listPresentation || {})
     }
+    if (documentValues.controlsStyle !== controlsStyle) {
+      setLiveControls(controlsStyle || {})
+    }
+    if (
+      documentValues.bannerItemId !== bannerItemId ||
+      documentValues.bannerItemStyle !== bannerItemStyle
+    ) {
+      setLiveBannerItemId(bannerItemId)
+      setLiveBannerItemStyle(bannerItemStyle || EMPTY_STYLE)
+      if (documentValues.bannerItemId !== bannerItemId) {
+        bannerItemSessionRef.current = {
+          id: bannerItemId,
+          style: JSON.parse(JSON.stringify(bannerItemStyle || {})),
+        }
+        dirtyDomainsRef.current.clear()
+      }
+    }
   }
-  const [styleTarget, setStyleTarget] = useState<CategoryListStyleTarget>('container')
-  const liveStyle = useMemo(
-    () => isCategoryList ? readCategoryListTargetStyle(livePresentation, styleTarget) : widgetStyle,
-    [isCategoryList, livePresentation, styleTarget, widgetStyle],
+  const [styleTarget, setStyleTarget] = useState<string>(
+    isBannerSlider ? 'bannerItem' : 'container',
   )
+  const isBannerItemTarget = isBannerSlider && styleTarget === 'bannerItem'
+  const liveStyle = useMemo(() => {
+    if (isCategoryList) {
+      return readCategoryListTargetStyle(livePresentation, styleTarget as CategoryListStyleTarget)
+    }
+    if (isBannerItemTarget) return liveBannerItemStyle
+    if (isBannerSlider) {
+      return readBannerSliderTargetStyle(liveControls, styleTarget as BannerSliderStyleTarget)
+    }
+    return widgetStyle
+  }, [
+    isBannerItemTarget,
+    isBannerSlider,
+    isCategoryList,
+    liveBannerItemStyle,
+    liveControls,
+    livePresentation,
+    styleTarget,
+    widgetStyle,
+  ])
   const [spacingBreakpoint, setSpacingBreakpoint] = useState<ResponsiveBreakpoint>('desktop')
   const [validationError, setValidationError] = useState<string | null>(null)
   const [mediaPickerOpened, setMediaPickerOpened] = useState(false)
@@ -248,12 +340,19 @@ function WidgetStyleSession({
   /** UX V5 — collapse hides chrome but keeps session/domain/target. */
   const [designCollapsed, setDesignCollapsed] = useState(false)
 
-  const targetMeta = isCategoryList ? getCategoryListTargetMeta(styleTarget) : null
+  const targetMeta = isCategoryList
+    ? getCategoryListTargetMeta(styleTarget as CategoryListStyleTarget)
+    : isBannerSlider
+      ? getBannerSliderTargetMeta(styleTarget as BannerSliderStyleTarget)
+      : null
   const domains = useMemo(() => {
+    if (isBannerSlider && targetMeta) {
+      return orderStyleToolbarDomains(targetMeta.domains)
+    }
     const all = orderStyleToolbarDomains(getStyleModalDomains(componentType, componentVariant))
     if (!isCategoryList || !targetMeta) return all
     return all.filter((d) => targetMeta.domains.includes(d))
-  }, [componentType, componentVariant, isCategoryList, targetMeta])
+  }, [componentType, componentVariant, isBannerSlider, isCategoryList, targetMeta])
   /** Focused domain editor — never the old all-domains Accordion. */
   const [activeDomain, setActiveDomain] = useState<StyleModalDomain | null>(
     domain || null,
@@ -267,6 +366,9 @@ function WidgetStyleSession({
   }
 
   const focusedDomain = activeDomain && domains.includes(activeDomain) ? activeDomain : null
+  useEffect(() => {
+    if (activeDomain && !domains.includes(activeDomain)) setActiveDomain(null)
+  }, [activeDomain, domains])
   const scopeRef = useRef({ target: styleTarget, domain: focusedDomain })
 
   useLayoutEffect(() => {
@@ -275,9 +377,10 @@ function WidgetStyleSession({
     scopeRef.current = { target: styleTarget, domain: focusedDomain }
     sessionRef.current = createStyleSessionSnapshot(componentId, liveStyle, focusedDomain)
     presentationSessionRef.current = JSON.parse(JSON.stringify(livePresentation))
+    controlsSessionRef.current = JSON.parse(JSON.stringify(liveControls))
     dirtyDomainsRef.current.clear()
     dirtyTargetsRef.current.clear()
-  }, [componentId, focusedDomain, livePresentation, liveStyle, styleTarget])
+  }, [componentId, focusedDomain, liveControls, livePresentation, liveStyle, styleTarget])
 
   const replayCleanup = useRef<(() => void) | null>(null)
   const stopReplay = useCallback(() => {
@@ -296,21 +399,34 @@ function WidgetStyleSession({
   }, [componentType])
 
   const capabilities: StyleDomain[] = useMemo(() => {
+    // Banner Item target edits SlideItem.style — use SlideItem capabilities, not empty BannerSlider.
+    if (isBannerItemTarget) {
+      return getComponentStyleCapabilities('SlideItem')
+    }
+    if (isBannerSlider && styleTarget === 'arrows') {
+      return ['background', 'spacing', 'border', 'typography']
+    }
+    if (isBannerSlider && styleTarget === 'pagination') {
+      return ['typography', 'spacing', 'background']
+    }
     return getComponentStyleCapabilities(componentType, manifest || undefined, {
       variant: componentVariant,
     })
-  }, [componentType, manifest, componentVariant])
+  }, [componentType, componentVariant, isBannerItemTarget, isBannerSlider, manifest, styleTarget])
 
-  const hasTypography = capabilities.includes('typography')
-  const hasBackground = capabilities.includes('background')
+  const hasTypography = capabilities.includes('typography') || domains.includes('typography')
+  const hasBackground = capabilities.includes('background') || domains.includes('background')
   const hasSpacingOrDimensions =
     capabilities.includes('spacing') ||
     capabilities.includes('dimensions') ||
-    capabilities.includes('section')
+    capabilities.includes('section') ||
+    domains.includes('spacing') ||
+    domains.includes('borders')
   const hasBorderOrEffects =
     capabilities.includes('border') ||
     capabilities.includes('shadow') ||
-    capabilities.includes('effects')
+    capabilities.includes('effects') ||
+    domains.includes('borders')
 
   const normalizeStyle = useCallback((style: WidgetSemanticStyle): UniversalStyle => {
     const s = style as UniversalStyle
@@ -370,9 +486,31 @@ function WidgetStyleSession({
       if (focusedDomain) dirtyDomainsRef.current.add(focusedDomain)
       if (isCategoryList && onUpdateListPresentation) {
         dirtyTargetsRef.current.add(styleTarget)
-        const nextPresentation = writeCategoryListTargetStyle(livePresentation, styleTarget, next)
+        const nextPresentation = writeCategoryListTargetStyle(
+          livePresentation,
+          styleTarget as CategoryListStyleTarget,
+          next,
+        )
         setLivePresentation(nextPresentation)
         if (onUpdateListPresentation(nextPresentation, options) === false) return false
+        return true
+      }
+      if (isBannerItemTarget && onUpdateBannerItemStyle && liveBannerItemId) {
+        dirtyTargetsRef.current.add('bannerItem')
+        const safe = stripSlideItemMargin(next) || {}
+        setLiveBannerItemStyle(safe)
+        if (onUpdateBannerItemStyle(liveBannerItemId, safe, options) === false) return false
+        return true
+      }
+      if (isBannerSlider && onUpdateControlsStyle && !isBannerItemTarget) {
+        dirtyTargetsRef.current.add(styleTarget)
+        const nextControls = writeBannerSliderTargetStyle(
+          liveControls,
+          styleTarget as BannerSliderStyleTarget,
+          next,
+        )
+        setLiveControls(nextControls)
+        if (onUpdateControlsStyle(nextControls, options) === false) return false
         return true
       }
       if (onUpdateStyle(next, options) === false) return false
@@ -381,8 +519,14 @@ function WidgetStyleSession({
     },
     [
       focusedDomain,
+      isBannerItemTarget,
+      isBannerSlider,
       isCategoryList,
+      liveBannerItemId,
+      liveControls,
       livePresentation,
+      onUpdateBannerItemStyle,
+      onUpdateControlsStyle,
       onUpdateListPresentation,
       onUpdateStyle,
       styleTarget,
@@ -442,6 +586,40 @@ function WidgetStyleSession({
       return
     }
 
+    if (isBannerSlider && (onUpdateControlsStyle || onUpdateBannerItemStyle)) {
+      if (
+        dirtyTargetsRef.current.has('bannerItem') &&
+        onUpdateBannerItemStyle &&
+        bannerItemSessionRef.current.id
+      ) {
+        const restored = restoreSessionOwnedStyleDomains({
+          baseline: bannerItemSessionRef.current.style,
+          current: liveBannerItemStyle,
+          dirtyDomains: dirtyDomainsRef.current,
+        })
+        if (!stylesEqual(restored, liveBannerItemStyle)) {
+          setLiveBannerItemStyle(restored)
+          onUpdateBannerItemStyle(bannerItemSessionRef.current.id, restored)
+        }
+      }
+      if (onUpdateControlsStyle) {
+        const restored = restoreSessionOwnedPresentationTargets({
+          baseline: controlsSessionRef.current as Record<string, unknown>,
+          current: (controlsStyle || liveControls) as Record<string, unknown>,
+          dirtyTargets: dirtyTargetsRef.current,
+          targetFields: BANNER_SLIDER_TARGET_FIELDS,
+        }) as BannerSliderControlsStyle
+        if (!stylesEqual(restored as WidgetSemanticStyle, liveControls as WidgetSemanticStyle)) {
+          setLiveControls(restored)
+          onUpdateControlsStyle(restored)
+        }
+      }
+      dirtyTargetsRef.current = new Set()
+      dirtyDomainsRef.current = new Set()
+      onClose()
+      return
+    }
+
     const restored = restoreSessionOwnedStyleDomains({
       baseline: sessionRef.current.style,
       current: currentStyle || liveStyle,
@@ -459,12 +637,16 @@ function WidgetStyleSession({
     }
     onClose()
   }, [
+    controlsStyle,
     currentStyle,
+    isBannerSlider,
     isCategoryList,
     listPresentation,
+    liveControls,
     livePresentation,
     liveStyle,
     onClose,
+    onUpdateControlsStyle,
     onUpdateListPresentation,
     onUpdateStyle,
   ])
@@ -689,7 +871,8 @@ function WidgetStyleSession({
         />
       )
     }
-    if (tab === 'animation' && capabilities.includes('animation')) {
+    if (tab === 'animation' && (capabilities.includes('animation') || domains.includes('animation'))) {
+      const replayId = isBannerItemTarget && liveBannerItemId ? liveBannerItemId : componentId
       return (
         <AnimationPresetPicker
           inline
@@ -702,7 +885,7 @@ function WidgetStyleSession({
           }}
           onTestAnimation={(animation) => {
             stopReplay()
-            const result = replayWidgetAnimation(componentId, animation, { force: true })
+            const result = replayWidgetAnimation(replayId, animation, { force: true })
             replayCleanup.current = result.cancel
             if (result.message?.includes('unavailable') || result.message?.includes('not available')) {
               setValidationError(result.message)
@@ -751,10 +934,22 @@ function WidgetStyleSession({
           sectionOverrides={normalizedLive.section}
           columns={componentType === 'Columns'}
           columnGap={columnGap}
+          hideMargin={componentType === 'SlideItem' || isBannerItemTarget}
+          fullMarginSides={isBannerSlider && styleTarget === 'arrows'}
           activeBreakpoint={spacingBreakpoint}
           onBreakpointChange={setSpacingBreakpoint}
-          showDimensions={capabilities.includes('dimensions') || capabilities.includes('section')}
-          onChangeSpacing={(sp) => updatePartial({ spacing: sp })}
+          showDimensions={
+            !isBannerSlider &&
+            (capabilities.includes('dimensions') || capabilities.includes('section'))
+          }
+          onChangeSpacing={(sp) => {
+            if ((componentType === 'SlideItem' || isBannerItemTarget) && sp?.margin) {
+              const { margin: _m, ...rest } = sp
+              updatePartial({ spacing: Object.keys(rest).length ? rest : undefined })
+              return
+            }
+            updatePartial({ spacing: sp })
+          }}
           onChangeDimensions={(dim, key) => {
             const section = normalizedLive.section
             if (section && (key === 'containerWidth' || key === 'minHeight')) {
@@ -919,6 +1114,26 @@ function WidgetStyleSession({
                 setActiveDomain(null)
               }}
             />
+          ) : null}
+          {isBannerSlider ? (
+            <Select
+              size="sm"
+              label="Style Target"
+              data={BANNER_SLIDER_STYLE_TARGETS.map((t) => ({ value: t.id, label: t.label }))}
+              value={styleTarget}
+              onChange={(value) => {
+                const next = (value as BannerSliderStyleTarget) || 'bannerItem'
+                setStyleTarget(next)
+                // Invalid open domain for the new target → return to Design domain menu.
+                const nextDomains = getBannerSliderTargetMeta(next).domains
+                setActiveDomain((prev) => (prev && nextDomains.includes(prev) ? prev : null))
+              }}
+            />
+          ) : null}
+          {isBannerItemTarget && !liveBannerItemId ? (
+            <Text size="sm" c="dimmed">
+              Add a Banner Item, then use Next/Prev to choose which item to style.
+            </Text>
           ) : null}
           {isCategoryList && (styleTarget === 'marker' || styleTarget === 'chevron') ? (
             <Stack gap="xs">

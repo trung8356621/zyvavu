@@ -18,6 +18,7 @@ import {
   generateThemeCss,
   resolveThemeTemplate,
   resolveActiveThemeConfig,
+  resolveDraftThemeConfig,
   resolveActiveThemeId,
   isValidThemeId,
   normalizeThemeId,
@@ -37,6 +38,10 @@ export default async function RootLayout(props: { children: React.ReactNode }) {
   const payload = await getPayload({ config })
   const settings = await loadPublicSiteSettings(payload)
 
+  // Register custom themes before preview/active id checks (public SSR has no Builder path).
+  const { ensureCustomThemesRegistered } = await import('@/lib/theme-engine/register-custom-themes')
+  await ensureCustomThemesRegistered(payload)
+
   // Verify staff status for preview override
   const cookieStore = await cookies()
   const token = cookieStore.get('payload-token')?.value
@@ -53,21 +58,27 @@ export default async function RootLayout(props: { children: React.ReactNode }) {
     }
   }
 
-  // Check preview theme override only if staff
+  // Check preview theme override only if staff.
+  // Prefer per-request query header (Customizer iframe) over shared cookie / referer.
   let previewTheme: string | undefined
   if (isStaff) {
-    const cookiePreview = cookieStore.get('zyvavu_preview_theme')?.value
-    if (cookiePreview && isValidThemeId(cookiePreview)) {
-      previewTheme = normalizeThemeId(cookiePreview)
+    const headerList = await headers()
+    const requestPreview = headerList.get('x-zyvavu-preview-theme')
+    if (requestPreview && isValidThemeId(requestPreview)) {
+      previewTheme = normalizeThemeId(requestPreview)
     } else {
-      const headerList = await headers()
-      const referer = headerList.get('referer') || ''
-      try {
-        const url = new URL(referer)
-        const qp = url.searchParams.get('preview_theme')
-        if (qp && isValidThemeId(qp)) previewTheme = normalizeThemeId(qp)
-      } catch {
-        // ignore
+      const cookiePreview = cookieStore.get('zyvavu_preview_theme')?.value
+      if (cookiePreview && isValidThemeId(cookiePreview)) {
+        previewTheme = normalizeThemeId(cookiePreview)
+      } else {
+        const referer = headerList.get('referer') || ''
+        try {
+          const url = new URL(referer)
+          const qp = url.searchParams.get('preview_theme')
+          if (qp && isValidThemeId(qp)) previewTheme = normalizeThemeId(qp)
+        } catch {
+          // ignore
+        }
       }
     }
   }
@@ -90,7 +101,10 @@ export default async function RootLayout(props: { children: React.ReactNode }) {
 
   const headerDoc = await resolveThemeTemplate(payload, 'header', activeThemeId).catch(() => null)
   const footerDoc = await resolveThemeTemplate(payload, 'footer', activeThemeId).catch(() => null)
-  const activeThemeConfig = await resolveActiveThemeConfig(payload, activeThemeId).catch(() => undefined)
+  // Preview sessions use draft→published→bundled for the target theme; public uses published.
+  const activeThemeConfig = previewTheme
+    ? await resolveDraftThemeConfig(payload, previewTheme).catch(() => undefined)
+    : await resolveActiveThemeConfig(payload, activeThemeId).catch(() => undefined)
   const fontFamilies = [
     activeThemeConfig?.tokens?.typography?.fontFamily,
     activeThemeConfig?.tokens?.typography?.fontFamilyHeading,

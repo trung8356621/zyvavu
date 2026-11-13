@@ -30,6 +30,9 @@ import { sectionManifest } from '@/widgets/Section/manifest'
 import { contactInformationManifest } from '@/widgets/ContactInformation/manifest'
 import { iconManifest } from '@/widgets/Icon/manifest'
 import { categoryListManifest } from '@/widgets/CategoryList/manifest'
+import { bannerSliderManifest } from '@/widgets/BannerSlider/manifest'
+import { slideItemManifest } from '@/widgets/SlideItem/manifest'
+import { animatedCounterManifest } from '@/widgets/AnimatedCounter/manifest'
 
 const defaultManifestRegistry: Record<string, WidgetManifest> = {
   ...atomManifests,
@@ -61,6 +64,9 @@ const defaultManifestRegistry: Record<string, WidgetManifest> = {
   ContactInformation: contactInformationManifest,
   Icon: iconManifest,
   CategoryList: categoryListManifest,
+  BannerSlider: bannerSliderManifest,
+  SlideItem: slideItemManifest,
+  AnimatedCounter: animatedCounterManifest,
 }
 
 const customManifestOverrides: Record<string, Partial<WidgetManifest>> = {}

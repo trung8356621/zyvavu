@@ -135,6 +135,7 @@ export default buildConfig({
       handler: async (req) => {
         const { isSiteStaff } = await import('@/access/roles')
         const { setActiveThemeId } = await import('@/lib/theme-engine/resolver')
+        const { ensureCustomThemesRegistered } = await import('@/lib/theme-engine/register-custom-themes')
         if (!isSiteStaff(req.user)) {
           return Response.json({ success: false, message: 'Forbidden' }, { status: 403 })
         }
@@ -148,6 +149,7 @@ export default buildConfig({
         if (!themeId) {
           return Response.json({ success: false, message: 'themeId is required' }, { status: 400 })
         }
+        await ensureCustomThemesRegistered(req.payload)
         const ok = await setActiveThemeId(req.payload, themeId)
         if (!ok) {
           return Response.json(
@@ -159,11 +161,13 @@ export default buildConfig({
       },
     },
     {
-      path: '/themes/preview-cookie',
+      path: '/themes/create',
       method: 'post',
       handler: async (req) => {
         const { isSiteStaff } = await import('@/access/roles')
-        const { isValidThemeId, normalizeThemeId } = await import('@/lib/theme-engine/themes')
+        const { createCustomTheme } = await import('@/lib/theme-engine/custom-themes')
+        const { ensureCustomThemesRegistered } = await import('@/lib/theme-engine/register-custom-themes')
+        const { listBundledThemeIds, getAllInstalledThemes } = await import('@/lib/theme-engine/themes')
         if (!isSiteStaff(req.user)) {
           return Response.json({ success: false, message: 'Forbidden' }, { status: 403 })
         }
@@ -173,6 +177,55 @@ export default buildConfig({
         } catch {
           return Response.json({ success: false, message: 'Invalid JSON' }, { status: 400 })
         }
+        await ensureCustomThemesRegistered(req.payload)
+        const occupied = [
+          ...listBundledThemeIds(),
+          ...getAllInstalledThemes().map((theme) => theme.id),
+        ]
+        const result = await createCustomTheme(
+          req.payload,
+          {
+            name: body?.name,
+            description: body?.description,
+            baseThemeId: body?.baseThemeId,
+            websiteType: body?.websiteType,
+          },
+          occupied,
+        )
+        if (!result.success) {
+          return Response.json(result, { status: 400 })
+        }
+        await ensureCustomThemesRegistered(req.payload)
+        return Response.json({
+          success: true,
+          activated: false,
+          theme: {
+            id: result.theme.id,
+            label: result.theme.label,
+            description: result.theme.description,
+            version: result.theme.version,
+            websiteType: result.theme.websiteType,
+          },
+        })
+      },
+    },
+    {
+      path: '/themes/preview-cookie',
+      method: 'post',
+      handler: async (req) => {
+        const { isSiteStaff } = await import('@/access/roles')
+        const { isValidThemeId, normalizeThemeId } = await import('@/lib/theme-engine/themes')
+        const { ensureCustomThemesRegistered } = await import('@/lib/theme-engine/register-custom-themes')
+        if (!isSiteStaff(req.user)) {
+          return Response.json({ success: false, message: 'Forbidden' }, { status: 403 })
+        }
+        let body: any
+        try {
+          body = await req.json?.()
+        } catch {
+          return Response.json({ success: false, message: 'Invalid JSON' }, { status: 400 })
+        }
+        await ensureCustomThemesRegistered(req.payload)
         const { themeId } = body || {}
         const headers = new Headers({ 'Content-Type': 'application/json' })
         if (themeId && isValidThemeId(themeId)) {
@@ -201,7 +254,7 @@ export default buildConfig({
         } catch {
           return Response.json({ success: false, message: 'Invalid JSON payload' }, { status: 400 })
         }
-        const { template, document, themeId, loopItemId } = body || {}
+        const { template, document, themeId, loopItemId, homeVersionId, templateVersionId } = body || {}
         if (!template || !document) {
           return Response.json(
             { success: false, message: 'Template and document are required' },
@@ -217,6 +270,23 @@ export default buildConfig({
           const res = await saveLoopItemTemplate(req.payload, id, document, themeId)
           return Response.json(res, { status: res.success ? 200 : 400 })
         }
+        const { ensureCustomThemesRegistered } = await import('@/lib/theme-engine/register-custom-themes')
+        const {
+          isVersionableTemplateContext,
+          saveTemplateVersion,
+          LEGACY_TEMPLATE_VERSION_ID,
+        } = await import('@/lib/theme-engine/template-versions')
+        if (isVersionableTemplateContext(template)) {
+          await ensureCustomThemesRegistered(req.payload)
+          const id =
+            (typeof templateVersionId === 'string' && templateVersionId.trim()) ||
+            (typeof homeVersionId === 'string' && homeVersionId.trim()) ||
+            (typeof document?.metadata?.templateVersionId === 'string' && document.metadata.templateVersionId) ||
+            (typeof document?.metadata?.homeVersionId === 'string' && document.metadata.homeVersionId) ||
+            LEGACY_TEMPLATE_VERSION_ID
+          const res = await saveTemplateVersion(req.payload, template, id, document, themeId)
+          return Response.json(res, { status: res.success ? 200 : 400 })
+        }
         const res = await saveThemeTemplateOverride(
           req.payload,
           template,
@@ -225,6 +295,147 @@ export default buildConfig({
           themeId,
         )
         return Response.json(res, { status: res.success ? 200 : 400 })
+      },
+    },
+    {
+      path: '/theme-builder/template-version/create',
+      method: 'post',
+      handler: async (req) => {
+        const { isSiteStaff } = await import('@/access/roles')
+        const { ensureCustomThemesRegistered } = await import('@/lib/theme-engine/register-custom-themes')
+        const { createTemplateVersion } = await import('@/lib/theme-engine/template-versions')
+        if (!isSiteStaff(req.user)) {
+          return Response.json({ success: false, message: 'Forbidden' }, { status: 403 })
+        }
+        let body: any
+        try {
+          body = await req.json?.()
+        } catch {
+          return Response.json({ success: false, message: 'Invalid JSON payload' }, { status: 400 })
+        }
+        const { themeId, name, document, sourceVersionId, template, context } = body || {}
+        if (!document) {
+          return Response.json({ success: false, message: 'document is required' }, { status: 400 })
+        }
+        const versionContext = context || template
+        if (!versionContext) {
+          return Response.json({ success: false, message: 'template/context is required' }, { status: 400 })
+        }
+        await ensureCustomThemesRegistered(req.payload)
+        const res = await createTemplateVersion(req.payload, {
+          themeId,
+          name,
+          document,
+          sourceVersionId,
+          context: versionContext,
+        })
+        return Response.json(res, { status: res.success ? 200 : 400 })
+      },
+    },
+    {
+      path: '/theme-builder/template-version/set-primary',
+      method: 'post',
+      handler: async (req) => {
+        const { isSiteStaff } = await import('@/access/roles')
+        const { ensureCustomThemesRegistered } = await import('@/lib/theme-engine/register-custom-themes')
+        const { setPrimaryTemplateVersion } = await import('@/lib/theme-engine/template-versions')
+        if (!isSiteStaff(req.user)) {
+          return Response.json({ success: false, message: 'Forbidden' }, { status: 403 })
+        }
+        let body: any
+        try {
+          body = await req.json?.()
+        } catch {
+          return Response.json({ success: false, message: 'Invalid JSON payload' }, { status: 400 })
+        }
+        const { themeId, versionId, template, context } = body || {}
+        if (!versionId) {
+          return Response.json({ success: false, message: 'versionId is required' }, { status: 400 })
+        }
+        const versionContext = context || template
+        if (!versionContext) {
+          return Response.json({ success: false, message: 'template/context is required' }, { status: 400 })
+        }
+        await ensureCustomThemesRegistered(req.payload)
+        const res = await setPrimaryTemplateVersion(req.payload, versionContext, versionId, themeId)
+        return Response.json(res, { status: res.success ? 200 : 400 })
+      },
+    },
+    {
+      path: '/theme-builder/home-version/create',
+      method: 'post',
+      handler: async (req) => {
+        const { isSiteStaff } = await import('@/access/roles')
+        const { ensureCustomThemesRegistered } = await import('@/lib/theme-engine/register-custom-themes')
+        const { createTemplateVersion } = await import('@/lib/theme-engine/template-versions')
+        if (!isSiteStaff(req.user)) {
+          return Response.json({ success: false, message: 'Forbidden' }, { status: 403 })
+        }
+        let body: any
+        try {
+          body = await req.json?.()
+        } catch {
+          return Response.json({ success: false, message: 'Invalid JSON payload' }, { status: 400 })
+        }
+        const { themeId, name, document, sourceVersionId } = body || {}
+        if (!document) {
+          return Response.json({ success: false, message: 'document is required' }, { status: 400 })
+        }
+        await ensureCustomThemesRegistered(req.payload)
+        const res = await createTemplateVersion(req.payload, {
+          themeId,
+          name,
+          document,
+          sourceVersionId,
+          context: 'home',
+        })
+        return Response.json(res, { status: res.success ? 200 : 400 })
+      },
+    },
+    {
+      path: '/theme-builder/home-version/set-primary',
+      method: 'post',
+      handler: async (req) => {
+        const { isSiteStaff } = await import('@/access/roles')
+        const { ensureCustomThemesRegistered } = await import('@/lib/theme-engine/register-custom-themes')
+        const { setPrimaryTemplateVersion } = await import('@/lib/theme-engine/template-versions')
+        if (!isSiteStaff(req.user)) {
+          return Response.json({ success: false, message: 'Forbidden' }, { status: 403 })
+        }
+        let body: any
+        try {
+          body = await req.json?.()
+        } catch {
+          return Response.json({ success: false, message: 'Invalid JSON payload' }, { status: 400 })
+        }
+        const { themeId, versionId } = body || {}
+        if (!versionId) {
+          return Response.json({ success: false, message: 'versionId is required' }, { status: 400 })
+        }
+        await ensureCustomThemesRegistered(req.payload)
+        const res = await setPrimaryTemplateVersion(req.payload, 'home', versionId, themeId)
+        return Response.json(res, { status: res.success ? 200 : 400 })
+      },
+    },
+    {
+      path: '/theme-builder/loop-item',
+      method: 'get',
+      handler: async (req) => {
+        const { isSiteStaff } = await import('@/access/roles')
+        if (!isSiteStaff(req.user)) return Response.json({ message: 'Forbidden' }, { status: 403 })
+        const { ensureCustomThemesRegistered } = await import('@/lib/theme-engine/register-custom-themes')
+        const { isValidThemeId, normalizeThemeId } = await import('@/lib/theme-engine/themes')
+        const { listLoopItemTemplates, resolveLoopItemTemplate } = await import('@/lib/theme-engine/loop-item-templates')
+        const themeId = req.searchParams.get('theme')
+        await ensureCustomThemesRegistered(req.payload)
+        if (!themeId || !isValidThemeId(themeId) || normalizeThemeId(themeId) !== themeId) {
+          return Response.json({ message: 'Theme not found' }, { status: 404 })
+        }
+        const items = await listLoopItemTemplates(req.payload, themeId)
+        const available = await Promise.all(items.map(async ({ id, name }) =>
+          await resolveLoopItemTemplate(req.payload, id, themeId) ? { id, name } : null,
+        ))
+        return Response.json({ items: available.filter(Boolean) })
       },
     },
     {
@@ -245,6 +456,22 @@ export default buildConfig({
         const { name, themeId } = body || {}
         const res = await createLoopItemTemplate(req.payload, name, themeId)
         return Response.json(res, { status: res.success ? 200 : 400 })
+      },
+    },
+    {
+      path: '/theme-customizer/import',
+      method: 'post',
+      handler: async (req) => {
+        const { handleThemeImport } = await import('@/lib/theme-engine/theme-import')
+        return handleThemeImport(req)
+      },
+    },
+    {
+      path: '/theme-builder/import',
+      method: 'post',
+      handler: async (req) => {
+        const { handleTemplateImport } = await import('@/lib/theme-engine/template-import')
+        return handleTemplateImport(req)
       },
     },
     {

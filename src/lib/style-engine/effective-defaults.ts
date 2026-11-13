@@ -57,8 +57,9 @@ export function resolveSpacingDisplay(
   const padding = (side: 'topToken' | 'rightToken' | 'bottomToken' | 'leftToken') =>
     layers.map((layer) => layer.padding?.token || layer.padding?.[side]).find(Boolean) ||
     (side === 'topToken' || side === 'bottomToken' ? verticalPadding : STYLE_DEFAULTS.spacing)
-  const margin = (side: 'topToken' | 'bottomToken') =>
-    layers.map((layer) => layer.margin?.token || layer.margin?.[side]).find(Boolean) || verticalMargin
+  const margin = (side: 'topToken' | 'rightToken' | 'bottomToken' | 'leftToken') =>
+    layers.map((layer) => layer.margin?.token || layer.margin?.[side]).find(Boolean) ||
+    (side === 'topToken' || side === 'bottomToken' ? verticalMargin : STYLE_DEFAULTS.spacing)
   const gap = layers.map((layer) => layer.gapToken).find(Boolean)
   return { padding, margin, gap }
 }

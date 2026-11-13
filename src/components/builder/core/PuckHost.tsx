@@ -34,9 +34,15 @@ import {
   Bookmark,
   Settings2,
   Paintbrush,
+  CornerLeftUp,
+  CopyPlus,
+  Copy,
   X,
   type LucideIcon,
 } from 'lucide-react'
+import { findWidgetPath, formatWidgetPath } from '@/lib/theme-engine/widget-ids'
+import { generateThemeCss } from '@/lib/theme-engine/styles'
+import { getGoogleFontUrl } from '@/lib/theme-engine/fonts'
 
 import { CURRENT_BUILDER_VERSION, validateBuilderDocument } from './document'
 import type { BuilderDocument } from './types'
@@ -92,8 +98,17 @@ import {
   planBuilderPanelNavigation,
   planStyleSelectionLock,
 } from './atom-settings'
-import { BuilderChromeProvider } from './editor-bridge'
+import { BuilderChromeProvider, useBuilderChrome } from './editor-bridge'
 import { hasThemeLibrary } from '@/lib/theme-engine/widget-contracts'
+import {
+  getBannerActiveSlide,
+  subscribeBannerActiveSlide,
+} from '@/widgets/BannerSlider/active-slide-store'
+import {
+  duplicateBannerSlide,
+  findEnclosingBannerSlide,
+} from '@/widgets/BannerSlider/banner-slide-ops'
+import { stripSlideItemMargin } from '@/widgets/BannerSlider/style-targets'
 
 const usePuck = createUsePuck()
 
@@ -127,6 +142,9 @@ type StyleMenuRequest = {
   htmlTag?: string | null
   currentStyle: WidgetSemanticStyle
   listPresentation?: import('@/lib/style-engine/list-presentation').ListPresentationConfig
+  controlsStyle?: import('@/widgets/BannerSlider/style-targets').BannerSliderControlsStyle
+  bannerItemId?: string
+  bannerItemStyle?: WidgetSemanticStyle
   anchorEl: HTMLElement | null
   initialPosition?: { x: number; y: number }
 }
@@ -144,10 +162,13 @@ type EditorBridgeValue = {
   openStyle: (request: StyleMenuRequest) => void
   styleComponentId?: string
   templateContext?: string
+  themeId?: string
+  homeVersionId?: string | null
   libraryLanguage?: string
   themeConfig?: ThemeConfig
   previewControlTarget?: HTMLElement | null
   beforeOperation: () => boolean
+  getDocument: () => Data | null
 }
 
 const EditorBridgeContext = React.createContext<EditorBridgeValue | null>(null)
@@ -326,8 +347,21 @@ function StableLibraryOverride() {
   )
 }
 function StableIframeOverride({ children }: { children: React.ReactNode }) {
+  // Content theme tokens live only in the canvas iframe document — Admin chrome stays on Mantine/Admin vars.
+  const { themeConfig } = useBuilderChrome()
+  const themeCss = useMemo(() => generateThemeCss(themeConfig), [themeConfig])
+  const fontUrl = useMemo(() => {
+    const families = [
+      themeConfig?.tokens?.typography?.fontFamily,
+      themeConfig?.tokens?.typography?.fontFamilyHeading,
+    ]
+    return getGoogleFontUrl(families)
+  }, [themeConfig])
+
   return (
     <>
+      {fontUrl ? <link rel="stylesheet" href={fontUrl} /> : null}
+      <style dangerouslySetInnerHTML={{ __html: themeCss }} />
       <style>{`[data-zyvavu-motion] { animation: none !important; transition: none !important; } [data-zyvavu-motion="lift"]:is(:hover,:focus-within) { transform: none; } @media (prefers-reduced-motion: reduce) { [data-widget-style-surface] video { display: none; } }`}</style>
       {children}
     </>
@@ -412,15 +446,29 @@ function PuckBridge({
   }, [appState])
 
   React.useEffect(() => {
+    const safeGetItemById = (id: string) => {
+      if (!id || !getItemById) return null
+      try {
+        return getItemById(id) ?? null
+      } catch {
+        return null
+      }
+    }
     onRegisterApi({
-      canEdit: (id) => Boolean(getPermissions({ item: getItemById(id) }).edit),
+      canEdit: (id) => {
+        const item = safeGetItemById(id)
+        return Boolean(item && getPermissions({ item }).edit)
+      },
       dispatch,
       getAppState: () => appStateRef.current,
       getHistory: () => history,
       findItem: (id) => {
-        const item = getItemById?.(id)
-        const selector = getSelectorForId?.(id)
-        return item && selector ? { item, selector } : null
+        if (!id) return null
+        const data = appStateRef.current?.data as Data | undefined
+        const fromTree = data ? findItemAndSelector(data, id) : null
+        const item = safeGetItemById(id) || fromTree?.item
+        const selector = getSelectorForId?.(id) || fromTree?.selector
+        return item && selector ? { item, selector } : fromTree
       },
     })
   }, [dispatch, history, onRegisterApi, getItemById, getSelectorForId, getPermissions])
@@ -429,6 +477,35 @@ function PuckBridge({
   React.useEffect(() => {
     notifySelection(selectedId)
   }, [selectedId])
+
+  // Stale selection after delete: Puck getItemById crashes on missing nodes — resync to a live item.
+  React.useEffect(() => {
+    if (!selectedId) return
+    let exists = false
+    try {
+      exists = Boolean(getItemById?.(selectedId))
+    } catch {
+      exists = false
+    }
+    if (exists) return
+    const data = appState.data as Data
+    const fromTree = findItemAndSelector(data, selectedId)
+    if (fromTree) return
+    const slide = findEnclosingBannerSlide(data, selectedId)
+    const fallbackId =
+      slide?.sliderId ||
+      (selected?.type === 'SlideItem'
+        ? findParentItemId(data, selectedId)
+        : undefined)
+    if (fallbackId) {
+      const selector = getSelectorForId?.(fallbackId) || findItemAndSelector(data, fallbackId)?.selector
+      if (selector) {
+        dispatch({ type: 'setUi', ui: { itemSelector: selector } })
+        return
+      }
+    }
+    dispatch({ type: 'setUi', ui: { itemSelector: null } })
+  }, [appState.data, dispatch, getItemById, getSelectorForId, selected, selectedId])
 
   return <>{children}</>
 }
@@ -444,16 +521,7 @@ function PuckActionBarBridge({
   children: React.ReactNode
   parentAction?: React.ReactNode
   styleMenuComponentId?: string
-  onOpenStyleMenu: (payload: {
-    domain?: StyleModalDomain
-    componentType: string
-    componentVariant?: string
-    componentId: string
-    htmlTag?: string | null
-    currentStyle: WidgetSemanticStyle
-    anchorEl: HTMLElement
-    initialPosition: { x: number; y: number }
-  }) => void
+  onOpenStyleMenu: (payload: StyleMenuRequest) => void
 }) {
   const bridge = React.useContext(EditorBridgeContext)!
   const selectedItem = usePuck((s) => s.selectedItem)
@@ -489,11 +557,35 @@ function PuckActionBarBridge({
   const componentType = normalizeComponentType(rawType)
   const componentId = resolvedItem?.props?.id || resolvedItem?.id || ''
   const currentStyle = (resolvedItem?.props?.style as WidgetSemanticStyle) || EMPTY_STYLE
+  const dispatch = usePuck((s) => s.dispatch)
+  const getSelectorForId = usePuck((s) => s.getSelectorForId)
+  const bannerSlide =
+    componentId && appData
+      ? findEnclosingBannerSlide(appData as Data, componentId)
+      : null
 
   const handleEditStyleClick = (e: React.SyntheticEvent, domain?: StyleModalDomain) => {
     e.stopPropagation()
     const anchor = e.currentTarget as HTMLElement
     const initialPos = computeTranslatedAnchorPosition(anchor, 340, 480)
+    // SlideItem chrome has no Style panel — open Banner Slider Style Targets instead.
+    if (componentType === 'SlideItem' && bannerSlide) {
+      const sliderItem = findItemAndSelector(appData as Data, bannerSlide.sliderId)?.item
+      onOpenStyleMenu({
+        domain,
+        componentType: 'BannerSlider',
+        componentId: bannerSlide.sliderId,
+        currentStyle: EMPTY_STYLE,
+        controlsStyle: sliderItem?.props?.controlsStyle,
+        bannerItemId: bannerSlide.slideId,
+        bannerItemStyle: stripSlideItemMargin(
+          findItemAndSelector(appData as Data, bannerSlide.slideId)?.item?.props?.style,
+        ) || EMPTY_STYLE,
+        anchorEl: anchor,
+        initialPosition: initialPos,
+      })
+      return
+    }
     onOpenStyleMenu({
       domain,
       componentType,
@@ -506,9 +598,12 @@ function PuckActionBarBridge({
     })
   }
 
-  const designDomains = orderStyleToolbarDomains(
-    getStyleModalDomains(componentType, resolvedItem?.props?.variant),
-  )
+  const designDomains =
+    componentType === 'SlideItem'
+      ? orderStyleToolbarDomains(['background', 'spacing', 'borders', 'shadow', 'effects', 'animation'])
+      : orderStyleToolbarDomains(
+          getStyleModalDomains(componentType, resolvedItem?.props?.variant),
+        )
 
   return (
     <div
@@ -519,7 +614,7 @@ function PuckActionBarBridge({
       data-testid="widget-actionbar-v5"
     >
       {label && <Text component="span" size="sm" fw={600} truncate>{label}</Text>}
-      {componentType !== 'Button' && <ActionIcon
+      {componentType !== 'Button' && componentType !== 'SlideItem' && <ActionIcon
         size="sm"
         variant="subtle"
         aria-label="Settings"
@@ -528,6 +623,38 @@ function PuckActionBarBridge({
       >
         <Settings2 size={16} aria-hidden />
       </ActionIcon>}
+      {React.isValidElement<React.ComponentProps<typeof ActionBar.Action>>(parentAction) &&
+        parentAction.type === ActionBar.Action &&
+        !parentAction.props.disabled && (
+          <Tooltip label="Chọn phần tử cha" withArrow position="top">
+            <ActionIcon
+              size="sm"
+              variant="subtle"
+              aria-label="Chọn phần tử cha"
+              title="Chọn phần tử cha"
+              data-testid="widget-select-parent"
+              onClick={(event) => {
+                // Image (and nested widgets) → skip SlideItem → Banner Slider.
+                if (
+                  bannerSlide &&
+                  componentType !== 'BannerSlider' &&
+                  componentType !== 'SlideItem'
+                ) {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  const selector = getSelectorForId?.(bannerSlide.sliderId)
+                  if (selector) {
+                    dispatch({ type: 'setUi', ui: { itemSelector: selector } })
+                    return
+                  }
+                }
+                parentAction.props.onClick?.(event as any)
+              }}
+            >
+              <CornerLeftUp size={16} aria-hidden />
+            </ActionIcon>
+          </Tooltip>
+        )}
       {designDomains.length > 0 && (
         <Menu withinPortal={false} position="bottom-end">
           <Menu.Target>
@@ -566,19 +693,71 @@ function PuckActionBarBridge({
           </ActionIcon>
         </Menu.Target>
         <Menu.Dropdown data-testid="widget-more-menu">
-          {React.Children.map([parentAction, children], (action) => {
-            if (!React.isValidElement<React.ComponentProps<typeof ActionBar.Action>>(action)) return null
-            if (action.type !== ActionBar.Action) return action
-            return (
+          {React.Children.toArray(children).flatMap((action, index) => {
+            if (!React.isValidElement(action)) return []
+            if (action.type === React.Fragment) {
+              return React.Children.toArray(
+                (action.props as { children?: React.ReactNode }).children,
+              ).flatMap((child, childIndex) => {
+                if (!React.isValidElement(child)) return []
+                if (
+                  !React.isValidElement<React.ComponentProps<typeof ActionBar.Action>>(child) ||
+                  child.type !== ActionBar.Action
+                ) {
+                  return [
+                    React.cloneElement(child as React.ReactElement, {
+                      key: child.key ?? `action-fragment-${index}-${childIndex}`,
+                    }),
+                  ]
+                }
+                return [
+                  <Menu.Item
+                    key={child.props.label ?? `action-fragment-${index}-${childIndex}`}
+                    leftSection={child.props.children}
+                    disabled={child.props.disabled}
+                    onClick={child.props.onClick}
+                  >
+                    {child.props.label}
+                  </Menu.Item>,
+                ]
+              })
+            }
+            if (
+              !React.isValidElement<React.ComponentProps<typeof ActionBar.Action>>(action) ||
+              action.type !== ActionBar.Action
+            ) {
+              return [
+                React.cloneElement(action as React.ReactElement, {
+                  key: action.key ?? `action-extra-${index}`,
+                }),
+              ]
+            }
+            return [
               <Menu.Item
+                key={action.props.label ?? `puck-action-${index}`}
                 leftSection={action.props.children}
                 disabled={action.props.disabled}
                 onClick={action.props.onClick}
               >
                 {action.props.label}
-              </Menu.Item>
-            )
+              </Menu.Item>,
+            ]
           })}
+          {bannerSlide && componentId && (
+            <Menu.Item
+              leftSection={<CopyPlus size={16} />}
+              onClick={() =>
+                duplicateBannerSlide({
+                  dispatch,
+                  location: bannerSlide,
+                  selectSlider: true,
+                  getSelectorForId,
+                })
+              }
+            >
+              Duplicate Item
+            </Menu.Item>
+          )}
           {(rawType === 'Image' || rawType === 'Video') && componentId && (
             <ImageQuickAction
               key={componentId}
@@ -620,6 +799,39 @@ function PuckActionBarBridge({
               Save as Pattern
             </Menu.Item>
           )}
+          {componentId && (
+            <Menu.Item
+              leftSection={<Copy size={16} />}
+              data-testid="copy-widget-id"
+              onClick={() => {
+                void navigator.clipboard.writeText(componentId)
+              }}
+            >
+              Copy Widget ID
+            </Menu.Item>
+          )}
+          {componentId && (
+            <Menu.Item
+              leftSection={<Copy size={16} />}
+              data-testid="copy-widget-path"
+              onClick={() => {
+                const doc = bridge.getDocument()
+                if (!doc) return
+                const path = findWidgetPath(doc as any, componentId)
+                if (!path) return
+                void navigator.clipboard.writeText(
+                  formatWidgetPath({
+                    themeId: bridge.themeId || 'theme',
+                    template: bridge.templateContext || 'template',
+                    versionId: bridge.homeVersionId,
+                    path,
+                  }),
+                )
+              }}
+            >
+              Copy Widget Path
+            </Menu.Item>
+          )}
         </Menu.Dropdown>
       </Menu>
     </div>
@@ -655,7 +867,59 @@ function findItemAndSelector(
     }
   }
 
-  return null
+  // Slot-canonical trees keep nested widgets on props.* arrays.
+  let found: { item: any; selector: { index: number; zone?: string } } | null = null
+  const walk = (items: any[], zone?: string) => {
+    for (let index = 0; index < items.length; index++) {
+      const item = items[index]
+      if (!item) continue
+      if (item.props?.id === id || item._id === id || item.id === id) {
+        found = { item, selector: zone ? { index, zone } : { index } }
+        return
+      }
+      for (const value of Object.values(item.props || {})) {
+        if (Array.isArray(value) && value.some((child) => child?.type && child?.props)) {
+          walk(value, zone)
+          if (found) return
+        }
+      }
+    }
+  }
+  walk(content)
+  if (!found) {
+    for (const [zoneKey, items] of Object.entries(data.zones || {})) {
+      walk(items as any[], zoneKey)
+      if (found) break
+    }
+  }
+  return found
+}
+
+function findParentItemId(data: Data, childId: string): string | null {
+  for (const [zoneKey, items] of Object.entries(data.zones || {})) {
+    if ((items as any[]).some((item) => item?.props?.id === childId)) {
+      const sep = zoneKey.lastIndexOf(':')
+      return sep > 0 ? zoneKey.slice(0, sep) : null
+    }
+  }
+  let parentId: string | null = null
+  const walk = (items: any[], parent?: string) => {
+    for (const item of items) {
+      if (!item?.props?.id) continue
+      if (item.props.id === childId) {
+        parentId = parent || null
+        return
+      }
+      for (const value of Object.values(item.props || {})) {
+        if (Array.isArray(value) && value.some((child) => child?.type && child?.props)) {
+          walk(value, item.props.id)
+          if (parentId) return
+        }
+      }
+    }
+  }
+  walk(data.content || [])
+  return parentId
 }
 
 export type PuckHostProps = {
@@ -673,6 +937,8 @@ export type PuckHostProps = {
   desktopOnly?: boolean
   themeConfig?: ThemeConfig
   templateContext?: string
+  themeId?: string
+  homeVersionId?: string | null
   libraryLanguage?: string
   previewControlTarget?: HTMLElement | null
   /** Lift Puck history undo/redo into the Theme Builder one-row header (UX V5). */
@@ -694,6 +960,8 @@ export function PuckHost({
   desktopOnly = false,
   themeConfig,
   templateContext,
+  themeId,
+  homeVersionId,
   libraryLanguage,
   previewControlTarget,
   onHistoryReady,
@@ -807,16 +1075,20 @@ export function PuckHost({
   }, [])
 
   const handleOpenStyleMenu = useCallback(
-    ({
-      domain,
-      componentType,
-      componentVariant,
-      componentId,
-      htmlTag,
-      currentStyle,
-      anchorEl,
-      initialPosition,
-    }: StyleMenuRequest) => {
+    (request: StyleMenuRequest) => {
+      const {
+        domain,
+        componentType,
+        componentVariant,
+        componentId,
+        htmlTag,
+        currentStyle,
+        controlsStyle,
+        bannerItemId,
+        bannerItemStyle,
+        anchorEl,
+        initialPosition,
+      } = request
       // Same widget: the dock establishes a new baseline when the domain changes.
       if (activeStyleMenu?.opened && activeStyleMenu.componentId === componentId) {
         setActiveStyleMenu((previous) =>
@@ -846,6 +1118,16 @@ export function PuckHost({
           : typeof htmlTag === 'string'
             ? htmlTag
             : null
+      const resolvedBannerItemId =
+        bannerItemId ||
+        (componentType === 'BannerSlider' ? getBannerActiveSlide(componentId)?.slideId : undefined)
+      const resolvedBannerItemStyle =
+        bannerItemStyle ||
+        (componentType === 'BannerSlider' && resolvedBannerItemId
+          ? stripSlideItemMargin(
+              puckApiRef.current?.findItem?.(resolvedBannerItemId)?.item?.props?.style,
+            ) || EMPTY_STYLE
+          : undefined)
       setActiveStyleMenu({
         opened: true,
         domain,
@@ -856,6 +1138,9 @@ export function PuckHost({
         currentStyle:
           (item?.props?.style as WidgetSemanticStyle) || currentStyle || EMPTY_STYLE,
         listPresentation: item?.props?.listPresentation,
+        controlsStyle: controlsStyle || item?.props?.controlsStyle,
+        bannerItemId: resolvedBannerItemId,
+        bannerItemStyle: resolvedBannerItemStyle,
         anchorEl,
         initialPosition,
       })
@@ -863,16 +1148,33 @@ export function PuckHost({
     [activeStyleMenu, setAtomLinkId, setPuckRightSidebar],
   )
 
+  React.useEffect(() => {
+    if (!activeStyleMenu?.opened || activeStyleMenu.componentType !== 'BannerSlider') return
+    return subscribeBannerActiveSlide((sliderId, state) => {
+      if (sliderId !== activeStyleMenu.componentId) return
+      // Only refresh Style Target payload when the viewed Banner Item changes (Next/Prev).
+      // Style edits already update activeStyleMenu via handleUpdateBannerItemStyle — re-pushing
+      // a new style object here caused Maximum update depth exceeded.
+      setActiveStyleMenu((prev) => {
+        if (!prev || prev.bannerItemId === state.slideId) return prev
+        const slide = state.slideId ? puckApiRef.current?.findItem?.(state.slideId)?.item : null
+        return {
+          ...prev,
+          bannerItemId: state.slideId,
+          bannerItemStyle: stripSlideItemMargin(slide?.props?.style) || EMPTY_STYLE,
+        }
+      })
+    })
+  }, [activeStyleMenu?.componentId, activeStyleMenu?.componentType, activeStyleMenu?.opened])
+
   const handleCloseStyleMenu = useCallback(() => {
     stylePreviewStore.clearPreview()
     setActiveStyleMenu(null)
     setPuckRightSidebar(false)
   }, [setPuckRightSidebar])
 
-  const patchActiveWidgetProps = useCallback(
-    (patch: Record<string, unknown>, options?: { recordHistory?: boolean }) => {
-      if (!activeStyleMenu) return false
-      const { componentId } = activeStyleMenu
+  const patchWidgetPropsById = useCallback(
+    (componentId: string, patch: Record<string, unknown>, options?: { recordHistory?: boolean }) => {
       const api = puckApiRef.current
       const current = api?.findItem?.(componentId)?.item
       if (!current || current.props?.lock?.canEditProps === false || !api?.canEdit(componentId)) {
@@ -930,7 +1232,15 @@ export function PuckHost({
       }
       return true
     },
-    [activeStyleMenu],
+    [],
+  )
+
+  const patchActiveWidgetProps = useCallback(
+    (patch: Record<string, unknown>, options?: { recordHistory?: boolean }) => {
+      if (!activeStyleMenu) return false
+      return patchWidgetPropsById(activeStyleMenu.componentId, patch, options)
+    },
+    [activeStyleMenu, patchWidgetPropsById],
   )
 
   const handleUpdateWidgetStyle = useCallback(
@@ -949,6 +1259,30 @@ export function PuckHost({
       return true
     },
     [patchActiveWidgetProps],
+  )
+
+  const handleUpdateControlsStyle = useCallback(
+    (
+      presentation: import('@/widgets/BannerSlider/style-targets').BannerSliderControlsStyle,
+      options?: { recordHistory?: boolean },
+    ) => {
+      if (!patchActiveWidgetProps({ controlsStyle: presentation }, options)) return false
+      setActiveStyleMenu((prev) => (prev ? { ...prev, controlsStyle: presentation } : prev))
+      return true
+    },
+    [patchActiveWidgetProps],
+  )
+
+  const handleUpdateBannerItemStyle = useCallback(
+    (slideId: string, style: WidgetSemanticStyle, options?: { recordHistory?: boolean }) => {
+      const safe = stripSlideItemMargin(style) || {}
+      if (!patchWidgetPropsById(slideId, { style: safe }, options)) return false
+      setActiveStyleMenu((prev) =>
+        prev ? { ...prev, bannerItemId: slideId, bannerItemStyle: safe } : prev,
+      )
+      return true
+    },
+    [patchWidgetPropsById],
   )
 
   // Native right-click on canvas widgets triggers the style context menu
@@ -970,11 +1304,28 @@ export function PuckHost({
       const appState = api.getAppState()
       const data = appState.data as Data
 
-      const found = api.findItem?.(compId) || findItemAndSelector(data, compId)
+      let found = api.findItem?.(compId) || findItemAndSelector(data, compId)
       if (!found) return
 
+      // SlideItem chrome is not a Style target — open Banner Slider Style Targets instead.
+      if (found.item.type === 'SlideItem') {
+        const parentId = findParentItemId(data, found.item.props.id)
+        const parent = parentId
+          ? api.findItem?.(parentId) || findItemAndSelector(data, parentId)
+          : null
+        if (!parent || parent.item.type !== 'BannerSlider') return
+        found = parent
+      }
+
       const { item, selector } = found
-      if (!getComponentStyleCapabilities(item.type).length) return
+      // BannerSlider: root Style domains are empty (Section owns chrome); Style Targets cover
+      // Banner Item / arrows / pagination via the shared Style menu.
+      if (
+        item.type !== 'BannerSlider' &&
+        !getComponentStyleCapabilities(item.type).length
+      ) {
+        return
+      }
       e.preventDefault()
       e.stopPropagation()
 
@@ -1218,10 +1569,13 @@ export function PuckHost({
     closeSaveAsPattern,
     saveAsPatternOpened,
     templateContext,
+    themeId,
+    homeVersionId,
     libraryLanguage,
     themeConfig,
     previewControlTarget,
     beforeOperation: () => true,
+    getDocument: () => latestDocRef.current as unknown as Data,
     registerApi: handleRegisterPuckApi,
     select: handleSelectionChange,
     openStyle: handleOpenStyleMenu,
@@ -1393,10 +1747,23 @@ export function PuckHost({
               : undefined}
             themeConfig={themeConfig}
             listPresentation={activeStyleMenu.listPresentation}
+            controlsStyle={activeStyleMenu.controlsStyle}
+            bannerItemId={activeStyleMenu.bannerItemId}
+            bannerItemStyle={activeStyleMenu.bannerItemStyle}
             onUpdateStyle={handleUpdateWidgetStyle}
             onUpdateListPresentation={
               activeStyleMenu.componentType === 'CategoryList'
                 ? handleUpdateListPresentation
+                : undefined
+            }
+            onUpdateControlsStyle={
+              activeStyleMenu.componentType === 'BannerSlider'
+                ? handleUpdateControlsStyle
+                : undefined
+            }
+            onUpdateBannerItemStyle={
+              activeStyleMenu.componentType === 'BannerSlider'
+                ? handleUpdateBannerItemStyle
                 : undefined
             }
             onSaveAsPattern={

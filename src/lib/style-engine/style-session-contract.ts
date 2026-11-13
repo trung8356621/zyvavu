@@ -127,6 +127,15 @@ export const CATEGORY_LIST_TARGET_FIELDS = {
 
 export type CategoryListSessionTarget = keyof typeof CATEGORY_LIST_TARGET_FIELDS
 
+/** BannerSlider controlsStyle keys owned by each Style Target (bannerItem writes SlideItem.style). */
+export const BANNER_SLIDER_TARGET_FIELDS = {
+  bannerItem: [],
+  arrows: ['arrows'],
+  pagination: ['pagination'],
+} as const
+
+export type BannerSliderSessionTarget = keyof typeof BANNER_SLIDER_TARGET_FIELDS
+
 /**
  * Cancel for CategoryList: restore only dirty Style Targets onto current presentation.
  * Previously committed targets (e.g. Parent after Close) remain from `current`.
@@ -134,12 +143,14 @@ export type CategoryListSessionTarget = keyof typeof CATEGORY_LIST_TARGET_FIELDS
 export function restoreSessionOwnedPresentationTargets(args: {
   baseline: Record<string, unknown> | null | undefined
   current: Record<string, unknown> | null | undefined
-  dirtyTargets: Iterable<CategoryListSessionTarget>
+  dirtyTargets: Iterable<string>
+  targetFields?: Record<string, readonly string[]>
 }): Record<string, unknown> {
+  const fieldMap = args.targetFields || CATEGORY_LIST_TARGET_FIELDS
   const baseline = JSON.parse(JSON.stringify(args.baseline || {})) as Record<string, unknown>
   const next = JSON.parse(JSON.stringify(args.current || {})) as Record<string, unknown>
   for (const target of args.dirtyTargets) {
-    const fields = CATEGORY_LIST_TARGET_FIELDS[target] || []
+    const fields = fieldMap[target] || [target]
     for (const field of fields) {
       if (baseline[field] === undefined) delete next[field]
       else next[field] = JSON.parse(JSON.stringify(baseline[field]))

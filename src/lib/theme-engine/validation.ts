@@ -16,7 +16,10 @@ export function validateThemeTemplateDocument(
   doc: unknown,
   context: TemplateContext,
   previousDoc?: ThemeTemplateDocument | null,
+  options?: { enforceRequiredPresence?: boolean },
 ): ValidationResult {
+  // Save keeps required widgets/capabilities; insert/edit drafts may omit them temporarily.
+  const enforceRequiredPresence = options?.enforceRequiredPresence !== false
   const errors: string[] = []
 
   if (!doc || typeof doc !== 'object') {
@@ -178,8 +181,8 @@ export function validateThemeTemplateDocument(
       }
     }
 
-    // 2. Required widgets
-    if (policy.requiredWidgets) {
+    // 2. Required widgets (Save-time; skip during draft insert/edit)
+    if (enforceRequiredPresence && policy.requiredWidgets) {
       for (const reqWidget of policy.requiredWidgets) {
         if (!widgetCounts.has(reqWidget) || (widgetCounts.get(reqWidget) || 0) === 0) {
           errors.push(`Template "${context}" requires widget "${reqWidget}"`)
@@ -187,8 +190,8 @@ export function validateThemeTemplateDocument(
       }
     }
 
-    // 3. Required capabilities
-    if (policy.requiredCapabilities) {
+    // 3. Required capabilities (Save-time; skip during draft insert/edit)
+    if (enforceRequiredPresence && policy.requiredCapabilities) {
       for (const reqCap of policy.requiredCapabilities) {
         if (!capabilityCounts.has(reqCap) || (capabilityCounts.get(reqCap) || 0) === 0) {
           errors.push(

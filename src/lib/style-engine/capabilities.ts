@@ -92,6 +92,19 @@ export const COMPONENT_STYLE_CAPABILITIES: Record<string, StyleDomain[]> = {
     'effects',
     'animation',
   ],
+  // Root BannerSlider has no user Style panel — arrows/pagination use controlsStyle targets.
+  BannerSlider: [],
+  SlideItem: ['spacing', 'dimensions', 'border', 'background', 'shadow', 'effects', 'animation'],
+  AnimatedCounter: [
+    'typography',
+    'spacing',
+    'dimensions',
+    'border',
+    'background',
+    'shadow',
+    'effects',
+    'animation',
+  ],
 }
 
 export const LABEL_TO_COMPONENT_TYPE: Record<string, string> = {
@@ -135,6 +148,9 @@ export function getComponentStyleCapabilities(
   const normalized = presentationType(normalizeComponentType(componentType))
 
   // Every registered renderer is composed with the shared surface adapter.
+  // BannerSlider root intentionally has no Style panel (Section owns outer chrome).
+  if (normalized === 'BannerSlider') return []
+
   const globalDomains: StyleDomain[] = [
     'animation',
     'background',

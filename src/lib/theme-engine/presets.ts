@@ -1,5 +1,11 @@
 import type { ColorPreset, ThemeTokens, TypographyPreset } from './types'
 
+export const COLOR_TOKEN_KEYS = [
+  'primary', 'primaryHover', 'background', 'surface', 'text', 'textMuted', 'border',
+  'accent', 'shadowSoft', 'shadowMedium', 'shadowStrong', 'headerBackground', 'headerText',
+  'headerBorder',
+] as const
+
 export const BUILTIN_COLOR_PRESETS: ColorPreset[] = [
   {
     id: 'default-teal',
@@ -237,37 +243,17 @@ export const BUILTIN_TYPOGRAPHY_PRESETS: TypographyPreset[] = [
  * Validates a color string strictly. Supports 3/6/8-digit hex, rgb/rgba, hsl/hsla, and common CSS names.
  * Blocks javascript:, expression, url(), and script injection.
  */
+const colorPatterns = [
+  /^#(?:[a-f0-9]{3}|[a-f0-9]{4}|[a-f0-9]{6}|[a-f0-9]{8})$/i,
+  /^rgba?\(\s*(\d{1,3}%?)\s*,\s*(\d{1,3}%?)\s*,\s*(\d{1,3}%?)(?:\s*,\s*(0|1|0?\.\d+))?\s*\)$/i,
+  /^hsla?\(\s*(\d{1,3}(?:deg)?)\s*,\s*(\d{1,3}%)\s*,\s*(\d{1,3}%)(?:\s*,\s*(0|1|0?\.\d+))?\s*\)$/i,
+  /^(?:transparent|currentcolor|inherit|initial|black|white)$/i,
+]
+
 export function validateColorString(color: string): boolean {
   if (typeof color !== 'string') return false
   const trimmed = color.trim()
-  if (!trimmed || trimmed.length > 50) return false
-
-  // Hex check (#fff, #ffffff, #ffffffff)
-  if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(trimmed)) {
-    return true
-  }
-
-  // rgb/rgba check
-  if (
-    /^rgba?\(\s*(\d{1,3}%?)\s*,\s*(\d{1,3}%?)\s*,\s*(\d{1,3}%?)(?:\s*,\s*(0|1|0?\.\d+))?\s*\)$/i.test(
-      trimmed,
-    )
-  ) {
-    return true
-  }
-
-  // hsl/hsla check
-  if (
-    /^hsla?\(\s*(\d{1,3}(?:deg)?)\s*,\s*(\d{1,3}%)\s*,\s*(\d{1,3}%)(?:\s*,\s*(0|1|0?\.\d+))?\s*\)$/i.test(
-      trimmed,
-    )
-  ) {
-    return true
-  }
-
-  // Standard keyword colors
-  const keywords = ['transparent', 'currentcolor', 'inherit', 'initial', 'black', 'white']
-  return keywords.includes(trimmed.toLowerCase())
+  return trimmed.length <= 50 && colorPatterns.some((pattern) => pattern.test(trimmed))
 }
 
 /**
@@ -396,8 +382,16 @@ export function calculateShadowColor(
 /**
  * Strict validator for Theme tokens payload before persistence.
  */
-export function validateThemeTokens(tokens: unknown): { valid: boolean; errors: string[] } {
+export function validateThemeTokens(
+  tokens: unknown,
+  options?: { strict: true },
+): { valid: boolean; errors: string[] } {
   const errors: string[] = []
+
+  if (options) {
+    validateTokenFields(tokens, themeCustomizeTokenSchema, 'tokens', errors)
+    return { valid: errors.length === 0, errors }
+  }
 
   if (!tokens || typeof tokens !== 'object') {
     return { valid: false, errors: ['Tokens must be a non-null object.'] }
@@ -437,8 +431,7 @@ export function validateThemeTokens(tokens: unknown): { valid: boolean; errors: 
       }
 
       // Validate heading styles
-      const headings = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p1', 'p2', 'p3'] as const
-      for (const h of headings) {
+      for (const h of TYPOGRAPHY_ROLES) {
         const item = (typo as any)[h]
         if (item && typeof item === 'object') {
           if (
@@ -469,5 +462,105 @@ export function validateThemeTokens(tokens: unknown): { valid: boolean; errors: 
   return {
     valid: errors.length === 0,
     errors,
+  }
+}
+
+export const TYPOGRAPHY_ROLES = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p1', 'p2', 'p3'] as const
+
+type TokenField =
+  | { type: 'object'; properties: Record<string, TokenField>; required: string[]; minProperties: number; additionalProperties: false }
+  | { type: 'string'; maxLength: number; trim?: true; enum?: readonly string[]; patterns?: { source: string; flags: string }[] }
+
+const tokenObject = (properties: Record<string, TokenField>): TokenField =>
+  ({ type: 'object', properties, required: [], minProperties: 1, additionalProperties: false })
+
+const tokenString = (patterns: RegExp[], maxLength = 250, trim?: true): TokenField => ({
+  type: 'string',
+  maxLength,
+  ...(trim ? { trim } : {}),
+  patterns: patterns.map(({ source, flags }) => ({ source, flags })),
+})
+
+const tokenChoices = (values: readonly string[]): TokenField =>
+  ({ type: 'string', maxLength: Math.max(...values.map((value) => value.length)), enum: values })
+
+const scale = <T extends string>(keys: readonly T[], field: TokenField): Record<T, TokenField> =>
+  Object.fromEntries(keys.map((key) => [key, field])) as Record<T, TokenField>
+
+const spacingKeys = ['xs', 'sm', 'md', 'lg', 'xl', 'xxl'] as const
+const cssSize = tokenString([/^(?:0|\d{1,5}(?:\.\d{1,6})?(?:px|rem|em|%|ch|vw|vh))$/])
+const fontSize = tokenString([/^\d{1,5}(?:\.\d{1,6})?(?:px|rem|em|%)$/])
+const lineHeight = tokenString([/^\d{1,5}(?:\.\d{1,6})?(?:px|rem|em|%)?$/])
+const fontName = tokenString([
+  /^(?:[\p{L}\p{N} -]+|'[\p{L}\p{N} -]+'|"[\p{L}\p{N} -]+")(?: *, *(?:[\p{L}\p{N} -]+|'[\p{L}\p{N} -]+'|"[\p{L}\p{N} -]+"))*$/u,
+], 250, true)
+const solidColor = tokenString(colorPatterns, 50, true)
+const typographyRole = tokenObject({
+  size: fontSize,
+  lineHeight,
+  weight: tokenString([/^(?:normal|bold|bolder|lighter|[1-9]00)$/]),
+  letterSpacing: tokenString([/^(?:normal|0|-?\d{1,5}(?:\.\d{1,6})?(?:px|rem|em|%|ch|vw|vh))$/]),
+  color: solidColor,
+})
+
+/** Published by MCP and enforced by strict Theme Customize validation. */
+export const themeCustomizeTokenSchema = tokenObject({
+  colors: tokenObject(scale(COLOR_TOKEN_KEYS, solidColor)),
+  typography: tokenObject({
+    fontFamily: fontName,
+    fontFamilyHeading: fontName,
+    baseFontSize: fontSize,
+    baseLineHeight: lineHeight,
+    ...scale(TYPOGRAPHY_ROLES, typographyRole),
+  }),
+  spacing: tokenObject(scale(spacingKeys, cssSize)),
+  layout: tokenObject({
+    containerWidth: cssSize,
+    narrowWidth: cssSize,
+    wideWidth: cssSize,
+    alignment: tokenChoices(['left', 'center', 'right']),
+    pageSpacing: tokenString([
+      new RegExp('^(?:' + spacingKeys.join('|') + ')$'),
+      /^\d{1,5}(?:\.\d{1,6})?(?:px|rem)$/,
+    ]),
+  }),
+  radius: tokenObject(scale(['sm', 'md', 'lg', 'pill'], cssSize)),
+})
+
+/** File themeId is informational only — destination is the locked Theme ID passed by the import caller. */
+export function validateThemeImportDocument(document: unknown, _destinationThemeId?: string) {
+  if (!document || typeof document !== 'object' || Array.isArray(document) ||
+      !Object.hasOwn(document, 'tokens') ||
+      Object.keys(document).some((key) => key !== 'themeId' && key !== 'tokens')) {
+    return { valid: false, errors: ['The file must contain tokens and may include a themeId.'] }
+  }
+  const file = document as { themeId?: unknown; tokens: unknown }
+  if (Object.hasOwn(file, 'themeId') && typeof file.themeId !== 'string') {
+    return { valid: false, errors: ['themeId must be a string when present.'] }
+  }
+  return validateThemeTokens(file.tokens, { strict: true })
+}
+
+function validateTokenFields(value: unknown, schema: TokenField, path: string, errors: string[]) {
+  if (schema.type === 'string') {
+    const candidate = schema.trim && typeof value === 'string' ? value.trim() : value
+    if (typeof candidate !== 'string' || !candidate || candidate.length > schema.maxLength ||
+      (schema.enum && !schema.enum.includes(candidate)) ||
+      (schema.patterns && !schema.patterns.some(({ source, flags }) => new RegExp(source, flags).test(candidate)))) {
+      errors.push('Invalid value at ' + path + '.')
+    }
+    return
+  }
+  if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).length < schema.minProperties) {
+    errors.push(path + ' must be a non-empty object.')
+    return
+  }
+  for (const [key, child] of Object.entries(value)) {
+    const field = path + '.' + key
+    if (!Object.hasOwn(schema.properties, key)) {
+      errors.push('Unsupported field at ' + field + '.')
+    } else {
+      validateTokenFields(child, schema.properties[key], field, errors)
+    }
   }
 }

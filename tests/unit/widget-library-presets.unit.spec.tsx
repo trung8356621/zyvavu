@@ -179,12 +179,20 @@ it('opens with Text category first as one continuous Heading+Text library', () =
     </MantineProvider>,
   )
   expect(screen.getByRole('button', { name: 'Text', pressed: true })).toBeTruthy()
+  // Category icon rail is marked as a 2-column grid (CSS modules not computed in jsdom).
+  expect(screen.getByRole('navigation', { name: 'Widget categories' }).getAttribute('data-category-rail')).toBe(
+    '2-col',
+  )
   // Text library uses one continuous list (no Basic / Styled Presets split).
   expect(screen.queryByText('Basic')).toBeNull()
   expect(screen.queryByText('Styled Presets')).toBeNull()
   expect(screen.getByRole('button', { name: 'Insert Heading' })).toBeTruthy()
   expect(screen.getByRole('button', { name: 'Insert Body text' })).toBeTruthy()
   expect(screen.getByRole('button', { name: 'Insert Surface panel' })).toBeTruthy()
+  // Visible name sits under the preview (aria-hidden label; insert role keeps Insert …).
+  expect(screen.getByRole('button', { name: 'Insert Heading' }).parentElement?.textContent).toMatch(
+    /Heading/,
+  )
   // Free Text atom is hidden; body presets insert Heading+P.
   expect(screen.queryByRole('button', { name: 'Insert Text' })).toBeNull()
   expect(screen.queryByRole('button', { name: /Add Heading/i })).toBeNull()
@@ -216,6 +224,7 @@ it('groups media together and finds Video from the Text category search', () => 
   expect((portrait as HTMLImageElement).style.objectFit).toBe('contain')
   const imagePreset = screen.getByRole('button', { name: 'Insert Landscape image' })
   expect(imagePreset.closest('[data-preset-masonry="Image"]')?.classList.contains('zyvavu-media-masonry')).toBe(true)
+  expect(imagePreset.parentElement?.textContent).toContain('Landscape image')
   expect(screen.getByRole('button', { name: 'Insert Standard video' }).closest('[data-preset-masonry]')).toBeNull()
   fireEvent.click(imagePreset)
   const inserted = state.current.dispatch.mock.calls[0][0].data.content[0].props.content[0]
@@ -230,11 +239,13 @@ it('uses the same Button Style V1 defaults for preview and insertion', () => {
   fireEvent.click(screen.getByRole('button', { name: 'Buttons' }))
   const preset = screen.getByRole('button', { name: 'Insert Filled' })
   expect(preset.closest('[data-preset-masonry="Button"]')?.classList.contains('zyvavu-media-masonry')).toBe(true)
+  expect(preset.parentElement?.textContent).toContain('Filled')
   expect(preset.querySelector('.zyvavu-styled-button')?.getAttribute('style')).toContain('--zyvavu-theme-primary')
   const card = screen.getByRole('button', { name: 'Insert Button' })
   const preview = card.querySelector('.zyvavu-styled-button')
   expect(preview?.tagName).toBe('SPAN')
   expect(preview?.getAttribute('style')).toContain('--zyvavu-theme-primary')
+  expect(card.parentElement?.textContent).toContain('Button')
   fireEvent.click(card)
   const inserted = state.current.dispatch.mock.calls[0][0].data.content[0].props.content[0]
   expect(inserted.type).toBe('Button')
@@ -304,4 +315,19 @@ it('keeps Patterns category order when Sections is selected', () => {
   expect(screen.getByRole('button', { name: 'Insert Airy section' })).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: 'Insert Airy section' }))
   expect(state.current.dispatch.mock.calls.at(-1)[0].data.content[0].type).toBe('Section')
+})
+
+it('shows labeled category rail cells with a distinct Icons mark', () => {
+  render(
+    <MantineProvider>
+      <WidgetPatternLibrary context="home" beforeOperation={() => true} />
+    </MantineProvider>,
+  )
+  const iconsCategory = screen.getByRole('button', { name: 'Icons' })
+  expect(iconsCategory.querySelector('.lucide-shapes')).toBeTruthy()
+  expect(iconsCategory.querySelector('.lucide-image')).toBeNull()
+  // Widget bar: icon above + category name below (not icon-only ActionIcon).
+  expect(iconsCategory.textContent).toMatch(/Icons/)
+  expect(screen.getByRole('button', { name: 'Text' }).textContent).toMatch(/Text/)
+  expect(screen.getByRole('button', { name: 'Media' }).textContent).toMatch(/Media/)
 })

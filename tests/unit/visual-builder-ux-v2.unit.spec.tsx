@@ -18,6 +18,7 @@ import {
   applyWidgetPattern,
   validatePatternOperation,
 } from '@/lib/theme-engine/widget-patterns'
+import { validateThemeTemplateDocument } from '@/lib/theme-engine/validation'
 import { resolveSectionLayerStyles } from '@/lib/style-engine/serializer'
 import { validateUniversalStyle } from '@/lib/style-engine/validation'
 import { replayAnimation, replayWidgetAnimation } from '@/lib/style-engine/animation-replay'
@@ -173,7 +174,12 @@ describe('Visual Builder UX V2 contracts', () => {
       ],
     }
     expect(() => validatePatternOperation(page, blank, 'page', pageConfig)).toThrow(/Only one/)
-    expect(() => validatePatternOperation(blank, blank, 'page', pageConfig)).toThrow(/requires/)
+    // Draft insert may omit required capabilities; Save still enforces them.
+    expect(() => validatePatternOperation(blank, blank, 'page', pageConfig)).not.toThrow()
+    expect(validateThemeTemplateDocument(blank, 'page').valid).toBe(false)
+    expect(
+      validateThemeTemplateDocument(blank, 'page').errors.some((e) => /requires|document\.content/i.test(e)),
+    ).toBe(true)
   })
   it('preserves the native sticky header and direct grid children', () => {
     const Header = getFrontendWidget('Header')!.component

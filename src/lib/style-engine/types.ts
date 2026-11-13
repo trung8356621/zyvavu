@@ -138,6 +138,8 @@ export interface SpacingConfig {
     token?: string
     topToken?: string
     bottomToken?: string
+    leftToken?: string
+    rightToken?: string
   }
   gapToken?: string
 }

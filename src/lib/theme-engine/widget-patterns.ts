@@ -9,6 +9,7 @@ import { validateThemeTemplateDocument } from './validation'
 import type { TemplateContext, ThemeTemplateDocument } from './types'
 import { isPageContentContext } from './normalization'
 import { canonicalizeZonesToSlots } from './document-slots'
+import { createWidgetId } from './widget-ids'
 
 export interface WidgetDesignPattern {
   canonical?: PatternJSON
@@ -207,8 +208,88 @@ export function validatePatternOperation(
     expandedDocument(canonical, context, config),
     context,
     expandedDocument(canonicalizeZonesToSlots(previous) as Data, context, config),
+    { enforceRequiredPresence: false },
   )
   if (!result.valid) throw new Error(result.errors.join('; '))
+}
+
+/** Whether a parent slot may receive `itemType` under Puck allow/disallow rules. */
+export function slotAcceptsType(
+  config: Config,
+  parentType: string,
+  slot: string,
+  itemType: string,
+): boolean {
+  if (itemType === 'Section') return false
+  const field = config.components[parentType]?.fields?.[slot] as SlotField | undefined
+  if (field?.type !== 'slot') return false
+  if (field.allow && !field.allow.includes(itemType)) return false
+  if (field.disallow?.includes(itemType)) return false
+  return true
+}
+
+/**
+ * Prefer the selected slot when it accepts the node; otherwise the last valid
+ * container slot in the template. Undefined means append (and wrap in Section when needed).
+ */
+export function resolveInsertDestination(
+  data: Data,
+  itemType: string,
+  config: Config,
+  preferred?: { ownerId: string; slot: string } | null,
+): { ownerId: string; slot: string } | undefined {
+  if (itemType === 'Section') return undefined
+
+  const findById = (id: string): any | null => {
+    let found: any = null
+    const walk = (nodes: any[]) => {
+      for (const node of nodes) {
+        if (!node?.props?.id) continue
+        if (node.props.id === id) found = node
+        for (const [key, field] of Object.entries(config.components[node.type]?.fields || {})) {
+          if (field.type === 'slot' && Array.isArray(node.props?.[key])) walk(node.props[key])
+        }
+      }
+    }
+    walk(data.content || [])
+    for (const zoneItems of Object.values(data.zones || {})) walk(zoneItems as any[])
+    return found
+  }
+
+  if (preferred) {
+    const owner = findById(preferred.ownerId)
+    if (
+      owner &&
+      owner.props.lock?.canEditProps !== false &&
+      slotAcceptsType(config, owner.type, preferred.slot, itemType)
+    ) {
+      return preferred
+    }
+  }
+
+  // Fallback prefers page Containers (Section, then Columns), not slide/header niches.
+  const sectionDest: { ownerId: string; slot: string }[] = []
+  const columnsDest: { ownerId: string; slot: string }[] = []
+  const collect = (nodes: any[]) => {
+    for (const node of nodes) {
+      if (!node?.props?.id) continue
+      const locked = node.props.lock?.canEditProps === false
+      for (const [slot, field] of Object.entries(config.components[node.type]?.fields || {})) {
+        if (field.type !== 'slot') continue
+        if (!locked && slotAcceptsType(config, node.type, slot, itemType)) {
+          if (node.type === 'Section' && slot === 'content') {
+            sectionDest.push({ ownerId: node.props.id, slot })
+          } else if (node.type === 'Columns' && /^column[1-4]$/.test(slot)) {
+            columnsDest.push({ ownerId: node.props.id, slot })
+          }
+        }
+        if (Array.isArray(node.props?.[slot])) collect(node.props[slot])
+      }
+    }
+  }
+  collect(data.content || [])
+  for (const zoneItems of Object.values(data.zones || {})) collect(zoneItems as any[])
+  return sectionDest.at(-1) || columnsDest.at(-1)
 }
 
 export function instantiatePattern(
@@ -317,7 +398,7 @@ export function insertWidgetPattern(
   context: TemplateContext,
   config: Config,
   destination?: { ownerId: string; slot: string },
-  newId: () => string = () => crypto.randomUUID(),
+  newId: () => string = () => createWidgetId(),
 ): Data {
   if (destination) {
     let inserted = false

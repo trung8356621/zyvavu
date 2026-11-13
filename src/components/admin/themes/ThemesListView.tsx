@@ -1,5 +1,4 @@
 import React from 'react'
-import Link from 'next/link'
 import type { AdminViewServerProps } from 'payload'
 import { getPayload } from 'payload'
 import { Button, Paper, Stack, Text, Title } from '@mantine/core'
@@ -9,6 +8,7 @@ import config from '@payload-config'
 import { isSiteStaff } from '@/access/roles'
 import { getAllInstalledThemes } from '@/lib/theme-engine/themes'
 import { resolveActiveThemeId } from '@/lib/theme-engine/resolver'
+import { ensureCustomThemesRegistered } from '@/lib/theme-engine/register-custom-themes'
 import { ThemesGallery } from './ThemesGallery'
 
 export async function ThemesListView(props: AdminViewServerProps) {
@@ -38,7 +38,7 @@ export async function ThemesListView(props: AdminViewServerProps) {
               Themes management is restricted to site-admin and system-admin roles.
             </Text>
             <Button
-              component={Link}
+              component="a"
               href="/admin"
               variant="light"
               color="gray"
@@ -52,6 +52,7 @@ export async function ThemesListView(props: AdminViewServerProps) {
     )
   }
 
+  const customThemes = await ensureCustomThemesRegistered(payload)
   const activeThemeId = await resolveActiveThemeId(payload)
   const installedThemes = getAllInstalledThemes()
 
@@ -60,6 +61,9 @@ export async function ThemesListView(props: AdminViewServerProps) {
       <ThemesGallery
         installedThemes={installedThemes}
         initialActiveThemeId={activeThemeId}
+        customThemes={customThemes.map(({ id, label, description, websiteType }) => ({
+          id, label, description, websiteType,
+        }))}
       />
     </div>
   )

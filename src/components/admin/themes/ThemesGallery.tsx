@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import Link from 'next/link'
 import {
   Alert,
@@ -8,7 +8,6 @@ import {
   Box,
   Button,
   Card,
-  Container,
   Divider,
   Flex,
   Group,
@@ -23,28 +22,67 @@ import {
 import {
   Check,
   CheckCircle2,
-  ExternalLink,
   Eye,
   Layers,
   Palette,
+  Plus,
   ShieldAlert,
   Sparkles,
 } from 'lucide-react'
 import type { InstalledTheme } from '@/lib/theme-engine/themes'
+import { CreateThemeWizard, type CreatedThemeSummary } from './CreateThemeWizard'
 
 export type ThemesGalleryProps = {
   installedThemes: InstalledTheme[]
   initialActiveThemeId: string
+  customThemes: CreatedThemeSummary[]
 }
 
 export function ThemesGallery({
   installedThemes,
   initialActiveThemeId,
+  customThemes,
 }: ThemesGalleryProps) {
   const [activeThemeId, setActiveThemeId] = useState<string>(initialActiveThemeId)
   const [activatingId, setActivatingId] = useState<string | null>(null)
   const [confirmTheme, setConfirmTheme] = useState<InstalledTheme | null>(null)
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+  const [createOpen, setCreateOpen] = useState(false)
+  const [existingTheme, setExistingTheme] = useState<CreatedThemeSummary>()
+  const [createdThemes, setCreatedThemes] = useState<CreatedThemeSummary[]>([])
+  const [extraThemes, setExtraThemes] = useState<InstalledTheme[]>([])
+
+  const themes = useMemo(() => {
+    const byId = new Map<string, InstalledTheme>()
+    for (const theme of [...installedThemes, ...extraThemes]) byId.set(theme.id, theme)
+    return [...byId.values()]
+  }, [installedThemes, extraThemes])
+
+  const handleCreated = (theme: CreatedThemeSummary) => {
+    setCreatedThemes((prev) => [...prev, theme])
+    setExtraThemes((prev) => {
+      if (prev.some((entry) => entry.id === theme.id) || installedThemes.some((entry) => entry.id === theme.id)) {
+        return prev
+      }
+      return [
+        ...prev,
+        {
+          id: theme.id,
+          name: theme.id,
+          label: theme.label,
+          description: theme.description || 'Custom theme',
+          version: 1,
+          themeConfig: installedThemes[0]?.themeConfig,
+          templates: installedThemes[0]?.templates,
+          preview: installedThemes[0]?.preview,
+        } as InstalledTheme,
+      ]
+    })
+    setFeedback({
+      type: 'success',
+      message: `Theme "${theme.label}" created (inactive). Configure Customize then Builder without activating yet.`,
+    })
+  }
 
   const handleActivate = async (theme: InstalledTheme) => {
     setActivatingId(theme.id)
@@ -112,8 +150,18 @@ export function ThemesGallery({
           <Group gap="sm">
             <Badge size="lg" color="teal" variant="light" leftSection={<Check size={14} />}>
               Active:{' '}
-              {installedThemes.find((t) => t.id === activeThemeId)?.label || activeThemeId}
+              {themes.find((t) => t.id === activeThemeId)?.label || activeThemeId}
             </Badge>
+            <Button
+              variant="filled"
+              color="teal"
+              size="sm"
+              leftSection={<Plus size={14} />}
+              onClick={() => setCreateOpen(true)}
+              data-testid="create-theme-entry"
+            >
+              Create Theme
+            </Button>
             <Button
               component={Link}
               href={`/admin/theme-customizer?theme=${activeThemeId}`}
@@ -142,9 +190,10 @@ export function ThemesGallery({
 
       {/* Theme Cards Grid */}
       <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="lg">
-        {installedThemes.map((theme) => {
+        {themes.map((theme) => {
           const isActive = theme.id === activeThemeId
           const preview = theme.preview
+          const customTheme = [...customThemes, ...createdThemes].find(({ id }) => id === theme.id)
 
           return (
             <Card
@@ -387,6 +436,14 @@ export function ThemesGallery({
                         Templates
                       </Button>
                     </Group>
+                    {customTheme && (
+                      <Button variant="default" onClick={() => {
+                        setExistingTheme(customTheme)
+                        setCreateOpen(true)
+                      }}>
+                        Open setup wizard
+                      </Button>
+                    )}
                   </>
                 )}
               </Stack>
@@ -435,6 +492,18 @@ export function ThemesGallery({
           </Stack>
         )}
       </Modal>
+
+      {createOpen && (
+        <CreateThemeWizard
+          opened={createOpen}
+          existingTheme={existingTheme}
+          onClose={() => {
+            setCreateOpen(false)
+            setExistingTheme(undefined)
+          }}
+          onCreated={handleCreated}
+        />
+      )}
     </Box>
   )
 }

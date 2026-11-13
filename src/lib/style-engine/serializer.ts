@@ -70,8 +70,9 @@ export function resolveWidgetStyles(style?: UniversalStyle): CSSProperties {
     result.fontWeight = `var(--zyvavu-theme-${preset}-weight)` as CSSProperties['fontWeight']
     result.lineHeight = `var(--zyvavu-theme-${preset}-line-height)`
     result.letterSpacing = `var(--zyvavu-theme-${preset}-letter-spacing, normal)`
+    result.color = `var(--zyvavu-theme-${preset}-color, ${result.color ?? 'inherit'})`
     result.fontFamily = preset.startsWith('h')
-      ? 'var(--zyvavu-theme-font-heading)'
+      ? 'var(--zyvavu-theme-font-heading, var(--zyvavu-theme-font, inherit))'
       : 'var(--zyvavu-theme-font)'
   }
 
@@ -168,6 +169,8 @@ export function resolveWidgetStyles(style?: UniversalStyle): CSSProperties {
       } else {
         if (sp.margin?.topToken) result.marginTop = resolveSpacingToken(sp.margin.topToken)
         if (sp.margin?.bottomToken) result.marginBottom = resolveSpacingToken(sp.margin.bottomToken)
+        if (sp.margin?.leftToken) result.marginLeft = resolveSpacingToken(sp.margin.leftToken)
+        if (sp.margin?.rightToken) result.marginRight = resolveSpacingToken(sp.margin.rightToken)
       }
 
       if (sp.gapToken) {

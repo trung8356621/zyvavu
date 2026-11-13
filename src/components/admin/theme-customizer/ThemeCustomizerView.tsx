@@ -1,5 +1,4 @@
 import React from 'react'
-import Link from 'next/link'
 import type { AdminViewServerProps } from 'payload'
 import { getPayload } from 'payload'
 import { Button, Paper, Stack, Text, Title } from '@mantine/core'
@@ -15,6 +14,7 @@ import {
   resolveActiveThemeId,
   normalizeThemeId,
   getAllInstalledThemes,
+  ensureCustomThemesRegistered,
 } from '@/lib/theme-engine'
 import { ThemeCustomizer } from './ThemeCustomizer'
 
@@ -60,7 +60,7 @@ export async function ThemeCustomizerView(props: AdminViewServerProps) {
               Theme Customizer is limited to site-admin and system-admin roles.
             </Text>
             <Button
-              component={Link}
+              component="a"
               href="/admin"
               variant="light"
               color="gray"
@@ -73,6 +73,8 @@ export async function ThemeCustomizerView(props: AdminViewServerProps) {
       </div>
     )
   }
+
+  await ensureCustomThemesRegistered(payload)
 
   // Resolve target theme to customize from searchParams (?theme=<id>) or active theme
   const resolvedSearchParams = props.searchParams

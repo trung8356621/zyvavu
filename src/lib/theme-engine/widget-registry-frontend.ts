@@ -88,6 +88,15 @@ import { IconFrontend } from '@/widgets/Icon/frontend'
 import { categoryListManifest } from '@/widgets/CategoryList/manifest'
 import { CategoryListFrontend } from '@/widgets/CategoryList/frontend'
 
+import { bannerSliderManifest } from '@/widgets/BannerSlider/manifest'
+import { BannerSliderFrontend } from '@/widgets/BannerSlider/frontend'
+
+import { slideItemManifest } from '@/widgets/SlideItem/manifest'
+import { SlideItemFrontend } from '@/widgets/SlideItem/frontend'
+
+import { animatedCounterManifest } from '@/widgets/AnimatedCounter/manifest'
+import { AnimatedCounterFrontend } from '@/widgets/AnimatedCounter/frontend'
+
 export type FrontendWidgetEntry = {
   manifest: WidgetManifest
   component: React.ComponentType<any>
@@ -132,6 +141,9 @@ const defaultFrontendRegistry: Record<string, FrontendWidgetEntry> = {
   },
   Icon: { manifest: iconManifest, component: IconFrontend },
   CategoryList: { manifest: categoryListManifest, component: CategoryListFrontend },
+  BannerSlider: { manifest: bannerSliderManifest, component: BannerSliderFrontend },
+  SlideItem: { manifest: slideItemManifest, component: SlideItemFrontend },
+  AnimatedCounter: { manifest: animatedCounterManifest, component: AnimatedCounterFrontend },
 }
 
 import { registerWidgetManifest } from './widget-registry-manifests'

@@ -18,6 +18,11 @@
       "env": {
         "CHROME_DEVTOOLS_MCP_NO_USAGE_STATISTICS": "1"
       }
+    },
+    "zyvavu": {
+      "command": "node",
+      "args": ["--import", "tsx", "src/mcp/stdio.ts"],
+      "cwd": "${workspaceFolder}"
     }
   }
 }

@@ -57,6 +57,21 @@ export type InstalledTheme = {
   preview: ThemePreviewTokens
 }
 
+/** Runtime custom themes loaded from Settings (Create Theme wizard). Bundled themes stay authoritative. */
+let runtimeCustomThemes: Record<string, InstalledTheme> = {}
+
+export function setRuntimeCustomThemes(themes: InstalledTheme[]) {
+  runtimeCustomThemes = Object.fromEntries(
+    themes
+      .filter((theme) => theme?.id && !Object.hasOwn(INSTALLED_THEMES, theme.id))
+      .map((theme) => [theme.id, theme]),
+  )
+}
+
+export function getRuntimeCustomThemes(): InstalledTheme[] {
+  return Object.values(runtimeCustomThemes)
+}
+
 export const INSTALLED_THEMES: Record<string, InstalledTheme> = {
   corporate: {
     id: 'corporate',
@@ -144,7 +159,7 @@ export const INSTALLED_THEMES: Record<string, InstalledTheme> = {
 export function isValidThemeId(id?: string): boolean {
   if (!id) return false
   const clean = id.trim().toLowerCase()
-  return clean === 'default' || Boolean(INSTALLED_THEMES[clean])
+  return clean === 'default' || Boolean(INSTALLED_THEMES[clean]) || Boolean(runtimeCustomThemes[clean])
 }
 
 export function normalizeThemeId(id?: string): string {
@@ -152,16 +167,21 @@ export function normalizeThemeId(id?: string): string {
   const clean = id.trim().toLowerCase()
   if (clean === 'default' || clean === 'corporate') return 'corporate'
   if (INSTALLED_THEMES[clean]) return clean
+  if (runtimeCustomThemes[clean]) return clean
   return DEFAULT_THEME_ID
 }
 
 export function getInstalledTheme(id?: string): InstalledTheme {
   const norm = normalizeThemeId(id)
-  return INSTALLED_THEMES[norm] || INSTALLED_THEMES[DEFAULT_THEME_ID]
+  return INSTALLED_THEMES[norm] || runtimeCustomThemes[norm] || INSTALLED_THEMES[DEFAULT_THEME_ID]
 }
 
 export function getAllInstalledThemes(): InstalledTheme[] {
-  return Object.values(INSTALLED_THEMES)
+  return [...Object.values(INSTALLED_THEMES), ...Object.values(runtimeCustomThemes)]
+}
+
+export function listBundledThemeIds(): string[] {
+  return Object.keys(INSTALLED_THEMES)
 }
 
 export function getBundledTemplateForTheme(

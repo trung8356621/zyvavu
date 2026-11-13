@@ -107,6 +107,15 @@ import { iconEditor } from '@/widgets/Icon/editor'
 import { categoryListManifest } from '@/widgets/CategoryList/manifest'
 import { categoryListEditor } from '@/widgets/CategoryList/editor'
 
+import { bannerSliderManifest } from '@/widgets/BannerSlider/manifest'
+import { bannerSliderEditor } from '@/widgets/BannerSlider/editor'
+
+import { slideItemManifest } from '@/widgets/SlideItem/manifest'
+import { slideItemEditor } from '@/widgets/SlideItem/editor'
+
+import { animatedCounterManifest } from '@/widgets/AnimatedCounter/manifest'
+import { animatedCounterEditor } from '@/widgets/AnimatedCounter/editor'
+
 export type EditorWidgetEntry = {
   manifest: any
   config: any
@@ -142,6 +151,9 @@ const defaultEditorRegistry: Record<string, EditorWidgetEntry> = {
   ContactInformation: { manifest: contactInformationManifest, config: contactInformationEditor },
   Icon: { manifest: iconManifest, config: iconEditor },
   CategoryList: { manifest: categoryListManifest, config: categoryListEditor },
+  BannerSlider: { manifest: bannerSliderManifest, config: bannerSliderEditor },
+  SlideItem: { manifest: slideItemManifest, config: slideItemEditor },
+  AnimatedCounter: { manifest: animatedCounterManifest, config: animatedCounterEditor },
 }
 
 const customEditorOverrides: Record<string, any> = {}

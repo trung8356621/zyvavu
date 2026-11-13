@@ -3,6 +3,7 @@ import { CATEGORY_LIST_PRESETS } from '@/widgets/CategoryList/presets'
 import { CONTACT_DISPLAY_PRESETS, sampleContactEntryIds } from '@/lib/site/contact'
 import type { PatternJSON } from './json'
 import { collectPatternTokens } from './json'
+import { ANIMATED_COUNTER_PRESETS, BANNER_SLIDER_PRESETS } from './banner-counter-presets'
 
 /** Core atoms shown first in the Widget Library (Patterns category excluded). */
 export const ATOM_LIBRARY_PRIORITY = ['Heading', 'Button', 'Image', 'Video', 'Icon'] as const
@@ -15,6 +16,8 @@ export const LIBRARY_CATEGORY_ORDER = [
   'media',
   'icons',
   'layout',
+  'bannerSlider',
+  'animatedCounter',
   'sections',
   'navigation',
   'general',
@@ -700,6 +703,8 @@ export const ATOM_PRESETS: PatternJSON[] = [
   ...ICON_PRESETS,
   ...CONTAINER_PRESETS,
   ...CATEGORY_LIST_PATTERNS,
+  ...BANNER_SLIDER_PRESETS,
+  ...ANIMATED_COUNTER_PRESETS,
   ...CONTACT_DISPLAY_PRESETS.map(({ value, label }) => atomPattern(
     'ContactInformation',
     `contact-information-${value}`,
@@ -758,5 +763,10 @@ export function isAtomWidgetType(type: string) {
 }
 
 export function isSectionPatternCategory(category: string) {
-  return category === 'sections' || category === 'layout'
+  return (
+    category === 'sections' ||
+    category === 'layout' ||
+    category === 'bannerSlider' ||
+    category === 'animatedCounter'
+  )
 }

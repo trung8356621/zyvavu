@@ -15,6 +15,9 @@ import { ItemExcerptFrontend } from '@/widgets/ItemExcerpt/frontend'
 import { ItemLinkFrontend } from '@/widgets/ItemLink/frontend'
 import { CategoryListPatternPreview } from '@/widgets/CategoryList/pattern-preview'
 import { ContactInformationFrontend } from '@/widgets/ContactInformation/frontend'
+import { IconFrontend } from '@/widgets/Icon/frontend'
+import { AnimatedCounterFrontend } from '@/widgets/AnimatedCounter/frontend'
+import { stripSlideItemMargin } from '@/widgets/BannerSlider/style-targets'
 import { sampleContactEntriesWithOrder } from '@/lib/site/contact'
 import type { PatternJSON } from '@/lib/theme-engine/patterns/json'
 import { isComplexPattern, PATTERN_SLOTS } from '@/lib/theme-engine/patterns/json'
@@ -37,6 +40,10 @@ const SIMPLE: Record<string, React.ComponentType<any>> = {
   ItemLink: ItemLinkFrontend,
   CategoryList: CategoryListPatternPreview,
   ContactInformation: ContactInformationFrontend,
+  Icon: IconFrontend,
+  // BannerSlider / SlideItem use structure previews — never pass raw {type,props} slot arrays
+  // into frontend components (React child crash in library Layout browse).
+  AnimatedCounter: AnimatedCounterFrontend,
 }
 
 const PREVIEW_CONTEXT = {
@@ -76,6 +83,12 @@ function previewNode(
   if (node.type === 'Section') {
     return <SectionStructurePreview key={key} props={node.props || {}} nested />
   }
+  if (node.type === 'BannerSlider') {
+    return <BannerSliderStructurePreview key={key} props={node.props || {}} />
+  }
+  if (node.type === 'SlideItem') {
+    return <SlideItemStructurePreview key={key} props={node.props || {}} />
+  }
   const Component = SIMPLE[node.type]
   if (!Component) {
     return (
@@ -87,6 +100,95 @@ function previewNode(
   return (
     <div key={key} className={styles.atomScale}>
       <Component {...node.props} previewOnly={node.type === 'Button' || undefined} dataContext={PREVIEW_CONTEXT} />
+    </div>
+  )
+}
+
+/** Library card preview — recurse Pattern JSON slots; do not mount Embla or raw Puck descriptors. */
+function BannerSliderStructurePreview({ props }: { props: Record<string, unknown> }) {
+  const slides = Array.isArray(props.slides)
+    ? (props.slides as Array<{ type: string; props?: Record<string, unknown> }>)
+    : []
+  const showPagination = props.showPagination !== false
+  const first = slides[0]
+
+  return (
+    <div
+      className={styles.columnsPreview}
+      style={{
+        display: 'grid',
+        gap: 6,
+        width: '100%',
+        margin: 0,
+        position: 'relative',
+      }}
+    >
+      {first ? (
+        previewNode(first, 'banner-slide-0')
+      ) : (
+        <div className={styles.slotPlaceholder} aria-hidden />
+      )}
+      {showPagination && slides.length > 1 ? (
+        <div
+          aria-hidden
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: 4,
+          }}
+        >
+          {slides.slice(0, 5).map((_, index) => (
+            <span
+              key={`dot-${index}`}
+              style={{
+                width: index === 0 ? 14 : 6,
+                height: 6,
+                borderRadius: 999,
+                background:
+                  index === 0
+                    ? 'var(--zyvavu-theme-primary, #0e6b66)'
+                    : 'color-mix(in srgb, var(--zyvavu-theme-text, #111) 35%, transparent)',
+              }}
+            />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function SlideItemStructurePreview({ props }: { props: Record<string, unknown> }) {
+  const safeStyle = stripSlideItemMargin(props.style as UniversalStyle | undefined)
+  const content = Array.isArray(props.content)
+    ? (props.content as Array<{ type: string; props?: Record<string, unknown> }>)
+    : []
+
+  return (
+    <div
+      className={styles.sectionNested}
+      style={{
+        ...resolveWidgetStyles(safeStyle),
+        margin: 0,
+        marginTop: 0,
+        marginRight: 0,
+        marginBottom: 0,
+        marginLeft: 0,
+        width: '100%',
+        minWidth: 0,
+        boxSizing: 'border-box',
+        maxHeight: 96,
+        overflow: 'hidden',
+        padding: content.length ? 8 : 10,
+      }}
+    >
+      {content.length === 0 ? (
+        <div className={styles.slotPlaceholder} aria-hidden />
+      ) : (
+        content
+          .slice(0, 3)
+          .map((child, index) => previewNode(child, `slide-child-${index}`))
+      )}
     </div>
   )
 }
@@ -206,6 +308,22 @@ export function LivePatternPreview({ record, basic = false }: { record: PatternJ
     )
   }
 
+  if (root.type === 'BannerSlider') {
+    return (
+      <div inert className={styles.previewRoot}>
+        <BannerSliderStructurePreview props={root.props || {}} />
+      </div>
+    )
+  }
+
+  if (root.type === 'SlideItem') {
+    return (
+      <div inert className={styles.previewRoot}>
+        <SlideItemStructurePreview props={root.props || {}} />
+      </div>
+    )
+  }
+
   // Nested slots on composite roots still get a structure-aware pass when possible.
   const hasNestedSlots = PATTERN_SLOTS[root.type]?.some(
     (slot) => Array.isArray(root.props?.[slot]) && root.props[slot].length,
@@ -243,7 +361,6 @@ export function LivePatternPreview({ record, basic = false }: { record: PatternJ
       (basic || !Array.isArray(previewProps.items) || !previewProps.items.some((item) => item?.src))) {
     return <NeutralPreview kind="Gallery" />
   }
-
   const imagePreview = root.type === 'Image'
   const preview = (
     <Component

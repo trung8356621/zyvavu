@@ -21,6 +21,8 @@ import { createUsePuck } from '@puckeditor/core'
 import {
   Columns3,
   ContactRound,
+  GalleryHorizontal,
+  Hash,
   Image,
   LayoutGrid,
   MousePointer2,
@@ -33,7 +35,14 @@ import {
   Eye,
   PanelLeftClose,
   PanelLeftOpen,
+  Shapes,
 } from 'lucide-react'
+import {
+  isLibraryListWidgetGroup,
+  isLibrarySlotOnlyWidget,
+  libraryListGroupForPattern,
+  libraryListGroupForWidgetType,
+} from '@/lib/theme-engine/library-list-widgets'
 import type { TemplateContext, ThemeConfig } from '@/lib/theme-engine/types'
 import { getWidgetManifest } from '@/lib/theme-engine/widget-registry-manifests'
 import { isHiddenFromNewAuthoring } from '@/lib/theme-engine/legacy-item-widgets'
@@ -47,6 +56,7 @@ import {
   validatePatternOperation,
   walkPatternDocument,
   designPatternFromJSON,
+  resolveInsertDestination,
   type WidgetDesignPattern,
 } from '@/lib/theme-engine/widget-patterns'
 import {
@@ -70,7 +80,8 @@ import {
 const usePuck = createUsePuck()
 
 const OVERLAY_WIDTH_KEY = 'zyvavu.builder.libraryOverlayWidth'
-const OVERLAY_DEFAULT = 400
+/** Wide enough for a compact 2-column gallery; still leaves Canvas room at 1366px. */
+const OVERLAY_DEFAULT = 420
 const OVERLAY_MIN = 320
 const OVERLAY_MAX = 650
 function readOverlayWidth() {
@@ -87,6 +98,8 @@ function clampOverlayWidth(
   return Math.min(maxByViewport, Math.max(OVERLAY_MIN, Math.round(width)))
 }
 export function widgetLibraryCategory(type: string) {
+  const listGroup = libraryListGroupForWidgetType(type)
+  if (listGroup) return listGroup
   const manifest = getWidgetManifest(type)
   // Reusable standalone widgets — not template-bound Dynamic Content.
   if (type === 'CategoryList') return 'navigation'
@@ -107,11 +120,18 @@ export function widgetLibraryCategory(type: string) {
   return manifest?.category && manifest.category !== 'general' ? manifest.category : 'layout'
 }
 
+/** Pattern → user-facing List Widget / category (pattern ID overrides widgetType). */
+export function widgetLibraryPatternCategory(record: { id: string; widgetType: string }) {
+  return libraryListGroupForPattern(record) || widgetLibraryCategory(record.widgetType)
+}
+
 export { foldLibrarySearchText } from '@/lib/theme-engine/library-search'
 
 const LABELS: Record<string, string> = {
   sections: 'Sections',
   layout: 'Layout',
+  bannerSlider: 'Banner Slider',
+  animatedCounter: 'Animated Counter',
   text: 'Text',
   media: 'Media',
   buttons: 'Buttons',
@@ -124,10 +144,13 @@ const LABELS: Record<string, string> = {
 const ICONS: Record<string, React.ElementType> = {
   sections: Layers,
   layout: Columns3,
+  bannerSlider: GalleryHorizontal,
+  animatedCounter: Hash,
   text: Type,
   media: Image,
   buttons: MousePointer2,
-  icons: Image,
+  // Distinct from Media (Image landscape) — Icons category uses shapes mark.
+  icons: Shapes,
   navigation: ListTree,
   general: ContactRound,
   dynamic: Database,
@@ -183,7 +206,9 @@ export function WidgetPatternLibrary({
   const types = Object.keys(config.components).filter(
     (type) =>
       // Free Text + obsolete Document/Item specialists stay registered for saved docs.
+      // SlideItem is only insertable inside BannerSlider's slides slot.
       type !== 'Text' &&
+      !isLibrarySlotOnlyWidget(type) &&
       !isHiddenFromNewAuthoring(type) &&
       (mode === 'user' ||
         (mode === 'theme'
@@ -200,14 +225,25 @@ export function WidgetPatternLibrary({
   const matches = (text: string) =>
     foldLibrarySearchText(text).includes(foldLibrarySearchText(search.trim()))
   const searching = search.trim().length > 0
+  /** Dedicated List Widget groups keep search scoped so Banner ≠ Counter. */
+  const scopeSearchToActive = isLibraryListWidgetGroup(active)
+  const inActiveGroup = (group: string) =>
+    scopeSearchToActive || !searching ? group === active : true
   const available = sortAtomTypesFirst(
-    types.filter((type) => searching || categoryFor(type) === active),
+    types.filter((type) => inActiveGroup(categoryFor(type))),
   )
-  const eligible = (record: PatternJSON) =>
-    types.includes(record.widgetType) &&
-    (searching || categoryFor(record.widgetType) === active) &&
-    (searching || !widgetFilter || record.widgetType === widgetFilter) &&
-    matches(`${record.name} ${record.description} ${record.category} ${record.widgetType}`)
+  const eligible = (record: PatternJSON) => {
+    const patternGroup =
+      mode === 'theme' ? categoryFor(record.widgetType) : widgetLibraryPatternCategory(record)
+    return (
+      types.includes(record.widgetType) &&
+      inActiveGroup(patternGroup) &&
+      (searching || !widgetFilter || record.widgetType === widgetFilter) &&
+      matches(
+        `${record.name} ${record.description} ${record.category} ${record.widgetType} ${patternGroup}`,
+      )
+    )
+  }
   const patterns = (
     source === 'user'
       ? my.docs
@@ -250,18 +286,25 @@ export function WidgetPatternLibrary({
     else presetGroups.push({ kind, entries: [entry] })
   }
 
+  /** Image/Button keep nested 2-col masonry; other presets stay single-column list. */
   const renderPresetCards = (renderCard: (entry: (typeof patterns)[number]) => React.ReactNode) =>
-    presetGroups.map(({ kind, entries }) =>
-      kind ? (
-        <div
-          key={entries[0].pattern.id}
-          className={`zyvavu-media-masonry ${styles.presetMasonry}`}
-          data-preset-masonry={kind}
-        >
-          {entries.map(renderCard)}
-        </div>
-      ) : entries.map(renderCard),
-    )
+    presetGroups.map(({ kind, entries }, groupIndex) => {
+      const groupKey = entries[0]?.pattern.id || `preset-group-${groupIndex}`
+      if (kind) {
+        return (
+          <div
+            key={groupKey}
+            className={`zyvavu-media-masonry ${styles.presetMasonry}`}
+            data-preset-masonry={kind}
+          >
+            {entries.map(renderCard)}
+          </div>
+        )
+      }
+      // Keyed fragment required: returning a bare array from map triggers React's missing-key warning
+      // (reproduced when opening Layout — BannerSlider / Columns / Counter presets).
+      return <React.Fragment key={groupKey}>{entries.map(renderCard)}</React.Fragment>
+    })
 
   // Prefer atoms when opening a mixed category; section/layout browse stays pattern-led.
   const orderedBasics =
@@ -363,22 +406,36 @@ export function WidgetPatternLibrary({
         throw new Error('The selected widget cannot be edited')
       if (!apply && !getPermissions({ type: pattern.widgetType }).insert)
         throw new Error('This widget cannot be inserted')
-      if (
-        !apply &&
-        selected &&
-        effectiveDestination &&
-        (!getPermissions({ item: selected }).edit || selected.props.lock?.canEditProps === false)
-      )
-        throw new Error('The selected container is locked')
       const newId = () => crypto.randomUUID()
       const item = apply ? undefined : instantiatePattern(pattern, config, newId)
+      const preferredDestination =
+        !apply &&
+        item &&
+        item.type !== 'Section' &&
+        selected &&
+        effectiveDestination
+          ? { ownerId: selected.props.id as string, slot: effectiveDestination }
+          : null
+      const destination =
+        !apply && item
+          ? resolveInsertDestination(data, item.type, config, preferredDestination)
+          : undefined
+      if (
+        preferredDestination &&
+        destination &&
+        destination.ownerId === preferredDestination.ownerId &&
+        destination.slot === preferredDestination.slot &&
+        (!getPermissions({ item: selected! }).edit || selected!.props.lock?.canEditProps === false)
+      ) {
+        throw new Error('The selected container is locked')
+      }
       if (item) {
         walkPatternDocument({ root: data.root, content: [item] }, config, (node) => {
           if (!getPermissions({ type: node.type }).insert)
             throw new Error('A nested widget cannot be inserted')
         })
         if (
-          !effectiveDestination &&
+          !destination &&
           item.type !== 'Section' &&
           config.components.Section &&
           !getPermissions({ type: 'Section' }).insert
@@ -392,9 +449,7 @@ export function WidgetPatternLibrary({
             item,
             context as TemplateContext,
             config,
-            selected && effectiveDestination && item.type !== 'Section'
-              ? { ownerId: selected.props.id, slot: effectiveDestination }
-              : undefined,
+            destination,
             newId,
           )
       validatePatternOperation(next, data, context as TemplateContext, config)
@@ -485,7 +540,11 @@ export function WidgetPatternLibrary({
       {overlayLayout ? (
         <>
           <div className={styles.rail}>
-          <nav className={styles.categories} aria-label="Widget categories">
+          <nav
+            className={styles.categories}
+            aria-label="Widget categories"
+            data-category-rail="2-col"
+          >
             {categories.map((name) => {
               const Icon = ICONS[name] || LayoutGrid
               const label =
@@ -496,28 +555,22 @@ export function WidgetPatternLibrary({
               return (
                 <React.Fragment key={name}>
                   {name === 'dynamic' && <Divider className={styles.categoryDivider} />}
-                  <Tooltip
-                    label={label}
-                    position="right"
-                    withinPortal
-                    zIndex={ADMIN_OVERLAY_LAYERS.ACTIVE_DROPDOWN}
-                    events={{ hover: true, focus: true, touch: false }}
+                  <UnstyledButton
+                    className={styles.categoryTile}
+                    aria-label={label}
+                    aria-pressed={active === name}
+                    title={label}
+                    onClick={() => {
+                      setCategory(name)
+                      setWidgetFilter(null)
+                      if (overlayLayout) setExpanded(true)
+                    }}
                   >
-                    <ActionIcon
-                      size="xl"
-                      variant={active === name ? 'light' : 'subtle'}
-                      aria-label={label}
-                      aria-pressed={active === name}
-                      className={styles.categoryTile}
-                      onClick={() => {
-                        setCategory(name)
-                        setWidgetFilter(null)
-                        if (overlayLayout) setExpanded(true)
-                      }}
-                    >
-                      <Icon size={22} aria-hidden="true" />
-                    </ActionIcon>
-                  </Tooltip>
+                    <span className={styles.categoryIcon} aria-hidden="true">
+                      <Icon size={22} />
+                    </span>
+                    <span className={styles.categoryLabel}>{label}</span>
+                  </UnstyledButton>
                 </React.Fragment>
               )
             })}
@@ -531,12 +584,12 @@ export function WidgetPatternLibrary({
               zIndex={ADMIN_OVERLAY_LAYERS.ACTIVE_DROPDOWN}
             >
               <ActionIcon
-                size="xl"
+                size="lg"
                 variant="subtle"
                 aria-label="My Patterns"
                 onClick={() => setMyOpened(true)}
               >
-                <Bookmark size={22} aria-hidden="true" />
+                <Bookmark size={18} aria-hidden="true" />
               </ActionIcon>
             </Tooltip>
           )}
@@ -547,16 +600,16 @@ export function WidgetPatternLibrary({
             zIndex={ADMIN_OVERLAY_LAYERS.ACTIVE_DROPDOWN}
           >
             <ActionIcon
-              size="xl"
+              size="lg"
               variant="subtle"
               aria-label={expanded ? 'Collapse library' : 'Expand library'}
               aria-expanded={expanded}
               onClick={() => setExpanded((value) => !value)}
             >
               {expanded ? (
-                <PanelLeftClose size={22} aria-hidden="true" />
+                <PanelLeftClose size={18} aria-hidden="true" />
               ) : (
-                <PanelLeftOpen size={22} aria-hidden="true" />
+                <PanelLeftOpen size={18} aria-hidden="true" />
               )}
             </ActionIcon>
           </Tooltip>}
@@ -638,6 +691,11 @@ export function WidgetPatternLibrary({
                 )}
                 {(() => {
                   const isTextLibrary = active === 'text' && !searching
+                  const cardName = (label: string) => (
+                    <Text className={styles.cardName} aria-hidden="true">
+                      {label}
+                    </Text>
+                  )
                   const renderBasicCard = (type: string) => {
                     const label =
                       config.components[type].label || getWidgetManifest(type)?.label || type
@@ -669,12 +727,12 @@ export function WidgetPatternLibrary({
                         theme: { tokens: [] },
                       } satisfies PatternJSON)
                     const cardId = pattern.id
-                    // Card UI is preview-only; name stays on aria-label for a11y/search.
                     return (
                       <div
                         key={cardId}
                         className={styles.card}
                         data-selected={selectedCard === cardId || undefined}
+                        data-widget={type}
                       >
                         {record.widgetType === 'CategoryList' && (
                           <div className={styles.preview} data-category-preview>
@@ -693,6 +751,7 @@ export function WidgetPatternLibrary({
                             </div>
                           )}
                         </UnstyledButton>
+                        {cardName(label)}
                       </div>
                     )
                   }
@@ -728,6 +787,7 @@ export function WidgetPatternLibrary({
                                 key={cardId}
                                 className={styles.card}
                                 data-selected={selectedCard === pattern.id || undefined}
+                                data-widget={record.widgetType}
                                 onMouseEnter={() => hover(pattern)}
                                 onMouseLeave={clearHover}
                               >
@@ -741,6 +801,7 @@ export function WidgetPatternLibrary({
                                     <PatternThumbnail record={thumbnailRecord} url={doc?.url} />
                                   </div>
                                 </UnstyledButton>
+                                {cardName(pattern.name)}
                               </div>
                             )
                           })}
@@ -789,6 +850,7 @@ export function WidgetPatternLibrary({
                         key={cardId}
                         className={styles.card}
                         data-selected={selectedCard === pattern.id || undefined}
+                        data-widget={record.widgetType}
                         onMouseEnter={() => hover(pattern)}
                         onMouseLeave={clearHover}
                       >
@@ -808,8 +870,8 @@ export function WidgetPatternLibrary({
                               <PatternThumbnail key={thumbnailRevisions[cardId]} record={thumbnailRecord} url={doc?.url} />
                             </div>
                           )}
-                          <Text size="xs" truncate={record.widgetType !== 'Image' && record.widgetType !== 'Button'}>{pattern.name}</Text>
                         </UnstyledButton>
+                        {cardName(pattern.name)}
                         {!doc && record.widgetType === 'CategoryList' && (
                           <div className={styles.management}>
                             <Button variant="subtle" size="xs"
@@ -983,34 +1045,32 @@ export function WidgetPatternLibrary({
           />
         )}
           <div className={styles.columns}>
-          <nav className={styles.categories} aria-label="Widget categories">
+          <nav
+            className={styles.categories}
+            aria-label="Widget categories"
+            data-category-rail="2-col"
+          >
             {categories.map((name) => {
               const Icon = ICONS[name] || LayoutGrid
               const label = labels[name] || 'Widgets'
               return (
                 <React.Fragment key={name}>
                   {name === 'dynamic' && <Divider className={styles.categoryDivider} />}
-                  <Tooltip
-                    label={label}
-                    position="right"
-                    withinPortal
-                    zIndex={ADMIN_OVERLAY_LAYERS.ACTIVE_DROPDOWN}
-                    events={{ hover: true, focus: true, touch: false }}
+                  <UnstyledButton
+                    className={styles.categoryTile}
+                    aria-label={label}
+                    aria-pressed={active === name}
+                    title={label}
+                    onClick={() => {
+                      setCategory(name)
+                      setWidgetFilter(null)
+                    }}
                   >
-                    <ActionIcon
-                      size="xl"
-                      variant={active === name ? 'light' : 'subtle'}
-                      aria-label={label}
-                      aria-pressed={active === name}
-                      className={styles.categoryTile}
-                      onClick={() => {
-                        setCategory(name)
-                        setWidgetFilter(null)
-                      }}
-                    >
-                      <Icon size={22} aria-hidden="true" />
-                    </ActionIcon>
-                  </Tooltip>
+                    <span className={styles.categoryIcon} aria-hidden="true">
+                      <Icon size={22} />
+                    </span>
+                    <span className={styles.categoryLabel}>{label}</span>
+                  </UnstyledButton>
                 </React.Fragment>
               )
             })}
@@ -1044,6 +1104,11 @@ export function WidgetPatternLibrary({
               )}
               {(() => {
                 const isTextLibrary = active === 'text' && !searching
+                const cardName = (label: string) => (
+                  <Text className={styles.cardName} aria-hidden="true">
+                    {label}
+                  </Text>
+                )
                 const renderBasicCard = (type: string) => {
                   const label =
                     config.components[type].label || getWidgetManifest(type)?.label || type
@@ -1075,12 +1140,12 @@ export function WidgetPatternLibrary({
                       theme: { tokens: [] },
                     } satisfies PatternJSON)
                   const cardId = pattern.id
-                  // Card UI is preview-only; name stays on aria-label for a11y/search.
                   return (
                     <div
                       key={cardId}
                       className={styles.card}
                       data-selected={selectedCard === cardId || undefined}
+                      data-widget={type}
                     >
                       {record.widgetType === 'CategoryList' && (
                         <div className={styles.preview} data-category-preview>
@@ -1099,6 +1164,7 @@ export function WidgetPatternLibrary({
                           </div>
                         )}
                       </UnstyledButton>
+                      {cardName(label)}
                     </div>
                   )
                 }
@@ -1134,6 +1200,7 @@ export function WidgetPatternLibrary({
                               key={cardId}
                               className={styles.card}
                               data-selected={selectedCard === pattern.id || undefined}
+                              data-widget={record.widgetType}
                               onMouseEnter={() => hover(pattern)}
                               onMouseLeave={clearHover}
                             >
@@ -1147,6 +1214,7 @@ export function WidgetPatternLibrary({
                                   <PatternThumbnail record={thumbnailRecord} url={doc?.url} />
                                 </div>
                               </UnstyledButton>
+                              {cardName(pattern.name)}
                             </div>
                           )
                         })}
@@ -1195,6 +1263,7 @@ export function WidgetPatternLibrary({
                       key={cardId}
                       className={styles.card}
                       data-selected={selectedCard === pattern.id || undefined}
+                      data-widget={record.widgetType}
                       onMouseEnter={() => hover(pattern)}
                       onMouseLeave={clearHover}
                     >
@@ -1214,8 +1283,8 @@ export function WidgetPatternLibrary({
                             <PatternThumbnail key={thumbnailRevisions[cardId]} record={thumbnailRecord} url={doc?.url} />
                           </div>
                         )}
-                        <Text size="xs" truncate={record.widgetType !== 'Image' && record.widgetType !== 'Button'}>{pattern.name}</Text>
                       </UnstyledButton>
+                      {cardName(pattern.name)}
                       {!doc && record.widgetType === 'CategoryList' && (
                         <div className={styles.management}>
                           <Button variant="subtle" size="xs"

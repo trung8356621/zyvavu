@@ -1,4 +1,5 @@
 import { ANIMATION_CSS } from '@/lib/style-engine/animation-presets'
+import type { PayloadRequest } from 'payload'
 import type {
   ColorPreset,
   CustomPresetsStore,
@@ -6,7 +7,7 @@ import type {
   ThemeTokens,
   TypographyPreset,
 } from './types'
-import { resolveContrastForegroundToken, validateColorString, validateThemeTokens } from './presets'
+import { COLOR_TOKEN_KEYS, resolveContrastForegroundToken, validateColorString, validateThemeTokens } from './presets'
 import { DEFAULT_THEME_ID, getInstalledTheme, normalizeThemeId } from './themes'
 import { getPreviewThemeFromCookie, resolveActiveThemeId } from './resolver'
 
@@ -237,23 +238,6 @@ export async function resolveDraftThemeConfig(
   return resolveActiveThemeConfig(payload, targetTheme)
 }
 
-const COLOR_TOKEN_KEYS = [
-  'primary',
-  'primaryHover',
-  'background',
-  'surface',
-  'text',
-  'textMuted',
-  'border',
-  'accent',
-  'shadowSoft',
-  'shadowMedium',
-  'shadowStrong',
-  'headerBackground',
-  'headerText',
-  'headerBorder',
-] as const
-
 /**
  * Normalizes a raw custom color preset record (supporting both nested `colors`
  * and legacy flat color properties) without inventing arbitrary fallback colors.
@@ -414,13 +398,14 @@ export async function saveThemeStyleOverride(
   isPublished: boolean,
   slots?: Record<string, Record<string, string>>,
   themeId?: string,
+  importDraft?: { themeId: string; req: Partial<PayloadRequest> },
 ): Promise<{ success: boolean; errors?: string[] }> {
   const validation = validateThemeTokens(tokens)
   if (!validation.valid) {
     return { success: false, errors: validation.errors }
   }
 
-  const targetTheme = normalizeThemeId(themeId || (await resolveActiveThemeId(payload)))
+  const targetTheme = importDraft?.themeId ?? normalizeThemeId(themeId || (await resolveActiveThemeId(payload)))
   const scopedKey = isPublished
     ? `theme_style_${targetTheme}_published`
     : `theme_style_${targetTheme}_draft`
@@ -431,17 +416,24 @@ export async function saveThemeStyleOverride(
   }
 
   try {
-    const settings = await payload
-      .findGlobal({
-        slug: 'settings',
-        overrideAccess: true,
-      })
-      .catch(() => null)
+    const settings = await payload.findGlobal({
+      slug: 'settings',
+      overrideAccess: true,
+      req: importDraft?.req,
+    })
 
     const existingStyles = ((settings as any)?.themeStyles as Record<string, any>) || {}
+    const currentDraft = existingStyles[scopedKey]
     const updatedStyles = {
       ...existingStyles,
-      [scopedKey]: overrideData,
+      [scopedKey]: importDraft
+        ? {
+            ...currentDraft,
+            ...overrideData,
+            revision: (Number.isSafeInteger(currentDraft?.revision) ? currentDraft.revision : 0) + 1,
+            updatedAt: new Date().toISOString(),
+          }
+        : overrideData,
       ...(isPublished ? { [`theme_style_${targetTheme}_draft`]: overrideData } : {}),
       ...(targetTheme === 'corporate'
         ? {
@@ -457,6 +449,7 @@ export async function saveThemeStyleOverride(
         themeStyles: updatedStyles,
       },
       overrideAccess: true,
+      req: importDraft?.req,
     })
 
     return { success: true }
@@ -690,6 +683,9 @@ export function generateThemeCss(themeConfig?: ThemeConfig): string {
         if (spec.size) cssVars.push(`--zyvavu-theme-${h}-size: ${spec.size};`)
         if (spec.lineHeight) cssVars.push(`--zyvavu-theme-${h}-line-height: ${spec.lineHeight};`)
         if (spec.weight) cssVars.push(`--zyvavu-theme-${h}-weight: ${spec.weight};`)
+        if (spec.color && validateColorString(spec.color)) {
+          cssVars.push(`--zyvavu-theme-${h}-color: ${spec.color};`)
+        }
         if (spec.letterSpacing)
           cssVars.push(`--zyvavu-theme-${h}-letter-spacing: ${spec.letterSpacing};`)
       }
